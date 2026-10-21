@@ -13,10 +13,12 @@
   "dependencies": {
     "@remixicon/react": "catalog:",
     "@sidecut/contracts": "workspace:*",
+    "@sidecut/core": "workspace:*",
     "@sidecut/ui": "workspace:*",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-router": "catalog:",
     "@tanstack/react-start": "catalog:",
+    "cn": "^0.5.0",
     "effect": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",

@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./time": "./src/time.ts",
+    "./commands": "./src/commands.ts",
     "./project": "./src/project.ts"
   },
   "scripts": {

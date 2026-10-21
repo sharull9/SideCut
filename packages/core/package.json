@@ -1,0 +1,22 @@
+{
+  "name": "@sidecut/core",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./validation": "./src/validation.ts",
+    "./coordinator": "./src/coordinator.ts"
+  },
+  "scripts": {
+    "typecheck": "vp exec tsc --noEmit"
+  },
+  "dependencies": {
+    "@sidecut/contracts": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@sidecut/config": "workspace:*",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

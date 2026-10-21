@@ -1,0 +1,12 @@
+﻿{
+  "liveSession": "Compatibility study, 1280 × 720, revision 1",
+  "sessionProbe": {
+    "atomicRejected": true,
+    "finalRevision": 10,
+    "idempotentRetry": true,
+    "missingMediaObjectID": "clip_camera",
+    "passed": true,
+    "staleRejected": true,
+    "undoRestored": true
+  }
+}

@@ -2,19 +2,28 @@
 
 Foundation for a browser-first video editor with an optional desktop application.
 The editing engine, desktop app, and agent tools are planned in [the architecture plan](docs/monorepo-plan.md).
-The current UI is the generated starter, organized into a workspace feature module.
+The current UI has an empty editor frame with persistent panel sizes. Media import
+and timeline editing are planned in later phases.
 
 The [Tandem parity roadmap](docs/tandem-parity-roadmap.md) breaks the editor, media,
 desktop, and agent work into small phases with acceptance checks and a pinned
-upstream feature inventory. Phases 001-006 are implemented: synthetic reference
+upstream feature inventory. Phases 001-012 are implemented: synthetic reference
 fixtures, exact flick timing, a browser media feasibility probe, and Effect schemas
-for projects, tracks, media, and clips. The editor itself remains the starter.
+for projects, tracks, media, and clips, project validation, atomic command batches,
+undo/redo, and a resizable editor frame. Only `updateProject` and `updateSettings`
+are implemented edit commands so far. Project changes are not saved across reloads
+yet; panel sizes are saved locally.
 
 Open `/diagnostics` on the development server to run project round-trip and browser
 codec checks. Use the actual port printed by `vp run dev`. The probe produces
 synthetic video and audio locally, without camera or microphone access. See
 [verification results](docs/verification/phases-001-006.md) for the tested browser
 and current limitations.
+
+The [phases 007-012 report](docs/verification/phases-007-012.md) covers validation,
+command sessions, editor layout, and keyboard/pointer resizing. The diagnostics
+page can apply a sample name/settings batch to the live editor session. Use its
+Back to editor link to keep that session and inspect undo/redo.
 
 ## Development
 
@@ -46,6 +55,7 @@ Dependency commands are `vp add <package>`, `vp remove <package>`, `vp update`, 
 - `packages/ui`: generated shadcn components, shared styles/fonts, and the template's `cn` utility.
 - `packages/config`: TypeScript, Oxlint, and Oxfmt presets. Each family exports `base`, `web`, and `desktop` entry points.
 - `packages/contracts`: portable Effect project schemas and exact `bigint` flick timing. The current decoder supports schema version 2. Older-schema migration is planned in phase 046.
+- `packages/core`: portable project validation and a synchronous atomic coordinator with revision checks, idempotency, subscriptions, and labelled undo/redo.
 
 The desktop renderer will use web presets; its host process will use desktop presets. Node globals are excluded from browser TypeScript programs. Browser lint rules prohibit direct host API imports.
 

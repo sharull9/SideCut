@@ -1,0 +1,418 @@
+.editor-shell {
+  height: 100svh;
+  min-height: 520px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: var(--font-heading);
+  font-size: 12px;
+  color-scheme: dark;
+  ::selection {
+    background: var(--primary);
+    color: var(--primary-foreground);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  a:focus-visible,
+  button:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+}
+.editor-topbar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 56px;
+  flex-shrink: 0;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+.editor-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+.editor-brand svg {
+  width: 22px;
+  height: 22px;
+  color: var(--primary);
+}
+.editor-project-name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+.editor-project-name > :first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.editor-session-label {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.editor-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.editor-checks-link {
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--muted-foreground);
+  text-underline-offset: 4px;
+}
+.editor-checks-link:hover {
+  color: var(--foreground);
+  background: var(--muted);
+}
+.editor-body {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+.editor-workspace {
+  display: grid;
+  min-height: 0;
+  overflow: auto;
+}
+.editor-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--card);
+  overflow: hidden;
+}
+.editor-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  height: 42px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+.editor-panel-heading h1,
+.editor-panel-heading h2 {
+  font-weight: 600;
+  font-size: 12px;
+}
+.editor-panel-heading > span {
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.editor-panel-content {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+}
+.editor-panel-footnote {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.editor-panel-footnote svg {
+  width: 14px;
+  height: 14px;
+}
+.editor-divider {
+  background: var(--background);
+  touch-action: none;
+  user-select: none;
+  outline: none;
+}
+.editor-divider[data-orientation="vertical"] {
+  cursor: col-resize;
+}
+.editor-divider[data-orientation="horizontal"] {
+  cursor: row-resize;
+}
+.editor-divider:hover,
+.editor-divider:focus-visible {
+  background: var(--primary);
+}
+.editor-panel-content:focus-visible,
+.editor-inspector-content:focus-visible,
+.editor-timeline-scroll:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+.editor-viewer {
+  background: var(--background);
+}
+.editor-viewer-stage {
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 24px;
+}
+.editor-canvas {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--muted-foreground);
+}
+.editor-canvas svg {
+  width: 30px;
+  height: 30px;
+  opacity: 0.65;
+}
+.editor-canvas p {
+  font-size: 12px;
+}
+.editor-transport {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 48px;
+  padding: 0 16px;
+  border-top: 1px solid var(--border);
+}
+.editor-timecode {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+.editor-transport-rate {
+  color: var(--muted-foreground);
+  width: 88px;
+  text-align: right;
+  font-size: 11px;
+}
+.editor-inspector-content {
+  overflow: auto;
+  min-height: 0;
+}
+.editor-inspector-section {
+  padding: 20px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.editor-inspector-section h3 {
+  font-size: 12px;
+  font-weight: 550;
+  margin-bottom: 18px;
+}
+.editor-inspector-section dl {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.editor-inspector-section dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.editor-inspector-section dt {
+  color: var(--muted-foreground);
+}
+.editor-inspector-section dd {
+  font-variant-numeric: tabular-nums;
+}
+.editor-selection-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  padding: 28px 22px;
+  text-align: center;
+}
+.editor-selection-hint svg {
+  width: 24px;
+  height: 24px;
+  color: var(--muted-foreground);
+}
+.editor-selection-hint h3 {
+  font-size: 12px;
+  font-weight: 550;
+}
+.editor-selection-hint p {
+  max-width: 30ch;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+}
+.editor-timeline {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--card);
+  overflow: hidden;
+}
+.editor-timeline-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  height: 40px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.editor-timeline-toolbar h2 {
+  font-weight: 600;
+}
+.editor-timeline-toolbar > span:first-of-type {
+  color: var(--muted-foreground);
+}
+.editor-timeline-toolbar > span:last-child {
+  margin-left: auto;
+}
+.editor-timeline-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.editor-ruler,
+.editor-track {
+  display: grid;
+  grid-template-columns: 210px minmax(420px, 1fr);
+}
+.editor-ruler {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 29px;
+  background: var(--card);
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+.editor-ruler > :first-child {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  border-right: 1px solid var(--border);
+}
+.editor-ruler-ticks {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  align-items: center;
+  font-family: var(--font-mono);
+}
+.editor-ruler-ticks span {
+  border-left: 1px solid var(--border);
+  padding-left: 8px;
+}
+.editor-track {
+  min-height: 38px;
+  border-top: 1px solid var(--border);
+}
+.editor-track-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  border-right: 1px solid var(--border);
+}
+.editor-track-label {
+  width: 19px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+.editor-track-header svg {
+  width: 13px;
+  height: 13px;
+  color: var(--primary);
+}
+.editor-track[data-kind="audio"] .editor-track-header svg {
+  color: var(--muted-foreground);
+}
+.editor-track-name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.editor-ripple-mode {
+  font-size: 10px;
+  color: var(--muted-foreground);
+  margin-left: auto;
+}
+.editor-track-lane {
+  position: relative;
+  background: repeating-linear-gradient(
+    to right,
+    transparent,
+    transparent calc(100% / 6 - 1px),
+    var(--border) calc(100% / 6 - 1px),
+    var(--border) calc(100% / 6)
+  );
+}
+.editor-playhead-line {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--primary);
+}
+.editor-statusbar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+  height: 28px;
+  padding: 0 16px;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+.editor-statusbar > :first-child {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--foreground);
+}
+.editor-statusbar > [data-testid="revision"] {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+.editor-status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+@media (max-width: 1000px) {
+  .editor-project-name .editor-session-label {
+    display: none;
+  }
+  .editor-topbar {
+    gap: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .editor-shell button {
+    transition: none;
+  }
+}

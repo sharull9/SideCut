@@ -1,6 +1,6 @@
 # Tandem parity roadmap
 
-Status: phases 001-006 are implemented and verified on Windows Chromium. All later phases remain pending. See [verification evidence](verification/phases-001-006.md). The editor, full media engine, desktop application, and agent tools are not implemented.
+Status: phases 001-012 are implemented and verified on Windows Chromium. All later phases remain pending. See [phases 001-006 evidence](verification/phases-001-006.md) and [phases 007-012 evidence](verification/phases-007-012.md). The empty editor frame is implemented; full media editing, desktop application, and agent tools remain planned.
 
 ## Goal and baseline
 
@@ -86,43 +86,43 @@ Accept when supported clip variants round-trip and unknown content cannot silent
 
 ### Phase 007: Project validation
 
-- [ ] Validate references, timing bounds, and track/clip kinds.
-- [ ] Return stable errors with the affected object ID.
+- [x] Validate references, timing bounds, and track/clip kinds.
+- [x] Return stable errors with the affected object ID.
 
 Accept when invalid references and overlapping clips follow the pinned reference rules.
 
 ### Phase 008: Command coordinator
 
-- [ ] Apply a labelled command batch to a candidate project before committing it.
-- [ ] Add expected-revision checks and an idempotency key.
+- [x] Apply a labelled command batch to a candidate project before committing it.
+- [x] Add expected-revision checks and an idempotency key.
 
 Accept when a failed batch changes nothing and retrying the same successful request cannot apply it twice.
 
 ### Phase 009: Basic commands
 
-- [ ] Implement `updateProject` and `updateSettings`.
-- [ ] Publish the committed project revision through the session.
+- [x] Implement `updateProject` and `updateSettings`.
+- [x] Publish the committed project revision through the session.
 
 Accept when renaming and changing canvas settings update one authoritative snapshot.
 
 ### Phase 010: Undo and redo
 
-- [ ] Keep labelled undo/redo entries for successful batches.
-- [ ] Clear redo after a new edit and preserve reference revision behavior.
+- [x] Keep labelled undo/redo entries for successful batches.
+- [x] Clear redo after a new edit and preserve reference revision behavior.
 
 Accept when undo and redo restore exact project values after a multi-command batch.
 
 ### Phase 011: Editor frame
 
-- [ ] Replace the starter screen with a top bar, media panel, viewer, inspector, timeline, and status bar.
-- [ ] Reuse shared theme tokens, fonts, buttons, and Remix Icons.
+- [x] Replace the starter screen with a top bar, media panel, viewer, inspector, timeline, and status bar.
+- [x] Reuse shared theme tokens, fonts, buttons, and Remix Icons.
 
 Accept when the empty editor is usable at 1280x720 and 1920x1080 with no page overflow.
 
 ### Phase 012: Panel controls
 
-- [ ] Add resizable media/inspector panels and viewer/timeline divider.
-- [ ] Persist panel sizes and provide keyboard resizing and reset.
+- [x] Add resizable media/inspector panels and viewer/timeline divider.
+- [x] Persist panel sizes and provide keyboard resizing and reset.
 
 Accept when panels respect minimum sizes and reload restores the layout.
 

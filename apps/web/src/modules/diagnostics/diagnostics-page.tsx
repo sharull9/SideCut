@@ -3,8 +3,15 @@ import { Button } from "@sidecut/ui/components/button";
 import { runContractProbe } from "./contract-probe";
 import { runMediaProbe } from "./media-probe";
 import type { MediaProbeResult } from "./media-probe";
+import { Link } from "@tanstack/react-router";
+import { useEditorSession } from "../workspace/editor-session";
+import { runSessionProbe } from "./session-probe";
 
 export function DiagnosticsPage() {
+  const { session, snapshot } = useEditorSession();
+  const [sessionResult, setSessionResult] = useState<ReturnType<typeof runSessionProbe> | null>(
+    null,
+  );
   const [contracts, setContracts] = useState<ReturnType<typeof runContractProbe> | null>(null);
   const [media, setMedia] = useState<MediaProbeResult | null>(null);
   const [running, setRunning] = useState(false);
@@ -46,15 +53,78 @@ export function DiagnosticsPage() {
   return (
     <main className="mx-auto flex min-h-svh max-w-4xl flex-col gap-8 px-6 py-12">
       <header className="space-y-3">
-        <a href="/" className="text-sm text-muted-foreground underline">
-          SideCut home
-        </a>
+        <Link to="/" className="text-sm text-muted-foreground underline">
+          Back to editor
+        </Link>
         <h1 className="font-heading text-3xl font-semibold">Compatibility checks</h1>
         <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-          Verify the first six foundation phases on this browser. Media checks create a short
-          synthetic picture and tone locally. No camera, microphone, or upload is used.
+          Verify the project, command session, and media capabilities on this browser. Media checks
+          create a short synthetic picture and tone locally. No camera, microphone, or upload is
+          used.
         </p>
       </header>
+      <section aria-labelledby="session-heading" className="flex flex-col gap-4 border-t pt-6">
+        <h2 id="session-heading" className="text-lg font-medium">
+          Validation and command session
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Check atomic batches, revision conflicts, retries, and undo/redo. The sample edit below
+          changes the current editor session without adding media.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <Button
+            onClick={() => {
+              setError(null);
+              try {
+                setSessionResult(runSessionProbe());
+              } catch (cause) {
+                setError(cause instanceof Error ? cause.message : String(cause));
+              }
+            }}
+          >
+            Run session checks
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setError(null);
+              try {
+                session.apply({
+                  label: "Prepare sample sequence",
+                  expectedRevision: snapshot.revision,
+                  idempotencyKey: crypto.randomUUID(),
+                  commands: [
+                    { updateProject: { patch: { name: "Compatibility study" } } },
+                    { updateSettings: { patch: { width: 1280, height: 720 } } },
+                  ],
+                });
+              } catch (cause) {
+                setError(cause instanceof Error ? cause.message : String(cause));
+              }
+            }}
+          >
+            Apply sample batch to editor
+          </Button>
+          <Button variant="outline" disabled={!snapshot.undoLabel} onClick={() => session.undo()}>
+            Undo sample edit
+          </Button>
+          <Button variant="outline" disabled={!snapshot.redoLabel} onClick={() => session.redo()}>
+            Redo sample edit
+          </Button>
+        </div>
+        <p role="status" data-testid="live-session" className="text-sm text-muted-foreground">
+          {snapshot.project.name}, {snapshot.project.settings.width} ×{" "}
+          {snapshot.project.settings.height}, revision {snapshot.revision}
+        </p>
+        {sessionResult && (
+          <pre
+            data-testid="session-result"
+            className="overflow-auto rounded-md bg-muted p-4 text-xs leading-6"
+          >
+            {JSON.stringify(sessionResult, null, 2)}
+          </pre>
+        )}
+      </section>
       <section aria-labelledby="contracts-heading" className="space-y-4 border-t pt-6">
         <h2 id="contracts-heading" className="text-lg font-medium">
           Project format and timing

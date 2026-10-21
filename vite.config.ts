@@ -23,7 +23,11 @@ export default defineConfig({
     ignorePatterns: ignored,
     overrides: [
       {
-        files: ["apps/web/src/**/*.{ts,tsx}", "packages/ui/src/**/*.{ts,tsx}"],
+        files: [
+          "apps/web/src/**/*.{ts,tsx}",
+          "packages/ui/src/**/*.{ts,tsx}",
+          "packages/platform-browser/src/**/*.{ts,tsx}",
+        ],
         plugins: webLint.plugins ?? [],
         env: webLint.env ?? {},
         rules: webLint.rules ?? {},

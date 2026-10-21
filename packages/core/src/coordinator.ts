@@ -1,7 +1,7 @@
 import { Schema } from "effect";
 import { EditBatchSchema } from "@sidecut/contracts/commands";
 import type { EditCommand } from "@sidecut/contracts/commands";
-import { ProjectSettingsSchema } from "@sidecut/contracts/project";
+import { MediaItemSchema, ProjectSettingsSchema } from "@sidecut/contracts/project";
 import type { Project, ProjectFile } from "@sidecut/contracts/project";
 import { Time } from "@sidecut/contracts/time";
 import { validateProject } from "./validation";
@@ -81,6 +81,58 @@ function mergePatch(current: Json, patch: Json): Json {
 }
 
 function applyCommand(project: Project, command: EditCommand, warnings: string[]): Project {
+  if ("addMedia" in command) {
+    const item = command.addMedia.item;
+    const ids = [
+      project.id,
+      ...project.media.map((media) => media.id),
+      ...project.markers.map((marker) => marker.id),
+      ...[...project.videoTracks, ...project.audioTracks].flatMap((track) => [
+        track.id,
+        ...track.clips.map((clip) => clip.id),
+        ...track.transitions.map((transition) => transition.id),
+      ]),
+    ];
+    if (ids.includes(item.id))
+      throw new EditError("invalid", `Duplicate ID ${item.id} (already in use).`);
+    if (!item.path) throw new EditError("invalid", "media needs a path");
+    return { ...project, media: [...project.media, item] };
+  }
+  if ("updateMedia" in command) {
+    const { mediaID, patch } = command.updateMedia;
+    const item = project.media.find((media) => media.id === mediaID);
+    if (!item) throw new EditError("invalid", `media ${mediaID} not found`);
+    if ("id" in patch) throw new EditError("invalid", "media patch cannot change id");
+    const updated = Schema.decodeUnknownSync(MediaItemSchema)(
+      mergePatch(Schema.encodeSync(MediaItemSchema)(item) as Json, patch),
+    );
+    return {
+      ...project,
+      media: project.media.map((media) => (media.id === mediaID ? updated : media)),
+    };
+  }
+  if ("removeMedia" in command) {
+    const { mediaID } = command.removeMedia;
+    if (!project.media.some((item) => item.id === mediaID))
+      throw new EditError("invalid", `media ${mediaID} not found`);
+    const users = [...project.videoTracks, ...project.audioTracks]
+      .flatMap((track) => track.clips)
+      .filter((clip) => {
+        const content = clip.content.media;
+        return (
+          content &&
+          typeof content === "object" &&
+          "mediaID" in content &&
+          content.mediaID === mediaID
+        );
+      });
+    if (users.length)
+      throw new EditError(
+        "invalid",
+        `media ${mediaID} is used by ${users.length} clip(s); remove them first`,
+      );
+    return { ...project, media: project.media.filter((item) => item.id !== mediaID) };
+  }
   if ("updateProject" in command) {
     const patch = command.updateProject.patch;
     for (const key of Object.keys(patch))

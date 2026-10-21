@@ -1,6 +1,6 @@
 # Tandem parity roadmap
 
-Status: phases 001-012 are implemented and verified on Windows Chromium. All later phases remain pending. See [phases 001-006 evidence](verification/phases-001-006.md) and [phases 007-012 evidence](verification/phases-007-012.md). The empty editor frame is implemented; full media editing, desktop application, and agent tools remain planned.
+Status: phases 001-018 are implemented and verified on Windows Chromium. All later phases remain pending. See [phases 001-006 evidence](verification/phases-001-006.md), [phases 007-012 evidence](verification/phases-007-012.md), and [phases 013-018 evidence](verification/phases-013-018.md). Project controls, browser persistence, single-writer tabs, and a local media bin are implemented; timeline editing, playback, desktop application, and agent tools remain planned.
 
 ## Goal and baseline
 
@@ -128,43 +128,43 @@ Accept when panels respect minimum sizes and reload restores the layout.
 
 ### Phase 013: Project controls
 
-- [ ] Connect name and canvas settings controls to phase 009 commands.
-- [ ] Show the actual revision and undo/redo availability.
+- [x] Connect name and canvas settings controls to phase 009 commands.
+- [x] Show the actual revision and undo/redo availability.
 
 Accept when settings edits can be undone from the UI without creating another project store.
 
 ### Phase 014: Browser save
 
-- [ ] Persist project snapshots in IndexedDB through the browser adapter.
-- [ ] Show saving, saved, and failed-save states.
+- [x] Persist project snapshots in IndexedDB through the browser adapter.
+- [x] Show saving, saved, and failed-save states.
 
 Accept when reload restores a project and a failed write leaves the last valid save available.
 
 ### Phase 015: Open and download
 
-- [ ] Open a `.tandem` file through a browser file picker.
-- [ ] Download a validated `.tandem` snapshot.
+- [x] Open a `.tandem` file through a browser file picker.
+- [x] Download a validated `.tandem` snapshot.
 
 Accept when open/download/reopen preserves supported project fields and reports missing media separately.
 
 ### Phase 016: Single writer
 
-- [ ] Coordinate browser tabs so only one session writes a project.
-- [ ] Offer read-only or recovery behavior to a second tab.
+- [x] Coordinate browser tabs so only one session writes a project.
+- [x] Offer read-only or recovery behavior to a second tab.
 
 Accept when two tabs cannot overwrite each other's revisions.
 
 ### Phase 017: Media registration
 
-- [ ] Implement `addMedia`, `updateMedia`, and `removeMedia` with reference validation.
-- [ ] Register picked files as local resources without putting File objects in project JSON.
+- [x] Implement `addMedia`, `updateMedia`, and `removeMedia` with reference validation.
+- [x] Register picked files as local resources without putting File objects in project JSON.
 
 Accept when a selected file appears once and removing referenced media follows the reference policy.
 
 ### Phase 018: Media bin
 
-- [ ] Display local media with type, name, duration, and missing/unsupported states.
-- [ ] Add file input and file drop using the same import action.
+- [x] Display local media with type, name, duration, and missing/unsupported states.
+- [x] Add file input and file drop using the same import action.
 
 Accept when importing a supported fixture works through both entry points without uploading its bytes.
 

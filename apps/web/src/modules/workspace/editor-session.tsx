@@ -1,38 +1,39 @@
-import { createContext, useContext, useState, useSyncExternalStore } from "react";
+import { createContext, useContext, useEffect, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
-import { ProjectCoordinator } from "@sidecut/core/coordinator";
-import { decodeProjectFile } from "@sidecut/contracts/project";
+import { BrowserProjectSession } from "./browser-session";
 
-function createSession() {
-  const video = ["Screen", "Camera", "B-roll", "Graphics", "Text"].map((name, index) => ({
-    id: `trk_video_${index}`,
-    kind: "video",
-    name,
-    rippleMode: index < 2 ? "cut" : "follow",
-  }));
-  const audio = ["Voice", "Music", "SFX"].map((name, index) => ({
-    id: `trk_audio_${index}`,
-    kind: "audio",
-    name,
-    rippleMode: index === 0 ? "cut" : "follow",
-  }));
-  return new ProjectCoordinator(
-    decodeProjectFile({
-      revision: 0,
-      project: {
-        id: "prj_session",
-        name: "Untitled sequence",
-        videoTracks: video,
-        audioTracks: audio,
-      },
-    }),
-  );
-}
-
-const SessionContext = createContext<ProjectCoordinator | null>(null);
+const SessionContext = createContext<BrowserProjectSession | null>(null);
 
 export function EditorSessionProvider({ children }: { children: ReactNode }) {
-  const [session] = useState(createSession);
+  const [session] = useState(() => new BrowserProjectSession());
+  useEffect(() => {
+    void session.start();
+    const leave = (event: BeforeUnloadEvent) => {
+      const state = session.getSnapshot();
+      if (
+        !state.readOnly &&
+        (state.saveState === "saving" || state.saveState === "error" || state.busy)
+      ) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
+    const hide = () => {
+      void session.close();
+    };
+    const show = (event: PageTransitionEvent) => {
+      if (event.persisted) void session.start();
+    };
+    window.addEventListener("beforeunload", leave);
+    window.addEventListener("pagehide", hide);
+    window.addEventListener("pageshow", show);
+    return () => {
+      window.removeEventListener("beforeunload", leave);
+      window.removeEventListener("pagehide", hide);
+      window.removeEventListener("pageshow", show);
+      void session.close();
+    };
+  }, [session]);
   return <SessionContext value={session}>{children}</SessionContext>;
 }
 

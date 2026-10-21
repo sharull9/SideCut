@@ -24,12 +24,59 @@
 .editor-topbar {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
   height: 56px;
   flex-shrink: 0;
   padding: 0 16px;
   border-bottom: 1px solid var(--border);
   background: var(--card);
+}
+.editor-notice {
+  flex-shrink: 0;
+  border-radius: 0;
+}
+.editor-settings-pair {
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+.editor-settings-pair > * {
+  min-width: 0;
+}
+.editor-media-panel[data-dragging="true"] {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+.editor-media-list {
+  width: 100%;
+  padding: 8px;
+}
+.editor-media-item {
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.editor-media-item-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.editor-media-item-title svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--primary);
+}
+.editor-media-item-title span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.editor-media-item p {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
 }
 .editor-brand {
   display: flex;

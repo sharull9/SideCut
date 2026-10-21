@@ -4,20 +4,15 @@ import {
   RiArrowGoBackLine,
   RiArrowGoForwardLine,
   RiFilmLine,
-  RiFolderVideoLine,
   RiLayoutLine,
   RiPlayFill,
   RiScissorsCutLine,
   RiVolumeUpLine,
 } from "@remixicon/react";
 import { Button } from "@sidecut/ui/components/button";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@sidecut/ui/components/empty";
+import { Alert, AlertTitle, AlertDescription } from "@sidecut/ui/components/alert";
+import { ProjectSettings } from "./project-settings";
+import { MediaBin } from "./media-bin";
 import { useEditorSession } from "./editor-session";
 import { PanelDivider } from "./panel-divider";
 import {
@@ -37,6 +32,15 @@ import "./workspace.css";
 
 export function WorkspaceHome() {
   const { session, snapshot } = useEditorSession();
+  const projectPicker = useRef<HTMLInputElement>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const locked = snapshot.readOnly || snapshot.busy;
+  function run(action: () => unknown) {
+    setActionError(null);
+    void Promise.resolve()
+      .then(action)
+      .catch((cause) => setActionError(cause instanceof Error ? cause.message : String(cause)));
+  }
   const [sizes, setSizes] = useState<PanelSizes>({ ...DEFAULT_PANELS });
   const [dimensions, setDimensions] = useState({ width: 1280, height: 636 });
   const [preferencesReady, setPreferencesReady] = useState(false);
@@ -101,15 +105,25 @@ export function WorkspaceHome() {
         </div>
         <div className="editor-project-name">
           <span data-testid="project-name">{project.name}</span>
-          <span className="editor-session-label">Session only</span>
+          <span className="editor-session-label" role="status">
+            {snapshot.saveState === "saved"
+              ? "Saved in browser"
+              : snapshot.saveState === "read-only"
+                ? "Read-only"
+                : snapshot.saveState === "loading"
+                  ? "Opening?"
+                  : snapshot.saveState === "saving"
+                    ? "Saving?"
+                    : "Save failed"}
+          </span>
         </div>
         <div className="editor-topbar-actions">
           <Button
             variant="ghost"
             size="icon"
             aria-label={snapshot.undoLabel ? `Undo ${snapshot.undoLabel}` : "Undo"}
-            disabled={!snapshot.undoLabel}
-            onClick={() => session.undo()}
+            disabled={locked || !snapshot.undoLabel}
+            onClick={() => run(() => session.undo())}
             title={snapshot.undoLabel ? `Undo ${snapshot.undoLabel}` : "Nothing to undo"}
           >
             <RiArrowGoBackLine aria-hidden="true" />
@@ -118,8 +132,8 @@ export function WorkspaceHome() {
             variant="ghost"
             size="icon"
             aria-label={snapshot.redoLabel ? `Redo ${snapshot.redoLabel}` : "Redo"}
-            disabled={!snapshot.redoLabel}
-            onClick={() => session.redo()}
+            disabled={locked || !snapshot.redoLabel}
+            onClick={() => run(() => session.redo())}
             title={snapshot.redoLabel ? `Redo ${snapshot.redoLabel}` : "Nothing to redo"}
           >
             <RiArrowGoForwardLine aria-hidden="true" />
@@ -136,12 +150,73 @@ export function WorkspaceHome() {
           <Link to="/diagnostics" className="editor-checks-link">
             Checks
           </Link>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={snapshot.busy || snapshot.saveState === "loading"}
+            onClick={() => projectPicker.current?.click()}
+          >
+            Open project
+          </Button>
+          <input
+            ref={projectPicker}
+            type="file"
+            accept=".tandem,.json,application/json"
+            className="sr-only"
+            tabIndex={-1}
+            aria-label="Tandem project file"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) run(() => session.openProject(file));
+            }}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={snapshot.saveState === "loading"}
+            onClick={() => run(() => session.downloadProject())}
+          >
+            Download project
+          </Button>
           <Button size="sm" disabled title="Export is not available yet">
             Export
           </Button>
         </div>
       </header>
 
+      {(actionError || snapshot.error) && (
+        <Alert variant="destructive" className="editor-notice">
+          <AlertTitle>Action needs attention</AlertTitle>
+          <AlertDescription>{actionError ?? snapshot.error}</AlertDescription>
+          {snapshot.saveState === "error" && (
+            <Button size="sm" variant="outline" onClick={() => run(() => session.retrySave())}>
+              Retry save
+            </Button>
+          )}
+        </Alert>
+      )}
+      {snapshot.readOnly && snapshot.saveState === "read-only" && (
+        <Alert className="editor-notice">
+          <AlertTitle>Another tab is editing this project</AlertTitle>
+          <AlertDescription>
+            You can review and download this copy. Close the other editing tab to make changes here.
+          </AlertDescription>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={snapshot.busy}
+            onClick={() => run(() => session.enableEditing())}
+          >
+            Enable editing
+          </Button>
+        </Alert>
+      )}
+      {snapshot.lastChange && (
+        <p className="sr-only" role="status">
+          {snapshot.lastChange.label}
+        </p>
+      )}
       <div
         ref={container}
         className="editor-body"
@@ -153,39 +228,7 @@ export function WorkspaceHome() {
             gridTemplateColumns: `${fitted.media}px ${DIVIDER_SIZE}px minmax(${VIEWER_MIN}px, 1fr) ${DIVIDER_SIZE}px ${fitted.inspector}px`,
           }}
         >
-          <section
-            id="media-panel"
-            aria-labelledby="media-title"
-            className="editor-panel editor-media-panel"
-          >
-            <div className="editor-panel-heading">
-              <h1 id="media-title">Project media</h1>
-              <span>{project.media.length} files</span>
-            </div>
-            <div
-              className="editor-panel-content"
-              role="region"
-              aria-label="Project media contents"
-              tabIndex={0}
-            >
-              <Empty>
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <RiFolderVideoLine aria-hidden="true" />
-                  </EmptyMedia>
-                  <EmptyTitle>No media yet</EmptyTitle>
-                  <EmptyDescription>
-                    Your local video, audio, and images will appear here. Import is not available
-                    yet.
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            </div>
-            <div className="editor-panel-footnote">
-              <RiFolderVideoLine aria-hidden="true" />
-              Files stay on your device
-            </div>
-          </section>
+          <MediaBin run={run} />
           <PanelDivider
             label="Media panel width"
             controls="media-panel"
@@ -212,7 +255,11 @@ export function WorkspaceHome() {
                 }}
               >
                 <RiFilmLine aria-hidden="true" />
-                <p>Your sequence is empty</p>
+                <p>
+                  {tracks.some((track) => track.clips.length)
+                    ? "Sequence preview is not available yet"
+                    : "Your sequence is empty"}
+                </p>
               </div>
             </div>
             <div className="editor-transport">
@@ -255,33 +302,7 @@ export function WorkspaceHome() {
               aria-label="Sequence and clip properties"
               tabIndex={0}
             >
-              <div className="editor-inspector-section">
-                <h3>Sequence properties</h3>
-                <dl>
-                  <div>
-                    <dt>Canvas</dt>
-                    <dd>
-                      {project.settings.width} × {project.settings.height}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Frame rate</dt>
-                    <dd>{Number(frameRate.toFixed(3))} fps</dd>
-                  </div>
-                  <div>
-                    <dt>Audio</dt>
-                    <dd>{project.settings.sampleRate / 1000} kHz</dd>
-                  </div>
-                  <div>
-                    <dt>Color</dt>
-                    <dd>
-                      {project.settings.colorSpace === "rec709"
-                        ? "Rec.709"
-                        : project.settings.colorSpace}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
+              <ProjectSettings key={`${project.id}:${snapshot.revision}`} />
               <div className="editor-selection-hint">
                 <RiFilmLine aria-hidden="true" />
                 <h3>No clip selected</h3>
@@ -347,9 +368,15 @@ export function WorkspaceHome() {
       <footer className="editor-statusbar">
         <span>
           <span className="editor-status-dot" />
-          Ready
+          {snapshot.busy
+            ? "Working"
+            : snapshot.saveState === "loading"
+              ? "Opening"
+              : snapshot.readOnly
+                ? "Read-only"
+                : "Ready"}
         </span>
-        <span>Project changes are kept for this session only</span>
+        <span>Media stays local · Download a project copy for backup</span>
         <span role="status" data-testid="revision">
           Revision {snapshot.revision}
         </span>

@@ -2,17 +2,23 @@
 
 Foundation for a browser-first video editor with an optional desktop application.
 The editing engine, desktop app, and agent tools are planned in [the architecture plan](docs/monorepo-plan.md).
-The current UI has an empty editor frame with persistent panel sizes. Media import
-and timeline editing are planned in later phases.
+The editor has resizable panels, editable sequence properties, browser autosave,
+project open/download, and a local media bin. Timeline editing is planned in later phases.
 
 The [Tandem parity roadmap](docs/tandem-parity-roadmap.md) breaks the editor, media,
 desktop, and agent work into small phases with acceptance checks and a pinned
-upstream feature inventory. Phases 001-012 are implemented: synthetic reference
+upstream feature inventory. Phases 001-018 are implemented: synthetic reference
 fixtures, exact flick timing, a browser media feasibility probe, and Effect schemas
 for projects, tracks, media, and clips, project validation, atomic command batches,
-undo/redo, and a resizable editor frame. Only `updateProject` and `updateSettings`
-are implemented edit commands so far. Project changes are not saved across reloads
-yet; panel sizes are saved locally.
+undo/redo, a resizable editor frame, sequence properties, project persistence,
+single-writer browser tabs, and local media registration/import. Five edit commands
+are implemented: `updateProject`, `updateSettings`, `addMedia`, `updateMedia`, and
+`removeMedia`. Undo history remains in memory and resets on reload.
+
+Projects and imported source files persist in IndexedDB for this browser profile
+and origin. Download a project copy for backup. A `.tandem` download contains project
+data and media references, not the media bytes. Browser storage can be cleared or
+evicted; portable media archives and general source relinking remain planned.
 
 Open `/diagnostics` on the development server to run project round-trip and browser
 codec checks. Use the actual port printed by `vp run dev`. The probe produces
@@ -24,6 +30,9 @@ The [phases 007-012 report](docs/verification/phases-007-012.md) covers validati
 command sessions, editor layout, and keyboard/pointer resizing. The diagnostics
 page can apply a sample name/settings batch to the live editor session. Use its
 Back to editor link to keep that session and inspect undo/redo.
+
+The [phases 013-018 report](docs/verification/phases-013-018.md) covers settings,
+autosave recovery, project interchange, tab ownership, and image/audio/video import.
 
 ## Development
 
@@ -45,7 +54,7 @@ vp run build
 project schema and exact-time tests. Type checking generates TanStack routes first,
 including on clean checkouts.
 
-`vp fmt` writes formatting, and `vp lint --fix` applies lint fixes. Vite+ owns Vite, Oxlint, Oxfmt, Vitest, and workspace task execution. Effect 4 is installed in the web app for the upcoming runtime and schema modules.
+`vp fmt` writes formatting, and `vp lint --fix` applies lint fixes. Vite+ owns Vite, Oxlint, Oxfmt, Vitest, and workspace task execution. Effect 4 supplies the portable project and command schemas.
 
 Dependency commands are `vp add <package>`, `vp remove <package>`, `vp update`, and `vp why <package>`. Use `vp run --filter @sidecut/web <task>` for a workspace task and `vp exec <binary>` for an installed tool.
 
@@ -56,6 +65,7 @@ Dependency commands are `vp add <package>`, `vp remove <package>`, `vp update`, 
 - `packages/config`: TypeScript, Oxlint, and Oxfmt presets. Each family exports `base`, `web`, and `desktop` entry points.
 - `packages/contracts`: portable Effect project schemas and exact `bigint` flick timing. The current decoder supports schema version 2. Older-schema migration is planned in phase 046.
 - `packages/core`: portable project validation and a synchronous atomic coordinator with revision checks, idempotency, subscriptions, and labelled undo/redo.
+- `packages/platform-browser`: IndexedDB project/resource storage, Web Locks writer ownership, save serialization, and local media analysis through MediaBunny. The web session connects this adapter to the portable coordinator.
 
 The desktop renderer will use web presets; its host process will use desktop presets. Node globals are excluded from browser TypeScript programs. Browser lint rules prohibit direct host API imports.
 
@@ -79,10 +89,13 @@ The root `vite.config.ts` composes lint/format presets and applies runtime-speci
 Created with shadcn preset `b7kBsBkh7b`: Nova/Base UI, green theme, Remix Icons, Geist Mono, and Instrument Sans headings.
 
 ```sh
-vp dlx shadcn@latest add <component> -c apps/web
+cd packages/ui
+vp exec shadcn add <component> --path src/components
 ```
 
-The app and UI aliases direct shared components into `packages/ui`. The generated `cn` helper currently re-exports the `cn` package; reuse it rather than adding another helper.
+Use the explicit path with the shared package's CLI to keep generated files inside
+the workspace on Windows. The generated `cn` helper re-exports the `cn` package;
+reuse it rather than adding another helper.
 
 ## Static hosting
 

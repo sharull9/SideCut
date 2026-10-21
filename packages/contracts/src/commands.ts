@@ -1,4 +1,5 @@
 import { Effect, Schema, SchemaTransformation } from "effect";
+import { MediaItemSchema } from "./project";
 
 const defaultText = (value: string) =>
   Schema.NullOr(Schema.String).pipe(
@@ -15,6 +16,11 @@ const defaultText = (value: string) =>
 const CommandBody = Schema.Union([
   Schema.Struct({ updateProject: Schema.Struct({ patch: Schema.JsonObject }) }),
   Schema.Struct({ updateSettings: Schema.Struct({ patch: Schema.JsonObject }) }),
+  Schema.Struct({ addMedia: Schema.Struct({ item: MediaItemSchema }) }),
+  Schema.Struct({
+    updateMedia: Schema.Struct({ mediaID: Schema.String, patch: Schema.JsonObject }),
+  }),
+  Schema.Struct({ removeMedia: Schema.Struct({ mediaID: Schema.String }) }),
 ]);
 
 export const EditCommandSchema = Schema.JsonObject.check(

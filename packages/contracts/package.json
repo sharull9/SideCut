@@ -1,0 +1,21 @@
+{
+  "name": "@sidecut/contracts",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./time": "./src/time.ts",
+    "./project": "./src/project.ts"
+  },
+  "scripts": {
+    "typecheck": "vp exec tsc --noEmit"
+  },
+  "dependencies": {
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@sidecut/config": "workspace:*",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

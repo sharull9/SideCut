@@ -1,0 +1,4 @@
+{
+  "extends": "@sidecut/config/typescript/base.json",
+  "include": ["src/**/*.ts"]
+}

@@ -1,0 +1,52 @@
+﻿{
+  "contracts": {
+    "audioTracks": 3,
+    "contentVariants": ["media", "graphic", "solid", "adjustment", "text"],
+    "futureVersionRejected": true,
+    "media": 3,
+    "negativeHalfSampleFlicks": "-14700",
+    "passed": true,
+    "projectId": "prj_mini",
+    "revision": 7,
+    "roundTrip": "passed",
+    "schemaVersion": 2,
+    "videoTracks": 5
+  },
+  "media": {
+    "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+    "codecs": [
+      {
+        "codec": "vp8",
+        "decode": true,
+        "detail": "Encoded and decoded 3 synthetic 64x64 frames.",
+        "encode": true,
+        "frames": 3
+      },
+      {
+        "codec": "vp09.00.10.08",
+        "decode": true,
+        "detail": "Encoded and decoded 3 synthetic 64x64 frames.",
+        "encode": true,
+        "frames": 3
+      },
+      {
+        "codec": "avc1.42001e",
+        "decode": true,
+        "detail": "Encoded and decoded 3 synthetic 64x64 frames.",
+        "encode": true,
+        "frames": 3
+      }
+    ],
+    "errors": [],
+    "recording": {
+      "audioChannels": 2,
+      "audioFrames": 43200,
+      "audioRms": 0.10559419581918408,
+      "bytes": 8330,
+      "height": 64,
+      "mimeType": "video/webm;codecs=vp8,opus",
+      "width": 64
+    },
+    "secureContext": true
+  }
+}

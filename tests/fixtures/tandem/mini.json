@@ -1,0 +1,136 @@
+{
+  "revision": 7,
+  "project": {
+    "id": "prj_mini",
+    "name": "Synthetic edit",
+    "schemaVersion": 2,
+    "settings": {
+      "width": 1280,
+      "height": 720,
+      "frameRate": { "numerator": 30000, "denominator": 1001 }
+    },
+    "metadata": { "source": "Synthetic fixture", "notes": "No private footage" },
+    "media": [
+      {
+        "id": "med_camera",
+        "path": "source/Camera take.mov",
+        "kind": "video",
+        "role": "camera",
+        "duration": 3,
+        "hasAudio": true,
+        "takeID": "take_one",
+        "takeOffset": 0.125,
+        "fingerprint": "synthetic-camera"
+      },
+      {
+        "id": "med_voice",
+        "path": "source/Voice.wav",
+        "kind": "audio",
+        "role": "other",
+        "duration": 3
+      },
+      { "id": "med_image", "path": "source/图像.png", "kind": "image", "role": "image" }
+    ],
+    "videoTracks": [
+      { "id": "trk_screen", "kind": "video", "name": "Screen", "rippleMode": "cut", "clips": [] },
+      {
+        "id": "trk_camera",
+        "kind": "video",
+        "name": "Camera",
+        "rippleMode": "cut",
+        "clips": [
+          {
+            "id": "clip_camera",
+            "content": { "media": { "mediaID": "med_camera" } },
+            "start": 0,
+            "duration": 2,
+            "sourceStart": 0.5,
+            "speed": 1,
+            "linkGroup": "link_take",
+            "video": {
+              "opacity": 0.8,
+              "effects": [
+                { "id": "fx_blur", "type": "blur", "enabled": true, "params": { "radius": 2 } }
+              ]
+            },
+            "tags": ["fixture"]
+          }
+        ]
+      },
+      { "id": "trk_broll", "kind": "video", "name": "B-roll", "rippleMode": "follow", "clips": [] },
+      {
+        "id": "trk_graphics",
+        "kind": "video",
+        "name": "Graphics",
+        "rippleMode": "follow",
+        "clips": [
+          {
+            "id": "clip_graphic",
+            "content": {
+              "graphic": {
+                "template": "fixture",
+                "props": { "label": "Hello" },
+                "propsJSON": "{\"nested\":[1,true]}"
+              }
+            },
+            "start": 0,
+            "duration": 1
+          },
+          {
+            "id": "clip_solid",
+            "content": { "solid": { "color": { "r": 0, "g": 0, "b": 0, "a": 1 } } },
+            "start": 1,
+            "duration": 0.5
+          },
+          {
+            "id": "clip_adjustment",
+            "content": { "adjustment": {} },
+            "start": 1.5,
+            "duration": 0.5
+          }
+        ]
+      },
+      {
+        "id": "trk_text",
+        "kind": "video",
+        "name": "Text",
+        "rippleMode": "follow",
+        "clips": [
+          {
+            "id": "clip_title",
+            "content": {
+              "text": {
+                "text": "Synthetic title",
+                "preset": "callout",
+                "style": { "uppercase": false, "font": "Instrument Sans" },
+                "animationIn": "none"
+              }
+            },
+            "duration": 2
+          }
+        ]
+      }
+    ],
+    "audioTracks": [
+      {
+        "id": "trk_voice",
+        "kind": "audio",
+        "name": "Voice",
+        "rippleMode": "cut",
+        "clips": [
+          {
+            "id": "clip_voice",
+            "content": { "media": { "mediaID": "med_voice" } },
+            "duration": 2,
+            "sourceStart": 0.5,
+            "linkGroup": "link_take",
+            "audio": { "gainDB": -3, "normalizeTo": -20 }
+          }
+        ]
+      },
+      { "id": "trk_music", "kind": "audio", "name": "Music", "rippleMode": "follow", "clips": [] },
+      { "id": "trk_sfx", "kind": "audio", "name": "SFX", "rippleMode": "off", "clips": [] }
+    ],
+    "markers": [{ "id": "mk_start", "time": 0, "kind": "section", "name": "Start" }]
+  }
+}

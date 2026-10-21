@@ -4,6 +4,18 @@ Foundation for a browser-first video editor with an optional desktop application
 The editing engine, desktop app, and agent tools are planned in [the architecture plan](docs/monorepo-plan.md).
 The current UI is the generated starter, organized into a workspace feature module.
 
+The [Tandem parity roadmap](docs/tandem-parity-roadmap.md) breaks the editor, media,
+desktop, and agent work into small phases with acceptance checks and a pinned
+upstream feature inventory. Phases 001-006 are implemented: synthetic reference
+fixtures, exact flick timing, a browser media feasibility probe, and Effect schemas
+for projects, tracks, media, and clips. The editor itself remains the starter.
+
+Open `/diagnostics` on the development server to run project round-trip and browser
+codec checks. Use the actual port printed by `vp run dev`. The probe produces
+synthetic video and audio locally, without camera or microphone access. See
+[verification results](docs/verification/phases-001-006.md) for the tested browser
+and current limitations.
+
 ## Development
 
 Install the [Vite+ CLI](https://viteplus.dev/guide/) and use `vp` for all project commands. Use Node.js 24.18 or a newer Node 24 release. Vite+ manages the pnpm version pinned in `package.json` underneath; no direct pnpm commands are needed.
@@ -20,7 +32,9 @@ vp run check
 vp run build
 ```
 
-`vp run check` runs format checking, Oxlint, TypeScript checks, and Vitest. There are no application tests yet; the test command accepts an empty suite while the foundation is being established. Type checking generates TanStack routes first, including on clean checkouts.
+`vp run check` runs format checking, Oxlint, TypeScript checks, and Vitest, including
+project schema and exact-time tests. Type checking generates TanStack routes first,
+including on clean checkouts.
 
 `vp fmt` writes formatting, and `vp lint --fix` applies lint fixes. Vite+ owns Vite, Oxlint, Oxfmt, Vitest, and workspace task execution. Effect 4 is installed in the web app for the upcoming runtime and schema modules.
 
@@ -31,6 +45,7 @@ Dependency commands are `vp add <package>`, `vp remove <package>`, `vp update`, 
 - `apps/web`: TanStack Start in SPA mode, TanStack Router, and feature modules under `src/modules`. Routes compose features.
 - `packages/ui`: generated shadcn components, shared styles/fonts, and the template's `cn` utility.
 - `packages/config`: TypeScript, Oxlint, and Oxfmt presets. Each family exports `base`, `web`, and `desktop` entry points.
+- `packages/contracts`: portable Effect project schemas and exact `bigint` flick timing. The current decoder supports schema version 2. Older-schema migration is planned in phase 046.
 
 The desktop renderer will use web presets; its host process will use desktop presets. Node globals are excluded from browser TypeScript programs. Browser lint rules prohibit direct host API imports.
 

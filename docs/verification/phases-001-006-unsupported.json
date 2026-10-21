@@ -1,0 +1,36 @@
+﻿{
+  "buttonEnabled": true,
+  "downloadVisible": false,
+  "media": {
+    "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+    "codecs": [
+      {
+        "codec": "vp8",
+        "decode": false,
+        "detail": "WebCodecs unavailable.",
+        "encode": false,
+        "frames": 0
+      },
+      {
+        "codec": "vp09.00.10.08",
+        "decode": false,
+        "detail": "WebCodecs unavailable.",
+        "encode": false,
+        "frames": 0
+      },
+      {
+        "codec": "avc1.42001e",
+        "decode": false,
+        "detail": "WebCodecs unavailable.",
+        "encode": false,
+        "frames": 0
+      }
+    ],
+    "errors": [
+      "MediaRecorder or canvas capture is unavailable. No browser export path has been demonstrated."
+    ],
+    "recording": null,
+    "secureContext": true
+  },
+  "simulation": "VideoEncoder and MediaRecorder disabled in Chromium; not a Firefox/Safari result"
+}

@@ -9,6 +9,11 @@ export function WorkspaceHome() {
           <p>You may now add components and start building.</p>
           <p>We&apos;ve already added the button component for you.</p>
           <Button className="mt-2">Button</Button>
+          <p>
+            <a href="/diagnostics" className="underline">
+              Run compatibility checks
+            </a>
+          </p>
         </div>
       </div>
     </div>

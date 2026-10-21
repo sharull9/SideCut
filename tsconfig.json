@@ -1,9 +1,4 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "skipLibCheck": true,
-    "strict": true
-  }
+  "extends": "@sidecut/config/typescript/desktop.json",
+  "include": ["vite.config.ts"]
 }

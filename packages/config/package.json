@@ -1,0 +1,25 @@
+{
+  "name": "@sidecut/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./typescript/base.json": "./typescript/base.json",
+    "./typescript/web.json": "./typescript/web.json",
+    "./typescript/desktop.json": "./typescript/desktop.json",
+    "./oxlint/base": "./oxlint/base.ts",
+    "./oxlint/web": "./oxlint/web.ts",
+    "./oxlint/desktop": "./oxlint/desktop.ts",
+    "./oxfmt/base": "./oxfmt/base.ts",
+    "./oxfmt/web": "./oxfmt/web.ts",
+    "./oxfmt/desktop": "./oxfmt/desktop.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

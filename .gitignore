@@ -12,8 +12,9 @@ dist-ssr
 __unconfig*
 todos.json
 
-# turbo
-.turbo
+# tooling
+.vite-plus
+coverage
 
 # typescript
 *.tsbuildinfo

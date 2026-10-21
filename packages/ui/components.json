@@ -11,11 +11,11 @@
   },
   "iconLibrary": "remixicon",
   "aliases": {
-    "components": "@workspace/ui/components",
-    "utils": "@workspace/ui/lib/utils",
-    "hooks": "@workspace/ui/hooks",
-    "lib": "@workspace/ui/lib",
-    "ui": "@workspace/ui/components"
+    "components": "@sidecut/ui/components",
+    "utils": "@sidecut/ui/lib/utils",
+    "hooks": "@sidecut/ui/hooks",
+    "lib": "@sidecut/ui/lib",
+    "ui": "@sidecut/ui/components"
   },
   "rtl": false,
   "menuColor": "inverted-translucent",

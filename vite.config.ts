@@ -18,6 +18,8 @@ const ignored = [
 export default defineConfig({
   lint: {
     ...lint,
+    jsPlugins: webLint.jsPlugins ?? [],
+    settings: webLint.settings ?? {},
     ignorePatterns: ignored,
     overrides: [
       {

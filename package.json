@@ -7,13 +7,13 @@
     "dev": "vp run --filter @sidecut/web dev",
     "build": "vp run --filter @sidecut/web build",
     "preview": "vp run --filter @sidecut/web preview",
-    "typecheck": "tsc --noEmit && vp run -r typecheck",
+    "typecheck": "vp exec tsc --noEmit && vp run -r typecheck",
     "lint": "vp lint --deny-warnings",
     "lint:fix": "vp lint --fix",
     "format": "vp fmt",
     "format:check": "vp fmt --check",
     "test": "vp test run --passWithNoTests",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test"
+    "check": "vp run format:check && vp run lint && vp run typecheck && vp run test"
   },
   "devDependencies": {
     "@sidecut/config": "workspace:*",

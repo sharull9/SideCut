@@ -6,23 +6,25 @@ The current UI is the generated starter, organized into a workspace feature modu
 
 ## Development
 
-Use Node.js 24.18 or a newer Node 24 release. pnpm is pinned in `package.json`.
+Install the [Vite+ CLI](https://viteplus.dev/guide/) and use `vp` for all project commands. Use Node.js 24.18 or a newer Node 24 release. Vite+ manages the pnpm version pinned in `package.json` underneath; no direct pnpm commands are needed.
 
 ```sh
-pnpm install --frozen-lockfile
-pnpm dev
+vp install --frozen-lockfile
+vp run dev
 ```
 
 The development server starts at http://127.0.0.1:3000. An occupied port may cause Vite to select another; use the URL it prints.
 
 ```sh
-pnpm check
-pnpm build
+vp run check
+vp run build
 ```
 
-`check` runs format checking, Oxlint, TypeScript checks, and Vitest. There are no application tests yet; the test command accepts an empty suite while the foundation is being established. Type checking generates TanStack routes first, including on clean checkouts.
+`vp run check` runs format checking, Oxlint, TypeScript checks, and Vitest. There are no application tests yet; the test command accepts an empty suite while the foundation is being established. Type checking generates TanStack routes first, including on clean checkouts.
 
-`pnpm format` writes formatting, and `pnpm lint:fix` applies lint fixes. Vite+ owns Vite, Oxlint, Oxfmt, Vitest, and workspace task execution. Effect 4 is installed in the web app for the upcoming runtime and schema modules.
+`vp fmt` writes formatting, and `vp lint --fix` applies lint fixes. Vite+ owns Vite, Oxlint, Oxfmt, Vitest, and workspace task execution. Effect 4 is installed in the web app for the upcoming runtime and schema modules.
+
+Dependency commands are `vp add <package>`, `vp remove <package>`, `vp update`, and `vp why <package>`. Use `vp run --filter @sidecut/web <task>` for a workspace task and `vp exec <binary>` for an installed tool.
 
 ## Workspace layout
 
@@ -45,18 +47,20 @@ import { cn } from "@sidecut/ui/lib/utils";
 
 The root `vite.config.ts` composes lint/format presets and applies runtime-specific overrides. Keep workspace-specific ignores there. Dependencies shared across workspaces are pinned in `pnpm-workspace.yaml`'s catalog. Declare direct imports in the consuming package.
 
+`@shadcn/lint` is registered by the shared web preset and recognizes `@sidecut/ui/components` imports. Run it through `vp lint`. No shadcn rules are enabled yet. Add the desired `shadcn/*` rules in `packages/config/oxlint/web.ts`; the root configuration scopes those rules to the web app and shared UI sources. Rules that restrict component usage, such as `no-restyle`, need an exception for the component implementation directory so shared components can define their own styles. See the [available rules](https://github.com/shadcn-ui/lint#rules).
+
 ## UI components
 
 Created with shadcn preset `b7kBsBkh7b`: Nova/Base UI, green theme, Remix Icons, Geist Mono, and Instrument Sans headings.
 
 ```sh
-pnpm dlx shadcn@latest add <component> -c apps/web
+vp dlx shadcn@latest add <component> -c apps/web
 ```
 
 The app and UI aliases direct shared components into `packages/ui`. The generated `cn` helper currently re-exports the `cn` package; reuse it rather than adding another helper.
 
 ## Static hosting
 
-`pnpm build` generates the client under `apps/web/dist/client`, including `_shell.html`. Serve that directory and rewrite unmatched application routes to `_shell.html` while serving existing assets normally. Start also produces server build artifacts, but the initial SPA does not require them at runtime.
+`vp run build` generates the client under `apps/web/dist/client`, including `_shell.html`. Serve that directory and rewrite unmatched application routes to `_shell.html` while serving existing assets normally. Start also produces server build artifacts, but the initial SPA does not require them at runtime.
 
 GitHub Actions is configured to check and build on Windows, Linux, and macOS. Only local Windows verification has been performed so far.

@@ -12,7 +12,7 @@ Status: monorepo foundation implemented. The selected shadcn/TanStack Start temp
 - Start from the user's shadcn monorepo command and preset `b7kBsBkh7b`; retain the generated UI, theme, and `cn` utility.
 - Keep TypeScript, lint, and formatter policies in one extensible workspace package, `@sidecut/config`, with independent subpath exports.
 - Interpret "Lite OXC" as Oxlint for linting and Oxfmt for formatting.
-- Use pnpm workspaces and Vite+. Vite+ includes Vite, Vitest, Oxlint, Oxfmt, packaging tools, and a workspace task runner. It satisfies the Vite requirement without adding Turborepo alongside another task runner.
+- Use `vp` for installs, dependency management, tool execution, and workspace tasks. Retain pnpm workspaces and the lockfile as Vite+'s underlying package-management format. Vite+ includes Vite, Vitest, Oxlint, Oxfmt, packaging tools, and a workspace task runner. It satisfies the Vite requirement without adding Turborepo alongside another task runner.
 - The product is SideCut and workspace packages use the `@sidecut/*` namespace.
 
 The browser and desktop share one editor interface, project schema, edit semantics, and render planning. Their storage and media implementations differ. Browser installation as a PWA is optional and separate from installing the Electron desktop app.
@@ -44,7 +44,7 @@ Adapt rather than copy these choices:
 Use the supplied command when implementation begins:
 
 ```sh
-pnpm dlx shadcn@latest init --preset b7kBsBkh7b --template start --monorepo
+vp dlx shadcn@latest init --preset b7kBsBkh7b --template start --monorepo
 ```
 
 Checked with the CLI on 2026-10-21 using `preset decode` and `init --help`, then generated during foundation implementation with the supplied options. The first parallel CLI checks collided in pnpm's temporary package store; sequential retries succeeded.

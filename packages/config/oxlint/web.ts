@@ -1,10 +1,12 @@
 import type { UserConfig } from "vite-plus";
-import { builtinModules } from "node:module";
+import { builtinModules, createRequire } from "node:module";
 import base from "./base.ts";
 
 const web: NonNullable<UserConfig["lint"]> = {
   ...base,
   plugins: [...(base.plugins ?? []), "react", "jsx-a11y"],
+  jsPlugins: [createRequire(import.meta.url).resolve("@shadcn/lint")],
+  settings: { shadcn: { ui: "@sidecut/ui/components" } },
   env: { browser: true },
   rules: {
     ...base.rules,

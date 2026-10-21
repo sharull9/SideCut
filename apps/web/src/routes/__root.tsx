@@ -1,5 +1,4 @@
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
-
 import appCss from "@sidecut/ui/globals.css?url";
 import { EditorSessionProvider } from "@/modules/workspace/editor-session";
 

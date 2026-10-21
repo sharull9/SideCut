@@ -1,6 +1,6 @@
 # Tandem parity roadmap
 
-Status: phases 001-024 are implemented and verified on Windows Chromium. All later phases remain pending. See [phases 001-006 evidence](verification/phases-001-006.md), [phases 007-012 evidence](verification/phases-007-012.md), [phases 013-018 evidence](verification/phases-013-018.md), and [phases 019-024 evidence](verification/phases-019-024.md). Track controls, placement, timeline navigation/selection, local source preview, and basic playback are implemented. Split/trim editing, full rendering, desktop application, and agent tools remain planned.
+Status: phases 001-027 and 029-030 are implemented and verified on Windows Chromium. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), and [025-030 evidence and limits](verification/phases-025-030.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
 
 ## Goal and baseline
 
@@ -212,45 +212,45 @@ Accept when playback and seeking remain synchronized through a short fixture.
 
 ### Phase 025: Split
 
-- [ ] Implement `blade`, preserving left IDs and assigning deterministic right IDs.
-- [ ] Connect split-at-playhead and the matching shortcut.
+- [x] Implement `blade`, preserving left IDs and assigning deterministic right IDs.
+- [x] Connect split-at-playhead and the matching shortcut.
 
 Accept when repeated splits in one batch resolve the intended pieces and undo restores the original.
 
 ### Phase 026: Trim
 
-- [ ] Implement non-ripple `trim` with source-bound checks.
-- [ ] Add timeline trim handles and numeric start/end editing.
+- [x] Implement non-ripple `trim` with source-bound checks.
+- [x] Add timeline trim handles and numeric start/end editing.
 
 Accept when dragging and numeric editing produce the same command result.
 
 ### Phase 027: Move and lift
 
-- [ ] Implement `moveClips` and non-ripple `removeClips`.
-- [ ] Add snapping, drag cancellation, and delete selection.
+- [x] Implement `moveClips` and non-ripple `removeClips`.
+- [x] Add snapping, drag cancellation, and delete selection.
 
 Accept when cancel leaves no edit and a lift preserves the resulting gap.
 
 ### Phase 028: First export
 
-- [ ] Export the supported single-track browser slice through the phase 003 path.
-- [ ] Show progress, cancellation, and an explicit unsupported-feature preflight.
+- [x] Export the supported single-track browser slice through the phase 003 path.
+- [x] Show progress, cancellation, and an explicit unsupported-feature preflight.
 
-Accept when import, split, trim, export, and reopening the result work at a hosted URL. This is the first usable edit, not full parity.
+Accept when import, split, trim, export, and reopening the result work at a hosted URL. This is the first usable edit, not full parity. Implementation and localhost production-preview checks pass; public hosting acceptance remains pending.
 
 ## Editing semantics and persistence
 
 ### Phase 029: Link groups
 
-- [ ] Implement `link` and `unlink`.
-- [ ] Apply reference linked-selection and linked-edit behavior.
+- [x] Implement `link` and `unlink`.
+- [x] Apply reference linked-selection and linked-edit behavior.
 
 Accept when a linked camera/voice edit moves together and unlink makes independent edits possible.
 
 ### Phase 030: Ripple delete
 
-- [ ] Implement `rippleDeleteRange` and ripple `removeClips`.
-- [ ] Respect cut/follow/off, locked tracks, links, and marker movement.
+- [x] Implement `rippleDeleteRange` and ripple `removeClips`.
+- [x] Respect cut/follow/off, locked tracks, links, and marker movement.
 
 Accept when a reference multi-track deletion matches the resulting project and warnings.
 

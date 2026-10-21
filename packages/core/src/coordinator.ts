@@ -6,6 +6,7 @@ import type { Project, ProjectFile } from "@sidecut/contracts/project";
 import { Time } from "@sidecut/contracts/time";
 import { validateProject } from "./validation";
 import type { ValidationIssue } from "./validation";
+import { editTimeline, EditContext, batchSeed } from "./timeline-editing";
 
 type Json = typeof Schema.Json.Type;
 type JsonObject = typeof Schema.JsonObject.Type;
@@ -98,12 +99,18 @@ function applyCommand(
   command: EditCommand,
   warnings: string[],
   createdIDs: string[],
+  context: EditContext,
 ): Project {
+  const edited = editTimeline(project, command, context);
+  if (edited) {
+    const issue = validateProject(edited).find((finding) => finding.severity === "error");
+    if (issue) throw new EditError("validation", issue.message, issue.objectID);
+    return edited;
+  }
   if ("addTrack" in command) {
     const body = command.addTrack;
     const tracks = body.kind === "video" ? project.videoTracks : project.audioTracks;
-    const id =
-      body.id ?? `trk_${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
+    const id = body.id ?? context.makeID("trk");
     if (allIDs(project).includes(id)) throw new EditError("invalid", `Duplicate ID ${id}.`);
     const track = Schema.decodeUnknownSync(TrackSchema)({
       id,
@@ -247,6 +254,7 @@ function applyCommand(
     );
     return { ...project, ...header };
   }
+  if (!("updateSettings" in command)) throw new EditError("invalid", "Command is not implemented.");
   const old = project.settings;
   const settings = Schema.decodeUnknownSync(ProjectSettingsSchema)(
     mergePatch(Schema.encodeSync(ProjectSettingsSchema)(old) as Json, command.updateSettings.patch),
@@ -326,9 +334,14 @@ export class ProjectCoordinator {
     let working = this.state.project;
     const warnings: string[] = [];
     const createdIDs: string[] = [];
+    const context = new EditContext(
+      batchSeed(this.state.project.id, this.state.revision, batch.idempotencyKey),
+      createdIDs,
+      warnings,
+    );
     for (const [index, command] of batch.commands.entries()) {
       try {
-        working = applyCommand(working, command, warnings, createdIDs);
+        working = applyCommand(working, command, warnings, createdIDs, context);
       } catch (error) {
         throw new EditError(
           "invalid",

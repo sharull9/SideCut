@@ -12,6 +12,7 @@ export interface MediaAvailability {
   detail: string;
 }
 export interface BrowserSnapshot extends SessionSnapshot {
+  warnings: readonly string[];
   saveState: "loading" | "saving" | "saved" | "error" | "read-only";
   readOnly: boolean;
   busy: boolean;
@@ -57,6 +58,7 @@ export class BrowserProjectSession {
   private envelope = standardProject("prj_loading");
   private coordinator = new ProjectCoordinator(this.envelope);
   private state: BrowserSnapshot = {
+    warnings: [],
     ...this.coordinator.getSnapshot(),
     saveState: "loading",
     readOnly: true,
@@ -71,6 +73,7 @@ export class BrowserProjectSession {
   private channel: BroadcastChannel | null = null;
   private listeners = new Set<() => void>();
   private epoch = 0;
+  private exportController: AbortController | null = null;
 
   getSnapshot = () => this.state;
   subscribe = (listener: () => void) => {
@@ -157,6 +160,7 @@ export class BrowserProjectSession {
       saveState: readOnly ? "read-only" : "saved",
       error: null,
       mediaAvailability: {},
+      warnings: [],
     });
   }
 
@@ -177,14 +181,18 @@ export class BrowserProjectSession {
 
   apply(input: unknown): CommitResult {
     this.assertWritable();
-    return this.coordinator.apply(input);
+    const result = this.coordinator.apply(input);
+    this.update({ warnings: result.warnings });
+    return result;
   }
   undo(): CommitResult | null {
     this.assertWritable();
+    this.update({ warnings: [] });
     return this.coordinator.undo();
   }
   redo(): CommitResult | null {
     this.assertWritable();
+    this.update({ warnings: [] });
     return this.coordinator.redo();
   }
   projectFile(): ProjectFile {
@@ -193,6 +201,29 @@ export class BrowserProjectSession {
 
   async resource(mediaID: string) {
     return this.store?.resource(this.state.project.id, mediaID) ?? null;
+  }
+
+  async exportWebM(signal: AbortSignal, onProgress: (progress: number) => void) {
+    if (!this.store || this.state.busy || this.state.saveState === "loading")
+      throw new Error("Wait for the current project operation to finish.");
+    const store = this.store,
+      project = this.state.project,
+      epoch = this.epoch,
+      controller = new AbortController();
+    this.exportController = controller;
+    this.update({ busy: true });
+    try {
+      const { renderWebM } = await import("@sidecut/platform-browser/export");
+      return await renderWebM(
+        project,
+        (id) => store.resource(project.id, id),
+        AbortSignal.any([signal, controller.signal]),
+        onProgress,
+      );
+    } finally {
+      if (this.exportController === controller) this.exportController = null;
+      if (this.epoch === epoch) this.update({ busy: false });
+    }
   }
 
   async retrySave() {
@@ -366,6 +397,7 @@ export class BrowserProjectSession {
   }
 
   async close() {
+    this.exportController?.abort();
     ++this.epoch;
     this.unsubscribe?.();
     this.unsubscribe = null;

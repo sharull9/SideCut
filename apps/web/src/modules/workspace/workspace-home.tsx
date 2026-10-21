@@ -8,6 +8,7 @@ import {
 } from "@remixicon/react";
 import { Button } from "@sidecut/ui/components/button";
 import { Alert, AlertTitle, AlertDescription } from "@sidecut/ui/components/alert";
+import { ExportDialog } from "./export-dialog";
 import { Timeline } from "./timeline";
 import { Viewer } from "./viewer";
 import { ClipInspector } from "./clip-inspector";
@@ -176,9 +177,7 @@ export function WorkspaceHome() {
           >
             Download project
           </Button>
-          <Button size="sm" disabled title="Export is not available yet">
-            Export
-          </Button>
+          <ExportDialog />
         </div>
       </header>
 
@@ -191,6 +190,12 @@ export function WorkspaceHome() {
               Retry save
             </Button>
           )}
+        </Alert>
+      )}
+      {snapshot.warnings.length > 0 && (
+        <Alert className="editor-notice">
+          <AlertTitle>Edit notes</AlertTitle>
+          <AlertDescription>{snapshot.warnings.join(" ")}</AlertDescription>
         </Alert>
       )}
       {snapshot.readOnly && snapshot.saveState === "read-only" && (

@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     "./validation": "./src/validation.ts",
-    "./coordinator": "./src/coordinator.ts"
+    "./coordinator": "./src/coordinator.ts",
+    "./render-plan": "./src/render-plan.ts"
   },
   "scripts": {
     "typecheck": "vp exec tsc --noEmit"

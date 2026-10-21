@@ -7,7 +7,11 @@ export class LocalMediaReader {
   private image: ImageBitmap | null = null;
   private closed = false;
 
-  static async open(file: File, kind: "video" | "audio" | "image"): Promise<LocalMediaReader> {
+  static async open(
+    file: File,
+    kind: "video" | "audio" | "image",
+    maxWidth = 1280,
+  ): Promise<LocalMediaReader> {
     const reader = new LocalMediaReader();
     try {
       if (kind === "image") reader.image = await createImageBitmap(file);
@@ -21,7 +25,7 @@ export class LocalMediaReader {
         ]);
         if (video)
           reader.picture = new CanvasSink(video, {
-            width: Math.min(1280, await video.getDisplayWidth()),
+            width: Math.min(maxWidth, await video.getDisplayWidth()),
             poolSize: 2,
           });
         if (audio) reader.sound = new AudioBufferSink(audio);

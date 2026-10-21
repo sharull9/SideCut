@@ -8,13 +8,15 @@
     "./writer-lock": "./src/writer-lock.ts",
     "./media": "./src/media.ts",
     "./save-queue": "./src/save-queue.ts",
-    "./preview": "./src/preview.ts"
+    "./preview": "./src/preview.ts",
+    "./export": "./src/export.ts"
   },
   "scripts": {
     "typecheck": "vp exec tsc --noEmit"
   },
   "dependencies": {
     "@sidecut/contracts": "workspace:*",
+    "@sidecut/core": "workspace:*",
     "mediabunny": "catalog:"
   },
   "devDependencies": {

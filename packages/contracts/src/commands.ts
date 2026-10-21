@@ -1,5 +1,5 @@
 import { Effect, Schema, SchemaTransformation } from "effect";
-import { MediaItemSchema, ClipSchema } from "./project";
+import { MediaItemSchema, ClipSchema, TimeSchema } from "./project";
 
 const nullable = <S extends Schema.Constraint>(schema: S) =>
   Schema.optionalKey(Schema.NullOr(schema));
@@ -20,6 +20,46 @@ const defaultText = (value: string) =>
   );
 
 const CommandBody = Schema.Union([
+  Schema.Struct({
+    blade: Schema.Struct({
+      at: TimeSchema,
+      trackIDs: nullable(Schema.Array(Schema.String)),
+      clipIDs: nullable(Schema.Array(Schema.String)),
+    }),
+  }),
+  Schema.Struct({
+    trim: Schema.Struct({
+      clipID: Schema.String,
+      edge: Schema.Literals(["start", "end"]),
+      to: TimeSchema,
+      ripple: nullable(Schema.Boolean),
+      includeLinked: nullable(Schema.Boolean),
+    }),
+  }),
+  Schema.Struct({
+    moveClips: Schema.Struct({
+      clipIDs: Schema.Array(Schema.String),
+      delta: nullable(TimeSchema),
+      toTrackID: nullable(Schema.String),
+      includeLinked: nullable(Schema.Boolean),
+      mode: nullable(Schema.Literals(["place", "overwrite"])),
+    }),
+  }),
+  Schema.Struct({
+    removeClips: Schema.Struct({
+      clipIDs: Schema.Array(Schema.String),
+      ripple: nullable(Schema.Boolean),
+      includeLinked: nullable(Schema.Boolean),
+    }),
+  }),
+  Schema.Struct({ link: Schema.Struct({ clipIDs: Schema.Array(Schema.String) }) }),
+  Schema.Struct({ unlink: Schema.Struct({ clipIDs: Schema.Array(Schema.String) }) }),
+  Schema.Struct({
+    rippleDeleteRange: Schema.Struct({
+      range: Schema.Struct({ start: TimeSchema, duration: TimeSchema }),
+      trackIDs: nullable(Schema.Array(Schema.String)),
+    }),
+  }),
   Schema.Struct({ updateProject: Schema.Struct({ patch: Schema.JsonObject }) }),
   Schema.Struct({ updateSettings: Schema.Struct({ patch: Schema.JsonObject }) }),
   Schema.Struct({ addMedia: Schema.Struct({ item: MediaItemSchema }) }),

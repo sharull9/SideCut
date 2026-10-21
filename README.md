@@ -4,18 +4,21 @@ Foundation for a browser-first video editor with an optional desktop application
 The shared editing engine, desktop application, and agent tools follow [the architecture plan](docs/monorepo-plan.md).
 The editor has resizable panels, editable sequence properties, browser autosave,
 project open/download, a local media bin, and a timeline with track controls,
-source placement, zoom, selection, seeking, and basic source playback.
+source placement, zoom, selection, seeking, source playback, split/trim/move,
+linked edits, ripple deletion, and local WebM export.
 
 The [Tandem parity roadmap](docs/tandem-parity-roadmap.md) breaks the editor, media,
 desktop, and agent work into small phases with acceptance checks and a pinned
-upstream feature inventory. Phases 001-024 are implemented: synthetic reference
+upstream feature inventory. Phases 001-030 have implementations, with phase 028's
+public-host acceptance still pending: synthetic reference
 fixtures, exact flick timing, a browser media feasibility probe, and Effect schemas
 for projects, tracks, media, and clips, project validation, atomic command batches,
 undo/redo, a resizable editor frame, sequence properties, project persistence,
 single-writer browser tabs, local media registration/import, track commands,
 non-ripple clip placement, timeline navigation/selection, source preview, and
-audio-clock-driven transport. Ten edit commands are implemented; `insertClip`
-currently supports only `place` mode. Undo history remains in memory and resets
+audio-clock-driven transport. Seventeen command families have implementations;
+`insertClip` and `moveClips` currently support only `place` mode, and `trim` is
+non-ripple. Undo history remains in memory and resets
 on reload.
 
 Import a source and drag it to a compatible track, or choose Place at playhead.
@@ -23,7 +26,12 @@ Video tracks show picture and remain silent; place sound on an audio track.
 Use the ruler to seek, the transport to step/play/pause, and Fit or zoom controls
 to navigate. Shift/Ctrl/Command-click selects multiple clips. Preview supports
 one unprocessed picture and one unprocessed audio source at a time. Compositing,
-effects, split/trim editing, and video export remain planned.
+effects, transitions, and audio mixing remain planned. Split with Ctrl/Cmd+K or
+Ctrl/Cmd+B, trim with edge handles or inspector fields, and drag clips to move.
+Delete lifts selected clips; Shift+Delete removes their time. Link/Unlink controls
+keep picture and sound edits together. Export renders supported source edits
+locally to VP8/Opus WebM, up to five minutes and 1080p at 1–60 fps. Output length
+rounds up to a complete frame. Unsupported processing fails preflight visibly.
 
 Projects and imported source files persist in IndexedDB for this browser profile
 and origin. Download a project copy for backup. A `.tandem` download contains project
@@ -46,6 +54,9 @@ autosave recovery, project interchange, tab ownership, and image/audio/video imp
 
 The [phases 019-024 report](docs/verification/phases-019-024.md) covers track
 controls, clip placement, timeline interaction, source-offset decoding, and playback.
+
+The [phases 025-030 report](docs/verification/phases-025-030.md) covers source
+editing, linked operations, ripple semantics, export round trips, and current limits.
 
 ## Development
 

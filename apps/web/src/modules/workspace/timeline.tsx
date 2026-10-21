@@ -12,6 +12,8 @@ import { Button } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
 import { useEditorSession, useEditorView } from "./editor-session";
 import { projectDuration, atFrame, stepFrame, timecode } from "./timeline-model";
+import { ClipBlock } from "./clip-block";
+import { EditToolbar } from "./edit-toolbar";
 import { placeSource, MEDIA_DRAG_TYPE } from "./placement";
 
 const HEADER = 320;
@@ -128,6 +130,7 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
           {timecode(playhead, project)}
         </span>
       </div>
+      <EditToolbar run={run} />
       <div
         ref={scroll}
         className="editor-timeline-scroll"
@@ -360,25 +363,14 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                   }}
                 >
                   {track.clips.map((clip) => (
-                    <button
+                    <ClipBlock
                       key={clip.id}
-                      className="editor-clip"
-                      data-selected={selected.includes(clip.id)}
-                      aria-pressed={selected.includes(clip.id)}
-                      aria-label={`Select clip ${clip.name ?? clip.id}`}
-                      title={`${clip.name ?? clip.id} · ${clip.start.seconds.toFixed(3)} s · ${clip.duration.seconds.toFixed(3)} s`}
-                      style={{
-                        left: clip.start.seconds * zoom,
-                        width: Math.max(2, clip.duration.seconds * zoom),
-                      }}
-                      onClick={(event) => {
-                        editor
-                          .getState()
-                          .select(clip.id, event.shiftKey || event.metaKey || event.ctrlKey);
-                      }}
-                    >
-                      {clip.name ?? clip.id}
-                    </button>
+                      clip={clip}
+                      track={track}
+                      zoom={zoom}
+                      selected={selected}
+                      run={run}
+                    />
                   ))}
                   <div className="editor-playhead-line" style={{ left: playhead.seconds * zoom }} />
                 </div>

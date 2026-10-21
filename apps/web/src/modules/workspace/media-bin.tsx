@@ -15,9 +15,10 @@ import {
   EmptyDescription,
 } from "@sidecut/ui/components/empty";
 import { useEditorSession } from "./editor-session";
+import { placeSource, MEDIA_DRAG_TYPE } from "./placement";
 
 export function MediaBin({ run }: { run: (action: () => unknown) => void }) {
-  const { session, snapshot } = useEditorSession();
+  const { session, snapshot, editor } = useEditorSession();
   const picker = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const disabled = snapshot.readOnly || snapshot.busy;
@@ -74,6 +75,11 @@ export function MediaBin({ run }: { run: (action: () => unknown) => void }) {
           run(() => session.importFiles(files));
         }}
       />
+      {snapshot.project.media.length > 0 && (
+        <p className="editor-media-help">
+          Drag sources to tracks. Picture and sound use separate tracks.
+        </p>
+      )}
       <div
         className="editor-panel-content"
         role="region"
@@ -91,7 +97,16 @@ export function MediaBin({ run }: { run: (action: () => unknown) => void }) {
                     ? RiImageLine
                     : RiFilmLine;
               return (
-                <li key={item.id} className="editor-media-item" data-testid="media-item">
+                <li
+                  key={item.id}
+                  className="editor-media-item"
+                  data-testid="media-item"
+                  draggable={!disabled && availability?.state === "available"}
+                  onDragStart={(event) => {
+                    event.dataTransfer.setData(MEDIA_DRAG_TYPE, item.id);
+                    event.dataTransfer.effectAllowed = "copy";
+                  }}
+                >
                   <div className="editor-media-item-title">
                     <Icon aria-hidden="true" />
                     <span title={item.path}>{item.path.split(/[\\/]/).at(-1)}</span>
@@ -112,6 +127,35 @@ export function MediaBin({ run }: { run: (action: () => unknown) => void }) {
                         : `${availability.state}: ${availability.detail}`
                       : "Checking source…"}
                   </p>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    disabled={disabled || availability?.state !== "available"}
+                    aria-label={`Place ${item.path}`}
+                    title="Place at playhead on the first targeted track. Video tracks play picture only."
+                    onClick={() =>
+                      run(() => {
+                        const tracks =
+                          item.kind === "audio"
+                            ? snapshot.project.audioTracks
+                            : snapshot.project.videoTracks;
+                        const track = tracks.find(
+                          (candidate) => !candidate.locked && candidate.targeted,
+                        );
+                        if (!track)
+                          throw new Error("Add or unlock a compatible targeted track first.");
+                        const id = placeSource(
+                          session,
+                          item.id,
+                          track.id,
+                          editor.getState().playhead,
+                        );
+                        editor.getState().select(id);
+                      })
+                    }
+                  >
+                    Place at playhead
+                  </Button>
                 </li>
               );
             })}

@@ -191,6 +191,10 @@ export class BrowserProjectSession {
     return { ...this.envelope, revision: this.state.revision, project: this.state.project };
   }
 
+  async resource(mediaID: string) {
+    return this.store?.resource(this.state.project.id, mediaID) ?? null;
+  }
+
   async retrySave() {
     if (!this.store) {
       await this.start();

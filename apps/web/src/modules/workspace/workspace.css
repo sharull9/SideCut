@@ -51,6 +51,12 @@
   width: 100%;
   padding: 8px;
 }
+.editor-media-help {
+  padding: 10px 16px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.5;
+}
 .editor-media-item {
   padding: 12px 8px;
   border-bottom: 1px solid var(--border);
@@ -216,6 +222,7 @@
   padding: 24px;
 }
 .editor-canvas {
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -227,6 +234,84 @@
   background: var(--card);
   border: 1px solid var(--border);
   color: var(--muted-foreground);
+}
+.editor-canvas canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--background);
+}
+.editor-preview-error,
+.editor-preview-placeholder {
+  position: absolute;
+  inset: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 16px;
+  background: var(--background);
+}
+.editor-transport-buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.editor-media-item[draggable="true"] {
+  cursor: grab;
+}
+.editor-timeline-inner {
+  min-height: 100%;
+}
+.editor-ruler-surface {
+  position: relative;
+  cursor: crosshair;
+  touch-action: none;
+  font-family: var(--font-mono);
+}
+.editor-ruler-surface > span {
+  position: absolute;
+  padding: 6px 8px;
+  height: 100%;
+  border-left: 1px solid var(--border);
+  pointer-events: none;
+}
+.editor-playhead-head {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: var(--primary);
+  pointer-events: none;
+}
+.editor-clip {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: left;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  font-size: 11px;
+}
+.editor-clip[data-selected="true"] {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+.editor-clip-properties {
+  flex-direction: column;
+}
+.editor-clip-properties dd {
+  line-height: 1.8;
+}
+.editor-zoom-label {
+  color: var(--muted-foreground);
+  white-space: nowrap;
 }
 .editor-canvas svg {
   width: 30px;
@@ -353,6 +438,10 @@
   font-size: 10px;
 }
 .editor-ruler > :first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--card);
   display: flex;
   align-items: center;
   padding: 0 16px;
@@ -369,28 +458,37 @@
   padding-left: 8px;
 }
 .editor-track {
-  min-height: 38px;
+  min-height: 70px;
   border-top: 1px solid var(--border);
 }
 .editor-track-header {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--card);
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 0 16px;
   border-right: 1px solid var(--border);
 }
+.editor-track-heading {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.editor-track-controls {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
 .editor-track-label {
   width: 19px;
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--muted-foreground);
-}
-.editor-track-header svg {
-  width: 13px;
-  height: 13px;
-  color: var(--primary);
-}
-.editor-track[data-kind="audio"] .editor-track-header svg {
   color: var(--muted-foreground);
 }
 .editor-track-name {
@@ -415,6 +513,7 @@
   );
 }
 .editor-playhead-line {
+  pointer-events: none;
   position: absolute;
   left: 0;
   top: 0;

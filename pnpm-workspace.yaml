@@ -27,6 +27,7 @@ catalog:
   "tailwindcss": "4.3.3"
   "@remixicon/react": "4.9.0"
   "effect": "4.0.5"
+  "zustand": "5.0.15"
 
 overrides:
   vite@*: "catalog:"

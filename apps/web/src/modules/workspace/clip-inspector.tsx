@@ -1,0 +1,47 @@
+import { useEditorSession, useEditorView } from "./editor-session";
+import { ProjectSettings } from "./project-settings";
+import { Button } from "@sidecut/ui/components/button";
+export function ClipInspector() {
+  const { snapshot, editor } = useEditorSession();
+  const selected = useEditorView((state) => state.selected);
+  const clips = [...snapshot.project.videoTracks, ...snapshot.project.audioTracks]
+    .flatMap((track) => track.clips)
+    .filter((clip) => selected.includes(clip.id));
+  if (!clips.length)
+    return (
+      <>
+        <ProjectSettings key={`${snapshot.project.id}:${snapshot.revision}`} />
+        <div className="editor-selection-hint">
+          <h3>No clip selected</h3>
+          <p>
+            Select a timeline clip to inspect its source range. Shift-click to select several clips.
+          </p>
+        </div>
+      </>
+    );
+  return (
+    <div className="editor-inspector-section">
+      <Button variant="ghost" size="xs" onClick={() => editor.getState().select(null)}>
+        Sequence properties
+      </Button>
+      <h3>
+        {clips.length === 1
+          ? (clips[0]?.name ?? "Selected clip")
+          : `${clips.length} clips selected`}
+      </h3>
+      <dl>
+        {clips.map((clip) => (
+          <div className="editor-clip-properties" key={clip.id}>
+            <dt>{clip.name ?? clip.id}</dt>
+            <dd>
+              Start {clip.start.seconds.toFixed(3)} s<br />
+              Duration {clip.duration.seconds.toFixed(3)} s<br />
+              Source in {clip.sourceStart.seconds.toFixed(3)} s<br />
+              Speed {clip.speed}×
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}

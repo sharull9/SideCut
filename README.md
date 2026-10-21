@@ -1,19 +1,29 @@
 # SideCut
 
 Foundation for a browser-first video editor with an optional desktop application.
-The editing engine, desktop app, and agent tools are planned in [the architecture plan](docs/monorepo-plan.md).
+The shared editing engine, desktop application, and agent tools follow [the architecture plan](docs/monorepo-plan.md).
 The editor has resizable panels, editable sequence properties, browser autosave,
-project open/download, and a local media bin. Timeline editing is planned in later phases.
+project open/download, a local media bin, and a timeline with track controls,
+source placement, zoom, selection, seeking, and basic source playback.
 
 The [Tandem parity roadmap](docs/tandem-parity-roadmap.md) breaks the editor, media,
 desktop, and agent work into small phases with acceptance checks and a pinned
-upstream feature inventory. Phases 001-018 are implemented: synthetic reference
+upstream feature inventory. Phases 001-024 are implemented: synthetic reference
 fixtures, exact flick timing, a browser media feasibility probe, and Effect schemas
 for projects, tracks, media, and clips, project validation, atomic command batches,
 undo/redo, a resizable editor frame, sequence properties, project persistence,
-single-writer browser tabs, and local media registration/import. Five edit commands
-are implemented: `updateProject`, `updateSettings`, `addMedia`, `updateMedia`, and
-`removeMedia`. Undo history remains in memory and resets on reload.
+single-writer browser tabs, local media registration/import, track commands,
+non-ripple clip placement, timeline navigation/selection, source preview, and
+audio-clock-driven transport. Ten edit commands are implemented; `insertClip`
+currently supports only `place` mode. Undo history remains in memory and resets
+on reload.
+
+Import a source and drag it to a compatible track, or choose Place at playhead.
+Video tracks show picture and remain silent; place sound on an audio track.
+Use the ruler to seek, the transport to step/play/pause, and Fit or zoom controls
+to navigate. Shift/Ctrl/Command-click selects multiple clips. Preview supports
+one unprocessed picture and one unprocessed audio source at a time. Compositing,
+effects, split/trim editing, and video export remain planned.
 
 Projects and imported source files persist in IndexedDB for this browser profile
 and origin. Download a project copy for backup. A `.tandem` download contains project
@@ -33,6 +43,9 @@ Back to editor link to keep that session and inspect undo/redo.
 
 The [phases 013-018 report](docs/verification/phases-013-018.md) covers settings,
 autosave recovery, project interchange, tab ownership, and image/audio/video import.
+
+The [phases 019-024 report](docs/verification/phases-019-024.md) covers track
+controls, clip placement, timeline interaction, source-offset decoding, and playback.
 
 ## Development
 
@@ -65,7 +78,7 @@ Dependency commands are `vp add <package>`, `vp remove <package>`, `vp update`, 
 - `packages/config`: TypeScript, Oxlint, and Oxfmt presets. Each family exports `base`, `web`, and `desktop` entry points.
 - `packages/contracts`: portable Effect project schemas and exact `bigint` flick timing. The current decoder supports schema version 2. Older-schema migration is planned in phase 046.
 - `packages/core`: portable project validation and a synchronous atomic coordinator with revision checks, idempotency, subscriptions, and labelled undo/redo.
-- `packages/platform-browser`: IndexedDB project/resource storage, Web Locks writer ownership, save serialization, and local media analysis through MediaBunny. The web session connects this adapter to the portable coordinator.
+- `packages/platform-browser`: IndexedDB project/resource storage, Web Locks writer ownership, save serialization, local media analysis/decoding through MediaBunny, and playback-clock mapping. The web session connects this adapter to the portable coordinator. Zustand owns transient view state in the workspace module.
 
 The desktop renderer will use web presets; its host process will use desktop presets. Node globals are excluded from browser TypeScript programs. Browser lint rules prohibit direct host API imports.
 

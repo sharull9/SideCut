@@ -1,7 +1,7 @@
 import { Schema } from "effect";
 import { EditBatchSchema } from "@sidecut/contracts/commands";
 import type { EditCommand } from "@sidecut/contracts/commands";
-import { MediaItemSchema, ProjectSettingsSchema } from "@sidecut/contracts/project";
+import { MediaItemSchema, ProjectSettingsSchema, TrackSchema } from "@sidecut/contracts/project";
 import type { Project, ProjectFile } from "@sidecut/contracts/project";
 import { Time } from "@sidecut/contracts/time";
 import { validateProject } from "./validation";
@@ -80,19 +80,116 @@ function mergePatch(current: Json, patch: Json): Json {
   return Object.fromEntries(result);
 }
 
-function applyCommand(project: Project, command: EditCommand, warnings: string[]): Project {
+function allIDs(project: Project): unknown[] {
+  return [
+    project.id,
+    ...project.media.map((media) => media.id),
+    ...project.markers.map((marker) => marker.id),
+    ...[...project.videoTracks, ...project.audioTracks].flatMap((track) => [
+      track.id,
+      ...track.clips.map((clip) => clip.id),
+      ...track.transitions.map((transition) => transition.id),
+    ]),
+  ];
+}
+
+function applyCommand(
+  project: Project,
+  command: EditCommand,
+  warnings: string[],
+  createdIDs: string[],
+): Project {
+  if ("addTrack" in command) {
+    const body = command.addTrack;
+    const tracks = body.kind === "video" ? project.videoTracks : project.audioTracks;
+    const id =
+      body.id ?? `trk_${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
+    if (allIDs(project).includes(id)) throw new EditError("invalid", `Duplicate ID ${id}.`);
+    const track = Schema.decodeUnknownSync(TrackSchema)({
+      id,
+      kind: body.kind,
+      name: body.name ?? `${body.kind === "video" ? "Video" : "Audio"} ${tracks.length + 1}`,
+    });
+    const ordered = [...tracks];
+    ordered.splice(Math.min(Math.max(body.index ?? tracks.length, 0), tracks.length), 0, track);
+    createdIDs.push(id);
+    return { ...project, [body.kind === "video" ? "videoTracks" : "audioTracks"]: ordered };
+  }
+  if (
+    "removeTrack" in command ||
+    "moveTrack" in command ||
+    "updateTrack" in command ||
+    "insertClip" in command
+  ) {
+    const body =
+      "removeTrack" in command
+        ? command.removeTrack
+        : "moveTrack" in command
+          ? command.moveTrack
+          : "updateTrack" in command
+            ? command.updateTrack
+            : command.insertClip;
+    const tracks = [...project.videoTracks, ...project.audioTracks];
+    const exact = tracks.find((track) => track.id === body.trackID);
+    const matches = exact
+      ? [exact]
+      : tracks.filter((track) => track.name.toLowerCase() === body.trackID.toLowerCase());
+    if (matches.length > 1)
+      throw new EditError(
+        "invalid",
+        `Multiple tracks are named "${body.trackID}"; use a track ID.`,
+      );
+    const track = matches[0];
+    if (!track) throw new EditError("invalid", `Track ${body.trackID} not found.`);
+    const key = track.kind === "video" ? "videoTracks" : "audioTracks";
+    const ordered = [...project[key]];
+    const at = ordered.findIndex((item) => item.id === track.id);
+    if ("removeTrack" in command) {
+      if (track.locked) throw new EditError("invalid", `Track "${track.name}" is locked.`);
+      ordered.splice(at, 1);
+    } else if ("moveTrack" in command) {
+      ordered.splice(at, 1);
+      ordered.splice(Math.min(Math.max(command.moveTrack.index, 0), ordered.length), 0, track);
+    } else if ("updateTrack" in command) {
+      const { patch } = command.updateTrack;
+      if (["id", "kind", "clips", "transitions"].some((field) => field in patch))
+        throw new EditError(
+          "invalid",
+          "Track patch cannot change id, kind, clips, or transitions.",
+        );
+      ordered[at] = Schema.decodeUnknownSync(TrackSchema)(
+        mergePatch(Schema.encodeSync(TrackSchema)(track) as Json, patch),
+      );
+    } else {
+      const { clip, mode } = command.insertClip;
+      if (mode != null && mode !== "place")
+        throw new EditError("invalid", `Placement mode ${mode} is not implemented yet.`);
+      if (track.locked) throw new EditError("invalid", `Track "${track.name}" is locked.`);
+      if (allIDs(project).includes(clip.id))
+        throw new EditError("invalid", `Duplicate ID ${clip.id}.`);
+      const candidate = {
+        ...project,
+        [key]: ordered.map((item) =>
+          item.id === track.id
+            ? {
+                ...track,
+                clips: [...track.clips, clip].sort((a, b) =>
+                  a.start.flicks < b.start.flicks ? -1 : a.start.flicks > b.start.flicks ? 1 : 0,
+                ),
+              }
+            : item,
+        ),
+      };
+      const issue = validateProject(candidate).find((finding) => finding.severity === "error");
+      if (issue) throw new EditError("validation", issue.message, issue.objectID);
+      createdIDs.push(clip.id);
+      return candidate;
+    }
+    return { ...project, [key]: ordered };
+  }
   if ("addMedia" in command) {
     const item = command.addMedia.item;
-    const ids = [
-      project.id,
-      ...project.media.map((media) => media.id),
-      ...project.markers.map((marker) => marker.id),
-      ...[...project.videoTracks, ...project.audioTracks].flatMap((track) => [
-        track.id,
-        ...track.clips.map((clip) => clip.id),
-        ...track.transitions.map((transition) => transition.id),
-      ]),
-    ];
+    const ids = allIDs(project);
     if (ids.includes(item.id))
       throw new EditError("invalid", `Duplicate ID ${item.id} (already in use).`);
     if (!item.path) throw new EditError("invalid", "media needs a path");
@@ -228,9 +325,10 @@ export class ProjectCoordinator {
     this.assertRevision();
     let working = this.state.project;
     const warnings: string[] = [];
+    const createdIDs: string[] = [];
     for (const [index, command] of batch.commands.entries()) {
       try {
-        working = applyCommand(working, command, warnings);
+        working = applyCommand(working, command, warnings, createdIDs);
       } catch (error) {
         throw new EditError(
           "invalid",
@@ -262,7 +360,7 @@ export class ProjectCoordinator {
       revision: this.state.revision + 1,
       label: batch.label,
       author: batch.author,
-      createdIDs: [],
+      createdIDs,
       warnings,
     });
     if (batch.idempotencyKey != null) this.results.set(batch.idempotencyKey, result);

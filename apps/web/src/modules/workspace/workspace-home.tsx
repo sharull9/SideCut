@@ -3,15 +3,14 @@ import { Link } from "@tanstack/react-router";
 import {
   RiArrowGoBackLine,
   RiArrowGoForwardLine,
-  RiFilmLine,
   RiLayoutLine,
-  RiPlayFill,
   RiScissorsCutLine,
-  RiVolumeUpLine,
 } from "@remixicon/react";
 import { Button } from "@sidecut/ui/components/button";
 import { Alert, AlertTitle, AlertDescription } from "@sidecut/ui/components/alert";
-import { ProjectSettings } from "./project-settings";
+import { Timeline } from "./timeline";
+import { Viewer } from "./viewer";
+import { ClipInspector } from "./clip-inspector";
 import { MediaBin } from "./media-bin";
 import { useEditorSession } from "./editor-session";
 import { PanelDivider } from "./panel-divider";
@@ -48,8 +47,6 @@ export function WorkspaceHome() {
   const container = useRef<HTMLDivElement>(null);
   const fitted = fitPanels(sizes, dimensions.width, dimensions.height);
   const { project } = snapshot;
-  const tracks = [...project.videoTracks.toReversed(), ...project.audioTracks];
-  const frameRate = project.settings.frameRate.numerator / project.settings.frameRate.denominator;
 
   useEffect(() => {
     try {
@@ -111,9 +108,9 @@ export function WorkspaceHome() {
               : snapshot.saveState === "read-only"
                 ? "Read-only"
                 : snapshot.saveState === "loading"
-                  ? "Opening?"
+                  ? "Opening..."
                   : snapshot.saveState === "saving"
-                    ? "Saving?"
+                    ? "Saving..."
                     : "Save failed"}
           </span>
         </div>
@@ -239,43 +236,7 @@ export function WorkspaceHome() {
             onChange={(value) => updatePanel("media", value)}
             onReset={() => updatePanel("media", DEFAULT_PANELS.media)}
           />
-          <section aria-labelledby="viewer-title" className="editor-panel editor-viewer">
-            <div className="editor-panel-heading">
-              <h2 id="viewer-title">Viewer</h2>
-              <span>
-                {project.settings.width} × {project.settings.height}
-              </span>
-            </div>
-            <div className="editor-viewer-stage">
-              <div
-                className="editor-canvas"
-                style={{
-                  aspectRatio: `${project.settings.width} / ${project.settings.height}`,
-                  width: `min(100cqw, ${(100 * project.settings.width) / project.settings.height}cqh)`,
-                }}
-              >
-                <RiFilmLine aria-hidden="true" />
-                <p>
-                  {tracks.some((track) => track.clips.length)
-                    ? "Sequence preview is not available yet"
-                    : "Your sequence is empty"}
-                </p>
-              </div>
-            </div>
-            <div className="editor-transport">
-              <span className="editor-timecode">00:00:00:00</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled
-                aria-label="Play sequence"
-                title="Add media before playing"
-              >
-                <RiPlayFill aria-hidden="true" />
-              </Button>
-              <span className="editor-transport-rate">{Number(frameRate.toFixed(3))} fps</span>
-            </div>
-          </section>
+          <Viewer />
           <PanelDivider
             label="Inspector panel width"
             controls="inspector-panel"
@@ -294,7 +255,7 @@ export function WorkspaceHome() {
           >
             <div className="editor-panel-heading">
               <h2 id="inspector-title">Inspector</h2>
-              <span>Sequence</span>
+              <span>Properties</span>
             </div>
             <div
               className="editor-inspector-content"
@@ -302,12 +263,7 @@ export function WorkspaceHome() {
               aria-label="Sequence and clip properties"
               tabIndex={0}
             >
-              <ProjectSettings key={`${project.id}:${snapshot.revision}`} />
-              <div className="editor-selection-hint">
-                <RiFilmLine aria-hidden="true" />
-                <h3>No clip selected</h3>
-                <p>Clip properties will appear here when you select something on the timeline.</p>
-              </div>
+              <ClipInspector />
             </div>
           </section>
         </div>
@@ -321,49 +277,7 @@ export function WorkspaceHome() {
           onChange={(value) => updatePanel("workspace", value)}
           onReset={() => updatePanel("workspace", null)}
         />
-        <section id="timeline-panel" aria-labelledby="timeline-title" className="editor-timeline">
-          <div className="editor-timeline-toolbar">
-            <h2 id="timeline-title">Timeline</h2>
-            <span>{tracks.length} tracks</span>
-            <span className="editor-timecode">00:00:00:00</span>
-          </div>
-          <div
-            className="editor-timeline-scroll"
-            role="region"
-            aria-label="Timeline tracks"
-            tabIndex={0}
-          >
-            <div className="editor-ruler">
-              <div>Track</div>
-              <div className="editor-ruler-ticks">
-                {[0, 5, 10, 15, 20, 25].map((second) => (
-                  <span key={second}>{second}s</span>
-                ))}
-              </div>
-            </div>
-            {tracks.map((track, index) => (
-              <div key={track.id} className="editor-track" data-kind={track.kind}>
-                <div className="editor-track-header">
-                  <span className="editor-track-label">
-                    {track.kind === "video"
-                      ? `V${project.videoTracks.length - index}`
-                      : `A${index - project.videoTracks.length + 1}`}
-                  </span>
-                  {track.kind === "video" ? (
-                    <RiFilmLine aria-hidden="true" />
-                  ) : (
-                    <RiVolumeUpLine aria-hidden="true" />
-                  )}
-                  <span className="editor-track-name">{track.name}</span>
-                  <span className="editor-ripple-mode">{track.rippleMode}</span>
-                </div>
-                <div className="editor-track-lane">
-                  <div className="editor-playhead-line" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        <Timeline run={run} />
       </div>
       <footer className="editor-statusbar">
         <span>

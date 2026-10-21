@@ -1,5 +1,11 @@
 import { Effect, Schema, SchemaTransformation } from "effect";
-import { MediaItemSchema } from "./project";
+import { MediaItemSchema, ClipSchema } from "./project";
+
+const nullable = <S extends Schema.Constraint>(schema: S) =>
+  Schema.optionalKey(Schema.NullOr(schema));
+const index = Schema.Int.check(
+  Schema.isBetween({ minimum: Number.MIN_SAFE_INTEGER, maximum: Number.MAX_SAFE_INTEGER }),
+);
 
 const defaultText = (value: string) =>
   Schema.NullOr(Schema.String).pipe(
@@ -21,6 +27,26 @@ const CommandBody = Schema.Union([
     updateMedia: Schema.Struct({ mediaID: Schema.String, patch: Schema.JsonObject }),
   }),
   Schema.Struct({ removeMedia: Schema.Struct({ mediaID: Schema.String }) }),
+  Schema.Struct({
+    addTrack: Schema.Struct({
+      kind: Schema.Literals(["video", "audio"]),
+      name: nullable(Schema.String),
+      index: nullable(index),
+      id: nullable(Schema.String),
+    }),
+  }),
+  Schema.Struct({ removeTrack: Schema.Struct({ trackID: Schema.String }) }),
+  Schema.Struct({ moveTrack: Schema.Struct({ trackID: Schema.String, index }) }),
+  Schema.Struct({
+    updateTrack: Schema.Struct({ trackID: Schema.String, patch: Schema.JsonObject }),
+  }),
+  Schema.Struct({
+    insertClip: Schema.Struct({
+      trackID: Schema.String,
+      clip: ClipSchema,
+      mode: nullable(Schema.Literals(["place", "overwrite", "insert"])),
+    }),
+  }),
 ]);
 
 export const EditCommandSchema = Schema.JsonObject.check(

@@ -7,7 +7,8 @@
     "./storage": "./src/storage.ts",
     "./writer-lock": "./src/writer-lock.ts",
     "./media": "./src/media.ts",
-    "./save-queue": "./src/save-queue.ts"
+    "./save-queue": "./src/save-queue.ts",
+    "./preview": "./src/preview.ts"
   },
   "scripts": {
     "typecheck": "vp exec tsc --noEmit"

@@ -1,6 +1,6 @@
 # Tandem parity roadmap
 
-Status: phases 001-018 are implemented and verified on Windows Chromium. All later phases remain pending. See [phases 001-006 evidence](verification/phases-001-006.md), [phases 007-012 evidence](verification/phases-007-012.md), and [phases 013-018 evidence](verification/phases-013-018.md). Project controls, browser persistence, single-writer tabs, and a local media bin are implemented; timeline editing, playback, desktop application, and agent tools remain planned.
+Status: phases 001-024 are implemented and verified on Windows Chromium. All later phases remain pending. See [phases 001-006 evidence](verification/phases-001-006.md), [phases 007-012 evidence](verification/phases-007-012.md), [phases 013-018 evidence](verification/phases-013-018.md), and [phases 019-024 evidence](verification/phases-019-024.md). Track controls, placement, timeline navigation/selection, local source preview, and basic playback are implemented. Split/trim editing, full rendering, desktop application, and agent tools remain planned.
 
 ## Goal and baseline
 
@@ -170,43 +170,43 @@ Accept when importing a supported fixture works through both entry points withou
 
 ### Phase 019: Track commands
 
-- [ ] Implement `addTrack`, `removeTrack`, `moveTrack`, and `updateTrack`.
-- [ ] Render ordered track headers with lock, mute, and ripple mode controls.
+- [x] Implement `addTrack`, `removeTrack`, `moveTrack`, and `updateTrack`.
+- [x] Render ordered track headers with lock, mute, and ripple mode controls.
 
 Accept when track order and controls round-trip through undo and save.
 
 ### Phase 020: Initial placement
 
-- [ ] Implement `insertClip` in the reference non-ripple placement mode.
-- [ ] Place a bin item on a compatible timeline track.
+- [x] Implement `insertClip` in the reference non-ripple placement mode.
+- [x] Place a bin item on a compatible timeline track.
 
 Accept when dropping a source creates the expected source range and a single undo entry.
 
 ### Phase 021: Timeline navigation
 
-- [ ] Render a time ruler, scrollable tracks, and clip blocks from project data.
-- [ ] Add zoom and fit-to-project controls.
+- [x] Render a time ruler, scrollable tracks, and clip blocks from project data.
+- [x] Add zoom and fit-to-project controls.
 
 Accept when ruler, clips, and playhead agree at different zoom levels.
 
 ### Phase 022: Selection and seek
 
-- [ ] Add clip selection, multiselection, and clear selection.
-- [ ] Seek by ruler click and frame-step controls.
+- [x] Add clip selection, multiselection, and clear selection.
+- [x] Seek by ruler click and frame-step controls.
 
 Accept when selection reaches the inspector and stepping uses the rational project frame rate.
 
 ### Phase 023: Single-source viewer
 
-- [ ] Decode and display the source frame at the selected timeline time.
-- [ ] Release decoder and file resources when the session closes.
+- [x] Decode and display the source frame at the selected timeline time.
+- [x] Release decoder and file resources when the session closes.
 
 Accept when seek displays the expected frame, including a nonzero source timestamp fixture.
 
 ### Phase 024: Playback clock
 
-- [ ] Drive playback from a media/audio clock outside React's render loop.
-- [ ] Connect play, pause, end, and seek controls.
+- [x] Drive playback from a media/audio clock outside React's render loop.
+- [x] Connect play, pause, end, and seek controls.
 
 Accept when playback and seeking remain synchronized through a short fixture.
 

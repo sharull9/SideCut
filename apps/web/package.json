@@ -23,7 +23,8 @@
     "effect": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "tailwindcss": "catalog:"
+    "tailwindcss": "catalog:",
+    "zustand": "catalog:"
   },
   "devDependencies": {
     "@sidecut/config": "workspace:*",

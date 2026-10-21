@@ -1,11 +1,18 @@
 import { createContext, useContext, useEffect, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import { BrowserProjectSession } from "./browser-session";
+import { useStore } from "zustand";
+import { createEditorView } from "./editor-view";
+import type { EditorView } from "./editor-view";
 
-const SessionContext = createContext<BrowserProjectSession | null>(null);
+const SessionContext = createContext<{
+  session: BrowserProjectSession;
+  editor: ReturnType<typeof createEditorView>;
+} | null>(null);
 
 export function EditorSessionProvider({ children }: { children: ReactNode }) {
   const [session] = useState(() => new BrowserProjectSession());
+  const [editor] = useState(createEditorView);
   useEffect(() => {
     void session.start();
     const leave = (event: BeforeUnloadEvent) => {
@@ -34,16 +41,23 @@ export function EditorSessionProvider({ children }: { children: ReactNode }) {
       void session.close();
     };
   }, [session]);
-  return <SessionContext value={session}>{children}</SessionContext>;
+  return <SessionContext value={{ session, editor }}>{children}</SessionContext>;
 }
 
 export function useEditorSession() {
-  const session = useContext(SessionContext);
-  if (!session) throw new Error("Editor session provider is missing.");
+  const context = useContext(SessionContext);
+  if (!context) throw new Error("Editor session provider is missing.");
+  const { session, editor } = context;
   const snapshot = useSyncExternalStore(
     session.subscribe,
     session.getSnapshot,
     session.getSnapshot,
   );
-  return { session, snapshot };
+  return { session, snapshot, editor };
+}
+
+export function useEditorView<T>(selector: (state: EditorView) => T): T {
+  const context = useContext(SessionContext);
+  if (!context) throw new Error("Editor session provider is missing.");
+  return useStore(context.editor, selector);
 }

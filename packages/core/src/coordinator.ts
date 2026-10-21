@@ -6,7 +6,7 @@ import type { Project, ProjectFile } from "@sidecut/contracts/project";
 import { Time } from "@sidecut/contracts/time";
 import { validateProject } from "./validation";
 import type { ValidationIssue } from "./validation";
-import { editTimeline, EditContext, batchSeed } from "./timeline-editing";
+import { editTimeline, settleTimeline, EditContext, batchSeed } from "./timeline-editing";
 
 type Json = typeof Schema.Json.Type;
 type JsonObject = typeof Schema.JsonObject.Type;
@@ -101,8 +101,9 @@ function applyCommand(
   createdIDs: string[],
   context: EditContext,
 ): Project {
-  const edited = editTimeline(project, command, context);
+  let edited = editTimeline(project, command, context);
   if (edited) {
+    edited = settleTimeline(edited);
     const issue = validateProject(edited).find((finding) => finding.severity === "error");
     if (issue) throw new EditError("validation", issue.message, issue.objectID);
     return edited;

@@ -4,6 +4,7 @@ import { Input } from "@sidecut/ui/components/input";
 import { Field, FieldLabel, FieldGroup } from "@sidecut/ui/components/field";
 import { useEditorSession, useEditorView } from "./editor-session";
 import { useEditActions } from "./edit-actions";
+import { TimeEditsDialog } from "./time-edits-dialog";
 
 export function EditToolbar({ run }: { run: (action: () => unknown) => void }) {
   const { session } = useEditorSession();
@@ -56,6 +57,7 @@ export function EditToolbar({ run }: { run: (action: () => unknown) => void }) {
       >
         Unlink
       </Button>
+      <TimeEditsDialog />
       <form
         className="editor-range-form"
         onSubmit={(event) => {

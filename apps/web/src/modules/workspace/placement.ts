@@ -7,6 +7,7 @@ export function placeSource(
   mediaID: string,
   trackID: string,
   at: Time,
+  mode: "place" | "insert" = "place",
 ) {
   const state = session.getSnapshot();
   const media = state.project.media.find((item) => item.id === mediaID);
@@ -18,13 +19,13 @@ export function placeSource(
     throw new Error("This source needs a known positive duration before placement.");
   const id = `clip_${crypto.randomUUID()}`;
   session.apply({
-    label: `Place ${media.path.split(/[\\/]/).at(-1)}`,
+    label: `${mode === "insert" ? "Insert" : "Place"} ${media.path.split(/[\\/]/).at(-1)}`,
     expectedRevision: state.revision,
     commands: [
       {
         insertClip: {
           trackID,
-          mode: "place",
+          mode,
           clip: {
             id,
             name: media.path.split(/[\\/]/).at(-1),

@@ -5,20 +5,20 @@ The shared editing engine, desktop application, and agent tools follow [the arch
 The editor has resizable panels, editable sequence properties, browser autosave,
 project open/download, a local media bin, and a timeline with track controls,
 source placement, zoom, selection, seeking, source playback, split/trim/move,
-linked edits, ripple deletion, and local WebM export.
+linked edits, ripple deletion/insertion, roll/slip/slide, and local WebM export.
 
 The [Tandem parity roadmap](docs/tandem-parity-roadmap.md) breaks the editor, media,
 desktop, and agent work into small phases with acceptance checks and a pinned
-upstream feature inventory. Phases 001-030 have implementations, with phase 028's
+upstream feature inventory. Phases 001-036 have implementations, with phase 028's
 public-host acceptance still pending: synthetic reference
 fixtures, exact flick timing, a browser media feasibility probe, and Effect schemas
 for projects, tracks, media, and clips, project validation, atomic command batches,
 undo/redo, a resizable editor frame, sequence properties, project persistence,
 single-writer browser tabs, local media registration/import, track commands,
 non-ripple clip placement, timeline navigation/selection, source preview, and
-audio-clock-driven transport. Seventeen command families have implementations;
-`insertClip` and `moveClips` currently support only `place` mode, and `trim` is
-non-ripple. Undo history remains in memory and resets
+audio-clock-driven transport. Twenty-three command families have implementations.
+`insertClip` supports `place` and `insert`; `moveClips` supports `place`. Trimming
+supports both ripple and non-ripple edits. Undo history remains in memory and resets
 on reload.
 
 Import a source and drag it to a compatible track, or choose Place at playhead.
@@ -32,6 +32,13 @@ Delete lifts selected clips; Shift+Delete removes their time. Link/Unlink contro
 keep picture and sound edits together. Export renders supported source edits
 locally to VP8/Opus WebM, up to five minutes and 1080p at 1–60 fps. Output length
 rounds up to a complete frame. Unsupported processing fails preflight visibly.
+
+Time edits opens controls for inserting time, closing a gap, and cutting multiple
+overlapping ranges in one edit. The inspector exposes slip, slide, roll-next-cut,
+and ripple edge adjustments. Alt-drag a clip to slip, Alt+Shift-drag to slide,
+Alt-drag an edge to roll, and Shift-drag an edge to ripple trim. Shift-dropping a
+bin source or choosing Insert at playhead opens time before placing it. These
+gestures are verified on Windows Chromium; use numeric controls as an alternative.
 
 Projects and imported source files persist in IndexedDB for this browser profile
 and origin. Download a project copy for backup. A `.tandem` download contains project
@@ -57,6 +64,9 @@ controls, clip placement, timeline interaction, source-offset decoding, and play
 
 The [phases 025-030 report](docs/verification/phases-025-030.md) covers source
 editing, linked operations, ripple semantics, export round trips, and current limits.
+
+The [phases 031-036 report](docs/verification/phases-031-036.md) covers range cuts,
+insertion, ripple trim, roll, slip, slide, pointer interactions, and source bounds.
 
 ## Development
 

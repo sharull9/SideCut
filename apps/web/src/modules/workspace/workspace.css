@@ -364,6 +364,17 @@
 .editor-trim-form {
   margin-top: 20px;
 }
+.editor-clip-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.editor-time-range-row {
+  display: flex;
+  flex-direction: row;
+  align-items: end;
+  gap: 8px;
+}
 .editor-clip[data-selected="true"] {
   outline: 2px solid var(--primary);
   outline-offset: -2px;

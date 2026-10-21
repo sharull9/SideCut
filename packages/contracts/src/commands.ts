@@ -21,6 +21,35 @@ const defaultText = (value: string) =>
 
 const CommandBody = Schema.Union([
   Schema.Struct({
+    cutRanges: Schema.Struct({
+      ranges: Schema.Array(Schema.Struct({ start: TimeSchema, duration: TimeSchema })),
+      trackIDs: nullable(Schema.Array(Schema.String)),
+    }),
+  }),
+  Schema.Struct({ closeGap: Schema.Struct({ trackID: Schema.String, at: TimeSchema }) }),
+  Schema.Struct({
+    insertTime: Schema.Struct({
+      at: TimeSchema,
+      duration: TimeSchema,
+      trackIDs: nullable(Schema.Array(Schema.String)),
+    }),
+  }),
+  Schema.Struct({
+    roll: Schema.Struct({
+      leftClipID: Schema.String,
+      rightClipID: Schema.String,
+      delta: TimeSchema,
+    }),
+  }),
+  Schema.Struct({
+    slip: Schema.Struct({
+      clipID: Schema.String,
+      delta: TimeSchema,
+      includeLinked: nullable(Schema.Boolean),
+    }),
+  }),
+  Schema.Struct({ slide: Schema.Struct({ clipID: Schema.String, delta: TimeSchema }) }),
+  Schema.Struct({
     blade: Schema.Struct({
       at: TimeSchema,
       trackIDs: nullable(Schema.Array(Schema.String)),

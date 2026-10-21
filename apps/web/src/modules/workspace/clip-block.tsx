@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import type { Clip, Track, Project } from "@sidecut/contracts/project";
 import { useEditorSession } from "./editor-session";
 import { atFrame } from "./timeline-model";
+import { Time } from "@sidecut/contracts/time";
 import { selectionWithLinks } from "./edit-actions";
 
 interface Gesture {
+  operation: "move" | "trim" | "ripple" | "roll" | "slip" | "slide";
   x: number;
   delta: number;
   edge: "start" | "end" | null;
@@ -100,6 +102,17 @@ export function ClipBlock({
     event.currentTarget.setPointerCapture(event.pointerId);
     capture.current = event.currentTarget;
     const value: Gesture = {
+      operation: edge
+        ? event.altKey
+          ? "roll"
+          : event.shiftKey
+            ? "ripple"
+            : "trim"
+        : event.altKey
+          ? event.shiftKey
+            ? "slide"
+            : "slip"
+          : "move",
       x: event.clientX,
       delta: 0,
       edge,
@@ -117,18 +130,21 @@ export function ClipBlock({
     const original =
       value.edge === "end" ? clip.start.seconds + clip.duration.seconds : clip.start.seconds;
     const proposed = original + (event.clientX - value.x) / zoom;
-    const snapped = snapEdit(
-      proposed,
-      snapshot.project,
-      zoom,
-      value.ids,
-      editor.getState().playhead.seconds,
-    );
+    const snapped =
+      value.operation === "ripple" && value.edge === "start" && proposed < 0
+        ? Time.fromSeconds(proposed).roundedToFrame(snapshot.project.settings.frameRate)
+        : snapEdit(proposed, snapshot.project, zoom, value.ids, editor.getState().playhead.seconds);
     const target =
       document
         .elementFromPoint(event.clientX, event.clientY)
         ?.closest<HTMLElement>("[data-track-id]")?.dataset.trackId ?? null;
-    const next = { ...value, delta: snapped.seconds - original, target };
+    const delta =
+      value.operation === "slip"
+        ? Time.fromSeconds((event.clientX - value.x) / zoom).roundedToFrame(
+            snapshot.project.settings.frameRate,
+          ).seconds
+        : snapped.seconds - original;
+    const next = { ...value, delta, target };
     active.current = next;
     setGesture(next);
   };
@@ -137,20 +153,54 @@ export function ClipBlock({
     if (!value) return;
     const changed =
       Math.abs(value.delta) > 0.00001 ||
-      (value.edge === null && value.target != null && value.target !== track.id);
+      (value.operation === "move" && value.target != null && value.target !== track.id);
     clear();
     if (!changed) return;
     suppressed.current = true;
     run(() => {
+      if (value.operation === "slip" || value.operation === "slide")
+        return session.apply({
+          label: value.operation === "slip" ? "Slip clip" : "Slide clip",
+          expectedRevision: value.revision,
+          commands: [
+            value.operation === "slip"
+              ? { slip: { clipID: clip.id, delta: value.delta } }
+              : { slide: { clipID: clip.id, delta: value.delta } },
+          ],
+        });
+      if (value.operation === "roll") {
+        const neighbor = track.clips.find(
+          (c) =>
+            c.id !== clip.id &&
+            (value.edge === "start"
+              ? c.start.flicks + c.duration.flicks === clip.start.flicks
+              : c.start.flicks === clip.start.flicks + clip.duration.flicks),
+        );
+        if (!neighbor) throw new Error("Roll needs a neighboring clip touching this edge.");
+        return session.apply({
+          label: "Roll cut",
+          expectedRevision: value.revision,
+          commands: [
+            {
+              roll: {
+                leftClipID: value.edge === "start" ? neighbor.id : clip.id,
+                rightClipID: value.edge === "start" ? clip.id : neighbor.id,
+                delta: value.delta,
+              },
+            },
+          ],
+        });
+      }
       if (value.edge)
         return session.apply({
-          label: "Trim clip",
+          label: value.operation === "ripple" ? "Ripple trim clip" : "Trim clip",
           expectedRevision: value.revision,
           commands: [
             {
               trim: {
                 clipID: clip.id,
                 edge: value.edge,
+                ripple: value.operation === "ripple",
                 to:
                   (value.edge === "start"
                     ? clip.start.seconds
@@ -186,7 +236,13 @@ export function ClipBlock({
       });
     });
   };
-  const start = clip.start.seconds + (gesture?.edge === "end" ? 0 : (gesture?.delta ?? 0)),
+  const start =
+      clip.start.seconds +
+      (gesture?.operation === "slip" ||
+      gesture?.edge === "end" ||
+      (gesture?.operation === "ripple" && gesture.edge === "start")
+        ? 0
+        : (gesture?.delta ?? 0)),
     duration =
       clip.duration.seconds +
       (gesture?.edge === "end" ? gesture.delta : gesture?.edge === "start" ? -gesture.delta : 0);
@@ -234,6 +290,7 @@ export function ClipBlock({
       <button
         className="editor-clip-body"
         aria-label={`Select clip ${clip.name ?? clip.id}`}
+        title="Drag to move. Alt-drag to slip source; Alt+Shift-drag to slide between neighbors."
         aria-pressed={selected.includes(clip.id)}
         onPointerDown={(event) => begin(event, null)}
         {...pointer}
@@ -259,6 +316,7 @@ export function ClipBlock({
           className="editor-trim-handle"
           data-edge={edge}
           aria-label={`Trim ${edge} ${clip.name ?? clip.id}`}
+          title="Drag to trim. Shift-drag to ripple trim; Alt-drag to roll a touching cut."
           disabled={disabled}
           onPointerDown={(event) => begin(event, edge)}
           {...pointer}

@@ -1,6 +1,6 @@
 # Tandem parity roadmap
 
-Status: phases 001-027 and 029-030 are implemented and verified on Windows Chromium. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), and [025-030 evidence and limits](verification/phases-025-030.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
+Status: phases 001-027 and 029-036 are implemented and verified on Windows Chromium. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), and [031-036 evidence and limits](verification/phases-031-036.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
 
 ## Goal and baseline
 
@@ -256,43 +256,43 @@ Accept when a reference multi-track deletion matches the resulting project and w
 
 ### Phase 031: Range cutting
 
-- [ ] Implement `cutRanges` using unioned input ranges.
-- [ ] Implement `closeGap` with reference gap detection.
+- [x] Implement `cutRanges` using unioned input ranges.
+- [x] Implement `closeGap` with reference gap detection.
 
 Accept when overlapping cuts remove each instant once and gap closure preserves sync.
 
 ### Phase 032: Insert time
 
-- [ ] Implement `insertTime`, including cut-boundary snapping.
-- [ ] Finish `insertClip` insert-mode ripple behavior.
+- [x] Implement `insertTime`, including cut-boundary snapping.
+- [x] Finish `insertClip` insert-mode ripple behavior.
 
 Accept when spanning follow clips, exact-boundary markers, and locked tracks match reference cases.
 
 ### Phase 033: Ripple trim
 
-- [ ] Extend `trim` with ripple behavior.
-- [ ] Keep linked edits and neighboring markers synchronized.
+- [x] Extend `trim` with ripple behavior.
+- [x] Keep linked edits and neighboring markers synchronized.
 
 Accept when growing and shrinking an edge match reference results without sliver clips.
 
 ### Phase 034: Roll
 
-- [ ] Implement `roll` with neighboring source-handle checks.
-- [ ] Add a roll interaction without changing total duration.
+- [x] Implement `roll` with neighboring source-handle checks.
+- [x] Add a roll interaction without changing total duration.
 
 Accept when the cut moves, both source ranges change correctly, and undo restores them.
 
 ### Phase 035: Slip
 
-- [ ] Implement `slip` while preserving timeline placement.
-- [ ] Expose the source-offset adjustment in the inspector.
+- [x] Implement `slip` while preserving timeline placement.
+- [x] Expose the source-offset adjustment in the inspector.
 
 Accept when invalid source offsets reject atomically.
 
 ### Phase 036: Slide
 
-- [ ] Implement `slide` with neighboring trim adjustments.
-- [ ] Add its timeline interaction and lock handling.
+- [x] Implement `slide` with neighboring trim adjustments.
+- [x] Add its timeline interaction and lock handling.
 
 Accept when the selected clip moves and overall timeline duration stays constant in the reference fixture.
 

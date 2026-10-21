@@ -343,7 +343,13 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                       project,
                     );
                     run(() => {
-                      const clipID = placeSource(session, id, track.id, time);
+                      const clipID = placeSource(
+                        session,
+                        id,
+                        track.id,
+                        time,
+                        event.shiftKey ? "insert" : "place",
+                      );
                       editor.getState().select(clipID);
                     });
                   }}

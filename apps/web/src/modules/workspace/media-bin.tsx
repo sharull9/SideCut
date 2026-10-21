@@ -127,35 +127,43 @@ export function MediaBin({ run }: { run: (action: () => unknown) => void }) {
                         : `${availability.state}: ${availability.detail}`
                       : "Checking source…"}
                   </p>
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    disabled={disabled || availability?.state !== "available"}
-                    aria-label={`Place ${item.path}`}
-                    title="Place at playhead on the first targeted track. Video tracks play picture only."
-                    onClick={() =>
-                      run(() => {
-                        const tracks =
-                          item.kind === "audio"
-                            ? snapshot.project.audioTracks
-                            : snapshot.project.videoTracks;
-                        const track = tracks.find(
-                          (candidate) => !candidate.locked && candidate.targeted,
-                        );
-                        if (!track)
-                          throw new Error("Add or unlock a compatible targeted track first.");
-                        const id = placeSource(
-                          session,
-                          item.id,
-                          track.id,
-                          editor.getState().playhead,
-                        );
-                        editor.getState().select(id);
-                      })
-                    }
-                  >
-                    Place at playhead
-                  </Button>
+                  {(["place", "insert"] as const).map((mode) => (
+                    <Button
+                      key={mode}
+                      variant="ghost"
+                      size="xs"
+                      disabled={disabled || availability?.state !== "available"}
+                      aria-label={`${mode === "insert" ? "Insert" : "Place"} ${item.path}`}
+                      title={
+                        mode === "insert"
+                          ? "Open time and insert on the first targeted track."
+                          : "Place at playhead on the first targeted track. Video tracks play picture only."
+                      }
+                      onClick={() =>
+                        run(() => {
+                          const tracks =
+                            item.kind === "audio"
+                              ? snapshot.project.audioTracks
+                              : snapshot.project.videoTracks;
+                          const track = tracks.find(
+                            (candidate) => !candidate.locked && candidate.targeted,
+                          );
+                          if (!track)
+                            throw new Error("Add or unlock a compatible targeted track first.");
+                          const id = placeSource(
+                            session,
+                            item.id,
+                            track.id,
+                            editor.getState().playhead,
+                            mode,
+                          );
+                          editor.getState().select(id);
+                        })
+                      }
+                    >
+                      {mode === "insert" ? "Insert at playhead" : "Place at playhead"}
+                    </Button>
+                  ))}
                 </li>
               );
             })}

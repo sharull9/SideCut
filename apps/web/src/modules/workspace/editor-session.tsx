@@ -1,14 +1,19 @@
 import { createContext, useContext, useEffect, useState, useSyncExternalStore } from "react";
-import type { ReactNode } from "react";
+import type { ReactNode, Context } from "react";
 import { BrowserProjectSession } from "./browser-session";
 import { useStore } from "zustand";
 import { createEditorView } from "./editor-view";
 import type { EditorView } from "./editor-view";
 
-const SessionContext = createContext<{
+type SessionContextValue = {
   session: BrowserProjectSession;
   editor: ReturnType<typeof createEditorView>;
-} | null>(null);
+};
+// Keep provider and hooks on the same context while Vite refreshes their modules.
+const SessionContext =
+  (import.meta.hot?.data.sessionContext as Context<SessionContextValue | null> | undefined) ??
+  createContext<SessionContextValue | null>(null);
+if (import.meta.hot) import.meta.hot.data.sessionContext = SessionContext;
 
 export function EditorSessionProvider({ children }: { children: ReactNode }) {
   const [session] = useState(() => new BrowserProjectSession());

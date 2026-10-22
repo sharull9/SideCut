@@ -7,6 +7,42 @@
   font-family: var(--font-heading);
   font-size: 12px;
   color-scheme: dark;
+  /* Clip colour families, shared by clips and track header accents. */
+  --clip-video: oklch(0.6 0.12 255);
+  --clip-audio: oklch(0.62 0.1 180);
+  --clip-text: oklch(0.7 0.12 75);
+  --clip-graphic: oklch(0.6 0.13 300);
+  --clip-adjustment: oklch(0.62 0.15 350);
+  /* Inputs and selects match the xs buttons used throughout the editor. */
+  [data-slot="input"],
+  select {
+    height: 24px;
+    padding: 0 8px;
+    font-size: 12px;
+    border-radius: min(var(--radius-md), 10px);
+  }
+  select {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--input);
+    background: color-mix(in oklch, var(--input) 30%, transparent);
+    color: var(--foreground);
+    font-family: inherit;
+  }
+  select:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
+  }
+  select:disabled {
+    opacity: 0.5;
+  }
+  [data-slot="field-label"] {
+    font-size: 12px;
+  }
+  [data-slot="field-description"] {
+    font-size: 11px;
+    line-height: 1.5;
+  }
   ::selection {
     background: var(--primary);
     color: var(--primary-foreground);
@@ -293,11 +329,25 @@
   text-overflow: ellipsis;
   text-align: left;
   padding: 0;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in oklab, var(--clip) 70%, transparent);
   border-radius: var(--radius-sm);
-  background: var(--secondary);
-  color: var(--secondary-foreground);
+  background: color-mix(in oklab, var(--clip) 38%, var(--card));
+  color: var(--foreground);
   font-size: 11px;
+  font-weight: 500;
+  --clip: var(--clip-video);
+}
+.editor-clip[data-kind="audio"] {
+  --clip: var(--clip-audio);
+}
+.editor-clip[data-kind="text"] {
+  --clip: var(--clip-text);
+}
+.editor-clip[data-kind="graphic"] {
+  --clip: var(--clip-graphic);
+}
+.editor-clip[data-kind="adjustment"] {
+  --clip: var(--clip-adjustment);
 }
 .editor-clip-body {
   position: absolute;
@@ -316,7 +366,10 @@
   width: 8px;
   cursor: ew-resize;
   touch-action: none;
-  background: var(--border);
+  background: color-mix(in oklab, var(--clip) 70%, var(--card));
+}
+.editor-trim-handle:hover {
+  background: var(--clip);
 }
 .editor-trim-handle[data-edge="start"] {
   left: 0;
@@ -378,16 +431,6 @@
   color: var(--muted-foreground);
   font-size: 11px;
 }
-.editor-source-placement select {
-  width: 100%;
-  min-width: 0;
-  padding: 6px 8px;
-  background: var(--background);
-  color: var(--foreground);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font: inherit;
-}
 .editor-source-placement select:focus-visible,
 .editor-source-placement summary:focus-visible,
 .editor-trim-form input[type="checkbox"]:focus-visible,
@@ -406,8 +449,9 @@
   gap: 8px;
 }
 .editor-clip[data-selected="true"] {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--foreground);
   outline-offset: -2px;
+  background: color-mix(in oklab, var(--clip) 60%, var(--card));
 }
 .editor-clip-properties {
   flex-direction: column;
@@ -537,7 +581,9 @@
 .editor-ruler {
   position: sticky;
   top: 0;
-  z-index: 1;
+  /* Above the sticky track headers so the corner cell covers them on vertical scroll. */
+  z-index: 3;
+  border-bottom: 1px solid var(--border);
   height: 29px;
   background: var(--card);
   color: var(--muted-foreground);
@@ -564,59 +610,89 @@
   padding-left: 8px;
 }
 .editor-track {
-  min-height: 70px;
-  border-top: 1px solid var(--border);
+  height: 44px;
+  border-bottom: 1px solid var(--border);
 }
 .editor-track-header {
   position: sticky;
   left: 0;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 12px;
   background: var(--card);
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: center;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 16px;
   border-right: 1px solid var(--border);
+  box-shadow: inset 3px 0 0 var(--track-accent);
 }
-.editor-track-heading {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+.editor-track[data-kind="video"] {
+  --track-accent: var(--clip-video);
+}
+.editor-track[data-kind="audio"] {
+  --track-accent: var(--clip-audio);
 }
 .editor-track-controls {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   align-items: center;
+  margin-left: auto;
+}
+.editor-track-controls [aria-pressed="false"] {
+  color: var(--muted-foreground);
+}
+/* Reorder and remove collapse to zero width (still focusable) until the header is hovered or focused. */
+.editor-track-extra {
+  display: flex;
+  gap: 2px;
+  max-width: 0;
+  overflow: hidden;
+}
+.editor-track-header:hover .editor-track-extra,
+.editor-track-header:focus-within .editor-track-extra {
+  max-width: 80px;
+}
+@media (hover: none) {
+  .editor-track-extra {
+    max-width: 80px;
+  }
 }
 .editor-track-label {
-  width: 19px;
+  width: 20px;
+  flex-shrink: 0;
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--muted-foreground);
 }
 .editor-track-name {
+  flex: 1;
   min-width: 0;
+  height: 24px;
+  padding: 0 6px;
+  margin-left: -6px;
+  border-radius: var(--radius-sm);
+  text-align: left;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-weight: 500;
+}
+button.editor-track-name:hover {
+  background: var(--muted);
+}
+button.editor-track-name:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
 }
 .editor-ripple-mode {
   font-size: 10px;
   color: var(--muted-foreground);
   margin-left: auto;
 }
+/* One gridline per ruler tick; the tick width is set inline as background-size. */
 .editor-track-lane {
   position: relative;
-  background: repeating-linear-gradient(
-    to right,
-    transparent,
-    transparent calc(100% / 6 - 1px),
-    var(--border) calc(100% / 6 - 1px),
-    var(--border) calc(100% / 6)
-  );
+  background-image: linear-gradient(to right, var(--border) 1px, transparent 1px);
+  background-repeat: repeat-x;
 }
 .editor-playhead-line {
   pointer-events: none;
@@ -716,7 +792,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
-.editor-picture-fields > :is(p, button) {
+.editor-picture-fields > :is(p, button, .editor-field-wide) {
   grid-column: 1 / -1;
 }
 
@@ -756,4 +832,176 @@
   background: white;
   transform: translate(-50%, -50%);
   pointer-events: none;
+}
+
+.editor-transition {
+  position: absolute;
+  top: 0;
+  display: flex;
+  align-items: center;
+  max-width: 100%;
+  min-width: 18px;
+  isolation: isolate;
+}
+.editor-transition > button:not(.editor-transition-handle) {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.editor-transition-handle {
+  width: 16px;
+  position: absolute;
+  right: 0;
+  cursor: ew-resize;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  padding: 2px;
+  touch-action: none;
+  flex-shrink: 0;
+}
+
+.editor-transition-handle svg {
+  width: 12px;
+  height: 12px;
+}
+
+.editor-commit-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+}
+.editor-commit-input[data-unit] input {
+  padding-right: 26px;
+  font-variant-numeric: tabular-nums;
+}
+.editor-commit-input > span {
+  position: absolute;
+  right: 8px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  pointer-events: none;
+}
+/* Hide the browser spinners; arrow keys still step the value. */
+.editor-commit-input input::-webkit-inner-spin-button,
+.editor-commit-input input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+.editor-commit-input input[type="number"] {
+  appearance: textfield;
+}
+
+.editor-clip-summary {
+  padding-bottom: 14px;
+}
+.editor-clip-summary h3 {
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.editor-inspector-section .editor-clip-summary dl,
+.editor-clip-summary dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+}
+.editor-clip-summary dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.editor-inspector-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  gap: 2px;
+  padding: 6px 12px 0;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+.editor-inspector-tabs button {
+  height: 28px;
+  padding: 0 8px;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+.editor-inspector-tabs button:hover {
+  color: var(--foreground);
+}
+.editor-inspector-tabs button[aria-selected="true"] {
+  color: var(--foreground);
+  border-bottom-color: var(--foreground);
+}
+.editor-inspector-tabs button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+.editor-inspector-panel {
+  border-bottom: 0;
+}
+/* The tab already names the first section. */
+.editor-inspector-panel > .editor-trim-form:first-child {
+  margin-top: 0;
+}
+.editor-inspector-panel > .editor-trim-form:first-child > h3:first-child {
+  display: none;
+}
+.editor-trim-form > h3 {
+  margin-bottom: 12px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 600;
+}
+.editor-inspector-section .editor-trim-form + .editor-trim-form {
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.editor-field-wide .editor-commit-input {
+  width: calc(50% - 6px);
+}
+
+.editor-panel-heading > :is(h1, h2) {
+  margin-right: auto;
+}
+.editor-panel-rail {
+  display: flex;
+  justify-content: center;
+  padding-top: 6px;
+  background: var(--card);
+  border-inline: 1px solid var(--border);
+}
+.editor-panel-rail button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 26px;
+  padding: 8px 0;
+  border-radius: var(--radius-sm);
+  color: var(--muted-foreground);
+}
+.editor-panel-rail button:hover {
+  color: var(--foreground);
+  background: var(--muted);
+}
+.editor-panel-rail button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+.editor-panel-rail svg {
+  width: 16px;
+  height: 16px;
+}
+.editor-panel-rail span {
+  writing-mode: vertical-rl;
+  font-size: 11px;
+  font-weight: 500;
 }

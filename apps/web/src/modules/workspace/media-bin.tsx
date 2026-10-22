@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   RiFolderVideoLine,
   RiFilmLine,
@@ -18,7 +18,13 @@ import { useEditorSession } from "./editor-session";
 import { placeSource, MEDIA_DRAG_TYPE } from "./placement";
 import { MediaPlacementForm } from "./media-placement-form";
 
-export function MediaBin({ run }: { run: (action: () => unknown) => void }) {
+export function MediaBin({
+  run,
+  hideButton,
+}: {
+  run: (action: () => unknown) => void;
+  hideButton?: ReactNode;
+}) {
   const { session, snapshot, editor } = useEditorSession();
   const picker = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -60,6 +66,7 @@ export function MediaBin({ run }: { run: (action: () => unknown) => void }) {
         >
           <RiAddLine aria-hidden="true" />
         </Button>
+        {hideButton}
       </div>
       <input
         ref={picker}

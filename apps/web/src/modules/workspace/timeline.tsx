@@ -1,3 +1,5 @@
+import { TransitionBlock } from "./transition-controls";
+import { AdjustmentDialog } from "./adjustment-dialog";
 import { useRef, useState, useEffect } from "react";
 import {
   RiLockLine,
@@ -7,6 +9,9 @@ import {
   RiArrowUpSLine,
   RiArrowDownSLine,
   RiDeleteBinLine,
+  RiScissorsCutLine,
+  RiLinksLine,
+  RiLinkUnlinkM,
 } from "@remixicon/react";
 import { Button } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
@@ -16,7 +21,66 @@ import { ClipBlock } from "./clip-block";
 import { EditToolbar } from "./edit-toolbar";
 import { placeSource, MEDIA_DRAG_TYPE } from "./placement";
 
-const HEADER = 320;
+const HEADER = 248;
+const RIPPLE_HELP = {
+  cut: "Ripple edits split and shift clips on this track",
+  follow: "Ripple edits shift clips on this track without splitting them",
+  off: "Ripple edits leave this track in place",
+} as const;
+
+// The name reads as text; double-click (or Enter/F2 when focused) switches to an input.
+function TrackName({
+  name,
+  disabled,
+  onRename,
+}: {
+  name: string;
+  disabled: boolean;
+  onRename: (name: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  if (editing)
+    return (
+      <Input
+        autoFocus
+        className="editor-track-name"
+        aria-label={`Rename track ${name}`}
+        defaultValue={name}
+        onFocus={(event) => event.currentTarget.select()}
+        onBlur={(event) => {
+          setEditing(false);
+          const next = event.target.value.trim();
+          if (next && next !== name) onRename(next);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") event.currentTarget.blur();
+          if (event.key === "Escape") {
+            event.currentTarget.value = name;
+            event.currentTarget.blur();
+          }
+        }}
+      />
+    );
+  return (
+    <button
+      type="button"
+      className="editor-track-name"
+      disabled={disabled}
+      aria-label={`Rename track ${name}`}
+      title="Double-click to rename"
+      onDoubleClick={() => setEditing(true)}
+      onClick={(event) => {
+        // detail is 0 for keyboard activation; the mouse renames on double-click only.
+        if (event.detail === 0) setEditing(true);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "F2") setEditing(true);
+      }}
+    >
+      {name}
+    </button>
+  );
+}
 
 export function Timeline({ run }: { run: (action: () => unknown) => void }) {
   const { session, snapshot, editor } = useEditorSession();
@@ -57,6 +121,7 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
     <section id="timeline-panel" aria-labelledby="timeline-title" className="editor-timeline">
       <div className="editor-timeline-toolbar">
         <h2 id="timeline-title">Timeline</h2>
+        <AdjustmentDialog />
         <Button
           size="xs"
           variant="ghost"
@@ -207,31 +272,22 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                 style={{ gridTemplateColumns: `${HEADER}px ${width}px` }}
               >
                 <div className="editor-track-header">
-                  <div className="editor-track-heading">
-                    <span className="editor-track-label">
-                      {track.kind === "video" ? "V" : "A"}
-                      {index + 1}
-                    </span>
-                    <Input
-                      key={`${track.id}:${track.name}`}
-                      aria-label={`Rename track ${track.name}`}
-                      defaultValue={track.name}
-                      disabled={disabled}
-                      onBlur={(event) => {
-                        if (event.target.value !== track.name)
-                          patch(track.id, { name: event.target.value });
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") event.currentTarget.blur();
-                      }}
-                    />
-                  </div>
+                  <span className="editor-track-label">
+                    {track.kind === "video" ? "V" : "A"}
+                    {index + 1}
+                  </span>
+                  <TrackName
+                    name={track.name}
+                    disabled={disabled}
+                    onRename={(name) => patch(track.id, { name })}
+                  />
                   <div className="editor-track-controls">
                     <Button
                       size="icon-xs"
                       variant={track.locked ? "secondary" : "ghost"}
                       disabled={disabled}
                       aria-label={`Lock track ${track.name}`}
+                      title={track.locked ? "Unlock track" : "Lock track"}
                       aria-pressed={track.locked}
                       onClick={() => patch(track.id, { locked: !track.locked })}
                     >
@@ -246,6 +302,7 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                       variant={track.muted ? "secondary" : "ghost"}
                       disabled={disabled}
                       aria-label={`Mute track ${track.name}`}
+                      title={track.muted ? "Unmute track" : "Mute track"}
                       aria-pressed={track.muted}
                       onClick={() => patch(track.id, { muted: !track.muted })}
                     >
@@ -256,10 +313,11 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                       )}
                     </Button>
                     <Button
-                      size="xs"
+                      size="icon-xs"
                       variant="ghost"
                       disabled={disabled}
                       aria-label={`Ripple mode ${track.name}: ${track.rippleMode}`}
+                      title={`${RIPPLE_HELP[track.rippleMode]}. Click to change.`}
                       onClick={() =>
                         patch(track.id, {
                           rippleMode:
@@ -271,61 +329,72 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                         })
                       }
                     >
-                      {track.rippleMode}
+                      {track.rippleMode === "cut" ? (
+                        <RiScissorsCutLine aria-hidden="true" />
+                      ) : track.rippleMode === "follow" ? (
+                        <RiLinksLine aria-hidden="true" />
+                      ) : (
+                        <RiLinkUnlinkM aria-hidden="true" />
+                      )}
                     </Button>
-                    <Button
-                      size="icon-xs"
-                      variant="ghost"
-                      disabled={disabled || index + step < 0 || index + step >= list.length}
-                      aria-label={`Move track ${track.name} up`}
-                      onClick={() =>
-                        run(() =>
-                          session.apply({
-                            label: "Move track",
-                            commands: [{ moveTrack: { trackID: track.id, index: index + step } }],
-                          }),
-                        )
-                      }
-                    >
-                      <RiArrowUpSLine aria-hidden="true" />
-                    </Button>
-                    <Button
-                      size="icon-xs"
-                      variant="ghost"
-                      disabled={disabled || index - step < 0 || index - step >= list.length}
-                      aria-label={`Move track ${track.name} down`}
-                      onClick={() =>
-                        run(() =>
-                          session.apply({
-                            label: "Move track",
-                            commands: [{ moveTrack: { trackID: track.id, index: index - step } }],
-                          }),
-                        )
-                      }
-                    >
-                      <RiArrowDownSLine aria-hidden="true" />
-                    </Button>
-                    <Button
-                      size="icon-xs"
-                      variant="ghost"
-                      disabled={disabled || track.locked}
-                      aria-label={`Remove track ${track.name}`}
-                      title="Remove track and its clips; Undo restores them"
-                      onClick={() =>
-                        run(() =>
-                          session.apply({
-                            label: `Remove ${track.name}`,
-                            commands: [{ removeTrack: { trackID: track.id } }],
-                          }),
-                        )
-                      }
-                    >
-                      <RiDeleteBinLine aria-hidden="true" />
-                    </Button>
+                    <span className="editor-track-extra">
+                      <Button
+                        size="icon-xs"
+                        variant="ghost"
+                        disabled={disabled || index + step < 0 || index + step >= list.length}
+                        aria-label={`Move track ${track.name} up`}
+                        title="Move track up"
+                        onClick={() =>
+                          run(() =>
+                            session.apply({
+                              label: "Move track",
+                              commands: [{ moveTrack: { trackID: track.id, index: index + step } }],
+                            }),
+                          )
+                        }
+                      >
+                        <RiArrowUpSLine aria-hidden="true" />
+                      </Button>
+                      <Button
+                        size="icon-xs"
+                        variant="ghost"
+                        disabled={disabled || index - step < 0 || index - step >= list.length}
+                        aria-label={`Move track ${track.name} down`}
+                        title="Move track down"
+                        onClick={() =>
+                          run(() =>
+                            session.apply({
+                              label: "Move track",
+                              commands: [{ moveTrack: { trackID: track.id, index: index - step } }],
+                            }),
+                          )
+                        }
+                      >
+                        <RiArrowDownSLine aria-hidden="true" />
+                      </Button>
+                      <Button
+                        size="icon-xs"
+                        variant="ghost"
+                        disabled={disabled || track.locked}
+                        aria-label={`Remove track ${track.name}`}
+                        title="Remove track and its clips; Undo restores them"
+                        onClick={() =>
+                          run(() =>
+                            session.apply({
+                              label: `Remove ${track.name}`,
+                              commands: [{ removeTrack: { trackID: track.id } }],
+                            }),
+                          )
+                        }
+                      >
+                        <RiDeleteBinLine aria-hidden="true" />
+                      </Button>
+                    </span>
                   </div>
                 </div>
                 <div
                   className="editor-track-lane"
+                  style={{ backgroundSize: `${tickStep * zoom}px 100%` }}
                   data-track-id={track.id}
                   aria-label={`${track.name} clips`}
                   onDragOver={(event) => {
@@ -375,6 +444,15 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                       track={track}
                       zoom={zoom}
                       selected={selected}
+                      run={run}
+                    />
+                  ))}
+                  {track.transitions.map((transition) => (
+                    <TransitionBlock
+                      key={String(transition.id)}
+                      track={track}
+                      transition={transition}
+                      zoom={zoom}
                       run={run}
                     />
                   ))}

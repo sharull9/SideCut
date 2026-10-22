@@ -37,6 +37,16 @@ export function snapEdit(
     : atFrame(seconds, project);
 }
 
+// Colour family for a clip: picture, sound, text, graphic, or adjustment.
+function clipKind(clip: Clip, track: Track) {
+  if (track.kind === "audio") return "audio";
+  const content = clip.content as Record<string, unknown>;
+  if ("text" in content) return "text";
+  if ("adjustment" in content) return "adjustment";
+  if ("graphic" in content || "solid" in content) return "graphic";
+  return "video";
+}
+
 export function ClipBlock({
   clip,
   track,
@@ -282,6 +292,7 @@ export function ClipBlock({
     <div
       className="editor-clip"
       data-clip-id={clip.id}
+      data-kind={clipKind(clip, track)}
       data-selected={selected.includes(clip.id)}
       data-invalid={duration <= 0 || start < 0}
       style={{ left: start * zoom, width: Math.max(2, duration * zoom) }}

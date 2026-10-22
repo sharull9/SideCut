@@ -1,6 +1,6 @@
 # Tandem parity roadmap
 
-Status: phases 001-027 and 029-066 are implemented and verified on Windows Chromium. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), and [061-066 evidence and limits](verification/phases-061-066.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
+Status: phases 001-027 and 029-072 are implemented and verified on Windows Chromium. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), [061-066](verification/phases-061-066.md), and [067-072 evidence and limits](verification/phases-067-072.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
 
 ## Goal and baseline
 
@@ -510,36 +510,36 @@ Accept when a cropped PiP layer has the expected corner and shadow shape.
 
 ### Phase 067: Adjustment clips
 
-- [ ] Apply adjustment-content effects to the reference underlying layer group.
-- [ ] Expose insertion and effect editing for an adjustment clip.
+- [x] Apply adjustment-content effects to the reference underlying layer group.
+- [x] Expose insertion and effect editing for an adjustment clip.
 
 Accept when only the intended underlying picture changes in preview/export.
 
 ### Phase 068: Transition structure
 
-- [ ] Implement `addTransition`, `updateTransition`, and `removeTransition` validation.
-- [ ] Render transition handles and duration controls in the timeline.
+- [x] Implement `addTransition`, `updateTransition`, and `removeTransition` validation.
+- [x] Render transition handles and duration controls in the timeline.
 
 Accept when head, tail, touching-clip, and missing-handle cases match reference warnings.
 
 ### Phase 069: Dissolve and fades
 
-- [ ] Implement `dissolve`, `fadeToBlack`, and `fadeFromBlack`.
-- [ ] Match centered cuts and held edge frames.
+- [x] Implement `dissolve`, `fadeToBlack`, and `fadeFromBlack`.
+- [x] Match centered cuts and held edge frames.
 
 Accept when start/mid/end reference frames and duration boundaries pass.
 
 ### Phase 070: Push and slide
 
-- [ ] Implement `push` and `slide` with four directions.
-- [ ] Match single-overlay entry/exit behavior.
+- [x] Implement `push` and `slide` with four directions.
+- [x] Match single-overlay entry/exit behavior.
 
 Accept when lower tracks show correctly behind an exiting overlay.
 
 ### Phase 071: Remaining transitions
 
-- [ ] Implement `cutSlide`, `wipe`, and `zoom`.
-- [ ] Match their reference durations and direction rules.
+- [x] Implement `cutSlide`, `wipe`, and `zoom`.
+- [x] Match their reference durations and direction rules.
 
 Accept when per-type reference frames pass at both ordinary cuts and overlay edges.
 
@@ -547,8 +547,8 @@ Accept when per-type reference frames pass at both ordinary cuts and overlay edg
 
 ### Phase 072: Timeline audio
 
-- [ ] Schedule audible clips from the shared render plan.
-- [ ] Match track mute, clip enabled state, source offsets, and silence in gaps.
+- [x] Schedule audible clips from the shared render plan.
+- [x] Match track mute, clip enabled state, source offsets, and silence in gaps.
 
 Accept when a multi-track pulse fixture remains in sync during seek and playback.
 

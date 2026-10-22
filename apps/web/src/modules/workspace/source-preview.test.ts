@@ -8,7 +8,7 @@ const project = () =>
   decodeProjectFile({
     revision: 0,
     project: {
-      media: [{ id: "med", path: "test.webm" }],
+      media: [{ id: "med", path: "test.webm", hasVideo: true, hasAudio: true }],
       videoTracks: [
         {
           id: "video",

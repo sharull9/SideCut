@@ -121,16 +121,18 @@ export function KeyframeControls({ clips }: { clips: readonly Clip[] }) {
     <div className="editor-trim-form">
       <h3>Keyframes</h3>
       <FieldGroup>
-        <Field>
-          <FieldLabel htmlFor="keyframe-clip">Keyframe clip</FieldLabel>
-          <select id="keyframe-clip" value={clip.id} onChange={(e) => setClipID(e.target.value)}>
-            {clips.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name ?? c.id}
-              </option>
-            ))}
-          </select>
-        </Field>
+        {clips.length > 1 && (
+          <Field>
+            <FieldLabel htmlFor="keyframe-clip">Clip</FieldLabel>
+            <select id="keyframe-clip" value={clip.id} onChange={(e) => setClipID(e.target.value)}>
+              {clips.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name ?? c.id}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
         <Field>
           <FieldLabel htmlFor="keyframe-parameter">Parameter</FieldLabel>
           <select

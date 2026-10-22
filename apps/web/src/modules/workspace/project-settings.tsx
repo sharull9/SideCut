@@ -1,129 +1,114 @@
 import { useState } from "react";
-import { Button } from "@sidecut/ui/components/button";
-import { Input } from "@sidecut/ui/components/input";
 import { Field, FieldLabel, FieldGroup, FieldError } from "@sidecut/ui/components/field";
 import { useEditorSession } from "./editor-session";
+import { CommitInput } from "./commit-input";
+
+const FRAME_RATES = [
+  [24000, 1001, "23.976"],
+  [24, 1, "24"],
+  [25, 1, "25"],
+  [30000, 1001, "29.97"],
+  [30, 1, "30"],
+  [50, 1, "50"],
+  [60000, 1001, "59.94"],
+  [60, 1, "60"],
+] as const;
 
 export function ProjectSettings() {
   const { session, snapshot } = useEditorSession();
   const { project } = snapshot;
-  const [name, setName] = useState(project.name);
-  const [width, setWidth] = useState(String(project.settings.width));
-  const [height, setHeight] = useState(String(project.settings.height));
-  const [numerator, setNumerator] = useState(String(project.settings.frameRate.numerator));
-  const [denominator, setDenominator] = useState(String(project.settings.frameRate.denominator));
   const [error, setError] = useState<string | null>(null);
   const disabled = snapshot.readOnly || snapshot.busy;
+  const rate = project.settings.frameRate;
+  const rates = FRAME_RATES.some(([n, d]) => n === rate.numerator && d === rate.denominator)
+    ? FRAME_RATES
+    : [
+        ...FRAME_RATES,
+        [
+          rate.numerator,
+          rate.denominator,
+          String(Number((rate.numerator / rate.denominator).toFixed(3))),
+        ] as const,
+      ];
+  const apply = (label: string, command: unknown) => {
+    setError(null);
+    try {
+      session.apply({
+        label,
+        expectedRevision: session.getSnapshot().revision,
+        commands: [command],
+      });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  };
+  const settings = (patch: Record<string, unknown>) =>
+    apply("Update sequence properties", { updateSettings: { patch } });
 
   return (
-    <form
-      className="editor-inspector-section"
-      onSubmit={(event) => {
-        event.preventDefault();
-        setError(null);
-        try {
-          const commands = [];
-          if (name !== project.name) commands.push({ updateProject: { patch: { name } } });
-          const settings = {
-            width: Number(width),
-            height: Number(height),
-            frameRate: { numerator: Number(numerator), denominator: Number(denominator) },
-          };
-          if (
-            settings.width !== project.settings.width ||
-            settings.height !== project.settings.height ||
-            settings.frameRate.numerator !== project.settings.frameRate.numerator ||
-            settings.frameRate.denominator !== project.settings.frameRate.denominator
-          )
-            commands.push({ updateSettings: { patch: settings } });
-          if (commands.length)
-            session.apply({
-              label: "Update sequence properties",
-              expectedRevision: snapshot.revision,
-              commands,
-            });
-        } catch (cause) {
-          setError(cause instanceof Error ? cause.message : String(cause));
-        }
-      }}
-    >
-      <h3>Sequence properties</h3>
+    <section className="editor-inspector-section" aria-labelledby="sequence-title">
+      <h3 id="sequence-title">Sequence</h3>
       <FieldGroup>
         <Field data-disabled={disabled}>
           <FieldLabel htmlFor="sequence-name">Name</FieldLabel>
-          <Input
+          <CommitInput
             id="sequence-name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            required
+            type="text"
+            value={project.name}
             disabled={disabled}
+            onCommit={(name) => apply("Rename sequence", { updateProject: { patch: { name } } })}
           />
         </Field>
         <div className="editor-settings-pair">
           <Field data-disabled={disabled}>
             <FieldLabel htmlFor="canvas-width">Width</FieldLabel>
-            <Input
+            <CommitInput
               id="canvas-width"
-              type="number"
-              min="1"
-              step="1"
-              value={width}
-              onChange={(event) => setWidth(event.target.value)}
-              required
+              value={project.settings.width}
+              unit="px"
+              min={1}
+              step={1}
               disabled={disabled}
+              onCommit={(width) => settings({ width: Math.round(Number(width)) })}
             />
           </Field>
           <Field data-disabled={disabled}>
             <FieldLabel htmlFor="canvas-height">Height</FieldLabel>
-            <Input
+            <CommitInput
               id="canvas-height"
-              type="number"
-              min="1"
-              step="1"
-              value={height}
-              onChange={(event) => setHeight(event.target.value)}
-              required
+              value={project.settings.height}
+              unit="px"
+              min={1}
+              step={1}
               disabled={disabled}
+              onCommit={(height) => settings({ height: Math.round(Number(height)) })}
             />
           </Field>
         </div>
-        <div className="editor-settings-pair">
-          <Field data-disabled={disabled}>
-            <FieldLabel htmlFor="fps-numerator">FPS numerator</FieldLabel>
-            <Input
-              id="fps-numerator"
-              type="number"
-              min="1"
-              step="1"
-              value={numerator}
-              onChange={(event) => setNumerator(event.target.value)}
-              required
-              disabled={disabled}
-            />
-          </Field>
-          <Field data-disabled={disabled}>
-            <FieldLabel htmlFor="fps-denominator">FPS denominator</FieldLabel>
-            <Input
-              id="fps-denominator"
-              type="number"
-              min="1"
-              step="1"
-              value={denominator}
-              onChange={(event) => setDenominator(event.target.value)}
-              required
-              disabled={disabled}
-            />
-          </Field>
-        </div>
-        {error && <FieldError>{error}</FieldError>}
-        <Button type="submit" variant="outline" size="sm" disabled={disabled}>
-          Apply properties
-        </Button>
+        <Field data-disabled={disabled}>
+          <FieldLabel htmlFor="frame-rate">Frame rate</FieldLabel>
+          <select
+            id="frame-rate"
+            disabled={disabled}
+            value={`${rate.numerator}/${rate.denominator}`}
+            onChange={(event) => {
+              const [numerator, denominator] = event.target.value.split("/").map(Number);
+              settings({ frameRate: { numerator, denominator } });
+            }}
+          >
+            {rates.map(([numerator, denominator, label]) => (
+              <option key={label} value={`${numerator}/${denominator}`}>
+                {label} fps
+              </option>
+            ))}
+          </select>
+        </Field>
+        {error && <FieldError role="alert">{error}</FieldError>}
         <p className="text-muted-foreground">
           {project.settings.sampleRate / 1000} kHz audio ·{" "}
           {project.settings.colorSpace === "rec709" ? "Rec.709" : project.settings.colorSpace}
         </p>
       </FieldGroup>
-    </form>
+    </section>
   );
 }

@@ -5,6 +5,7 @@ import {
   effectDefinition,
   resolvedParams,
   renderedEffects,
+  styleEffects,
 } from "@sidecut/core/effects";
 import { effectsOf } from "@sidecut/core/effect-editing";
 import { Button } from "@sidecut/ui/components/button";
@@ -24,16 +25,18 @@ export function EffectInspector({ clips }: { clips: readonly Clip[] }) {
   return (
     <section className="editor-trim-form" aria-label="Effects">
       <h3>Effects</h3>
-      <Field>
-        <FieldLabel htmlFor="effect-clip">Effect clip</FieldLabel>
-        <select id="effect-clip" value={clip.id} onChange={(e) => setClipID(e.target.value)}>
-          {clips.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name ?? c.id}
-            </option>
-          ))}
-        </select>
-      </Field>
+      {clips.length > 1 && (
+        <Field>
+          <FieldLabel htmlFor="effect-clip">Clip</FieldLabel>
+          <select id="effect-clip" value={clip.id} onChange={(e) => setClipID(e.target.value)}>
+            {clips.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name ?? c.id}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
       <EffectStack key={clip.id} clip={clip} />
     </section>
   );
@@ -63,9 +66,9 @@ function EffectStack({ clip }: { clip: Clip }) {
   return (
     <FieldGroup>
       <FieldDescription>
-        Color, sharpen, blur, and pixelate run in list order after the media look. Crop is followed
-        by rounded corners, border, transform, shadow, and opacity. The first enabled effect
-        supplies each style. Numeric parameters can be animated in Keyframes.
+        {clip.content.adjustment != null
+          ? "Effects change every layer below this track, top to bottom. Animate numeric settings under Keyframes."
+          : "Effects run top to bottom. Animate numeric settings under Keyframes."}
       </FieldDescription>
       <Field>
         <FieldLabel htmlFor="effect-type">Add effect</FieldLabel>
@@ -76,7 +79,11 @@ function EffectStack({ clip }: { clip: Clip }) {
           onChange={(e) => setType(e.target.value)}
         >
           {effectRegistry
-            .filter((d) => d.domain === track.kind)
+            .filter(
+              (d) =>
+                d.domain === track.kind &&
+                (clip.content.adjustment == null || !styleEffects.has(d.type)),
+            )
             .map((d) => (
               <option key={d.type} value={d.type}>
                 {d.name}

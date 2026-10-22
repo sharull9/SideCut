@@ -1,10 +1,11 @@
+import { mixTimelineAudio } from "./audio";
 import { createLUTLoader } from "./lut";
 import { effectsOf } from "@sidecut/core/effect-editing";
 import { resolvedParams } from "@sidecut/core/effects";
 import type { ClipEffect } from "@sidecut/contracts/project";
 import { paintPicture } from "./picture";
 import type { Project, Clip } from "@sidecut/contracts/project";
-import { enabledTracks, audioRange, exportPlan } from "@sidecut/core/render-plan";
+import { enabledTracks, exportPlan } from "@sidecut/core/render-plan";
 import type { LocalResource } from "./storage";
 import { LocalMediaReader } from "./preview";
 
@@ -136,51 +137,26 @@ export async function renderWebM(
     };
     const sound = async () => {
       if (!audio) return;
-      for (const track of project.audioTracks) {
-        if (track.muted || (project.audioTracks.some((t) => t.solo) && !track.solo)) continue;
-        for (const clip of track.clips) {
-          if (!clip.enabled || clip.audio?.muted === true) continue;
-          const range = audioRange(project, clip);
-          if (!range) continue;
-          const { from, to } = range;
-          const buffers = (await reader(id(clip))).audio(from, to);
-          try {
-            for await (const item of buffers) {
-              signal.throwIfAborted();
-              const start = Math.max(from, item.timestamp),
-                stop = Math.min(to, item.timestamp + item.duration);
-              const first = Math.max(
-                  0,
-                  Math.round((start - item.timestamp) * item.buffer.sampleRate),
-                ),
-                last = Math.min(
-                  item.buffer.length,
-                  Math.round((stop - item.timestamp) * item.buffer.sampleRate),
-                );
-              if (last <= first) continue;
-              const channels = item.buffer.numberOfChannels,
-                data = new Float32Array((last - first) * channels);
-              for (let channel = 0; channel < channels; channel++)
-                data.set(
-                  item.buffer.getChannelData(channel).subarray(first, last),
-                  channel * (last - first),
-                );
-              const sample = new AudioSample({
-                data,
-                format: "f32-planar",
-                numberOfChannels: channels,
-                sampleRate: item.buffer.sampleRate,
-                timestamp: clip.start.seconds + start - clip.sourceStart.seconds,
-              });
-              try {
-                await audio.add(sample);
-              } finally {
-                sample.close();
-              }
-            }
-          } finally {
-            await buffers.return();
-          }
+      for await (const block of mixTimelineAudio(
+        project,
+        reader,
+        signal,
+        48000,
+        4096,
+        plan.duration,
+      )) {
+        signal.throwIfAborted();
+        const sample = new AudioSample({
+          data: block.data,
+          format: "f32-planar",
+          sampleRate: block.sampleRate,
+          numberOfChannels: block.numberOfChannels,
+          timestamp: block.timestamp,
+        });
+        try {
+          await audio.add(sample);
+        } finally {
+          sample.close();
         }
       }
       audio.close();

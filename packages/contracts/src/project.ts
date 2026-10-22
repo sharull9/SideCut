@@ -188,6 +188,27 @@ export const MediaItemSchema = keep(mediaFields).pipe(
   ),
 );
 
+export const transitionTypes = [
+  "dissolve",
+  "fadeToBlack",
+  "fadeFromBlack",
+  "push",
+  "slide",
+  "cutSlide",
+  "wipe",
+  "zoom",
+] as const;
+export const TransitionSchema = keep({
+  id: fallback(Schema.String, id("tr")),
+  type: Schema.Literals(transitionTypes),
+  duration: Schema.Finite,
+  direction: optional(Schema.Literals(["left", "right", "up", "down"])),
+  fromClipID: optional(Schema.String),
+  toClipID: optional(Schema.String),
+  soundClipID: optional(Schema.String),
+});
+export type Transition = typeof TransitionSchema.Type;
+
 const trackFields = {
   id: fallback(Schema.String, id("trk")),
   kind: Schema.Literals(["video", "audio"]),

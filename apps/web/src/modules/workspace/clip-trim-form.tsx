@@ -68,7 +68,7 @@ export function ClipTrimForm({ clip }: { clip: Clip }) {
           />
         </Field>
         {error && <FieldError>{error}</FieldError>}
-        <Button type="submit" size="sm" variant="outline" disabled={disabled}>
+        <Button type="submit" size="xs" variant="outline" disabled={disabled}>
           Apply trim
         </Button>
       </FieldGroup>

@@ -1,3 +1,4 @@
+import { audioSegments } from "@sidecut/core/audio-plan";
 import { audioRange } from "@sidecut/core/render-plan";
 import { createLUTLoader } from "@sidecut/platform-browser/lut";
 import { paintPicture } from "@sidecut/platform-browser/picture";
@@ -158,16 +159,16 @@ export class SourcePreview {
       this.context ??= new AudioContext();
       await this.context.resume();
       await Promise.all(
-        [
-          ...activeClips(this.project, time, "video"),
-          ...activeClips(this.project, time, "audio"),
-        ].map(({ clip }) => this.reader(this.mediaID(clip))),
+        [...activeClips(this.project, time, "video"), ...activeClips(this.project, time, "audio")]
+          .filter(({ clip }) => clip.content.media != null)
+          .map(({ clip }) => this.reader(this.mediaID(clip))),
       );
       await this.draw(time, token);
       if (token !== this.token || this.disposed) return;
       this.clock = new PlaybackClock(() => this.context?.currentTime ?? 0);
       this.clock.start(time, 0.1);
       this.playing = true;
+      const segments = audioSegments(this.project);
       const tick = () => {
         if (token !== this.token || !this.playing || !this.clock) return;
         const position = this.clock.position(end);
@@ -183,24 +184,18 @@ export class SourcePreview {
             : position,
           token,
         );
-        for (const track of this.project.audioTracks) {
-          if (track.muted || (this.project.audioTracks.some((item) => item.solo) && !track.solo))
+        for (const segment of segments) {
+          const clip = segment.clip;
+          if (
+            segment.end <= position ||
+            segment.start > position + 0.3 ||
+            this.audioStarted.has(clip.id)
+          )
             continue;
-          for (const clip of track.clips) {
-            if (
-              !clip.enabled ||
-              clip.freezeFrame ||
-              clip.audio?.muted === true ||
-              clip.start.seconds + clip.duration.seconds <= position ||
-              clip.start.seconds > position + 0.3 ||
-              this.audioStarted.has(clip.id)
-            )
-              continue;
-            this.audioStarted.add(clip.id);
-            void this.scheduleAudio(clip, position, token).catch((error) => {
-              if (token === this.token) this.fail(error);
-            });
-          }
+          this.audioStarted.add(clip.id);
+          void this.scheduleAudio(clip, position, token).catch((error) => {
+            if (token === this.token) this.fail(error);
+          });
         }
         if (position >= end) {
           this.stop();

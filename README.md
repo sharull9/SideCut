@@ -144,6 +144,9 @@ commands, color processing, LUT storage, browser/export checks, and tolerances.
 The [phases 061-066 report](docs/verification/phases-061-066.md) records spatial
 filters, fixed-order layer styles, alpha fixtures, animation, and kernel limits.
 
+The [phases 067-072 report](docs/verification/phases-067-072.md) records adjustment
+clips, transition editing and rendering, multi-track audio, and browser/export checks.
+
 ## Development
 
 Install the [Vite+ CLI](https://viteplus.dev/guide/) and use `vp` for all project commands. Use Node.js 24.18 or a newer Node 24 release. Vite+ manages the pnpm version pinned in `package.json` underneath; no direct pnpm commands are needed.

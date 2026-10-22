@@ -17,6 +17,7 @@ import { editTimeline, settleTimeline, EditContext, batchSeed } from "./timeline
 import { editThroughCuts } from "./through-edits";
 import { mergePatch } from "./json-merge-patch";
 import { editEffects } from "./effect-editing";
+import { editTransitions } from "./transitions";
 import { editPicture } from "./picture-editing";
 import { editAngle } from "./angle-selection";
 import { editPlacement } from "./media-placement";
@@ -97,6 +98,7 @@ function applyCommand(
 ): Project {
   let edited =
     editEffects(project, command, context) ??
+    editTransitions(project, command, context) ??
     editPicture(project, command, context) ??
     editAngle(project, command, context) ??
     editThroughCuts(project, command, context) ??

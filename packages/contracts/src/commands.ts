@@ -21,6 +21,17 @@ const defaultText = (value: string) =>
 
 const CommandBody = Schema.Union([
   Schema.Struct({
+    addTransition: Schema.Struct({
+      trackID: Schema.String,
+      transition: Schema.JsonObject,
+      sound: nullable(Schema.JsonObject),
+    }),
+  }),
+  Schema.Struct({
+    updateTransition: Schema.Struct({ transitionID: Schema.String, patch: Schema.JsonObject }),
+  }),
+  Schema.Struct({ removeTransition: Schema.Struct({ transitionID: Schema.String }) }),
+  Schema.Struct({
     addEffect: Schema.Struct({
       clipID: Schema.String,
       effect: Schema.Struct({

@@ -1,3 +1,4 @@
+import { TransitionSchema } from "@sidecut/contracts/project";
 import { effectDefinition, renderedEffects } from "./effects";
 import { ParamValueSchema } from "@sidecut/contracts/project";
 import { KeyframeSchema } from "@sidecut/contracts/project";
@@ -316,6 +317,15 @@ function validateTransitions(
   const tails = new Set<string>();
   const heads = new Set<string>();
   for (const transition of track.transitions) {
+    try {
+      Schema.decodeUnknownSync(TransitionSchema)(transition);
+    } catch (error) {
+      issue(
+        "transition-structure",
+        error instanceof Error ? error.message : String(error),
+        String(transition.id ?? track.id),
+      );
+    }
     const id = typeof transition.id === "string" ? transition.id : track.id;
     if (
       typeof transition.duration !== "number" ||

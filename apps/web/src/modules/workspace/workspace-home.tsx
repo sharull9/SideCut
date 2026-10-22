@@ -1,10 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   RiArrowGoBackLine,
   RiArrowGoForwardLine,
   RiLayoutLine,
   RiScissorsCutLine,
+  RiContractLeftLine,
+  RiContractRightLine,
+  RiFolderVideoLine,
+  RiEqualizerLine,
 } from "@remixicon/react";
 import { Button } from "@sidecut/ui/components/button";
 import { Alert, AlertTitle, AlertDescription } from "@sidecut/ui/components/alert";
@@ -29,6 +33,29 @@ import {
 } from "./panel-sizes";
 import type { PanelSizes } from "./panel-sizes";
 import "./workspace.css";
+
+function PanelRail({
+  id,
+  label,
+  icon,
+  text,
+  onShow,
+}: {
+  id: string;
+  label: string;
+  icon: ReactNode;
+  text: string;
+  onShow: () => void;
+}) {
+  return (
+    <div className="editor-panel-rail">
+      <button id={id} type="button" aria-label={label} title={label} onClick={onShow}>
+        {icon}
+        <span aria-hidden="true">{text}</span>
+      </button>
+    </div>
+  );
+}
 
 export function WorkspaceHome() {
   const { session, snapshot } = useEditorSession();
@@ -77,8 +104,15 @@ export function WorkspaceHome() {
     }
   }, [sizes, preferencesReady]);
 
-  function updatePanel(panel: keyof PanelSizes, value: number | null) {
+  function updatePanel<K extends keyof PanelSizes>(panel: K, value: PanelSizes[K]) {
     setSizes((current) => ({ ...current, [panel]: value }));
+  }
+  // Hiding moves focus to the rail's show button; showing moves it to the panel's hide button.
+  function setPanelHidden(panel: "media" | "inspector", hidden: boolean) {
+    updatePanel(panel === "media" ? "mediaHidden" : "inspectorHidden", hidden);
+    requestAnimationFrame(() =>
+      document.getElementById(`${panel}-${hidden ? "show" : "hide"}`)?.focus(),
+    );
   }
 
   const mediaMax = Math.max(
@@ -89,6 +123,13 @@ export function WorkspaceHome() {
     INSPECTOR_MIN,
     Math.min(600, dimensions.width - fitted.media - VIEWER_MIN - DIVIDER_SIZE * 2),
   );
+  const columns = [
+    `${fitted.media}px`,
+    ...(sizes.mediaHidden ? [] : [`${DIVIDER_SIZE}px`]),
+    `minmax(${VIEWER_MIN}px, 1fr)`,
+    ...(sizes.inspectorHidden ? [] : [`${DIVIDER_SIZE}px`]),
+    `${fitted.inspector}px`,
+  ].join(" ");
   const workspaceMax = Math.max(WORKSPACE_MIN, dimensions.height - TIMELINE_MIN - DIVIDER_SIZE);
 
   return (
@@ -227,50 +268,99 @@ export function WorkspaceHome() {
         <div
           className="editor-workspace"
           style={{
-            gridTemplateColumns: `${fitted.media}px ${DIVIDER_SIZE}px minmax(${VIEWER_MIN}px, 1fr) ${DIVIDER_SIZE}px ${fitted.inspector}px`,
+            gridTemplateColumns: columns,
           }}
         >
-          <MediaBin run={run} />
-          <PanelDivider
-            label="Media panel width"
-            controls="media-panel"
-            orientation="vertical"
-            value={fitted.media}
-            min={MEDIA_MIN}
-            max={mediaMax}
-            onChange={(value) => updatePanel("media", value)}
-            onReset={() => updatePanel("media", DEFAULT_PANELS.media)}
-          />
+          {sizes.mediaHidden ? (
+            <PanelRail
+              id="media-show"
+              label="Show project media"
+              icon={<RiFolderVideoLine aria-hidden="true" />}
+              text="Media"
+              onShow={() => setPanelHidden("media", false)}
+            />
+          ) : (
+            <MediaBin
+              run={run}
+              hideButton={
+                <Button
+                  id="media-hide"
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label="Hide project media"
+                  aria-controls="media-panel"
+                  title="Hide project media"
+                  onClick={() => setPanelHidden("media", true)}
+                >
+                  <RiContractLeftLine aria-hidden="true" />
+                </Button>
+              }
+            />
+          )}
+          {!sizes.mediaHidden && (
+            <PanelDivider
+              label="Media panel width"
+              controls="media-panel"
+              orientation="vertical"
+              value={fitted.media}
+              min={MEDIA_MIN}
+              max={mediaMax}
+              onChange={(value) => updatePanel("media", value)}
+              onReset={() => updatePanel("media", DEFAULT_PANELS.media)}
+            />
+          )}
           <Viewer />
-          <PanelDivider
-            label="Inspector panel width"
-            controls="inspector-panel"
-            orientation="vertical"
-            value={fitted.inspector}
-            min={INSPECTOR_MIN}
-            max={inspectorMax}
-            reverse
-            onChange={(value) => updatePanel("inspector", value)}
-            onReset={() => updatePanel("inspector", DEFAULT_PANELS.inspector)}
-          />
-          <section
-            id="inspector-panel"
-            aria-labelledby="inspector-title"
-            className="editor-panel editor-inspector"
-          >
-            <div className="editor-panel-heading">
-              <h2 id="inspector-title">Inspector</h2>
-              <span>Properties</span>
-            </div>
-            <div
-              className="editor-inspector-content"
-              role="region"
-              aria-label="Sequence and clip properties"
-              tabIndex={0}
-            >
-              <ClipInspector />
-            </div>
-          </section>
+          {sizes.inspectorHidden ? (
+            <PanelRail
+              id="inspector-show"
+              label="Show inspector"
+              icon={<RiEqualizerLine aria-hidden="true" />}
+              text="Inspector"
+              onShow={() => setPanelHidden("inspector", false)}
+            />
+          ) : (
+            <>
+              <PanelDivider
+                label="Inspector panel width"
+                controls="inspector-panel"
+                orientation="vertical"
+                value={fitted.inspector}
+                min={INSPECTOR_MIN}
+                max={inspectorMax}
+                reverse
+                onChange={(value) => updatePanel("inspector", value)}
+                onReset={() => updatePanel("inspector", DEFAULT_PANELS.inspector)}
+              />
+              <section
+                id="inspector-panel"
+                aria-labelledby="inspector-title"
+                className="editor-panel editor-inspector"
+              >
+                <div className="editor-panel-heading">
+                  <h2 id="inspector-title">Inspector</h2>
+                  <Button
+                    id="inspector-hide"
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label="Hide inspector"
+                    aria-controls="inspector-panel"
+                    title="Hide inspector"
+                    onClick={() => setPanelHidden("inspector", true)}
+                  >
+                    <RiContractRightLine aria-hidden="true" />
+                  </Button>
+                </div>
+                <div
+                  className="editor-inspector-content"
+                  role="region"
+                  aria-label="Sequence and clip properties"
+                  tabIndex={0}
+                >
+                  <ClipInspector />
+                </div>
+              </section>
+            </>
+          )}
         </div>
         <PanelDivider
           label="Viewer and timeline height"

@@ -369,6 +369,36 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+.editor-source-placement {
+  margin-top: 12px;
+  min-width: 0;
+}
+.editor-source-placement summary {
+  cursor: pointer;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.editor-source-placement select {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  background: var(--background);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font: inherit;
+}
+.editor-source-placement select:focus-visible,
+.editor-source-placement summary:focus-visible,
+.editor-trim-form input[type="checkbox"]:focus-visible,
+.editor-source-placement input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.editor-trim-form input[type="checkbox"],
+.editor-source-placement input[type="checkbox"] {
+  accent-color: var(--primary);
+}
 .editor-time-range-row {
   display: flex;
   flex-direction: row;

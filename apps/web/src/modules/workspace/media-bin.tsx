@@ -16,6 +16,7 @@ import {
 } from "@sidecut/ui/components/empty";
 import { useEditorSession } from "./editor-session";
 import { placeSource, MEDIA_DRAG_TYPE } from "./placement";
+import { MediaPlacementForm } from "./media-placement-form";
 
 export function MediaBin({ run }: { run: (action: () => unknown) => void }) {
   const { session, snapshot, editor } = useEditorSession();
@@ -164,6 +165,10 @@ export function MediaBin({ run }: { run: (action: () => unknown) => void }) {
                       {mode === "insert" ? "Insert at playhead" : "Place at playhead"}
                     </Button>
                   ))}
+                  <MediaPlacementForm
+                    key={`${item.id}:${item.role}:${item.takeID}:${item.takeOffset?.flicks}`}
+                    item={item}
+                  />
                 </li>
               );
             })}

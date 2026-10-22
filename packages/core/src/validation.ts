@@ -1,3 +1,4 @@
+import { Schema } from "effect";
 import type { Project, Track, Clip } from "@sidecut/contracts/project";
 import { Time, flicksPerFrame } from "@sidecut/contracts/time";
 
@@ -7,6 +8,74 @@ export interface ValidationIssue {
   readonly message: string;
   readonly objectID: string;
 }
+
+const property = <S extends Schema.Constraint>(schema: S) =>
+  Schema.optionalKey(Schema.NullOr(schema));
+const point = Schema.StructWithRest(
+  Schema.Struct({ x: property(Schema.Finite), y: property(Schema.Finite) }),
+  [Schema.Record(Schema.String, Schema.Unknown)],
+);
+const transform = Schema.StructWithRest(
+  Schema.Struct({
+    position: property(point),
+    scale: property(Schema.Finite),
+    rotation: property(Schema.Finite),
+  }),
+  [Schema.Record(Schema.String, Schema.Unknown)],
+);
+const effectProperties = Schema.Array(
+  Schema.StructWithRest(
+    Schema.Struct({
+      id: Schema.String,
+      type: Schema.String,
+      enabled: property(Schema.Boolean),
+      params: property(Schema.JsonObject),
+    }),
+    [Schema.Record(Schema.String, Schema.Unknown)],
+  ),
+);
+const VideoProperties = Schema.StructWithRest(
+  Schema.Struct({
+    transform: property(transform),
+    opacity: property(Schema.Finite),
+    effects: property(effectProperties),
+    layoutPreset: property(Schema.String),
+    crop: property(
+      Schema.StructWithRest(
+        Schema.Struct({
+          left: property(Schema.Finite),
+          right: property(Schema.Finite),
+          top: property(Schema.Finite),
+          bottom: property(Schema.Finite),
+        }),
+        [Schema.Record(Schema.String, Schema.Unknown)],
+      ),
+    ),
+    formatOverrides: property(
+      Schema.Record(
+        Schema.String,
+        Schema.StructWithRest(
+          Schema.Struct({ transform: property(transform), hidden: property(Schema.Boolean) }),
+          [Schema.Record(Schema.String, Schema.Unknown)],
+        ),
+      ),
+    ),
+  }),
+  [Schema.Record(Schema.String, Schema.Unknown)],
+);
+const AudioProperties = Schema.StructWithRest(
+  Schema.Struct({
+    gainDB: property(Schema.Finite),
+    pan: property(Schema.Finite),
+    fadeIn: property(Schema.Finite),
+    fadeOut: property(Schema.Finite),
+    muted: property(Schema.Boolean),
+    normalizeTo: property(Schema.Finite),
+    voiceIsolation: property(Schema.Finite),
+    effects: property(effectProperties),
+  }),
+  [Schema.Record(Schema.String, Schema.Unknown)],
+);
 
 // Ported from TandemCore/Validation.swift at the roadmap's pinned revision.
 export function validateProject(project: Project): ValidationIssue[] {
@@ -65,6 +134,21 @@ export function validateProject(project: Project): ValidationIssue[] {
   for (const track of tracks) {
     let previous: Clip | undefined;
     for (const clip of track.clips) {
+      for (const [kind, properties, schema] of [
+        ["video", clip.video, VideoProperties],
+        ["audio", clip.audio, AudioProperties],
+      ] as const) {
+        if (properties == null) continue;
+        try {
+          Schema.decodeUnknownSync(schema)(properties);
+        } catch {
+          issue(
+            "clip-properties",
+            `Clip ${clip.id} has invalid ${kind} properties. Check numbers, booleans, transforms, and effects.`,
+            clip.id,
+          );
+        }
+      }
       if (clip.duration.flicks <= 0n)
         issue("clip-duration", `Clip ${clip.id} on "${track.name}" has no duration.`, clip.id);
       if (clip.start.flicks < 0n) issue("clip-start", `Clip ${clip.id} starts before 0.`, clip.id);

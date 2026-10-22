@@ -1,6 +1,7 @@
 import { useEditorSession, useEditorView } from "./editor-session";
 import { ClipTrimForm } from "./clip-trim-form";
 import { ClipEditForm } from "./clip-edit-form";
+import { ClipPropertiesForm } from "./clip-properties-form";
 import { ProjectSettings } from "./project-settings";
 import { Button } from "@sidecut/ui/components/button";
 export function ClipInspector() {
@@ -53,6 +54,10 @@ export function ClipInspector() {
             )}
             <ClipTrimForm key={`${clips[0].id}:${snapshot.revision}`} clip={clips[0]} />
             <ClipEditForm key={`edit:${clips[0].id}:${snapshot.revision}`} clip={clips[0]} />
+            <ClipPropertiesForm
+              key={`properties:${clips[0].id}:${snapshot.revision}`}
+              clip={clips[0]}
+            />
           </>
         )}
     </div>

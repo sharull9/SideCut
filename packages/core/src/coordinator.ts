@@ -1,12 +1,19 @@
 import { Schema } from "effect";
 import { EditBatchSchema } from "@sidecut/contracts/commands";
 import type { EditCommand } from "@sidecut/contracts/commands";
-import { MediaItemSchema, ProjectSettingsSchema, TrackSchema } from "@sidecut/contracts/project";
+import {
+  ClipSchema,
+  MediaItemSchema,
+  ProjectSettingsSchema,
+  TrackSchema,
+} from "@sidecut/contracts/project";
 import type { Project, ProjectFile } from "@sidecut/contracts/project";
 import { Time } from "@sidecut/contracts/time";
 import { validateProject } from "./validation";
 import type { ValidationIssue } from "./validation";
 import { editTimeline, settleTimeline, EditContext, batchSeed } from "./timeline-editing";
+import { editThroughCuts } from "./through-edits";
+import { editPlacement } from "./media-placement";
 
 type Json = typeof Schema.Json.Type;
 type JsonObject = typeof Schema.JsonObject.Type;
@@ -101,12 +108,47 @@ function applyCommand(
   createdIDs: string[],
   context: EditContext,
 ): Project {
-  let edited = editTimeline(project, command, context);
+  let edited =
+    editThroughCuts(project, command, context) ??
+    editPlacement(project, command, context) ??
+    editTimeline(project, command, context);
   if (edited) {
     edited = settleTimeline(edited);
     const issue = validateProject(edited).find((finding) => finding.severity === "error");
     if (issue) throw new EditError("validation", issue.message, issue.objectID);
     return edited;
+  }
+  if ("updateClip" in command) {
+    const { clipID, patch } = command.updateClip;
+    if ("id" in patch) throw new EditError("invalid", "Clip patch cannot change id.");
+    let found = false;
+    const update = (list: Project["videoTracks"]) =>
+      list.map((track) => {
+        if (!track.clips.some((clip) => clip.id === clipID)) return track;
+        if (track.locked) throw new EditError("invalid", `Track "${track.name}" is locked.`);
+        found = true;
+        return {
+          ...track,
+          clips: track.clips
+            .map((clip) =>
+              clip.id === clipID
+                ? Schema.decodeUnknownSync(ClipSchema)(
+                    mergePatch(Schema.encodeSync(ClipSchema)(clip) as Json, patch),
+                  )
+                : clip,
+            )
+            .sort((a, b) =>
+              a.start.flicks < b.start.flicks ? -1 : a.start.flicks > b.start.flicks ? 1 : 0,
+            ),
+        };
+      });
+    const result = {
+      ...project,
+      videoTracks: update(project.videoTracks),
+      audioTracks: update(project.audioTracks),
+    };
+    if (!found) throw new EditError("invalid", `Clip ${clipID} not found.`);
+    return result;
   }
   if ("addTrack" in command) {
     const body = command.addTrack;

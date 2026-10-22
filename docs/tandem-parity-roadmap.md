@@ -1,6 +1,6 @@
 # Tandem parity roadmap
 
-Status: phases 001-027 and 029-036 are implemented and verified on Windows Chromium. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), and [031-036 evidence and limits](verification/phases-031-036.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
+Status: phases 001-027 and 029-042 are implemented and verified on Windows Chromium. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), and [037-042 evidence and limits](verification/phases-037-042.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
 
 ## Goal and baseline
 
@@ -298,43 +298,43 @@ Accept when the selected clip moves and overall timeline duration stays constant
 
 ### Phase 037: Join
 
-- [ ] Implement `join` and `joinThroughEdits` eligibility rules.
-- [ ] Explain skipped joins in the result and UI.
+- [x] Implement `join` and `joinThroughEdits` eligibility rules.
+- [x] Explain skipped joins in the result and UI.
 
 Accept when effect equivalence, links, keyframes, and locked tracks match reference join cases.
 
 ### Phase 038: Speed
 
-- [ ] Implement `setSpeed`, including ripple and source mapping.
-- [ ] Add a speed inspector with allowed-value validation.
+- [x] Implement `setSpeed`, including ripple and source mapping.
+- [x] Add a speed inspector with allowed-value validation.
 
 Accept when durations and source positions match after speed changes and undo.
 
 ### Phase 039: Held frames
 
-- [ ] Implement `holdFrame` and `updateClip` hold-edge validation.
-- [ ] Render held source edges with silence outside the audio source.
+- [x] Implement `holdFrame` and `updateClip` hold-edge validation.
+- [x] Render held source edges with silence outside the audio source.
 
 Accept when head/tail holds and freeze ranges display and export consistently.
 
 ### Phase 040: Clip patches
 
-- [ ] Complete `updateClip` patch decoding, null handling, and validation.
-- [ ] Expose enabled, name, and tags controls.
+- [x] Complete `updateClip` patch decoding, null handling, and validation.
+- [x] Expose enabled, name, and tags controls.
 
 Accept when omitted fields stay unchanged and invalid patches cannot partially apply.
 
 ### Phase 041: Media placement defaults
 
-- [ ] Implement `placeMedia` roles, default tracks, and insertion modes.
-- [ ] Match linked camera/voice placement and speech-level defaults.
+- [x] Implement `placeMedia` roles, default tracks, and insertion modes.
+- [x] Match linked camera/voice placement and speech-level defaults.
 
 Accept when placing a paired fixture produces the reference track and clip structure.
 
 ### Phase 042: Synced placement
 
-- [ ] Implement `placeSynced` with source offsets and take identity.
-- [ ] Expose paired-take placement from the bin.
+- [x] Implement `placeSynced` with source offsets and take identity.
+- [x] Expose paired-take placement from the bin.
 
 Accept when screen/camera/voice keep their timing relationship across placement and ripple edits.
 

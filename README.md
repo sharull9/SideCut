@@ -5,18 +5,19 @@ The shared editing engine, desktop application, and agent tools follow [the arch
 The editor has resizable panels, editable sequence properties, browser autosave,
 project open/download, a local media bin, and a timeline with track controls,
 source placement, zoom, selection, seeking, source playback, split/trim/move,
-linked edits, ripple deletion/insertion, roll/slip/slide, and local WebM export.
+linked edits, ripple deletion/insertion, roll/slip/slide, joins, speed, held frames,
+role/synced placement, and local WebM export.
 
 The [Tandem parity roadmap](docs/tandem-parity-roadmap.md) breaks the editor, media,
 desktop, and agent work into small phases with acceptance checks and a pinned
-upstream feature inventory. Phases 001-036 have implementations, with phase 028's
+upstream feature inventory. Phases 001-042 have implementations, with phase 028's
 public-host acceptance still pending: synthetic reference
 fixtures, exact flick timing, a browser media feasibility probe, and Effect schemas
 for projects, tracks, media, and clips, project validation, atomic command batches,
 undo/redo, a resizable editor frame, sequence properties, project persistence,
 single-writer browser tabs, local media registration/import, track commands,
 non-ripple clip placement, timeline navigation/selection, source preview, and
-audio-clock-driven transport. Twenty-three command families have implementations.
+audio-clock-driven transport. Thirty command families have implementations.
 `insertClip` supports `place` and `insert`; `moveClips` supports `place`. Trimming
 supports both ripple and non-ripple edits. Undo history remains in memory and resets
 on reload.
@@ -39,6 +40,18 @@ and ripple edge adjustments. Alt-drag a clip to slip, Alt+Shift-drag to slide,
 Alt-drag an edge to roll, and Shift-drag an edge to ripple trim. Shift-dropping a
 bin source or choosing Insert at playhead opens time before placing it. These
 gestures are verified on Windows Chromium; use numeric controls as an alternative.
+
+The inspector also edits clip names, tags, enabled state, source-edge holds,
+speed, and held-frame ranges. Join next clip and Join through-edits remove
+compatible cuts while retaining linked timing. Each bin source has Role and take
+placement controls for source roles, known take offsets, paired placement, and
+adding a synced angle or external mic to an existing take. Synced angles start
+disabled; angle range switching is planned. Automatic alignment by sound is planned.
+
+Picture speed changes and held frames export locally. Audio at another speed and
+speech levelling still need later renderers and produce explicit preflight errors.
+Role placement preserves the reference speech-level defaults; mute unsupported
+sound to export supported picture edits.
 
 Projects and imported source files persist in IndexedDB for this browser profile
 and origin. Download a project copy for backup. A `.tandem` download contains project
@@ -67,6 +80,10 @@ editing, linked operations, ripple semantics, export round trips, and current li
 
 The [phases 031-036 report](docs/verification/phases-031-036.md) covers range cuts,
 insertion, ripple trim, roll, slip, slide, pointer interactions, and source bounds.
+
+The [phases 037-042 report](docs/verification/phases-037-042.md) covers joins,
+speed, held frames/edges, clip patches, role defaults, synced placement, and their
+rendering limits.
 
 ## Development
 

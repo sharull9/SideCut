@@ -1,6 +1,7 @@
+import { pictureTime, audioRange } from "@sidecut/core/render-plan";
 import { LocalMediaReader, PlaybackClock } from "@sidecut/platform-browser/preview";
 import type { Project, Clip } from "@sidecut/contracts/project";
-import { activeClips, previewIssue, projectDuration, sourceTime } from "./timeline-model";
+import { activeClips, previewIssue, projectDuration } from "./timeline-model";
 import type { BrowserProjectSession } from "./browser-session";
 
 export class SourcePreview {
@@ -84,7 +85,9 @@ export class SourcePreview {
     if (issue) throw new Error(issue);
     const current = activeClips(this.project, time, "video")[0];
     const frame = current
-      ? await (await this.reader(this.mediaID(current.clip))).frame(sourceTime(current.clip, time))
+      ? await (
+          await this.reader(this.mediaID(current.clip))
+        ).frame(pictureTime(this.project, current.clip, time))
       : null;
     if (token !== this.token || this.disposed) return;
     const ctx = this.canvas.getContext("2d");
@@ -185,6 +188,7 @@ export class SourcePreview {
           for (const clip of track.clips) {
             if (
               !clip.enabled ||
+              clip.freezeFrame ||
               clip.audio?.muted === true ||
               clip.start.seconds + clip.duration.seconds <= position ||
               clip.start.seconds > position + 0.3 ||
@@ -213,9 +217,10 @@ export class SourcePreview {
     const context = this.context,
       clock = this.clock;
     if (!context || !clock) return;
+    const range = audioRange(this.project, clip, Math.max(position, clip.start.seconds));
+    if (!range) return;
     const reader = await this.reader(this.mediaID(clip));
-    const from = sourceTime(clip, Math.max(position, clip.start.seconds));
-    const until = clip.sourceStart.seconds + clip.duration.seconds;
+    const { from, to: until } = range;
     const buffers = reader.audio(from, until);
     try {
       for await (const item of buffers) {

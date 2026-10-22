@@ -1,5 +1,11 @@
 import type { Project, Clip } from "@sidecut/contracts/project";
-import { activeClips, enabledTracks, sourceTime, exportPlan } from "@sidecut/core/render-plan";
+import {
+  activeClips,
+  enabledTracks,
+  pictureTime,
+  audioRange,
+  exportPlan,
+} from "@sidecut/core/render-plan";
 import type { LocalResource } from "./storage";
 import { LocalMediaReader } from "./preview";
 
@@ -80,7 +86,9 @@ export async function renderWebM(
     // Resolve every used source before encoding so a missing later clip cannot produce a partial download.
     const mediaIDs = new Set(
       [...enabledTracks(project, "video"), ...enabledTracks(project, "audio")].flatMap((t) =>
-        t.clips.filter((c) => c.enabled && !(t.kind === "audio" && c.audio?.muted)).map(id),
+        t.clips
+          .filter((c) => c.enabled && !(t.kind === "audio" && (c.audio?.muted || c.freezeFrame)))
+          .map(id),
       ),
     );
     await Promise.all([...mediaIDs].map(reader));
@@ -97,7 +105,7 @@ export async function renderWebM(
         if (current) {
           const frame = await (
             await reader(id(current.clip))
-          ).frame(sourceTime(current.clip, time));
+          ).frame(pictureTime(project, current.clip, time));
           signal.throwIfAborted();
           if (frame) {
             const scale = Math.min(canvas.width / frame.width, canvas.height / frame.height);
@@ -118,8 +126,9 @@ export async function renderWebM(
         if (track.muted || (project.audioTracks.some((t) => t.solo) && !track.solo)) continue;
         for (const clip of track.clips) {
           if (!clip.enabled || clip.audio?.muted === true) continue;
-          const from = clip.sourceStart.seconds,
-            to = from + clip.duration.seconds;
+          const range = audioRange(project, clip);
+          if (!range) continue;
+          const { from, to } = range;
           const buffers = (await reader(id(clip))).audio(from, to);
           try {
             for await (const item of buffers) {
@@ -147,7 +156,7 @@ export async function renderWebM(
                 format: "f32-planar",
                 numberOfChannels: channels,
                 sampleRate: item.buffer.sampleRate,
-                timestamp: clip.start.seconds + start - from,
+                timestamp: clip.start.seconds + start - clip.sourceStart.seconds,
               });
               try {
                 await audio.add(sample);

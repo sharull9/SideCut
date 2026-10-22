@@ -33,7 +33,7 @@ export function activeClips(project: Project, time: number, kind: "video" | "aud
           clip.enabled &&
           clip.start.seconds <= time &&
           time < clip.start.seconds + clip.duration.seconds &&
-          !(kind === "audio" && clip.audio?.muted === true),
+          !(kind === "audio" && (clip.audio?.muted === true || clip.freezeFrame)),
       )
       .map((clip) => ({ track, clip })),
   );
@@ -44,6 +44,42 @@ export function sourceTime(clip: Clip, time: number): number {
     clip.sourceStart.seconds +
     (clip.freezeFrame ? 0 : Math.max(0, time - clip.start.seconds) * clip.speed)
   );
+}
+
+// Picture holds its first/last decodable frame. Audio reads only the real source interval.
+export function pictureTime(project: Project, clip: Clip, time: number): number {
+  const reference = clip.content.media;
+  const item = project.media.find(
+    (m) =>
+      m.id ===
+      (reference && typeof reference === "object" && "mediaID" in reference
+        ? reference.mediaID
+        : null),
+  );
+  return Math.max(
+    0,
+    Math.min(
+      sourceTime(clip, time),
+      item?.duration ? Math.max(0, item.duration.seconds - 0.000001) : Infinity,
+    ),
+  );
+}
+export function audioRange(project: Project, clip: Clip, fromTimeline = clip.start.seconds) {
+  if (clip.freezeFrame) return null;
+  const reference = clip.content.media;
+  const item = project.media.find(
+    (m) =>
+      m.id ===
+      (reference && typeof reference === "object" && "mediaID" in reference
+        ? reference.mediaID
+        : null),
+  );
+  const from = Math.max(0, sourceTime(clip, fromTimeline)),
+    to = Math.min(
+      item?.duration?.seconds ?? Infinity,
+      clip.sourceStart.seconds + clip.duration.seconds * clip.speed,
+    );
+  return to > from ? { from, to } : null;
 }
 
 export function previewIssue(project: Project, time: number): string | null {
@@ -68,16 +104,15 @@ export function previewIssue(project: Project, time: number): string | null {
           ([key, value]) =>
             !(
               (["muted"].includes(key) && value === false) ||
-              (["gainDB", "pan", "fadeIn", "fadeOut"].includes(key) && value === 0) ||
+              (["gainDB", "pan", "fadeIn", "fadeOut", "voiceIsolation"].includes(key) &&
+                value === 0) ||
               (key === "effects" && Array.isArray(value) && value.length === 0) ||
               (key === "normalizeTo" && value === null)
             ),
         )) ||
-      clip.speed !== 1 ||
-      clip.freezeFrame ||
-      clip.holdEdges
+      (track.kind === "audio" && clip.speed !== 1)
     )
-      return "This clip needs rendering features that are not available in the source preview yet.";
+      return "This clip needs rendering features that are not available in the source preview yet. Audio speed changes need pitch correction; speech levelling needs source analysis.";
   }
   return null;
 }
@@ -104,7 +139,7 @@ export function exportPlan(project: Project) {
       t.clips.some((c) => c.enabled),
     ),
     enabledAudio = enabledTracks(project, "audio").filter((t) =>
-      t.clips.some((c) => c.enabled && !c.audio?.muted),
+      t.clips.some((c) => c.enabled && !c.audio?.muted && !c.freezeFrame),
     );
   if (enabledVideos.length > 1 || enabledAudio.length > 1)
     throw new Error(

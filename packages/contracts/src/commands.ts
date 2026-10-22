@@ -20,6 +20,56 @@ const defaultText = (value: string) =>
   );
 
 const CommandBody = Schema.Union([
+  Schema.Struct({ join: Schema.Struct({ clipID: Schema.String }) }),
+  Schema.Struct({
+    joinThroughEdits: Schema.Struct({
+      range: nullable(Schema.Struct({ start: TimeSchema, duration: TimeSchema })),
+    }),
+  }),
+  Schema.Struct({
+    setSpeed: Schema.Struct({
+      clipID: Schema.String,
+      speed: Schema.Finite,
+      ripple: nullable(Schema.Boolean),
+      includeLinked: nullable(Schema.Boolean),
+    }),
+  }),
+  Schema.Struct({
+    holdFrame: Schema.Struct({
+      clipID: Schema.String,
+      range: Schema.Struct({ start: TimeSchema, duration: TimeSchema }),
+    }),
+  }),
+  Schema.Struct({ updateClip: Schema.Struct({ clipID: Schema.String, patch: Schema.JsonObject }) }),
+  Schema.Struct({
+    placeMedia: Schema.Struct({
+      mediaIDs: Schema.Array(Schema.String),
+      at: TimeSchema,
+      sourceStart: nullable(TimeSchema),
+      duration: nullable(TimeSchema),
+      mode: nullable(Schema.Literals(["place", "insert", "overwrite"])),
+      videoTrackID: nullable(Schema.String),
+      audioTrackID: nullable(Schema.String),
+      includeAudio: nullable(Schema.Boolean),
+      anchor: nullable(
+        Schema.Literals([
+          "centre",
+          "top",
+          "bottom",
+          "topLeft",
+          "topRight",
+          "bottomLeft",
+          "bottomRight",
+          "lowerThird",
+        ]),
+      ),
+      pop: nullable(Schema.Boolean),
+      speed: nullable(Schema.Finite),
+    }),
+  }),
+  Schema.Struct({
+    placeSynced: Schema.Struct({ mediaID: Schema.String, trackID: nullable(Schema.String) }),
+  }),
   Schema.Struct({
     cutRanges: Schema.Struct({
       ranges: Schema.Array(Schema.Struct({ start: TimeSchema, duration: TimeSchema })),

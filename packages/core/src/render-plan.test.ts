@@ -16,6 +16,12 @@ function project(video: unknown[], audio: unknown[] = [], settings: unknown = {}
   }).project;
 }
 describe("browser export preflight", () => {
+  it("does not create a sound track for a frozen audio-only sequence", () => {
+    expect(
+      exportPlan(project([], [{ id: "a", kind: "audio", clips: [{ ...clip, freezeFrame: true }] }]))
+        .hasAudio,
+    ).toBe(false);
+  });
   it("caps landscape and portrait output and detects silent sequences", () => {
     const video = [{ id: "picture", kind: "video", clips: [clip] }];
     expect(exportPlan(project(video))).toMatchObject({
@@ -56,7 +62,7 @@ describe("browser export preflight", () => {
       ),
     ).toThrow(/60 fps/);
     expect(() =>
-      exportPlan(project([{ id: "v", kind: "video", clips: [{ ...clip, speed: 2 }] }])),
+      exportPlan(project([], [{ id: "v", kind: "audio", clips: [{ ...clip, speed: 2 }] }])),
     ).toThrow(/rendering features/);
     expect(() =>
       exportPlan(

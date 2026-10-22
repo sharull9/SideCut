@@ -4,8 +4,8 @@ import type { Project, Track, Clip } from "@sidecut/contracts/project";
 import type { EditCommand } from "@sidecut/contracts/commands";
 import { Time, FLICKS_PER_SECOND, flicksPerFrame } from "@sidecut/contracts/time";
 
-const tracks = (p: Project) => [...p.videoTracks, ...p.audioTracks];
-const end = (clip: Clip) => clip.start.add(clip.duration);
+export const tracks = (p: Project) => [...p.videoTracks, ...p.audioTracks];
+export const end = (clip: Clip) => clip.start.add(clip.duration);
 const overlaps = (clip: Clip, a: Time, b: Time) =>
   clip.start.flicks < b.flicks && end(clip).flicks > a.flicks;
 const zero = new Time(0n);
@@ -55,7 +55,7 @@ export function batchSeed(id: string, revision: number, key: string | null | und
     hash = BigInt.asUintN(64, (hash ^ BigInt(char.codePointAt(0)!)) * 1099511628211n);
   return hash;
 }
-function requireTrack(p: Project, id: string): Track {
+export function requireTrack(p: Project, id: string): Track {
   const exact = tracks(p).find((t) => t.id === id);
   if (exact) return exact;
   const found = tracks(p).filter((t) => t.name.toLowerCase() === id.toLowerCase());
@@ -63,14 +63,14 @@ function requireTrack(p: Project, id: string): Track {
   if (!found[0]) throw new Error(`Track ${id} not found.`);
   return found[0];
 }
-function requireClip(p: Project, id: string) {
+export function requireClip(p: Project, id: string) {
   for (const track of tracks(p)) {
     const clip = track.clips.find((c) => c.id === id);
     if (clip) return { track, clip };
   }
   throw new Error(`Clip ${id} not found.`);
 }
-function unlocked(track: Track) {
+export function unlocked(track: Track) {
   if (track.locked) throw new Error(`Track "${track.name}" is locked.`);
 }
 export function linkedIDs(p: Project, ids: readonly string[], include = true): string[] {
@@ -86,7 +86,7 @@ export function linkedIDs(p: Project, ids: readonly string[], include = true): s
   }
   return [...result];
 }
-function tidy(clip: Clip): Clip {
+export function tidy(clip: Clip): Clip {
   const audio = clip.audio ? { ...clip.audio } : clip.audio;
   if (audio)
     for (const key of ["fadeIn", "fadeOut"]) {
@@ -128,7 +128,7 @@ function head(clip: Clip, to: Time): Clip {
 function tail(clip: Clip, to: Time) {
   return tidy({ ...clip, duration: to.subtract(clip.start) });
 }
-function split(clip: Clip, at: Time, context: EditContext) {
+export function split(clip: Clip, at: Time, context: EditContext) {
   const id = context.makeID("clip");
   context.createdIDs.push(id);
   context.cutFrom.set(id, clip.id);
@@ -157,7 +157,7 @@ function split(clip: Clip, at: Time, context: EditContext) {
 function transitionTouches(t: Record<string, unknown>, ids: Set<string>) {
   return ids.has(String(t.fromClipID)) || ids.has(String(t.toClipID));
 }
-function guardSounds(track: Track) {
+export function guardSounds(track: Track) {
   if (track.transitions.some((t) => t.sound != null))
     throw new Error(
       "Editing transition sounds is not implemented yet. Remove their transitions before editing this track.",
@@ -189,7 +189,7 @@ export function normalizeLinks(p: Project): Project {
     }));
   return { ...p, videoTracks: clean(p.videoTracks), audioTracks: clean(p.audioTracks) };
 }
-function sorted(track: Track): Track {
+export function sorted(track: Track): Track {
   return {
     ...track,
     clips: [...track.clips].sort((a, b) =>
@@ -219,14 +219,14 @@ export function settleTimeline(p: Project): Project {
     audioTracks: settle(p.audioTracks),
   });
 }
-function replace(p: Project, track: Track): Project {
+export function replace(p: Project, track: Track): Project {
   return {
     ...p,
     videoTracks: p.videoTracks.map((t) => (t.id === track.id ? track : t)),
     audioTracks: p.audioTracks.map((t) => (t.id === track.id ? track : t)),
   };
 }
-function clearRange(track: Track, a: Time, b: Time, context: EditContext): Track {
+export function clearRange(track: Track, a: Time, b: Time, context: EditContext): Track {
   const clips: Clip[] = [];
   let transitions = [...track.transitions];
   const removed = new Set<string>();
@@ -265,7 +265,7 @@ function clearRange(track: Track, a: Time, b: Time, context: EditContext): Track
     transitions: transitions.filter((t) => !transitionTouches(t, removed)),
   };
 }
-function removeRange(
+export function removeRange(
   p: Project,
   a: Time,
   b: Time,
@@ -355,7 +355,12 @@ function union(ranges: { a: Time; b: Time }[]) {
   return result;
 }
 
-function insertionPoint(p: Project, at: Time, edited: Set<string>, context: EditContext): Time {
+export function insertionPoint(
+  p: Project,
+  at: Time,
+  edited: Set<string>,
+  context: EditContext,
+): Time {
   const global = tracks(p).some((t) => edited.has(t.id) && t.rippleMode === "cut");
   const clips = tracks(p)
     .filter((t) => !t.locked && (edited.has(t.id) || (global && t.rippleMode === "cut")))
@@ -387,7 +392,7 @@ function insertionPoint(p: Project, at: Time, edited: Set<string>, context: Edit
   }
   return at;
 }
-function openTime(
+export function openTime(
   p: Project,
   at: Time,
   duration: Time,
@@ -452,6 +457,115 @@ export function editTimeline(
   command: EditCommand,
   context: EditContext,
 ): Project | null {
+  if ("setSpeed" in command) {
+    const { clipID, speed, ripple, includeLinked } = command.setSpeed;
+    if (!(speed > 0 && speed <= 100)) throw new Error("Speed must be above 0 and at most 100.");
+    const primary = requireClip(p, clipID).clip;
+    if (primary.freezeFrame) throw new Error("Speed does not apply to a freeze frame.");
+    const delta = Time.fromSeconds(primary.duration.scaled(primary.speed).seconds / speed).subtract(
+      primary.duration,
+    );
+    const touched = new Set<string>();
+    for (const id of linkedIDs(p, [clipID], includeLinked ?? true)) {
+      const { track, clip } = requireClip(p, id);
+      unlocked(track);
+      guardSounds(track);
+      if (clip.freezeFrame) continue;
+      const duration = Time.fromSeconds(clip.duration.scaled(clip.speed).seconds / speed);
+      const change = duration.subtract(clip.duration);
+      const next = tidy({
+        ...clip,
+        speed,
+        duration,
+        keyframes: Object.fromEntries(
+          Object.entries(clip.keyframes).map(([path, keys]) => [
+            path,
+            keys.map((key) => ({
+              ...key,
+              time: Time.fromSeconds(Number(key.time))
+                .scaled(clip.speed / speed)
+                .toJSON(),
+            })),
+          ]),
+        ),
+      });
+      p = replace(
+        p,
+        sorted({
+          ...track,
+          clips: track.clips.map((c) =>
+            c.id === id
+              ? next
+              : ripple && c.start.flicks >= end(clip).flicks
+                ? { ...c, start: c.start.add(change) }
+                : c,
+          ),
+        }),
+      );
+      touched.add(track.id);
+    }
+    if (ripple && delta.flicks < 0n)
+      p = removeRange(p, end(primary).add(delta), end(primary), touched, context, {
+        handled: touched,
+      });
+    else if (ripple && delta.flicks > 0n)
+      p = openTime(p, end(primary), delta, touched, context, { handled: touched });
+    return p;
+  }
+  if ("holdFrame" in command) {
+    const { clipID, range } = command.holdFrame;
+    const { track, clip } = requireClip(p, clipID);
+    unlocked(track);
+    guardSounds(track);
+    const reference = clip.content.media;
+    const item = p.media.find(
+      (m) =>
+        m.id ===
+        (reference && typeof reference === "object" && "mediaID" in reference
+          ? reference.mediaID
+          : null),
+    );
+    if (track.kind !== "video" || item?.kind !== "video" || !item.hasVideo)
+      throw new Error("Hold frame requires a video source on a video track.");
+    const stop = range.start.add(range.duration);
+    if (
+      range.duration.flicks <= 0n ||
+      range.start.flicks < clip.start.flicks ||
+      stop.flicks > end(clip).flicks
+    )
+      throw new Error("Hold range must have positive duration and be inside the clip.");
+    const frame = new Time(flicksPerFrame(p.settings.frameRate));
+    let held = clip.freezeFrame
+      ? clip.sourceStart
+      : clip.sourceStart.add(range.start.subtract(frame).subtract(clip.start).scaled(clip.speed));
+    held = max(zero, item.duration && held.flicks > item.duration.flicks ? item.duration : held);
+    let middle = clip;
+    const pieces: Clip[] = [];
+    if (range.start.flicks > clip.start.flicks) {
+      const pair = split(middle, range.start, context);
+      pieces.push(pair.left);
+      middle = pair.right;
+    }
+    let right: Clip | null = null;
+    if (stop.flicks < end(middle).flicks) {
+      const pair = split(middle, stop, context);
+      middle = pair.left;
+      right = pair.right;
+    }
+    pieces.push({ ...middle, freezeFrame: true, speed: 1, sourceStart: held });
+    if (right) pieces.push(right);
+    return replace(p, {
+      ...track,
+      clips: track.clips.flatMap((c) =>
+        c.id === clipID
+          ? pieces.map((piece) => ({ ...piece, linkGroup: clip.linkGroup ?? null }))
+          : [c],
+      ),
+      transitions: track.transitions.map((t) =>
+        t.fromClipID === clipID ? { ...t, fromClipID: pieces.at(-1)!.id } : t,
+      ),
+    });
+  }
   if ("cutRanges" in command) {
     const { ranges, trackIDs } = command.cutRanges;
     if (!ranges.length) throw new Error("List at least one range to cut.");

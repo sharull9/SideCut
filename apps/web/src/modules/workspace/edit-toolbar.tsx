@@ -58,6 +58,18 @@ export function EditToolbar({ run }: { run: (action: () => unknown) => void }) {
         Unlink
       </Button>
       <TimeEditsDialog />
+      <Button
+        variant="ghost"
+        size="xs"
+        disabled={actions.disabled}
+        onClick={() =>
+          run(() =>
+            session.apply({ label: "Join through-edits", commands: [{ joinThroughEdits: {} }] }),
+          )
+        }
+      >
+        Join through-edits
+      </Button>
       <form
         className="editor-range-form"
         onSubmit={(event) => {

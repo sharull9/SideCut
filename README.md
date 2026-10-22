@@ -133,6 +133,8 @@ reuse it rather than adding another helper.
 
 ## Static hosting
 
-`vp run build` generates the client under `apps/web/dist/client`, including `_shell.html`. Serve that directory and rewrite unmatched application routes to `_shell.html` while serving existing assets normally. Start also produces server build artifacts, but the initial SPA does not require them at runtime.
+`vp run build` uses Nitro to package TanStack Start. For static hosting, serve `apps/web/.output/public` and rewrite unmatched application routes to `_shell.html` while serving existing assets normally. The initial SPA does not require the server artifacts at runtime.
+
+On Vercel, use `apps/web` as the root directory and the TanStack Start framework preset. Nitro detects Vercel and generates `.vercel/output` with server routing and static assets. Leave the build command and output directory at their framework defaults.
 
 GitHub Actions is configured to check and build on Windows, Linux, and macOS. Only local Windows verification has been performed so far.

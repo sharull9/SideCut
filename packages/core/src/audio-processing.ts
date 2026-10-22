@@ -67,9 +67,11 @@ export function audioEffectIssue(clip: Clip): string | null {
   if (gains.some((db) => !Number.isFinite(db) || db > 120))
     return "Browser audio gain must be finite and no higher than 120 dB.";
   for (const effect of effectsOf(clip, "audio"))
-    if (effect.enabled && !["pitchShift", "compressor", "limiter"].includes(effect.type))
+    if (
+      effect.enabled &&
+      !["pitchShift", "compressor", "limiter", "voiceCleanup"].includes(effect.type)
+    )
       return `Audio effect ${effect.type} is not available in this browser renderer.`;
-  if (Number(clip.audio?.voiceIsolation ?? 0) !== 0) return "Voice isolation is not available yet.";
   if (Number(clip.audio?.pan ?? 0) !== 0) return "Audio panning is not available yet.";
   return null;
 }
@@ -81,6 +83,56 @@ export function audioParams(effect: ClipEffect) {
       clamp(Number(params[p.key]), p.min ?? -Infinity, p.max ?? Infinity),
     ]),
   );
+}
+// Tandem's rumble filter and downward expander, at the clip's normalized playback level.
+export async function cleanVoice(
+  channels: Float32Array[],
+  rate: number,
+  params: Record<string, number>,
+  checkpoint?: () => Promise<void>,
+) {
+  const { highPass = 80, expanderThreshold = -40, expanderRange = 10 } = params;
+  if (highPass > 0) {
+    const w = (2 * Math.PI * Math.min(highPass, rate * 0.45)) / rate,
+      alpha = Math.sin(w) / Math.SQRT2,
+      a0 = 1 + alpha,
+      b0 = (1 + Math.cos(w)) / 2 / a0,
+      b1 = -(1 + Math.cos(w)) / a0,
+      a1 = (-2 * Math.cos(w)) / a0,
+      a2 = (1 - alpha) / a0;
+    for (const channel of channels) {
+      let x1 = 0,
+        x2 = 0,
+        y1 = 0,
+        y2 = 0;
+      for (let i = 0; i < channel.length; i++) {
+        if (i % 32768 === 0) await checkpoint?.();
+        const x = channel[i]!,
+          y = b0 * x + b1 * x1 + b0 * x2 - a1 * y1 - a2 * y2;
+        channel[i] = y;
+        x2 = x1;
+        x1 = x;
+        y2 = y1;
+        y1 = y;
+      }
+    }
+  }
+  if (expanderRange <= 0) return;
+  const detector = 1 - Math.exp(-1 / (0.01 * rate)),
+    down = 1 - Math.exp(-1 / (0.15 * rate)),
+    up = 1 - Math.exp(-1 / (0.002 * rate));
+  let energy = 0,
+    reduction = 0;
+  for (let i = 0; i < channels[0]!.length; i++) {
+    if (i % 32768 === 0) await checkpoint?.();
+    let peak = 0;
+    for (const channel of channels) peak = Math.max(peak, channel[i]! ** 2);
+    energy += detector * (peak - energy);
+    const under = expanderThreshold - 10 * Math.log10(energy + 1e-20),
+      target = under > 0 ? -Math.min(expanderRange, under * 2) : 0;
+    reduction += (target < reduction ? down : up) * (target - reduction);
+    for (const channel of channels) channel[i]! *= gain(reduction);
+  }
 }
 export async function compress(
   channels: Float32Array[],

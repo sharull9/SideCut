@@ -1,0 +1,35 @@
+{
+  "blendError": 1.4901161193847656e-8,
+  "cleanup": {
+    "ms": 27.09999999962747,
+    "noiseReductionDB": 17.404831605415943,
+    "speechCorrelation": 0.8831179324282147
+  },
+  "encoded": [
+    {
+      "bytes": 168909,
+      "codecOffsetSamples": 0,
+      "correlation": 0.9992116975679995,
+      "mix": 0
+    },
+    {
+      "bytes": 168909,
+      "codecOffsetSamples": 0,
+      "correlation": 0.9995999348735598,
+      "mix": 0.5
+    },
+    {
+      "bytes": 168944,
+      "codecOffsetSamples": 0,
+      "correlation": 0.9997645295449898,
+      "mix": 1
+    }
+  ],
+  "isolation": {
+    "frames": 480000,
+    "ms": 645.9000000003725,
+    "noiseReductionDB": 18.118918594225107,
+    "speechCorrelation": 0.820034910540439
+  },
+  "workerCancellation": true
+}

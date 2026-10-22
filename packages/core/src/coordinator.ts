@@ -22,6 +22,7 @@ import { editPicture } from "./picture-editing";
 import { editAngle } from "./angle-selection";
 import { editPlacement } from "./media-placement";
 import { editAudio } from "./audio-editing";
+import { reconcileTransitionSounds } from "./transition-sounds";
 
 type Json = typeof Schema.Json.Type;
 
@@ -90,7 +91,7 @@ function allIDs(project: Project): unknown[] {
   ];
 }
 
-function applyCommand(
+function applyCommandRaw(
   project: Project,
   command: EditCommand,
   warnings: string[],
@@ -108,8 +109,6 @@ function applyCommand(
     editTimeline(project, command, context);
   if (edited) {
     edited = settleTimeline(edited);
-    const issue = validateProject(edited).find((finding) => finding.severity === "error");
-    if (issue) throw new EditError("validation", issue.message, issue.objectID);
     return edited;
   }
   if ("updateClip" in command) {
@@ -393,7 +392,13 @@ export class ProjectCoordinator {
     );
     for (const [index, command] of batch.commands.entries()) {
       try {
-        working = applyCommand(working, command, warnings, createdIDs, context);
+        const before = working,
+          createdFrom = createdIDs.length;
+        context.placedSounds.clear();
+        working = applyCommandRaw(working, command, warnings, createdIDs, context);
+        working = reconcileTransitionSounds(before, working, command, context, createdFrom);
+        const issue = validateProject(working).find((finding) => finding.severity === "error");
+        if (issue) throw new EditError("validation", issue.message, issue.objectID);
       } catch (error) {
         throw new EditError(
           "invalid",

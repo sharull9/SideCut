@@ -107,7 +107,6 @@ export function previewIssue(project: Project, time: number): string | null {
       if (problem) return problem;
     }
     if (
-      (track.kind === "audio" && track.transitions.length > 0) ||
       (track.kind === "video"
         ? !supportedPicture(resolveClip(clip, time))
         : clip.content.media == null) ||

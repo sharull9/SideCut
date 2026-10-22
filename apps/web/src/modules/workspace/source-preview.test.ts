@@ -3,6 +3,7 @@ import { decodeProjectFile } from "@sidecut/contracts/project";
 import { LocalMediaReader } from "@sidecut/platform-browser/preview";
 import { SourcePreview } from "./source-preview";
 import type { BrowserProjectSession } from "./browser-session";
+import { BrowserJobs } from "@sidecut/platform-browser/jobs";
 
 const project = () =>
   decodeProjectFile({
@@ -79,6 +80,7 @@ describe("source preview lifecycle", () => {
     } as unknown as HTMLCanvasElement;
     const state = project();
     const session = {
+      jobs: new BrowserJobs(),
       getSnapshot: () => ({ project: state }),
       resource: async () => ({ state: "available", file: new File(["test"], "test.webm") }),
     } as unknown as BrowserProjectSession;

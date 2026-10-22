@@ -14,6 +14,7 @@ import {
 } from "@sidecut/ui/components/field";
 import { useEditorSession } from "./editor-session";
 import { CommitInput } from "./commit-input";
+import { voiceIsolationAvailable } from "@sidecut/platform-browser/voice-isolation";
 
 export function AudioControls({ clip }: { clip: Clip }) {
   const { snapshot, session, editor } = useEditorSession();
@@ -71,7 +72,14 @@ export function AudioControls({ clip }: { clip: Clip }) {
           throw new Error(`Source ${media?.path ?? id} is missing or unsupported.`);
         const reader = await LocalMediaReader.open(local.file, media.kind);
         try {
-          const result = await measureSource(local.file, reader, work.signal);
+          const result = await session.jobs.run(
+            `analysis:${id}`,
+            "Measure source sound",
+            20,
+            work.signal,
+            (signal, progress) =>
+              measureSource(local.file, reader, signal, progress, media.duration?.seconds),
+          );
           work.signal.throwIfAborted();
           if (id === selected) setMeasured(result);
           // Silent measurements need no protective effects and cannot be encoded as JSON infinities.
@@ -118,6 +126,7 @@ export function AudioControls({ clip }: { clip: Clip }) {
             ["gainDB", "Clip gain", "dB", -100, 30],
             ["fadeIn", "Fade in", "s", 0, clip.duration.seconds],
             ["fadeOut", "Fade out", "s", 0, clip.duration.seconds],
+            ["voiceIsolation", "Voice isolation", "", 0, 1],
           ] as const
         ).map(([key, label, unit, min, max]) => (
           <Field key={key}>
@@ -136,6 +145,11 @@ export function AudioControls({ clip }: { clip: Clip }) {
         <FieldDescription>
           Gain animation replaces clip gain. Fades use an equal-power curve. Add pitch and dynamics
           under Effects.
+        </FieldDescription>
+        <FieldDescription>
+          {voiceIsolationAvailable()
+            ? "Voice isolation blends the original at 0 with local RNNoise suppression at 1. Music and other voices may remain."
+            : "Voice isolation is unavailable here. Use 0 to keep original sound."}
         </FieldDescription>
         <Field>
           <FieldLabel htmlFor="audio-normalization">Speech levelling</FieldLabel>

@@ -1,6 +1,6 @@
 # Tandem parity roadmap
 
-Status: phases 001-027 and 029-078 are implemented and verified on Windows Chromium, within the recorded browser limits. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), [061-066](verification/phases-061-066.md), [067-072](verification/phases-067-072.md), and [073-078 evidence and limits](verification/phases-073-078.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
+Status: phases 001-027 and 029-084 are implemented and verified on Windows Chromium, within the recorded browser limits. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), [061-066](verification/phases-061-066.md), [067-072](verification/phases-067-072.md), [073-078](verification/phases-073-078.md), and [079-084 evidence and limits](verification/phases-079-084.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
 
 ## Goal and baseline
 
@@ -596,36 +596,36 @@ Accept when export meets the configured ceiling and an explicitly disabled limit
 
 ### Phase 079: Voice cleanup
 
-- [ ] Select and integrate an equivalent local `voiceCleanup` processor.
-- [ ] Expose unsupported/unavailable processor states and reference controls.
+- [x] Select and integrate an equivalent local `voiceCleanup` processor.
+- [x] Expose unsupported/unavailable processor states and reference controls.
 
 Accept when a licensed speech/noise fixture meets recorded intelligibility, noise, and runtime criteria on each claimed target.
 
 ### Phase 080: Voice isolation
 
-- [ ] Implement the clip's separate `audio.voiceIsolation` mix property.
-- [ ] Match its interaction with cleanup, gain, and normalization.
+- [x] Implement the clip's separate `audio.voiceIsolation` mix property.
+- [x] Match its interaction with cleanup, gain, and normalization.
 
 Accept when original/isolated endpoints and intermediate mixes export consistently with preview.
 
 ### Phase 081: Crossfades
 
-- [ ] Apply reference audio-track transition crossfades.
-- [ ] Keep out-of-source transition handles silent.
+- [x] Apply reference audio-track transition crossfades.
+- [x] Keep out-of-source transition handles silent.
 
 Accept when cut-centered fades contain no discontinuity beyond the defined tolerance.
 
 ### Phase 082: Transition sounds
 
-- [ ] Tie ordinary SFX clips to transitions through `soundClipID`.
-- [ ] Match movement, replacement, detach, deletion, and undo behavior.
+- [x] Tie ordinary SFX clips to transitions through `soundClipID`.
+- [x] Match movement, replacement, detach, deletion, and undo behavior.
 
 Accept when a roll/ripple/removal sequence preserves the reference sound offset and lifecycle.
 
 ### Phase 083: Sound settings and meters
 
-- [ ] Add transition-type default sound settings and source attribution.
-- [ ] Display mix levels and clipping warnings from the actual audio pipeline.
+- [x] Add transition-type default sound settings and source attribution.
+- [x] Display mix levels and clipping warnings from the actual audio pipeline.
 
 Accept when a configured transition sound can be edited as an ordinary SFX clip.
 
@@ -633,8 +633,8 @@ Accept when a configured transition sound can be edited as an ordinary SFX clip.
 
 ### Phase 084: Background jobs
 
-- [ ] Add scoped Effect jobs with priorities, progress, and bounded concurrency.
-- [ ] Wire cancellation to the actual worker/decoder and release resources.
+- [x] Add scoped Effect jobs with priorities, progress, and bounded concurrency.
+- [x] Wire cancellation to the actual worker/decoder and release resources.
 
 Accept when cancelling and reopening a job cannot leave a stale result or running encoder.
 

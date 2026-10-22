@@ -9,6 +9,7 @@ import { requireTrack, replace, unlocked, end } from "./timeline-editing";
 import { Time } from "@sidecut/contracts/time";
 import { easing } from "./keyframes";
 import { mergePatch } from "./json-merge-patch";
+import { patchTransitionSound, checkSoundTie } from "./transition-sounds";
 
 export function transitionWindow(track: Track, t: Record<string, unknown>) {
   const from = track.clips.find((c) => c.id === t.fromClipID),
@@ -98,9 +99,14 @@ export function editTransitions(
   )
     return null;
   let track: Track, t: Transition;
+  let soundPatch: unknown,
+    hasSoundPatch = false,
+    oldMiddle: number | null = null;
   if ("addTransition" in command) {
-    if (command.addTransition.sound != null)
-      throw new Error("Generated transition sounds require the later transition-sound phase.");
+    if (command.addTransition.sound != null) {
+      soundPatch = command.addTransition.sound;
+      hasSoundPatch = true;
+    }
     track = requireTrack(p, command.addTransition.trackID);
     unlocked(track);
     t = Schema.decodeUnknownSync(TransitionSchema)({
@@ -133,10 +139,6 @@ export function editTransitions(
     unlocked(track);
     const existing = track.transitions.find((value) => value.id === id)!;
     if ("removeTransition" in command) {
-      if (existing.soundClipID != null)
-        throw new Error(
-          "Untie transition sound before removing its transition; sound lifecycle support is planned.",
-        );
       return replace(p, {
         ...track,
         transitions: track.transitions.filter((value) => value.id !== id),
@@ -144,24 +146,19 @@ export function editTransitions(
     }
     if ("id" in command.updateTransition.patch)
       throw new Error("Transition patch cannot change id.");
-    if ("sound" in command.updateTransition.patch)
-      throw new Error("Transition sound editing requires a later phase.");
-    t = Schema.decodeUnknownSync(TransitionSchema)(
-      mergePatch(existing, command.updateTransition.patch),
-    );
-    if (
-      existing.soundClipID != null &&
-      t.soundClipID != null &&
-      ["duration", "fromClipID", "toClipID"].some(
-        (key) => existing[key] !== t[key as keyof Transition],
-      )
-    )
-      throw new Error(
-        "Untie transition sound before changing its timing; sound lifecycle support is planned.",
-      );
+    const patch = { ...command.updateTransition.patch };
+    if ("sound" in patch) {
+      soundPatch = patch.sound;
+      hasSoundPatch = true;
+      delete patch.sound;
+    }
+    const window = transitionWindow(track, existing);
+    oldMiddle = window ? window.start + window.duration / 2 : null;
+    t = Schema.decodeUnknownSync(TransitionSchema)(mergePatch(existing, patch));
   }
   validateTransition(t, track, "updateTransition" in command ? t.id : undefined);
   if (t.soundClipID != null) {
+    checkSoundTie(p, t.soundClipID, t.id);
     const sound = p.audioTracks.flatMap((tr) => tr.clips).find((c) => c.id === t.soundClipID);
     if (!sound) throw new Error("Transition sound must name an existing audio clip.");
     if (
@@ -176,13 +173,16 @@ export function editTransitions(
     Schema.encodeSync(TransitionSchema)(t),
   );
   if ("addTransition" in command) context.createdIDs.push(t.id);
-  return replace(p, {
+  const result = replace(p, {
     ...track,
     transitions:
       "addTransition" in command
         ? [...track.transitions, stored]
         : track.transitions.map((value) => (value.id === t.id ? stored : value)),
   });
+  return hasSoundPatch
+    ? patchTransitionSound(result, t.id, soundPatch, context, oldMiddle)
+    : result;
 }
 export function transitionProgress(type: string, p: number) {
   p = Math.max(0, Math.min(1, p));

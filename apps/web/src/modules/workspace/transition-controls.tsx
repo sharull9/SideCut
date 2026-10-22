@@ -20,6 +20,7 @@ import {
   DialogTrigger,
 } from "@sidecut/ui/components/dialog";
 import { useEditorSession } from "./editor-session";
+import { defaultTransitionSound, TransitionSoundControls } from "./transition-sound-controls";
 
 type TransitionValue = Track["transitions"][number];
 function TransitionForm({
@@ -59,7 +60,17 @@ function TransitionForm({
       onSubmit={(event) => {
         event.preventDefault();
         const fields = { type, direction, duration: Number(duration) };
-        if (transition) run({ updateTransition: { transitionID: transition.id, patch: fields } });
+        const sound = defaultTransitionSound(snapshot.project, type);
+        if (transition)
+          run({
+            updateTransition: {
+              transitionID: transition.id,
+              patch: {
+                ...fields,
+                ...(transition.type !== type && sound !== undefined ? { sound } : {}),
+              },
+            },
+          });
         else {
           const next = track.clips.find(
             (c) => clip && c.start.flicks === clip.start.flicks + clip.duration.flicks,
@@ -67,6 +78,7 @@ function TransitionForm({
           run({
             addTransition: {
               trackID: track.id,
+              ...(sound == null ? {} : { sound }),
               transition: {
                 ...fields,
                 fromClipID: side === "head" ? null : clip?.id,
@@ -139,8 +151,8 @@ function TransitionForm({
         </Field>
         <FieldDescription>
           Two-clip transitions center on the cut. Head and tail transitions stay inside the clip.
-          Missing picture handles hold the source edge. Audio crossfades and transition sounds need
-          later renderers.
+          Missing picture handles hold the source edge. Audio crossfades use equal power and keep
+          unavailable source handles silent.
         </FieldDescription>
         <Button size="xs" type="submit" variant="outline" disabled={disabled}>
           {transition ? "Apply transition" : "Add transition"}
@@ -178,6 +190,11 @@ export function TransitionInspector({ clip }: { clip: Clip }) {
               {String(t.type)} · {String(t.duration)} s
             </summary>
             <TransitionForm key={`${t.id}:${snapshot.revision}`} track={track} transition={t} />
+            <TransitionSoundControls
+              key={`sound:${t.id}:${snapshot.revision}`}
+              track={track}
+              transition={t}
+            />
           </details>
         ))}
     </section>

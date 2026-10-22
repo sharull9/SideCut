@@ -1005,3 +1005,29 @@ button.editor-track-name:focus-visible {
   font-size: 11px;
   font-weight: 500;
 }
+.editor-job-status,
+.editor-mix-meter {
+  position: absolute;
+  z-index: 2;
+  left: 0.75rem;
+  right: 0.75rem;
+  padding: 0.35rem 0.5rem;
+  background: var(--background);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  font-size: 0.7rem;
+}
+.editor-job-status {
+  top: 0.5rem;
+}
+.editor-job-status > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+.editor-mix-meter {
+  bottom: 0.5rem;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}

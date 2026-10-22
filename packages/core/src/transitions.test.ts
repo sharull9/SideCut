@@ -41,17 +41,13 @@ const transition = (extra: Record<string, unknown> = {}) => ({
 });
 const cuts = () => [track("v", [clip("left"), clip("right", 2, 2)])];
 describe("transition commands", () => {
-  it("keeps tied sound timing intact until sound lifecycle editing is available", () => {
+  it("updates tied sound timing and preserves explicitly detached clips", () => {
     const c = new ProjectCoordinator(
       file(cuts(), [track("a", [clip("sound")], { kind: "audio" })]),
     );
     apply(c, { addTransition: { trackID: "v", transition: transition({ soundClipID: "sound" }) } });
-    const before = c.getSnapshot();
-    expect(() =>
-      apply(c, { updateTransition: { transitionID: "tr", patch: { duration: 2 } } }),
-    ).toThrow(/Untie/);
-    expect(() => apply(c, { removeTransition: { transitionID: "tr" } })).toThrow(/Untie/);
-    expect(c.getSnapshot()).toBe(before);
+    apply(c, { updateTransition: { transitionID: "tr", patch: { duration: 2 } } });
+    expect(c.getSnapshot().project.audioTracks[0]!.clips[0]!.start.seconds).toBe(0);
     apply(c, {
       updateTransition: { transitionID: "tr", patch: { soundClipID: null, duration: 2 } },
     });

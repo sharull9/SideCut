@@ -26,6 +26,7 @@ export const renderedEffects = new Set([
   "pitchShift",
   "compressor",
   "limiter",
+  "voiceCleanup",
   "sharpen",
   "blur",
   "pixelate",

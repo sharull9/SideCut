@@ -48,13 +48,18 @@ export async function measureSource(
   file: File,
   reader: Pick<LocalMediaReader, "audio">,
   signal: AbortSignal,
+  onProgress: (value: number) => void = () => {},
+  duration = Infinity,
 ): Promise<MeasuredSound> {
   signal.throwIfAborted();
   const identity = await audioIdentity(file);
   signal.throwIfAborted();
   const existing = memory.get(identity) ?? (await cache(identity));
   signal.throwIfAborted();
-  if (existing) return existing;
+  if (existing) {
+    onProgress(1);
+    return existing;
+  }
   let meter: LoudnessMeter | undefined;
   for await (const item of reader.audio(0, Infinity)) {
     signal.throwIfAborted();
@@ -65,6 +70,7 @@ export async function measureSource(
     meter.process(
       Array.from({ length: buffer.numberOfChannels }, (_, c) => buffer.getChannelData(c)),
     );
+    onProgress(Math.min(0.99, (item.timestamp + item.duration) / duration));
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
   signal.throwIfAborted();
@@ -73,5 +79,6 @@ export async function measureSource(
   if (memory.size >= 32) memory.delete(memory.keys().next().value!);
   memory.set(identity, result);
   await cache(identity, result);
+  onProgress(1);
   return result;
 }

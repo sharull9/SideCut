@@ -3,7 +3,9 @@ import { decodeProjectFile } from "@sidecut/contracts/project";
 import { LoudnessMeter } from "@sidecut/core/loudness";
 import { masterAudio, mixTimelineAudio, prepareTimelineAudio } from "./audio";
 import { Time } from "@sidecut/contracts/time";
+import { cleanVoice } from "@sidecut/core/audio-processing";
 import { audioIdentity, measureSource } from "./audio-analysis";
+import * as voice from "./voice-isolation";
 const rate = 48000;
 const buffer = (values: Float32Array) =>
   ({
@@ -39,6 +41,69 @@ const p = (audio: object) =>
       ],
     },
   }).project;
+it("retains samples when decoded packet timestamps round above the sample clock", async () => {
+  const source = {
+    audio: async function* () {
+      for (let first = 0; first < rate; first += 2048) {
+        const length = Math.min(2048, rate - first);
+        yield {
+          buffer: buffer(new Float32Array(length).fill(0.25)),
+          timestamp: first / rate + 1e-15,
+          duration: length / rate,
+        };
+      }
+    },
+  };
+  const values: number[] = [];
+  for await (const block of mixTimelineAudio(
+    p({}),
+    async () => source,
+    new AbortController().signal,
+  ))
+    values.push(...block.data.subarray(0, block.frames));
+  expect(Math.min(...values.slice(144, -144))).toBeCloseTo(0.25, 6);
+});
+it("processes dry and isolated dynamics independently before blending normalized audio", async () => {
+  const isolation = vi
+    .spyOn(voice, "isolateVoice")
+    .mockImplementation(async (channels) =>
+      channels.map((c) => Float32Array.from(c, (sample) => sample * 0.1)),
+    );
+  const collect = async (mix: number) => {
+    const values: number[] = [];
+    for await (const block of mixTimelineAudio(
+      p({
+        voiceIsolation: mix,
+        gainDB: 3,
+        normalizeTo: -20,
+        effects: [
+          {
+            id: "cleanup",
+            type: "voiceCleanup",
+            enabled: true,
+            params: { highPass: 0, expanderThreshold: -40, expanderRange: 20 },
+          },
+        ],
+      }),
+      async () => reader(new Float32Array(rate).fill(0.002)),
+      new AbortController().signal,
+      rate,
+      4096,
+      0.5,
+      { measure: async () => ({ integratedLUFS: -24, truePeakDBTP: -30, loudnessRange: 0 }) },
+    ))
+      values.push(...block.data.subarray(0, block.frames));
+    return values;
+  };
+  try {
+    const dry = await collect(0),
+      half = await collect(0.5),
+      wet = await collect(1);
+    expect(half[12000]).toBeCloseTo((dry[12000]! + wet[12000]!) / 2, 8);
+  } finally {
+    isolation.mockRestore();
+  }
+});
 it("processes source offsets with gain, equal-power fades and cached normalization", async () => {
   const project = p({ gainDB: -6, normalizeTo: -20, fadeIn: 0.2, fadeOut: 0.2 });
   const measure = vi.fn(async () => ({ integratedLUFS: -30, truePeakDBTP: -20, loudnessRange: 0 }));
@@ -126,4 +191,85 @@ it("prepares later processed clips before playback and reuses their PCM without 
   const abort = new AbortController();
   abort.abort();
   await expect(prepareTimelineAudio(project, read, abort.signal)).rejects.toThrow();
+});
+it("crossfades centered source handles in equal power and leaves unavailable handles silent", async () => {
+  const project = decodeProjectFile({
+    revision: 0,
+    project: {
+      media: [{ id: "m", path: "tone.wav", kind: "audio", duration: 2 }],
+      audioTracks: [
+        {
+          id: "a",
+          kind: "audio",
+          clips: [
+            { id: "left", duration: 0.5, sourceStart: 0.25, content: { media: { mediaID: "m" } } },
+            {
+              id: "right",
+              start: 0.5,
+              duration: 0.5,
+              sourceStart: 0.75,
+              content: { media: { mediaID: "m" } },
+            },
+          ],
+          transitions: [
+            { id: "tr", type: "dissolve", duration: 0.3, fromClipID: "left", toClipID: "right" },
+          ],
+        },
+      ],
+    },
+  }).project;
+  const samples: number[] = [];
+  for await (const block of mixTimelineAudio(
+    project,
+    async () => reader(new Float32Array(rate * 2).fill(0.25)),
+    new AbortController().signal,
+  ))
+    samples.push(...block.data.subarray(0, block.frames));
+  expect(samples[rate / 2]).toBeCloseTo(0.25 * Math.SQRT2, 6);
+  expect(samples[Math.round(rate * 0.35)]).toBeCloseTo(0.25, 6);
+  expect(samples[Math.round(rate * 0.65)]).toBeCloseTo(0.25, 6);
+  let jump = 0;
+  for (let i = Math.round(rate * 0.34); i < rate * 0.66; i++)
+    jump = Math.max(jump, Math.abs(samples[i + 1]! - samples[i]!));
+  expect(jump).toBeLessThan(0.0001);
+  const bounded = {
+    ...project,
+    media: project.media.map((m) => ({ ...m, duration: Time.fromSeconds(0.5) })),
+    audioTracks: project.audioTracks.map((t) => ({
+      ...t,
+      clips: t.clips.map((c) => ({ ...c, sourceStart: Time.fromSeconds(0) })),
+    })),
+  };
+  const values: number[] = [];
+  for await (const block of mixTimelineAudio(
+    bounded,
+    async () => reader(new Float32Array(rate / 2).fill(0.25)),
+    new AbortController().signal,
+  ))
+    values.push(...block.data.subarray(0, block.frames));
+  expect(values[Math.round(rate * 0.49)]).toBeCloseTo(
+    0.25 * Math.sin(((Math.PI / 2) * (0.65 - 0.49)) / 0.3),
+    5,
+  );
+});
+it("removes rumble and expands room noise while retaining an active speech-band tone", async () => {
+  const rms = (data: Float32Array, from = rate / 2) =>
+    Math.sqrt(data.subarray(from).reduce((sum, x) => sum + x * x, 0) / (data.length - from));
+  const rumble = Float32Array.from(
+      { length: rate },
+      (_, i) => 0.1 * Math.sin((2 * Math.PI * 30 * i) / rate),
+    ),
+    tone = Float32Array.from(
+      { length: rate },
+      (_, i) => 0.1 * Math.sin((2 * Math.PI * 1000 * i) / rate),
+    );
+  const before = rms(rumble);
+  await cleanVoice([rumble], rate, { highPass: 80, expanderRange: 0 });
+  expect(20 * Math.log10(rms(rumble) / before)).toBeLessThan(-15);
+  const original = rms(tone);
+  await cleanVoice([tone], rate, { highPass: 80 });
+  expect(rms(tone) / original).toBeGreaterThan(0.98);
+  const quiet = new Float32Array(rate).fill(0.001);
+  await cleanVoice([quiet], rate, { highPass: 0, expanderThreshold: -40, expanderRange: 10 });
+  expect(rms(quiet) / 0.001).toBeCloseTo(10 ** (-10 / 20), 2);
 });

@@ -1,0 +1,6 @@
+{
+  "cancelled": true,
+  "restartedBytes": 17653,
+  "stale": false,
+  "statuses": ["cancelled", "done"]
+}

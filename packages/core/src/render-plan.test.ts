@@ -67,12 +67,9 @@ describe("browser export preflight", () => {
     ).toBe(true);
     expect(() =>
       exportPlan(
-        project(
-          [],
-          [{ id: "v", kind: "audio", clips: [{ ...clip, audio: { voiceIsolation: 1 } }] }],
-        ),
+        project([], [{ id: "v", kind: "audio", clips: [{ ...clip, audio: { pan: 1 } }] }]),
       ),
-    ).toThrow(/Voice isolation/);
+    ).toThrow(/panning/);
   });
   it("accepts neutral audio properties on ordinary cuts", () => {
     expect(

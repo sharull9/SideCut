@@ -4,6 +4,7 @@ import { Button } from "@sidecut/ui/components/button";
 import { Time } from "@sidecut/contracts/time";
 import { useEditorSession, useEditorView } from "./editor-session";
 import { SourcePreview } from "./source-preview";
+import { JobStatus } from "./job-status";
 import { timecode, stepFrame, projectDuration } from "./timeline-model";
 
 export function Viewer() {
@@ -12,6 +13,7 @@ export function Viewer() {
     playing = useEditorView((state) => state.playing);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [meter, setMeter] = useState<{ peakDB: number; rmsDB: number } | null>(null);
   const { project } = snapshot;
   useEffect(() => {
     if (!canvas.current) return;
@@ -21,6 +23,7 @@ export function Viewer() {
       (time) => editor.setState({ playhead: Time.fromSeconds(time) }),
       () => editor.getState().setPlaying(false),
       setError,
+      setMeter,
     );
     let current = session.getSnapshot().project;
     let availability = session.getSnapshot().mediaAvailability;
@@ -94,6 +97,18 @@ export function Viewer() {
         </span>
       </div>
       <div className="editor-viewer-stage">
+        <JobStatus />
+        {meter && (
+          <div
+            className="editor-mix-meter"
+            aria-label="Preview mix levels"
+            role={meter.peakDB > 0 ? "alert" : undefined}
+          >
+            Peak {Number.isFinite(meter.peakDB) ? meter.peakDB.toFixed(1) : "−∞"} dBFS · RMS{" "}
+            {Number.isFinite(meter.rmsDB) ? meter.rmsDB.toFixed(1) : "−∞"} dBFS{" "}
+            {meter.peakDB > 0 && "· Clipping: lower clip gain or add a limiter"}
+          </div>
+        )}
         <div
           className="editor-canvas"
           style={{

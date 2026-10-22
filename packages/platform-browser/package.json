@@ -9,6 +9,8 @@
     "./media": "./src/media.ts",
     "./save-queue": "./src/save-queue.ts",
     "./audio": "./src/audio.ts",
+    "./jobs": "./src/jobs.ts",
+    "./voice-isolation": "./src/voice-isolation.ts",
     "./audio-analysis": "./src/audio-analysis.ts",
     "./preview": "./src/preview.ts",
     "./lut": "./src/lut.ts",
@@ -19,8 +21,10 @@
     "typecheck": "vp exec tsc --noEmit"
   },
   "dependencies": {
+    "@jitsi/rnnoise-wasm": "0.2.1",
     "@sidecut/contracts": "workspace:*",
     "@sidecut/core": "workspace:*",
+    "effect": "catalog:",
     "mediabunny": "catalog:"
   },
   "devDependencies": {

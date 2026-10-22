@@ -8,6 +8,8 @@ import { activeClips, previewIssue, projectDuration } from "./timeline-model";
 import type { BrowserProjectSession } from "./browser-session";
 
 export class SourcePreview {
+  private levels: { start: number; end: number; peakDB: number; rmsDB: number }[] = [];
+  private nextMeter = 0;
   private project: Project;
   private readonly lut;
   private readers = new Map<string, Promise<LocalMediaReader>>();
@@ -29,6 +31,7 @@ export class SourcePreview {
     private readonly onTime: (time: number) => void,
     private readonly onStopped: () => void,
     private readonly onError: (message: string | null) => void,
+    private readonly onMeter: (level: { peakDB: number; rmsDB: number } | null) => void = () => {},
   ) {
     this.project = session.getSnapshot().project;
     this.lut = createLUTLoader((id) => session.resource(id));
@@ -167,16 +170,22 @@ export class SourcePreview {
       if (token !== this.token || this.disposed) return;
       const work = new AbortController();
       this.audioWork = work;
-      const measure = async (id: string) => {
+      const measure = async (id: string, signal = work.signal) => {
         const local = await this.session.resource(id);
         if (!local || local.state !== "available") throw new Error(`Source ${id} is missing.`);
-        return measureSource(local.file, await this.reader(id), work.signal);
+        return measureSource(local.file, await this.reader(id), signal);
       };
-      const prepared = await prepareTimelineAudio(
-        this.project,
-        (id) => this.reader(id),
+      const prepared = await this.session.jobs.run(
+        "preview-audio",
+        "Prepare preview sound",
+        0,
         work.signal,
-        { start: time, measure },
+        (signal, progress) =>
+          prepareTimelineAudio(this.project, (id) => this.reader(id), signal, {
+            start: time,
+            measure: (id) => measure(id, signal),
+            onProgress: progress,
+          }),
       );
       work.signal.throwIfAborted();
       const blocks = mixTimelineAudio(
@@ -206,6 +215,14 @@ export class SourcePreview {
       const tick = () => {
         if (token !== this.token || !this.playing || !this.clock) return;
         const position = this.clock.position(end);
+        if (position >= this.nextMeter) {
+          this.nextMeter = position + 0.1;
+          this.levels = this.levels.filter((level) => level.end > position);
+          const level = this.levels.find(
+            (value) => value.start <= position && value.end > position,
+          );
+          this.onMeter(level ?? null);
+        }
         this.onTime(position);
         this.paint(
           position >= end
@@ -252,6 +269,18 @@ export class SourcePreview {
         const late = Math.max(0, context.currentTime - when);
         const duration = item.frames / item.sampleRate;
         if (duration > late) {
+          let peak = 0,
+            energy = 0;
+          for (const sample of item.data) {
+            peak = Math.max(peak, Math.abs(sample));
+            energy += sample * sample;
+          }
+          this.levels.push({
+            start: item.timestamp,
+            end: item.timestamp + duration,
+            peakDB: peak > 0 ? 20 * Math.log10(peak) : -Infinity,
+            rmsDB: energy > 0 ? 10 * Math.log10(energy / item.data.length) : -Infinity,
+          });
           const buffer = context.createBuffer(2, item.frames, item.sampleRate);
           for (let c = 0; c < 2; c++)
             buffer
@@ -295,6 +324,9 @@ export class SourcePreview {
     this.nodes.clear();
     this.audioWork?.abort();
     this.audioWork = null;
+    this.levels = [];
+    this.nextMeter = 0;
+    this.onMeter(null);
   }
   private fail(error: unknown) {
     this.stop();

@@ -2,6 +2,7 @@
 import type { Project, Track } from "@sidecut/contracts/project";
 import type { Clip } from "@sidecut/contracts/project";
 import { effectsOf } from "./effect-editing";
+import { transitionWindow } from "./transitions";
 
 export function seamlessAudio(a: Clip, b: Clip) {
   const mediaID = (c: Clip) =>
@@ -55,11 +56,25 @@ export function audioSegments(project: Project) {
       if (typeof mediaID !== "string") return [];
       const item = project.media.find((media) => media.id === mediaID);
       if (!item?.hasAudio) return [];
+      const windowFor = (side: "fromClipID" | "toClipID") => {
+        const transition = track.transitions.find((t) => t[side] === clip.id);
+        return transition ? transitionWindow(track, transition) : null;
+      };
+      const headWindow = windowFor("toClipID"),
+        tailWindow = windowFor("fromClipID"),
+        renderStart = Math.min(clip.start.seconds, headWindow?.start ?? Infinity),
+        renderEnd = Math.max(
+          clip.start.seconds + clip.duration.seconds,
+          tailWindow?.end ?? -Infinity,
+        );
       const range = {
-        from: Math.max(0, clip.sourceStart.seconds),
+        from: Math.max(
+          0,
+          clip.sourceStart.seconds + (renderStart - clip.start.seconds) * clip.speed,
+        ),
         to: Math.min(
           item.duration?.seconds ?? Infinity,
-          clip.sourceStart.seconds + clip.duration.seconds * clip.speed,
+          clip.sourceStart.seconds + (renderEnd - clip.start.seconds) * clip.speed,
         ),
       };
       if (range.to <= range.from) return [];
@@ -68,6 +83,10 @@ export function audioSegments(project: Project) {
           clip,
           trackID: track.id,
           mediaID,
+          renderStart,
+          renderEnd,
+          headWindow,
+          tailWindow,
           sourceStart: range.from,
           sourceEnd: range.to,
           start: clip.start.seconds + (range.from - clip.sourceStart.seconds) / clip.speed,

@@ -10,7 +10,7 @@ role/synced placement, angle switching, animated picture compositing, and local 
 
 The [Tandem parity roadmap](docs/tandem-parity-roadmap.md) breaks the editor, media,
 desktop, and agent work into small phases with acceptance checks and a pinned
-upstream feature inventory. Phases 001-066 have implementations, with phase 028's
+upstream feature inventory. Phases 001-084 have implementations, with phase 028's
 public-host acceptance still pending: synthetic reference
 fixtures, exact flick timing, a browser media feasibility probe, and Effect schemas
 for projects, tracks, media, and clips, project validation, atomic command batches,
@@ -27,10 +27,13 @@ Video tracks show picture and remain silent; place sound on an audio track.
 Use the ruler to seek, the transport to step/play/pause, and Fit or zoom controls
 to navigate. Shift/Ctrl/Command-click selects multiple clips. Preview supports
 multiple video/image/solid layers with fit, position, scale, and clockwise rotation,
-fractional crop, opacity, and picture keyframes, plus one unprocessed audio source
-at a time. Color adjustment, HSL, color wheels, LUTs, and vignette render in both
+fractional crop, opacity, and picture keyframes, plus mixed audio tracks. Color adjustment, HSL, color wheels, LUTs, and vignette render in both
 preview and export. Sharpen, blur, pixelate, borders, rounded corners, and shadows
-also render. Transitions, audio processing, and mixing remain planned. Split with Ctrl/Cmd+K or
+also render. Adjustment layers, picture transitions, and audio crossfades render in
+preview and export. Audio controls support gain, fades, loudness normalization,
+pitch, dynamics, voice cleanup, and local RNNoise isolation. Transition sounds are
+ordinary editable SFX clips, with per-project defaults. Live mix meters show
+clipping, and background jobs expose progress and cancellation. Split with Ctrl/Cmd+K or
 Ctrl/Cmd+B, trim with edge handles or inspector fields, and drag clips to move.
 Delete lifts selected clips; Shift+Delete removes their time. Link/Unlink controls
 keep picture and sound edits together. Export renders supported source edits
@@ -64,7 +67,7 @@ immediate or animated from the playhead.
 Keyframes support transform, opacity, crop, gain, and existing effect parameter
 paths, with add/update/remove and previous/next navigation. Times are relative to
 the selected clip. Picture and supported color-effect keys render in preview/export.
-Sound and other effect keys remain stored for their later renderers. Motion presets generate full-clip zooms
+Gain and pitch keys render too; unsupported effect keys remain stored for later renderers. Motion presets generate full-clip zooms
 and pans with linear position/scale keys and an amount from 1 to 3.
 
 The Effects inspector adds, enables, reorders, resets, and removes effects using

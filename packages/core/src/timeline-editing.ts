@@ -14,6 +14,7 @@ const max = (a: Time, b: Time) => (a.flicks > b.flicks ? a : b);
 export class EditContext {
   private state: bigint;
   readonly cutFrom = new Map<string, string>();
+  readonly placedSounds = new Set<string>();
   private groups = new Map<string, string>();
   constructor(
     seed: bigint,

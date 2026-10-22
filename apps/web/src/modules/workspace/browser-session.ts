@@ -11,6 +11,7 @@ import type { ProjectFile } from "@sidecut/contracts/project";
 import { BrowserProjectStore } from "@sidecut/platform-browser/storage";
 import { acquireProjectWriter } from "@sidecut/platform-browser/writer-lock";
 import { SaveQueue } from "@sidecut/platform-browser/save-queue";
+import { BrowserJobs } from "@sidecut/platform-browser/jobs";
 import { probeLocalFile, mediaIdentity } from "@sidecut/platform-browser/media";
 
 export interface MediaAvailability {
@@ -62,6 +63,7 @@ function coordinatorState(coordinator: ProjectCoordinator): SessionSnapshot {
 }
 
 export class BrowserProjectSession {
+  readonly jobs = new BrowserJobs(2);
   private archivedRaw: string | null = null;
   private envelope = standardProject("prj_loading");
   private coordinator = new ProjectCoordinator(this.envelope);
@@ -238,11 +240,21 @@ export class BrowserProjectSession {
     this.update({ busy: true });
     try {
       const { renderWebM } = await import("@sidecut/platform-browser/export");
-      return await renderWebM(
-        project,
-        (id) => store.resource(project.id, id),
+      return await this.jobs.run(
+        "export",
+        "Export video",
+        10,
         AbortSignal.any([signal, controller.signal]),
-        onProgress,
+        (jobSignal, progress) =>
+          renderWebM(
+            project,
+            (id) => store.resource(project.id, id),
+            jobSignal,
+            (value) => {
+              progress(value);
+              onProgress(value);
+            },
+          ),
       );
     } finally {
       if (this.exportController === controller) this.exportController = null;
@@ -306,6 +318,7 @@ export class BrowserProjectSession {
   async openProject(file: File) {
     if (!this.store || this.state.busy || this.state.saveState === "loading")
       throw new Error("Wait for browser storage to finish opening.");
+    this.jobs.cancelAll();
     const epoch = this.epoch;
     this.update({ busy: true, error: null });
     let candidateRelease: (() => void) | null = null;
@@ -466,6 +479,7 @@ export class BrowserProjectSession {
   }
 
   async close() {
+    this.jobs.cancelAll();
     this.exportController?.abort();
     ++this.epoch;
     this.unsubscribe?.();

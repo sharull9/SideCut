@@ -3,6 +3,8 @@ import { framePlan, layerGeometry, sourceCrop } from "@sidecut/core/render-plan"
 import type { ClipEffect } from "@sidecut/contracts/project";
 import type { CubeLUT } from "@sidecut/core/cube-lut";
 import { effectsOf } from "@sidecut/core/effect-editing";
+import { pixelScale, layerStyles } from "@sidecut/core/layer-styles";
+import { paintStyledLayer } from "./layer-styles";
 import { processPicture } from "./color-processing";
 import type { LocalMediaReader } from "./preview";
 
@@ -34,6 +36,14 @@ export async function paintPicture(
       ...((media?.look ?? []) as readonly ClipEffect[]),
       ...effectsOf(layer.clip, "video"),
     ];
+    const geometry = layerGeometry(
+      layer.clip,
+      width,
+      height,
+      frame?.width ?? width,
+      frame?.height ?? height,
+    );
+    if (geometry.width < 1e-4 || geometry.height < 1e-4) continue;
     let source: CanvasImageSource | null = frame?.canvas ?? null;
     if (effects.some((fx) => fx.enabled !== false)) {
       if (!source && layer.color) {
@@ -55,15 +65,29 @@ export async function paintPicture(
           effects,
           lut,
           signal,
+          pixelScale(width, height) / (geometry.width / (frame?.width ?? width)),
         );
     }
-    const geometry = layerGeometry(
-      layer.clip,
-      width,
-      height,
-      frame?.width ?? width,
-      frame?.height ?? height,
-    );
+    const style = layerStyles(effectsOf(layer.clip, "video"), width, height);
+    if (source && (style.radius > 0 || style.border > 0 || style.shadow.opacity > 0)) {
+      const sw = frame?.width ?? width,
+        sh = frame?.height ?? height,
+        crop = sourceCrop(layer.clip, sw, sh);
+      if (crop.width <= 0 || crop.height <= 0) continue;
+      await paintStyledLayer(
+        ctx,
+        source,
+        sw,
+        sh,
+        crop,
+        geometry,
+        style,
+        Math.max(0, Math.min(1, Number(layer.clip.video?.opacity ?? 1))),
+        signal,
+      );
+      timestamp = frame?.timestamp ?? null;
+      continue;
+    }
     ctx.save();
     try {
       ctx.globalAlpha = Math.max(0, Math.min(1, Number(layer.clip.video?.opacity ?? 1)));

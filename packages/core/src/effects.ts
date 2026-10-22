@@ -21,7 +21,18 @@ export interface EffectDefinition {
   params: readonly ParamDefinition[];
 }
 export const effectRegistry = definitions as readonly EffectDefinition[];
-export const renderedEffects = new Set(["colorAdjust", "hsl", "colorWheels", "lut", "vignette"]);
+export const styleEffects = new Set(["roundedCorners", "border", "dropShadow"]);
+export const renderedEffects = new Set([
+  "sharpen",
+  "blur",
+  "pixelate",
+  ...styleEffects,
+  "colorAdjust",
+  "hsl",
+  "colorWheels",
+  "lut",
+  "vignette",
+]);
 export const effectDefinition = (type: string) => effectRegistry.find((d) => d.type === type);
 export function resolvedParams(effect: ClipEffect): Record<string, unknown> {
   const params = {

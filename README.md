@@ -10,7 +10,7 @@ role/synced placement, angle switching, animated picture compositing, and local 
 
 The [Tandem parity roadmap](docs/tandem-parity-roadmap.md) breaks the editor, media,
 desktop, and agent work into small phases with acceptance checks and a pinned
-upstream feature inventory. Phases 001-060 have implementations, with phase 028's
+upstream feature inventory. Phases 001-066 have implementations, with phase 028's
 public-host acceptance still pending: synthetic reference
 fixtures, exact flick timing, a browser media feasibility probe, and Effect schemas
 for projects, tracks, media, and clips, project validation, atomic command batches,
@@ -29,7 +29,8 @@ to navigate. Shift/Ctrl/Command-click selects multiple clips. Preview supports
 multiple video/image/solid layers with fit, position, scale, and clockwise rotation,
 fractional crop, opacity, and picture keyframes, plus one unprocessed audio source
 at a time. Color adjustment, HSL, color wheels, LUTs, and vignette render in both
-preview and export. Other effects, transitions, and audio mixing remain planned. Split with Ctrl/Cmd+K or
+preview and export. Sharpen, blur, pixelate, borders, rounded corners, and shadows
+also render. Transitions, audio processing, and mixing remain planned. Split with Ctrl/Cmd+K or
 Ctrl/Cmd+B, trim with edge handles or inspector fields, and drag clips to move.
 Delete lifts selected clips; Shift+Delete removes their time. Link/Unlink controls
 keep picture and sound edits together. Export renders supported source edits
@@ -54,7 +55,8 @@ alignment by sound is planned.
 
 Picture controls edit position, scale, clockwise rotation, fractional source crop,
 and opacity. Layout presets include Full, PiP left/right, Split, and Fill. PiP
-preserves the reference cutout/shadow settings; those renderers are still planned.
+preserves the reference cutout/shadow settings. Shadows render; cutout processing
+is still planned and enabled cutout settings block rendering.
 Reset layout to full removes those settings. Select source region opens an
 original-source preview with drag selection and numeric coordinates. Zoom can be
 immediate or animated from the playhead.
@@ -68,10 +70,18 @@ and pans with linear position/scale keys and an amount from 1 to 3.
 The Effects inspector adds, enables, reorders, resets, and removes effects using
 registry defaults and ranges. Color wheels support pointer dragging, arrow keys,
 and numeric entry. Apply parameters saves the draft; Reset effect removes the
-effect and its keys. Media looks run before clip effects, then crop and transform.
+effect and its keys. Media looks precede clip color and spatial effects. Crop is
+followed by rounded corners, border, transform, shadow, and group opacity. Each
+style uses its first enabled instance, independent of its position in the stack.
+Style effects in media looks are ignored, as in the reference. Spatial sizes marked
+px@1080 follow the output short side; sharpening follows source resolution.
+Borders provide a colored backing behind transparent image holes. Cutout-following
+outlines remain dependent on the later cutout renderer.
 LUTs accept 1D or 3D `.cube` files up to 32 MB and stay in browser storage. Import
 the referenced LUT on each device; an unavailable LUT blocks rendering. CPU color
-processing can be slower than real time on large sources or long stacks.
+processing can be slower than real time on large sources or long stacks. Browser
+sharpening and Gaussian blur are portable approximations of Core Image, with
+recorded synthetic tolerances and native pixel comparison still pending.
 
 Picture speed changes and held frames export locally. Audio at another speed and
 speech levelling still need later renderers and produce explicit preflight errors.
@@ -130,6 +140,9 @@ animated preview/export pixel checks.
 
 The [phases 055-060 report](docs/verification/phases-055-060.md) records effect
 commands, color processing, LUT storage, browser/export checks, and tolerances.
+
+The [phases 061-066 report](docs/verification/phases-061-066.md) records spatial
+filters, fixed-order layer styles, alpha fixtures, animation, and kernel limits.
 
 ## Development
 

@@ -63,8 +63,9 @@ function EffectStack({ clip }: { clip: Clip }) {
   return (
     <FieldGroup>
       <FieldDescription>
-        Effects run from top to bottom before crop and transform. Media looks run first. Numeric
-        parameters can be animated in Keyframes.
+        Color, sharpen, blur, and pixelate run in list order after the media look. Crop is followed
+        by rounded corners, border, transform, shadow, and opacity. The first enabled effect
+        supplies each style. Numeric parameters can be animated in Keyframes.
       </FieldDescription>
       <Field>
         <FieldLabel htmlFor="effect-type">Add effect</FieldLabel>
@@ -203,17 +204,12 @@ function EffectParameters({
           patch: Record<string, unknown> = {};
         for (const p of definition.params) {
           const raw = data.get(p.key);
-          try {
-            patch[p.key] =
-              typeof p.defaultValue === "number"
-                ? Number(raw)
-                : p.kind === "color"
-                  ? JSON.parse(String(raw))
-                  : raw;
-          } catch {
-            setError(`Invalid JSON for ${p.name}.`);
-            return;
-          }
+          patch[p.key] =
+            typeof p.defaultValue === "number"
+              ? Number(raw)
+              : p.kind === "color"
+                ? (draft[p.key] ?? p.defaultValue)
+                : raw;
         }
         save(patch);
       }}
@@ -333,16 +329,20 @@ function EffectParameters({
                   onChange={(e) => setPath(e.target.value)}
                   disabled={disabled}
                 />
+              ) : p.kind === "color" ? (
+                <EffectColor
+                  id={`fx-${effect.id}-${p.key}`}
+                  value={draft[p.key] ?? p.defaultValue}
+                  fallback={p.defaultValue}
+                  disabled={disabled}
+                  onChange={(value) => setDraft({ ...draft, [p.key]: value })}
+                />
               ) : (
                 <Input
                   id={`fx-${effect.id}-${p.key}`}
                   name={p.key}
                   type={typeof p.defaultValue === "number" ? "number" : "text"}
-                  value={
-                    p.kind === "color" && typeof draft[p.key] !== "string"
-                      ? JSON.stringify(draft[p.key] ?? p.defaultValue)
-                      : String(draft[p.key] ?? p.defaultValue)
-                  }
+                  value={String(draft[p.key] ?? p.defaultValue)}
                   onChange={(e) => setDraft({ ...draft, [p.key]: e.target.value })}
                   min={p.min}
                   max={p.max}
@@ -359,5 +359,71 @@ function EffectParameters({
         {error && <FieldError role="alert">{error}</FieldError>}
       </FieldGroup>
     </form>
+  );
+}
+
+function EffectColor({
+  id,
+  value,
+  fallback,
+  disabled,
+  onChange,
+}: {
+  id: string;
+  value: unknown;
+  fallback: unknown;
+  disabled: boolean;
+  onChange: (value: Record<string, number>) => void;
+}) {
+  const color = value && typeof value === "object" ? (value as Record<string, unknown>) : {},
+    base = fallback as Record<string, number>;
+  const rgba = Object.fromEntries(
+    ["r", "g", "b", "a"].map((key) => [
+      key,
+      Math.max(0, Math.min(1, typeof color[key] === "number" ? color[key] : (base[key] ?? 1))),
+    ]),
+  );
+  const hex =
+    "#" +
+    ["r", "g", "b"]
+      .map((key) =>
+        Math.round(rgba[key]! * 255)
+          .toString(16)
+          .padStart(2, "0"),
+      )
+      .join("");
+  return (
+    <>
+      <Input
+        id={id}
+        type="color"
+        value={hex}
+        disabled={disabled}
+        onChange={(e) =>
+          onChange({
+            ...rgba,
+            ...Object.fromEntries(
+              ["r", "g", "b"].map((key, i) => [
+                key,
+                parseInt(e.target.value.slice(i * 2 + 1, i * 2 + 3), 16) / 255,
+              ]),
+            ),
+          })
+        }
+      />
+      <Field>
+        <FieldLabel htmlFor={`${id}-opacity`}>Colour opacity (%)</FieldLabel>
+        <Input
+          id={`${id}-opacity`}
+          type="number"
+          min={0}
+          max={100}
+          step={1}
+          value={Math.round(rgba.a! * 100)}
+          disabled={disabled}
+          onChange={(e) => onChange({ ...rgba, a: Number(e.target.value) / 100 })}
+        />
+      </Field>
+    </>
   );
 }

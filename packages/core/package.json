@@ -6,6 +6,8 @@
   "exports": {
     "./validation": "./src/validation.ts",
     "./coordinator": "./src/coordinator.ts",
+    "./spatial-processing": "./src/spatial-processing.ts",
+    "./layer-styles": "./src/layer-styles.ts",
     "./effects": "./src/effects.ts",
     "./effect-editing": "./src/effect-editing.ts",
     "./color-processing": "./src/color-processing.ts",

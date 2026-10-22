@@ -1,6 +1,6 @@
 # Tandem parity roadmap
 
-Status: phases 001-027 and 029-060 are implemented and verified on Windows Chromium. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), and [055-060 evidence and limits](verification/phases-055-060.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
+Status: phases 001-027 and 029-066 are implemented and verified on Windows Chromium. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), and [061-066 evidence and limits](verification/phases-061-066.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
 
 ## Goal and baseline
 
@@ -468,43 +468,43 @@ Accept when center and edge falloff match the reference test image.
 
 ### Phase 061: Sharpen
 
-- [ ] Implement `sharpen` parameters and rendering.
-- [ ] Connect enabled and strength controls.
+- [x] Implement `sharpen` parameters and rendering.
+- [x] Connect enabled and strength controls.
 
 Accept when a synthetic edge image matches the recorded tolerance without altering alpha unexpectedly.
 
 ### Phase 062: Blur
 
-- [ ] Implement `blur` parameters and edge handling.
-- [ ] Connect blur controls and keyframes.
+- [x] Implement `blur` parameters and edge handling.
+- [x] Connect blur controls and keyframes.
 
 Accept when animated blur matches preview/export on an alpha fixture.
 
 ### Phase 063: Pixelate
 
-- [ ] Implement `pixelate` block geometry.
-- [ ] Connect its inspector controls.
+- [x] Implement `pixelate` block geometry.
+- [x] Connect its inspector controls.
 
 Accept when block alignment and strength match reference frames.
 
 ### Phase 064: Drop shadow
 
-- [ ] Implement `dropShadow` using the reference alpha/transform order.
-- [ ] Connect shadow color, offset, and softness controls.
+- [x] Implement `dropShadow` using the reference alpha/transform order.
+- [x] Connect shadow color, offset, and softness controls.
 
 Accept when transparent overlays cast the expected shadow without an opaque rectangle.
 
 ### Phase 065: Border
 
-- [ ] Implement `border` thickness and color semantics.
-- [ ] Expose its controls for a transformed layer.
+- [x] Implement `border` thickness and color semantics.
+- [x] Expose its controls for a transformed layer.
 
 Accept when border geometry matches reference images at two output resolutions.
 
 ### Phase 066: Rounded corners
 
-- [ ] Implement `roundedCorners` clipping.
-- [ ] Verify its position in the crop/effect/shadow pipeline.
+- [x] Implement `roundedCorners` clipping.
+- [x] Verify its position in the crop/effect/shadow pipeline.
 
 Accept when a cropped PiP layer has the expected corner and shadow shape.
 

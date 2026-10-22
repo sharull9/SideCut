@@ -1,6 +1,10 @@
 import { ProjectCoordinator } from "@sidecut/core/coordinator";
 import type { SessionSnapshot, CommitResult } from "@sidecut/core/coordinator";
-import { decodeProjectFile, encodeProjectFile } from "@sidecut/contracts/project";
+import {
+  decodeProjectFile,
+  encodeProjectFile,
+  inspectProjectFile,
+} from "@sidecut/contracts/project";
 import type { ProjectFile } from "@sidecut/contracts/project";
 import { BrowserProjectStore } from "@sidecut/platform-browser/storage";
 import { acquireProjectWriter } from "@sidecut/platform-browser/writer-lock";
@@ -17,6 +21,7 @@ export interface BrowserSnapshot extends SessionSnapshot {
   readOnly: boolean;
   busy: boolean;
   error: string | null;
+  unsupportedJSON: string | null;
   mediaAvailability: Readonly<Record<string, MediaAvailability>>;
 }
 
@@ -55,6 +60,7 @@ function coordinatorState(coordinator: ProjectCoordinator): SessionSnapshot {
 }
 
 export class BrowserProjectSession {
+  private archivedRaw: string | null = null;
   private envelope = standardProject("prj_loading");
   private coordinator = new ProjectCoordinator(this.envelope);
   private state: BrowserSnapshot = {
@@ -64,6 +70,7 @@ export class BrowserProjectSession {
     readOnly: true,
     busy: false,
     error: null,
+    unsupportedJSON: null,
     mediaAvailability: {},
   };
   private store: BrowserProjectStore | null = null;
@@ -87,7 +94,14 @@ export class BrowserProjectSession {
     const epoch = ++this.epoch;
     let store: BrowserProjectStore | null = null;
     let release: (() => void) | null = null;
-    this.update({ saveState: "loading", readOnly: true, busy: false, error: null });
+    this.archivedRaw = null;
+    this.update({
+      saveState: "loading",
+      readOnly: true,
+      busy: false,
+      error: null,
+      unsupportedJSON: null,
+    });
     try {
       store = await BrowserProjectStore.open();
       if (epoch !== this.epoch) {
@@ -100,7 +114,10 @@ export class BrowserProjectSession {
         return;
       }
       release = await acquireProjectWriter(file.project.id);
-      const latest = (await store.load(file.project.id)) ?? file;
+      const loaded = (await store.load(file.project.id)) ?? file;
+      const latest = file.sidecutRecovery
+        ? { ...loaded, sidecutRecovery: file.sidecutRecovery }
+        : loaded;
       if (epoch !== this.epoch) {
         release?.();
         store.close();
@@ -160,7 +177,7 @@ export class BrowserProjectSession {
       saveState: readOnly ? "read-only" : "saved",
       error: null,
       mediaAvailability: {},
-      warnings: [],
+      warnings: typeof file.sidecutRecovery === "string" ? [file.sidecutRecovery] : [],
     });
   }
 
@@ -196,7 +213,7 @@ export class BrowserProjectSession {
     return this.coordinator.redo();
   }
   projectFile(): ProjectFile {
-    return { ...this.envelope, revision: this.state.revision, project: this.state.project };
+    return this.coordinator.projectFile();
   }
 
   async resource(mediaID: string) {
@@ -237,6 +254,8 @@ export class BrowserProjectSession {
   }
 
   async enableEditing() {
+    if (this.archivedRaw)
+      throw new Error("This imported project uses unsupported data and must stay read-only.");
     if (!this.store || !this.state.readOnly || this.state.busy) return;
     const epoch = this.epoch;
     this.update({ busy: true, error: null });
@@ -288,7 +307,22 @@ export class BrowserProjectSession {
         throw new Error(
           "Project JSON exceeds the 20 MB import limit. Select a .tandem project, not a media file.",
         );
-      const candidate = decodeProjectFile(JSON.parse(await file.text()));
+      const original = await file.text();
+      const inspected = inspectProjectFile(JSON.parse(original));
+      if (!inspected.editable) {
+        if (!this.state.readOnly) await this.queue?.flush();
+        this.assertOpen(epoch);
+        this.release?.();
+        this.release = null;
+        this.attach(
+          decodeProjectFile({ revision: 0, project: { id: "prj_unsupported", name: file.name } }),
+          true,
+        );
+        this.archivedRaw = original;
+        this.update({ warnings: [inspected.reason], unsupportedJSON: original, error: null });
+        return;
+      }
+      const candidate = inspected.file;
       this.assertOpen(epoch);
       new ProjectCoordinator(candidate).getSnapshot();
       if (!this.state.readOnly) await this.queue?.flush();
@@ -303,6 +337,8 @@ export class BrowserProjectSession {
         this.release?.();
         this.release = candidateRelease;
       }
+      this.archivedRaw = null;
+      this.update({ unsupportedJSON: null });
       this.attach(latest, this.release === null);
       candidateRelease = null;
       await this.refreshMedia();
@@ -315,10 +351,12 @@ export class BrowserProjectSession {
   }
 
   downloadProject() {
-    const json = encodeProjectFile(this.projectFile());
+    const json = this.archivedRaw ?? encodeProjectFile(this.projectFile());
     // Run the same full validator used for editing before exporting a project.
-    const validated = new ProjectCoordinator(decodeProjectFile(JSON.parse(json))).getSnapshot();
-    if (validated.project.id === "prj_loading")
+    const validated = this.archivedRaw
+      ? null
+      : new ProjectCoordinator(decodeProjectFile(JSON.parse(json))).getSnapshot();
+    if (validated?.project.id === "prj_loading")
       throw new Error("Wait for a project to open before downloading it.");
     const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
     const anchor = document.createElement("a");

@@ -64,7 +64,7 @@ describe("timeline view model", () => {
       ...value,
       videoTracks: [...value.videoTracks, { ...value.videoTracks[0]!, id: "trk_upper" }],
     };
-    expect(previewIssue(stacked, 1.5)).toMatch(/one picture/);
+    expect(previewIssue(stacked, 1.5)).toBeNull();
     expect(
       activeClips(
         {

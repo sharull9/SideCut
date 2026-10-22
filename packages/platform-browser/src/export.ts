@@ -1,11 +1,6 @@
+import { paintPicture } from "./picture";
 import type { Project, Clip } from "@sidecut/contracts/project";
-import {
-  activeClips,
-  enabledTracks,
-  pictureTime,
-  audioRange,
-  exportPlan,
-} from "@sidecut/core/render-plan";
+import { enabledTracks, audioRange, exportPlan } from "@sidecut/core/render-plan";
 import type { LocalResource } from "./storage";
 import { LocalMediaReader } from "./preview";
 
@@ -88,6 +83,7 @@ export async function renderWebM(
       [...enabledTracks(project, "video"), ...enabledTracks(project, "audio")].flatMap((t) =>
         t.clips
           .filter((c) => c.enabled && !(t.kind === "audio" && (c.audio?.muted || c.freezeFrame)))
+          .filter((c) => c.content.media != null)
           .map(id),
       ),
     );
@@ -99,21 +95,7 @@ export async function renderWebM(
       for (let index = 0; index < count; index++) {
         signal.throwIfAborted();
         const time = index / plan.fps;
-        ctx.fillStyle = "black";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        const current = activeClips(project, time, "video")[0];
-        if (current) {
-          const frame = await (
-            await reader(id(current.clip))
-          ).frame(pictureTime(project, current.clip, time));
-          signal.throwIfAborted();
-          if (frame) {
-            const scale = Math.min(canvas.width / frame.width, canvas.height / frame.height);
-            const w = frame.width * scale,
-              h = frame.height * scale;
-            ctx.drawImage(frame.canvas, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
-          }
-        }
+        await paintPicture(ctx, project, time, reader, signal);
         await video.add(time, 1 / plan.fps);
         onProgress(((index + 1) / count) * 0.95);
         if (index % 3 === 0) await new Promise((resolve) => setTimeout(resolve, 0));

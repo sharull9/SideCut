@@ -101,14 +101,18 @@ export function Viewer() {
             width: `min(100cqw,${(100 * project.settings.width) / project.settings.height}cqh)`,
           }}
         >
-          <canvas ref={canvas} aria-label="Sequence source preview" data-testid="source-preview" />
+          <canvas ref={canvas} aria-label="Sequence picture preview" data-testid="source-preview" />
           {error && (
             <p role="alert" className="editor-preview-error">
               {error}
             </p>
           )}
           {projectDuration(project).flicks === 0n && (
-            <p className="editor-preview-placeholder">Drop a source on a timeline track</p>
+            <p className="editor-preview-placeholder">
+              {snapshot.unsupportedJSON
+                ? "Preview unavailable for this project format"
+                : "Drop a source on a timeline track"}
+            </p>
           )}
         </div>
       </div>

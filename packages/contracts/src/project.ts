@@ -215,17 +215,68 @@ export function decodeProjectFile(input: unknown): ProjectFile {
       typeof project === "object" &&
       "schemaVersion" in project &&
       project.schemaVersion != null &&
-      project.schemaVersion !== SCHEMA_VERSION
+      project.schemaVersion !== SCHEMA_VERSION &&
+      project.schemaVersion !== 1
     ) {
       throw new Error(
-        `Unsupported Tandem schema version ${String(project.schemaVersion)}. Supported version: 2. Legacy migration arrives in phase 046.`,
+        `Unsupported Tandem schema version ${String(project.schemaVersion)}. Supported versions: 1 and 2. Open this file read-only to preserve its data.`,
       );
     }
   }
-  return Schema.decodeUnknownSync(ProjectFileSchema)(json);
+  return Schema.decodeUnknownSync(ProjectFileSchema)(migrateProjectJSON(json));
 }
 
 export function encodeProjectFile(file: ProjectFile): string {
   const encoded = Schema.encodeSync(ProjectFileSchema)(file);
   return JSON.stringify(Schema.decodeUnknownSync(Schema.Json)(encoded), null, 2);
+}
+
+// Schema 1 treated these text defaults as absent. Reference: TandemCore/TextStyles.swift.
+function migrateProjectJSON(json: typeof Schema.Json.Type): typeof Schema.Json.Type {
+  const copy = JSON.parse(JSON.stringify(json));
+  if (copy?.project?.schemaVersion !== 1) return copy;
+  const defaults: Record<string, unknown> = {
+    font: "SF Pro Display",
+    size: 64,
+    weight: 800,
+    color: { r: 1, g: 1, b: 1, a: 1 },
+    strokeWidth: 0,
+    alignment: "center",
+    uppercase: false,
+    shadow: false,
+    lineSpacing: 0,
+  };
+  for (const track of [...(copy.project.videoTracks ?? []), ...(copy.project.audioTracks ?? [])])
+    for (const clip of track.clips ?? []) {
+      const text = clip.content?.text;
+      if (!text) continue;
+      for (const [key, value] of Object.entries(defaults)) {
+        const actual = text.style?.[key];
+        const same =
+          key === "color"
+            ? actual && actual.r === 1 && actual.g === 1 && actual.b === 1 && (actual.a ?? 1) === 1
+            : actual === value;
+        if (same) delete text.style[key];
+      }
+      if (text.animationDuration === 0.4) delete text.animationDuration;
+    }
+  copy.project.schemaVersion = SCHEMA_VERSION;
+  return copy;
+}
+
+export function inspectProjectFile(
+  input: unknown,
+): { editable: true; file: ProjectFile } | { editable: false; raw: string; reason: string } {
+  const json = Schema.decodeUnknownSync(Schema.Json)(input);
+  if (!json || typeof json !== "object" || !("project" in json))
+    throw new Error("Select a Tandem project envelope.");
+  try {
+    return { editable: true, file: decodeProjectFile(json) };
+  } catch (error) {
+    return {
+      editable: false,
+      raw: JSON.stringify(json, null, 2),
+      reason: `Read-only import: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
 }

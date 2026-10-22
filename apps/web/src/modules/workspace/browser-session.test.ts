@@ -170,4 +170,36 @@ describe("persistent browser session", () => {
     expect(value.getSnapshot().mediaAvailability.med_image?.state).toBe("available");
     expect(JSON.stringify(value.projectFile())).not.toContain("synthetic");
   });
+  it("opens unsupported projects read-only without writing or enabling edits", async () => {
+    const value = session();
+    await value.start();
+    const previous = saved;
+    await value.openProject(
+      new File(
+        [JSON.stringify({ revision: 5, project: { schemaVersion: 99, future: true } })],
+        "future.tandem",
+      ),
+    );
+    expect(value.getSnapshot().readOnly).toBe(true);
+    expect(value.getSnapshot().warnings[0]).toMatch(/Read-only import/);
+    expect(saved).toBe(previous);
+    await expect(value.enableEditing()).rejects.toThrow(/unsupported/);
+    expect(() => rename(value, "bad")).toThrow(/read-only/);
+  });
+  it("keeps a retried command idempotent after a save and session reopen", async () => {
+    const value = session();
+    await value.start();
+    const batch = {
+      label: "Rename",
+      author: "agent",
+      idempotencyKey: "rename",
+      commands: [{ updateProject: { patch: { name: "Saved" } } }],
+    };
+    const result = value.apply(batch);
+    await value.close();
+    const reopened = session();
+    await reopened.start();
+    expect(reopened.apply(batch)).toEqual(result);
+    expect(reopened.getSnapshot().revision).toBe(1);
+  });
 });

@@ -1,6 +1,6 @@
 # Tandem parity roadmap
 
-Status: phases 001-027 and 029-042 are implemented and verified on Windows Chromium. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), and [037-042 evidence and limits](verification/phases-037-042.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
+Status: phases 001-027 and 029-048 are implemented and verified on Windows Chromium. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), and [043-048 evidence and limits](verification/phases-043-048.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
 
 ## Goal and baseline
 
@@ -340,29 +340,29 @@ Accept when screen/camera/voice keep their timing relationship across placement 
 
 ### Phase 043: Angle selection
 
-- [ ] Implement `showAngle` for a range and selected angle track.
-- [ ] Add an angle-switch action using the command.
+- [x] Implement `showAngle` for a range and selected angle track.
+- [x] Add an angle-switch action using the command.
 
 Accept when enabled picture changes without doubling voice or losing source synchronization.
 
 ### Phase 044: Journal
 
-- [ ] Persist revisioned command entries with deterministic IDs and authors.
-- [ ] Replay the journal from a saved snapshot.
+- [x] Persist revisioned command entries with deterministic IDs and authors.
+- [x] Replay the journal from a saved snapshot.
 
 Accept when replay produces the same project and cannot duplicate a retried edit.
 
 ### Phase 045: Recovery
 
-- [ ] Recover from an interrupted snapshot/journal write.
-- [ ] Preserve a recoverable previous version and explain save conflicts.
+- [x] Recover from an interrupted snapshot/journal write.
+- [x] Preserve a recoverable previous version and explain save conflicts.
 
 Accept when injected failures cannot replace a valid project with partial data.
 
 ### Phase 046: Schema migration
 
-- [ ] Port the older-schema migrations present in the pinned reference.
-- [ ] Preserve future or unsupported fields in a safe read-only import path.
+- [x] Port the older-schema migrations present in the pinned reference.
+- [x] Preserve future or unsupported fields in a safe read-only import path.
 
 Accept when a supported legacy fixture upgrades correctly and an unsupported project cannot be destructively resaved.
 
@@ -370,15 +370,15 @@ Accept when a supported legacy fixture upgrades correctly and an unsupported pro
 
 ### Phase 047: Render plan
 
-- [ ] Map project time to active layers and source ranges in portable render-core.
-- [ ] Make preview and export consume that same plan.
+- [x] Map project time to active layers and source ranges in portable render-core.
+- [x] Make preview and export consume that same plan.
 
 Accept when layer order, disabled tracks, gaps, and cut boundaries have fixture assertions.
 
 ### Phase 048: Composite picture
 
-- [ ] Composite multiple video/image/solid layers.
-- [ ] Match canvas fit, normalized position, and clockwise rotation.
+- [x] Composite multiple video/image/solid layers.
+- [x] Match canvas fit, normalized position, and clockwise rotation.
 
 Accept when the reference picture-in-picture fixture has the expected geometry.
 

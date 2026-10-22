@@ -20,6 +20,12 @@ const defaultText = (value: string) =>
   );
 
 const CommandBody = Schema.Union([
+  Schema.Struct({
+    showAngle: Schema.Struct({
+      range: Schema.Struct({ start: TimeSchema, duration: TimeSchema }),
+      trackID: Schema.String,
+    }),
+  }),
   Schema.Struct({ join: Schema.Struct({ clipID: Schema.String }) }),
   Schema.Struct({
     joinThroughEdits: Schema.Struct({

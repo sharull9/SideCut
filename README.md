@@ -6,18 +6,18 @@ The editor has resizable panels, editable sequence properties, browser autosave,
 project open/download, a local media bin, and a timeline with track controls,
 source placement, zoom, selection, seeking, source playback, split/trim/move,
 linked edits, ripple deletion/insertion, roll/slip/slide, joins, speed, held frames,
-role/synced placement, and local WebM export.
+role/synced placement, angle switching, picture compositing, and local WebM export.
 
 The [Tandem parity roadmap](docs/tandem-parity-roadmap.md) breaks the editor, media,
 desktop, and agent work into small phases with acceptance checks and a pinned
-upstream feature inventory. Phases 001-042 have implementations, with phase 028's
+upstream feature inventory. Phases 001-048 have implementations, with phase 028's
 public-host acceptance still pending: synthetic reference
 fixtures, exact flick timing, a browser media feasibility probe, and Effect schemas
 for projects, tracks, media, and clips, project validation, atomic command batches,
 undo/redo, a resizable editor frame, sequence properties, project persistence,
 single-writer browser tabs, local media registration/import, track commands,
 non-ripple clip placement, timeline navigation/selection, source preview, and
-audio-clock-driven transport. Thirty command families have implementations.
+audio-clock-driven transport. Thirty-one command families have implementations.
 `insertClip` supports `place` and `insert`; `moveClips` supports `place`. Trimming
 supports both ripple and non-ripple edits. Undo history remains in memory and resets
 on reload.
@@ -26,8 +26,9 @@ Import a source and drag it to a compatible track, or choose Place at playhead.
 Video tracks show picture and remain silent; place sound on an audio track.
 Use the ruler to seek, the transport to step/play/pause, and Fit or zoom controls
 to navigate. Shift/Ctrl/Command-click selects multiple clips. Preview supports
-one unprocessed picture and one unprocessed audio source at a time. Compositing,
-effects, transitions, and audio mixing remain planned. Split with Ctrl/Cmd+K or
+multiple video/image/solid layers with fit, position, scale, and clockwise rotation,
+plus one unprocessed audio source at a time. Crop, opacity controls, effects,
+transitions, and audio mixing remain planned. Split with Ctrl/Cmd+K or
 Ctrl/Cmd+B, trim with edge handles or inspector fields, and drag clips to move.
 Delete lifts selected clips; Shift+Delete removes their time. Link/Unlink controls
 keep picture and sound edits together. Export renders supported source edits
@@ -46,12 +47,24 @@ speed, and held-frame ranges. Join next clip and Join through-edits remove
 compatible cuts while retaining linked timing. Each bin source has Role and take
 placement controls for source roles, known take offsets, paired placement, and
 adding a synced angle or external mic to an existing take. Synced angles start
-disabled; angle range switching is planned. Automatic alignment by sound is planned.
+disabled. In the inspector, choose an Angle track and a timeline range, then Show
+selected angle. Choosing the camera track returns to the base picture. Automatic
+alignment by sound is planned.
 
 Picture speed changes and held frames export locally. Audio at another speed and
 speech levelling still need later renderers and produce explicit preflight errors.
 Role placement preserves the reference speech-level defaults; mute unsupported
 sound to export supported picture edits.
+
+Commands, deterministic IDs, authors, and undo/redo snapshots now persist in a
+revisioned journal. Browser saves stage the journal before atomically replacing the
+snapshot and retaining the previous version. Reopening recovers interrupted saves;
+a conflicting writer cannot overwrite a different stored copy. Command retry keys
+survive reload, while the interactive undo stack still resets.
+
+Schema 1 projects migrate legacy title defaults to schema 2. Unsupported schemas
+or content open read-only with an original-JSON inspector. Download preserves the
+original file text, and that import never replaces the saved project.
 
 Projects and imported source files persist in IndexedDB for this browser profile
 and origin. Download a project copy for backup. A `.tandem` download contains project
@@ -85,6 +98,10 @@ The [phases 037-042 report](docs/verification/phases-037-042.md) covers joins,
 speed, held frames/edges, clip patches, role defaults, synced placement, and their
 rendering limits.
 
+The [phases 043-048 report](docs/verification/phases-043-048.md) covers angle
+switching, journal replay, recovery fault injection, migration, shared render plans,
+and composite preview/export pixels.
+
 ## Development
 
 Install the [Vite+ CLI](https://viteplus.dev/guide/) and use `vp` for all project commands. Use Node.js 24.18 or a newer Node 24 release. Vite+ manages the pnpm version pinned in `package.json` underneath; no direct pnpm commands are needed.
@@ -114,7 +131,7 @@ Dependency commands are `vp add <package>`, `vp remove <package>`, `vp update`, 
 - `apps/web`: TanStack Start in SPA mode, TanStack Router, and feature modules under `src/modules`. Routes compose features.
 - `packages/ui`: generated shadcn components, shared styles/fonts, and the template's `cn` utility.
 - `packages/config`: TypeScript, Oxlint, and Oxfmt presets. Each family exports `base`, `web`, and `desktop` entry points.
-- `packages/contracts`: portable Effect project schemas and exact `bigint` flick timing. The current decoder supports schema version 2. Older-schema migration is planned in phase 046.
+- `packages/contracts`: portable Effect project schemas and exact `bigint` flick timing. The decoder supports schema version 2 and migrates schema 1; unsupported formats have a read-only import path.
 - `packages/core`: portable project validation and a synchronous atomic coordinator with revision checks, idempotency, subscriptions, and labelled undo/redo.
 - `packages/platform-browser`: IndexedDB project/resource storage, Web Locks writer ownership, save serialization, local media analysis/decoding through MediaBunny, and playback-clock mapping. The web session connects this adapter to the portable coordinator. Zustand owns transient view state in the workspace module.
 

@@ -1,4 +1,5 @@
-import { pictureTime, audioRange } from "@sidecut/core/render-plan";
+import { audioRange } from "@sidecut/core/render-plan";
+import { paintPicture } from "@sidecut/platform-browser/picture";
 import { LocalMediaReader, PlaybackClock } from "@sidecut/platform-browser/preview";
 import type { Project, Clip } from "@sidecut/contracts/project";
 import { activeClips, previewIssue, projectDuration } from "./timeline-model";
@@ -17,6 +18,7 @@ export class SourcePreview {
   private painting = false;
   private wanted: { time: number; token: number } | null = null;
   private disposed = false;
+  private scratch: HTMLCanvasElement | null = null;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -83,29 +85,18 @@ export class SourcePreview {
   private async draw(time: number, token: number) {
     const issue = previewIssue(this.project, time);
     if (issue) throw new Error(issue);
-    const current = activeClips(this.project, time, "video")[0];
-    const frame = current
-      ? await (
-          await this.reader(this.mediaID(current.clip))
-        ).frame(pictureTime(this.project, current.clip, time))
-      : null;
+    const scratch = (this.scratch ??= document.createElement("canvas"));
+    scratch.width = this.canvas.width;
+    scratch.height = this.canvas.height;
+    const stage = scratch.getContext("2d");
+    if (!stage) throw new Error("Canvas preview is unavailable.");
+    const timestamp = await paintPicture(stage, this.project, time, (id) => this.reader(id));
     if (token !== this.token || this.disposed) return;
     const ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("Canvas preview is unavailable.");
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    if (frame) {
-      const scale = Math.min(this.canvas.width / frame.width, this.canvas.height / frame.height);
-      const width = frame.width * scale,
-        height = frame.height * scale;
-      ctx.drawImage(
-        frame.canvas,
-        (this.canvas.width - width) / 2,
-        (this.canvas.height - height) / 2,
-        width,
-        height,
-      );
-      this.canvas.dataset.sourceTime = String(frame.timestamp);
-    } else delete this.canvas.dataset.sourceTime;
+    ctx.drawImage(scratch, 0, 0);
+    if (timestamp == null) delete this.canvas.dataset.sourceTime;
+    else this.canvas.dataset.sourceTime = String(timestamp);
   }
   seek(time: number) {
     this.stop();

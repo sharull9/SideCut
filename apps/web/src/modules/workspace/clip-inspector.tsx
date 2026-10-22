@@ -10,6 +10,23 @@ export function ClipInspector() {
   const clips = [...snapshot.project.videoTracks, ...snapshot.project.audioTracks]
     .flatMap((track) => track.clips)
     .filter((clip) => selected.includes(clip.id));
+  if (snapshot.unsupportedJSON)
+    return (
+      <div className="editor-inspector-section">
+        <h3>Read-only project</h3>
+        <p>
+          This file uses unsupported project data. Download project preserves the original JSON.
+          Open a supported project to edit.
+        </p>
+        <details>
+          <summary>Original project JSON</summary>
+          <pre className="editor-project-json">{snapshot.unsupportedJSON.slice(0, 50000)}</pre>
+          {snapshot.unsupportedJSON.length > 50000 && (
+            <p>Showing the first 50,000 characters. Download the project for the complete file.</p>
+          )}
+        </details>
+      </div>
+    );
   if (!clips.length)
     return (
       <>

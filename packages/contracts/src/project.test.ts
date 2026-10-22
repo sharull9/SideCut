@@ -105,7 +105,7 @@ describe("Tandem project wire format", () => {
     expect(() => decodeProjectFile({ revision: 0, project: { settings: { width: 0 } } })).toThrow(
       /width/,
     );
-    for (const version of [1, 3, 99]) {
+    for (const version of [0, 3, 99]) {
       expect(() => decodeProjectFile({ revision: 0, project: { schemaVersion: version } })).toThrow(
         /Unsupported Tandem schema version/,
       );

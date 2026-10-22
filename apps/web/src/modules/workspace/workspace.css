@@ -668,3 +668,9 @@
     transition: none;
   }
 }
+
+.editor-project-json {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.75rem;
+}

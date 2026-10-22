@@ -6,6 +6,8 @@ import {
   MediaItemSchema,
   ProjectSettingsSchema,
   TrackSchema,
+  encodeProjectFile,
+  decodeProjectFile,
 } from "@sidecut/contracts/project";
 import type { Project, ProjectFile } from "@sidecut/contracts/project";
 import { Time } from "@sidecut/contracts/time";
@@ -13,6 +15,7 @@ import { validateProject } from "./validation";
 import type { ValidationIssue } from "./validation";
 import { editTimeline, settleTimeline, EditContext, batchSeed } from "./timeline-editing";
 import { editThroughCuts } from "./through-edits";
+import { editAngle } from "./angle-selection";
 import { editPlacement } from "./media-placement";
 
 type Json = typeof Schema.Json.Type;
@@ -109,6 +112,7 @@ function applyCommand(
   context: EditContext,
 ): Project {
   let edited =
+    editAngle(project, command, context) ??
     editThroughCuts(project, command, context) ??
     editPlacement(project, command, context) ??
     editTimeline(project, command, context);
@@ -341,13 +345,28 @@ export class ProjectCoordinator {
   private results = new Map<string, CommitResult>();
   private listeners = new Set<() => void>();
   private publishing = false;
+  private journalBase: string;
+  private journal: JournalEntry[];
 
   constructor(file: ProjectFile) {
     this.assertValid(file.project);
+    const history = file.sidecutJournal as { base: string; entries: JournalEntry[] } | undefined;
+    const { sidecutJournal: _history, ...base } = file;
+    this.journalBase = history?.base ?? encodeProjectFile(base);
+    this.journal = freeze(history ? clone(history.entries) : []);
+    for (const entry of this.journal) {
+      const key = entry.batch?.idempotencyKey;
+      if (typeof key === "string") this.results.set(key, freeze(clone(entry.result)));
+    }
     this.state = freeze({ ...clone(file), undoLabel: null, redoLabel: null, lastChange: null });
   }
 
   getSnapshot = (): SessionSnapshot => this.state;
+
+  projectFile(): ProjectFile {
+    const { undoLabel: _undo, redoLabel: _redo, lastChange: _change, ...file } = this.state;
+    return freeze({ ...file, sidecutJournal: { base: this.journalBase, entries: this.journal } });
+  }
 
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
@@ -420,6 +439,15 @@ export class ProjectCoordinator {
       warnings,
     });
     if (batch.idempotencyKey != null) this.results.set(batch.idempotencyKey, result);
+    this.journal = freeze([
+      ...this.journal,
+      {
+        id: `${this.state.project.id}:${result.revision}`,
+        kind: "edit",
+        batch: Schema.encodeSync(EditBatchSchema)(batch),
+        result,
+      },
+    ]);
     this.publish(after, result, "edit");
     return result;
   }
@@ -446,7 +474,17 @@ export class ProjectCoordinator {
       createdIDs: [],
       warnings: [],
     });
-    this.publish(kind === "undo" ? entry.before : entry.after, result, kind);
+    const project = kind === "undo" ? entry.before : entry.after;
+    this.journal = freeze([
+      ...this.journal,
+      {
+        id: `${project.id}:${result.revision}`,
+        kind,
+        snapshot: encodeProjectFile({ revision: result.revision, project }),
+        result,
+      },
+    ]);
+    this.publish(project, result, kind);
     return result;
   }
 
@@ -493,4 +531,53 @@ export class ProjectCoordinator {
     if (error) throw new EditError("validation", error.message, error.objectID);
     return issues;
   }
+}
+
+export interface JournalEntry {
+  readonly id: string;
+  readonly kind: "edit" | "undo" | "redo";
+  readonly batch?: typeof EditBatchSchema.Encoded;
+  readonly snapshot?: string;
+  readonly result: CommitResult;
+}
+
+export function replayJournal(file: ProjectFile): ProjectFile {
+  const history = file.sidecutJournal as { base: string; entries: JournalEntry[] } | undefined;
+  if (!history) {
+    new ProjectCoordinator(file).getSnapshot();
+    return file;
+  }
+  if (typeof history.base !== "string" || !Array.isArray(history.entries))
+    throw new Error("Invalid project journal.");
+  const base = decodeProjectFile(JSON.parse(history.base));
+  if (base.sidecutJournal != null || base.project.id !== file.project.id)
+    throw new Error("Invalid journal base.");
+  let replay = new ProjectCoordinator(base);
+  for (const entry of history.entries) {
+    const revision = replay.getSnapshot().revision + 1;
+    if (entry.result.revision !== revision || entry.id !== `${base.project.id}:${revision}`)
+      throw new Error("Journal revision gap or duplicate entry.");
+    if (entry.kind === "edit" && entry.batch) {
+      const result = replay.apply(entry.batch);
+      if (JSON.stringify(result) !== JSON.stringify(entry.result))
+        throw new Error("Journal result does not match its commands.");
+    } else if ((entry.kind === "undo" || entry.kind === "redo") && entry.snapshot) {
+      const snapshot = decodeProjectFile(JSON.parse(entry.snapshot));
+      if (
+        snapshot.revision !== revision ||
+        snapshot.project.id !== base.project.id ||
+        snapshot.sidecutJournal != null
+      )
+        throw new Error("Invalid journal snapshot.");
+      replay = new ProjectCoordinator(snapshot);
+    } else throw new Error("Invalid journal entry.");
+  }
+  const state = replay.getSnapshot();
+  if (
+    state.revision !== file.revision ||
+    encodeProjectFile({ revision: state.revision, project: state.project }) !==
+      encodeProjectFile({ revision: file.revision, project: file.project })
+  )
+    throw new Error("Saved snapshot does not match its journal.");
+  return file;
 }

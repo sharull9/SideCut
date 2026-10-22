@@ -25,6 +25,7 @@ export function ClipPropertiesForm({ clip }: { clip: Clip }) {
   const track = [...snapshot.project.videoTracks, ...snapshot.project.audioTracks].find((t) =>
     t.clips.some((c) => c.id === clip.id),
   );
+  const [angleTrack, setAngleTrack] = useState(track?.id ?? "");
   const disabled = snapshot.readOnly || snapshot.busy || track?.locked;
   const run = (label: string, command: unknown) => {
     setError(null);
@@ -191,6 +192,71 @@ export function ClipPropertiesForm({ clip }: { clip: Clip }) {
             </Field>
             <Button type="submit" size="xs" variant="outline" disabled={disabled}>
               Hold frame
+            </Button>
+          </FieldGroup>
+        </form>
+      )}
+      {track?.kind === "video" && (
+        <form
+          className="editor-trim-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            run("Show synced angle", {
+              showAngle: {
+                trackID: angleTrack,
+                range: { start: Number(start), duration: Number(duration) },
+              },
+            });
+          }}
+        >
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="angle-track">Angle track</FieldLabel>
+              <select
+                id="angle-track"
+                value={angleTrack}
+                onChange={(e) => setAngleTrack(e.target.value)}
+                disabled={disabled}
+              >
+                {snapshot.project.videoTracks.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="angle-start">Angle start (timeline s)</FieldLabel>
+              <Input
+                id="angle-start"
+                type="number"
+                min="0"
+                step="any"
+                required
+                disabled={disabled}
+                value={start}
+                onChange={(e) => setStart(e.target.value)}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="angle-duration">Angle duration (s)</FieldLabel>
+              <Input
+                id="angle-duration"
+                type="number"
+                min="0.000001"
+                step="any"
+                required
+                disabled={disabled}
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+              />
+              <FieldDescription>
+                Show the selected synced angle over the range. Choose the camera track to return to
+                the base picture. Sound stays synchronized.
+              </FieldDescription>
+            </Field>
+            <Button type="submit" size="xs" variant="outline" disabled={disabled}>
+              Show selected angle
             </Button>
           </FieldGroup>
         </form>

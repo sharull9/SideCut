@@ -91,8 +91,8 @@ export function ExportDialog() {
         <DialogHeader>
           <DialogTitle>Export WebM</DialogTitle>
           <DialogDescription>
-            Render locally with VP8 video and Opus sound. This first exporter supports basic source
-            edits on one picture track and one audio track, up to five minutes.
+            Render locally with VP8 video and Opus sound. Export multiple picture layers and one
+            audio track, up to five minutes.
           </DialogDescription>
         </DialogHeader>
         {plan && (

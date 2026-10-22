@@ -52,6 +52,25 @@ describe("source preview lifecycle", () => {
     );
     vi.stubGlobal("cancelAnimationFrame", vi.fn());
     const draw = vi.fn();
+    vi.stubGlobal("document", {
+      createElement: () => {
+        const stage = {
+          width: 0,
+          height: 0,
+          getContext: () => ({
+            canvas: stage,
+            save: vi.fn(),
+            restore: vi.fn(),
+            setTransform: vi.fn(),
+            translate: vi.fn(),
+            rotate: vi.fn(),
+            fillRect: vi.fn(),
+            drawImage: vi.fn(),
+          }),
+        };
+        return stage;
+      },
+    });
     const canvas = {
       width: 64,
       height: 64,

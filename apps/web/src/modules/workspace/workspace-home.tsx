@@ -198,7 +198,7 @@ export function WorkspaceHome() {
           <AlertDescription>{snapshot.warnings.join(" ")}</AlertDescription>
         </Alert>
       )}
-      {snapshot.readOnly && snapshot.saveState === "read-only" && (
+      {snapshot.readOnly && !snapshot.unsupportedJSON && snapshot.saveState === "read-only" && (
         <Alert className="editor-notice">
           <AlertTitle>Another tab is editing this project</AlertTitle>
           <AlertDescription>

@@ -49,7 +49,7 @@ describe("browser export preflight", () => {
     );
     expect(exportPlan(p).hasAudio).toBe(false);
   });
-  it("rejects unsupported processing, stacking, empty, long and excessive-frame-rate projects", () => {
+  it("rejects unsupported processing, empty, long and excessive-frame-rate projects", () => {
     expect(() => exportPlan(project([]))).toThrow(/Place a source/);
     expect(() =>
       exportPlan(project([{ id: "v", kind: "video", clips: [{ ...clip, duration: 301 }] }])),
@@ -64,14 +64,6 @@ describe("browser export preflight", () => {
     expect(() =>
       exportPlan(project([], [{ id: "v", kind: "audio", clips: [{ ...clip, speed: 2 }] }])),
     ).toThrow(/rendering features/);
-    expect(() =>
-      exportPlan(
-        project([
-          { id: "v", kind: "video", clips: [clip] },
-          { id: "v2", kind: "video", clips: [{ ...clip, id: "other" }] },
-        ]),
-      ),
-    ).toThrow(/Compositing/);
   });
   it("accepts neutral audio properties on ordinary cuts", () => {
     expect(

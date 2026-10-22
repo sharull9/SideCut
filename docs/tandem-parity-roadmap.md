@@ -1,6 +1,6 @@
 # Tandem parity roadmap
 
-Status: phases 001-027 and 029-048 are implemented and verified on Windows Chromium. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), and [043-048 evidence and limits](verification/phases-043-048.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
+Status: phases 001-027 and 029-054 are implemented and verified on Windows Chromium. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), and [049-054 evidence and limits](verification/phases-049-054.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
 
 ## Goal and baseline
 
@@ -384,43 +384,43 @@ Accept when the reference picture-in-picture fixture has the expected geometry.
 
 ### Phase 049: Crop and opacity
 
-- [ ] Apply fractional source crop and layer opacity in reference order.
-- [ ] Connect transform/crop/opacity inspector controls through `updateClip`.
+- [x] Apply fractional source crop and layer opacity in reference order.
+- [x] Connect transform/crop/opacity inspector controls through `updateClip`.
 
 Accept when source crop and canvas movement agree in preview and export.
 
 ### Phase 050: Layout presets
 
-- [ ] Implement `applyLayout` with reference full/PiP/split presets.
-- [ ] Apply and reset presets through inspector actions.
+- [x] Implement `applyLayout` with reference full/PiP/split presets.
+- [x] Apply and reset presets through inspector actions.
 
 Accept when each preset produces the reference transforms and associated properties.
 
 ### Phase 051: Region zoom
 
-- [ ] Implement `zoomToRegion` geometry and timing.
-- [ ] Add a source-region selection interaction.
+- [x] Implement `zoomToRegion` geometry and timing.
+- [x] Add a source-region selection interaction.
 
 Accept when the selected normalized source region fills the intended canvas area.
 
 ### Phase 052: Keyframe evaluation
 
-- [ ] Implement `setKeyframes` and reference parameter addressing.
-- [ ] Evaluate number, point, color, bool, and string values with reference interpolation.
+- [x] Implement `setKeyframes` and reference parameter addressing.
+- [x] Evaluate number, point, color, bool, and string values with reference interpolation.
 
 Accept when ease curves, held values, hue wrap, and clip-relative times match fixtures.
 
 ### Phase 053: Keyframe controls
 
-- [ ] Add keyframe add/remove/navigation for one transform parameter.
-- [ ] Extend the same controls to supported effect and audio parameters.
+- [x] Add keyframe add/remove/navigation for one transform parameter.
+- [x] Extend the same controls to supported effect and audio parameters.
 
 Accept when an animated property is editable and undoable without modifying unrelated keyframes.
 
 ### Phase 054: Motion presets
 
-- [ ] Implement `addMotion` using the reference preset definitions.
-- [ ] Expose its duration and available motion choices.
+- [x] Implement `addMotion` using the reference preset definitions.
+- [x] Expose its duration and available motion choices.
 
 Accept when photo motion respects source overflow and matches generated keyframes.
 

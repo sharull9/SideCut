@@ -1,3 +1,4 @@
+import { KeyframeSchema } from "@sidecut/contracts/project";
 import { Schema } from "effect";
 import type { Project, Track, Clip } from "@sidecut/contracts/project";
 import { Time, flicksPerFrame } from "@sidecut/contracts/time";
@@ -227,6 +228,16 @@ export function validateProject(project: Project): ValidationIssue[] {
       for (const [path, keys] of Object.entries(clip.keyframes)) {
         let last = -Infinity;
         for (const key of keys) {
+          try {
+            Schema.decodeUnknownSync(KeyframeSchema)(key);
+          } catch {
+            issue(
+              "keyframe-value",
+              `Keyframe for ${path} on clip ${clip.id} needs a valid value and interpolation.`,
+              clip.id,
+            );
+          }
+
           if (typeof key.time !== "number" || !Number.isFinite(key.time)) {
             issue(
               "keyframe-time",

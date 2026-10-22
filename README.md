@@ -6,18 +6,18 @@ The editor has resizable panels, editable sequence properties, browser autosave,
 project open/download, a local media bin, and a timeline with track controls,
 source placement, zoom, selection, seeking, source playback, split/trim/move,
 linked edits, ripple deletion/insertion, roll/slip/slide, joins, speed, held frames,
-role/synced placement, angle switching, picture compositing, and local WebM export.
+role/synced placement, angle switching, animated picture compositing, and local WebM export.
 
 The [Tandem parity roadmap](docs/tandem-parity-roadmap.md) breaks the editor, media,
 desktop, and agent work into small phases with acceptance checks and a pinned
-upstream feature inventory. Phases 001-048 have implementations, with phase 028's
+upstream feature inventory. Phases 001-054 have implementations, with phase 028's
 public-host acceptance still pending: synthetic reference
 fixtures, exact flick timing, a browser media feasibility probe, and Effect schemas
 for projects, tracks, media, and clips, project validation, atomic command batches,
 undo/redo, a resizable editor frame, sequence properties, project persistence,
 single-writer browser tabs, local media registration/import, track commands,
 non-ripple clip placement, timeline navigation/selection, source preview, and
-audio-clock-driven transport. Thirty-one command families have implementations.
+audio-clock-driven transport. Thirty-five command families have implementations.
 `insertClip` supports `place` and `insert`; `moveClips` supports `place`. Trimming
 supports both ripple and non-ripple edits. Undo history remains in memory and resets
 on reload.
@@ -27,8 +27,8 @@ Video tracks show picture and remain silent; place sound on an audio track.
 Use the ruler to seek, the transport to step/play/pause, and Fit or zoom controls
 to navigate. Shift/Ctrl/Command-click selects multiple clips. Preview supports
 multiple video/image/solid layers with fit, position, scale, and clockwise rotation,
-plus one unprocessed audio source at a time. Crop, opacity controls, effects,
-transitions, and audio mixing remain planned. Split with Ctrl/Cmd+K or
+fractional crop, opacity, and picture keyframes, plus one unprocessed audio source
+at a time. Effects, transitions, and audio mixing remain planned. Split with Ctrl/Cmd+K or
 Ctrl/Cmd+B, trim with edge handles or inspector fields, and drag clips to move.
 Delete lifts selected clips; Shift+Delete removes their time. Link/Unlink controls
 keep picture and sound edits together. Export renders supported source edits
@@ -50,6 +50,19 @@ adding a synced angle or external mic to an existing take. Synced angles start
 disabled. In the inspector, choose an Angle track and a timeline range, then Show
 selected angle. Choosing the camera track returns to the base picture. Automatic
 alignment by sound is planned.
+
+Picture controls edit position, scale, clockwise rotation, fractional source crop,
+and opacity. Layout presets include Full, PiP left/right, Split, and Fill. PiP
+preserves the reference cutout/shadow settings; those renderers are still planned.
+Reset layout to full removes those settings. Select source region opens an
+original-source preview with drag selection and numeric coordinates. Zoom can be
+immediate or animated from the playhead.
+
+Keyframes support transform, opacity, crop, gain, and existing effect parameter
+paths, with add/update/remove and previous/next navigation. Times are relative to
+the selected clip. Picture keys render in preview/export; sound and effect keys
+remain stored for their later renderers. Motion presets generate full-clip zooms
+and pans with linear position/scale keys and an amount from 1 to 3.
 
 Picture speed changes and held frames export locally. Audio at another speed and
 speech levelling still need later renderers and produce explicit preflight errors.
@@ -101,6 +114,10 @@ rendering limits.
 The [phases 043-048 report](docs/verification/phases-043-048.md) covers angle
 switching, journal replay, recovery fault injection, migration, shared render plans,
 and composite preview/export pixels.
+
+The [phases 049-054 report](docs/verification/phases-049-054.md) covers crop and
+opacity, layouts, region zoom, keyframe evaluation/editing, motion presets, and
+animated preview/export pixel checks.
 
 ## Development
 

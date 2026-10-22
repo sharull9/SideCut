@@ -1,3 +1,4 @@
+import { resolveClip } from "./keyframes";
 import type { Project, Clip, Track } from "@sidecut/contracts/project";
 import { Time } from "@sidecut/contracts/time";
 export function projectDuration(project: Project): Time {
@@ -96,7 +97,7 @@ export function previewIssue(project: Project, time: number): string | null {
     if (
       track.transitions.length ||
       project.media.some((item) => item.id === mediaID && item.look.length > 0) ||
-      Object.keys(clip.keyframes).length ||
+      (track.kind === "audio" && Boolean(clip.keyframes["audio.gainDB"]?.length)) ||
       (track.kind === "video" ? !supportedPicture(clip) : clip.content.media == null) ||
       (clip.audio &&
         Object.entries(clip.audio).some(
@@ -111,7 +112,7 @@ export function previewIssue(project: Project, time: number): string | null {
         )) ||
       (track.kind === "audio" && clip.speed !== 1)
     )
-      return "This clip needs rendering features that are not available in the source preview yet. Audio speed changes need pitch correction; speech levelling needs source analysis.";
+      return "This clip needs rendering features that are not available in the source preview yet. Cutout, effects, and sound processing need later renderers. Audio speed changes need pitch correction; speech levelling needs source analysis.";
   }
   return null;
 }
@@ -209,8 +210,14 @@ function supportedPicture(clip: Clip): boolean {
         Object.keys(pos).every((k) => ["x", "y"].includes(k))
       );
     }
-    if (key === "opacity") return value === 1;
-    if (key === "crop") return Object.values(object(value)).every((v) => v === 0);
+    if (key === "opacity") return typeof value === "number" && Number.isFinite(value);
+    if (key === "crop")
+      return Object.entries(object(value)).every(
+        ([k, v]) =>
+          ["left", "top", "right", "bottom"].includes(k) &&
+          typeof v === "number" &&
+          Number.isFinite(v),
+      );
     if (key === "effects") return Array.isArray(value) && value.length === 0;
     if (key === "formatOverrides") return Object.keys(object(value)).length === 0;
     if (key === "cutout") return object(value).enabled === false;
@@ -222,7 +229,8 @@ function supportedPicture(clip: Clip): boolean {
 export function framePlan(project: Project, time: number) {
   return {
     time,
-    layers: activeClips(project, time, "video").map(({ clip, track }) => {
+    layers: activeClips(project, time, "video").map(({ clip: original, track }) => {
+      const clip = resolveClip(original, time);
       const reference = object(clip.content.media);
       return {
         clip,
@@ -238,5 +246,18 @@ export function framePlan(project: Project, time: number) {
       sourceTime: sourceTime(clip, time),
       range: audioRange(project, clip, time),
     })),
+  };
+}
+
+export function sourceCrop(clip: Clip, width: number, height: number) {
+  const crop = object(clip.video?.crop);
+  const clamp = (v: unknown) => Math.max(0, Math.min(1, typeof v === "number" ? v : 0));
+  const x = clamp(crop.left) * width,
+    y = clamp(crop.top) * height;
+  return {
+    x,
+    y,
+    width: Math.max(0, (1 - clamp(crop.right)) * width - x),
+    height: Math.max(0, (1 - clamp(crop.bottom)) * height - y),
   };
 }

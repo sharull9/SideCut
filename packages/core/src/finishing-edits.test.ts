@@ -474,7 +474,7 @@ describe("role and synced media placement", () => {
     ]);
     expect(clips(c, "a")).toHaveLength(2);
   });
-  it("uses the reference sticker placement and pop data, with truthful rendering preflight", () => {
+  it("uses the reference sticker placement and pop data, with renderable scale animation", () => {
     const c = setup(
       [],
       [],
@@ -497,7 +497,7 @@ describe("role and synced media placement", () => {
     expect(placedClip.duration.seconds).toBe(5);
     expect(placedClip.video?.transform).toMatchObject({ position: { x: 0.5 }, rotation: 0 });
     expect(placedClip.keyframes["video.transform.scale"]).toHaveLength(6);
-    expect(() => exportPlan(p)).toThrow(/rendering/);
+    expect(exportPlan(p).duration).toBe(5);
   });
   it("places a synced angle disabled above camera, cuts linked voice at the bounds and preserves take mapping", () => {
     const c = setup(

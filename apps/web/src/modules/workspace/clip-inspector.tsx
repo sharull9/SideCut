@@ -2,6 +2,8 @@ import { useEditorSession, useEditorView } from "./editor-session";
 import { ClipTrimForm } from "./clip-trim-form";
 import { ClipEditForm } from "./clip-edit-form";
 import { ClipPropertiesForm } from "./clip-properties-form";
+import { PictureInspector } from "./picture-controls";
+import { KeyframeControls } from "./keyframe-controls";
 import { ProjectSettings } from "./project-settings";
 import { Button } from "@sidecut/ui/components/button";
 export function ClipInspector() {
@@ -69,6 +71,8 @@ export function ClipInspector() {
             {clips.length > 1 && (
               <p>Trim the first clip and shift linked edges by the same amount.</p>
             )}
+            <PictureInspector clips={clips} />
+            <KeyframeControls clips={clips} />
             <ClipTrimForm key={`${clips[0].id}:${snapshot.revision}`} clip={clips[0]} />
             <ClipEditForm key={`edit:${clips[0].id}:${snapshot.revision}`} clip={clips[0]} />
             <ClipPropertiesForm

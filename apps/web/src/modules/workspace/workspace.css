@@ -674,3 +674,48 @@
   overflow-wrap: anywhere;
   font-size: 0.75rem;
 }
+
+.editor-region-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+.editor-region-dialog > * {
+  flex-shrink: 0;
+}
+.editor-region-source {
+  position: relative;
+  width: 100%;
+  max-height: 35dvh;
+  touch-action: none;
+  user-select: none;
+  overflow: hidden;
+  background: var(--background);
+}
+.editor-region-source canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.editor-region-source svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.editor-region-source rect {
+  fill: color-mix(in srgb, var(--primary) 15%, transparent);
+  stroke: var(--primary);
+  stroke-width: 0.004;
+}
+
+.editor-picture-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.editor-picture-fields > :is(p, button) {
+  grid-column: 1 / -1;
+}

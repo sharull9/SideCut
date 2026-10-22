@@ -1,5 +1,5 @@
 import { Effect, Schema, SchemaTransformation } from "effect";
-import { MediaItemSchema, ClipSchema, TimeSchema } from "./project";
+import { MediaItemSchema, ClipSchema, TimeSchema, KeyframeSchema } from "./project";
 
 const nullable = <S extends Schema.Constraint>(schema: S) =>
   Schema.optionalKey(Schema.NullOr(schema));
@@ -20,6 +20,40 @@ const defaultText = (value: string) =>
   );
 
 const CommandBody = Schema.Union([
+  Schema.Struct({
+    applyLayout: Schema.Struct({
+      clipIDs: Schema.Array(Schema.String),
+      preset: Schema.Literals(["full", "pipRight", "pipLeft", "split", "fill"]),
+    }),
+  }),
+  Schema.Struct({
+    zoomToRegion: Schema.Struct({
+      clipID: Schema.String,
+      rect: Schema.Struct({
+        x: Schema.Finite,
+        y: Schema.Finite,
+        width: Schema.Finite,
+        height: Schema.Finite,
+      }),
+      at: nullable(TimeSchema),
+      duration: nullable(TimeSchema),
+    }),
+  }),
+  Schema.Struct({
+    setKeyframes: Schema.Struct({
+      clipID: Schema.String,
+      parameter: Schema.String,
+      keyframes: Schema.Array(KeyframeSchema),
+    }),
+  }),
+  Schema.Struct({
+    addMotion: Schema.Struct({
+      clipIDs: Schema.Array(Schema.String),
+      style: Schema.Literals(["zoomIn", "zoomOut", "panLeft", "panRight", "panUp", "panDown"]),
+      amount: nullable(Schema.Finite),
+    }),
+  }),
+
   Schema.Struct({
     showAngle: Schema.Struct({
       range: Schema.Struct({ start: TimeSchema, duration: TimeSchema }),

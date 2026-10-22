@@ -219,7 +219,15 @@ describe("shared picture plan", () => {
         {
           ...p,
           videoTracks: [
-            { ...p.videoTracks[0]!, clips: [{ ...pip, video: { ...pip.video, opacity: 0.5 } }] },
+            {
+              ...p.videoTracks[0]!,
+              clips: [
+                {
+                  ...pip,
+                  video: { ...pip.video, effects: [{ id: "fx", type: "unknown", params: {} }] },
+                },
+              ],
+            },
           ],
         },
         1,

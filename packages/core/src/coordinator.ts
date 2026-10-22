@@ -15,6 +15,7 @@ import { validateProject } from "./validation";
 import type { ValidationIssue } from "./validation";
 import { editTimeline, settleTimeline, EditContext, batchSeed } from "./timeline-editing";
 import { editThroughCuts } from "./through-edits";
+import { editPicture } from "./picture-editing";
 import { editAngle } from "./angle-selection";
 import { editPlacement } from "./media-placement";
 
@@ -112,6 +113,7 @@ function applyCommand(
   context: EditContext,
 ): Project {
   let edited =
+    editPicture(project, command, context) ??
     editAngle(project, command, context) ??
     editThroughCuts(project, command, context) ??
     editPlacement(project, command, context) ??

@@ -51,6 +51,28 @@ export const TimeSchema = Schema.Finite.check(
   ),
 );
 
+export const ParamValueSchema = Schema.Union([
+  Schema.Finite,
+  Schema.Boolean,
+  Schema.String,
+  Schema.Struct({ x: Schema.Finite, y: Schema.Finite }),
+  Schema.Struct({
+    r: Schema.Finite,
+    g: Schema.Finite,
+    b: Schema.Finite,
+    a: fallback(Schema.Finite, () => 1),
+  }),
+]);
+export type ParamValue = typeof ParamValueSchema.Type;
+export const KeyframeSchema = keep({
+  time: TimeSchema,
+  value: ParamValueSchema,
+  interpolation: fallback(
+    Schema.Literals(["linear", "easeIn", "easeOut", "easeInOut", "hold"]),
+    () => "easeInOut" as const,
+  ),
+});
+
 export const FrameRateSchema = keep({ numerator: positiveInt, denominator: positiveInt });
 const OutputFormat = keep({
   id: Schema.String,

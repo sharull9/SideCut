@@ -6,6 +6,8 @@
   "exports": {
     "./validation": "./src/validation.ts",
     "./coordinator": "./src/coordinator.ts",
+    "./keyframes": "./src/keyframes.ts",
+    "./picture-editing": "./src/picture-editing.ts",
     "./render-plan": "./src/render-plan.ts"
   },
   "scripts": {

@@ -1,0 +1,124 @@
+import { BrowserWindow, app, ipcMain, net, protocol, session, shell } from "electron";
+import { stat } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+  bridgeChannels,
+  rendererHost,
+  rendererOrigin,
+  rendererScheme,
+  type DesktopAppInfo,
+} from "../shared/bridge.ts";
+import { resolveRendererPath } from "./renderer-path.ts";
+
+const here = dirname(fileURLToPath(import.meta.url));
+
+// SIDECUT_RENDERER_URL points the window at a local web dev server instead of the build.
+const devUrl = (() => {
+  const value = process.env["SIDECUT_RENDERER_URL"];
+  if (!value) return undefined;
+  const url = new URL(value);
+  if (url.protocol !== "http:" || !["127.0.0.1", "localhost"].includes(url.hostname))
+    throw new Error("SIDECUT_RENDERER_URL must be a local http URL.");
+  return url;
+})();
+const trustedUrl = devUrl ?? new URL(rendererOrigin);
+
+const rendererRoot = app.isPackaged
+  ? join(process.resourcesPath, "renderer")
+  : join(app.getAppPath(), "..", "web", ".output", "public");
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: rendererScheme,
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true,
+    },
+  },
+]);
+
+// URL.origin is "null" for custom schemes, so compare protocol and host directly.
+const isTrusted = (url: string) => {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === trustedUrl.protocol && parsed.host === trustedUrl.host;
+  } catch {
+    return false;
+  }
+};
+
+const serveRenderer = () =>
+  protocol.handle(rendererScheme, async (request) => {
+    const url = new URL(request.url);
+    const file = url.host === rendererHost && resolveRendererPath(rendererRoot, url.pathname);
+    const found = file && (await stat(file).catch(() => undefined))?.isFile();
+    if (!file || !found) return new Response("Not found", { status: 404 });
+    return net.fetch(pathToFileURL(file).toString());
+  });
+
+const createWindow = () => {
+  const window = new BrowserWindow({
+    width: 1440,
+    height: 900,
+    minWidth: 960,
+    minHeight: 600,
+    title: "SideCut",
+    show: false,
+    webPreferences: {
+      preload: join(here, "preload.cjs"),
+      contextIsolation: true,
+      sandbox: true,
+      nodeIntegration: false,
+      webSecurity: true,
+    },
+  });
+  window.once("ready-to-show", () => window.show());
+
+  const { webContents } = window;
+  webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith("https://")) void shell.openExternal(url);
+    return { action: "deny" };
+  });
+  webContents.on("will-navigate", (event, url) => {
+    if (!isTrusted(url)) event.preventDefault();
+  });
+
+  void window.loadURL(devUrl?.href ?? `${rendererOrigin}/`);
+};
+
+app.on("web-contents-created", (_event, contents) => {
+  contents.on("will-attach-webview", (event) => event.preventDefault());
+});
+
+void app.whenReady().then(() => {
+  session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) =>
+    callback(false),
+  );
+  session.defaultSession.setPermissionCheckHandler(() => false);
+
+  ipcMain.handle(bridgeChannels.appInfo, (event): DesktopAppInfo => {
+    if (!event.senderFrame || !isTrusted(event.senderFrame.url))
+      throw new Error("Untrusted sender.");
+    return {
+      name: app.getName(),
+      version: app.getVersion(),
+      platform: process.platform,
+      versions: { electron: process.versions.electron, chrome: process.versions.chrome },
+    };
+  });
+
+  serveRenderer();
+  createWindow();
+
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+});
+
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") app.quit();
+});

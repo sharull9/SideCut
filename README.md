@@ -183,7 +183,9 @@ Dependency commands are `vp add <package>`, `vp remove <package>`, `vp update`, 
 - `packages/core`: portable project validation and a synchronous atomic coordinator with revision checks, idempotency, subscriptions, and labelled undo/redo.
 - `packages/platform-browser`: IndexedDB project/resource storage, Web Locks writer ownership, save serialization, local media analysis/decoding through MediaBunny, and playback-clock mapping. The web session connects this adapter to the portable coordinator. Zustand owns transient view state in the workspace module.
 
-The desktop renderer will use web presets; its host process will use desktop presets. Node globals are excluded from browser TypeScript programs. Browser lint rules prohibit direct host API imports.
+- `apps/desktop`: Electron shell that loads the built web editor from `apps/web/.output/public` over a privileged `sidecut://app` scheme, with SPA route fallback. The renderer is sandboxed and context-isolated without Node integration; the preload exposes only `window.sidecutDesktop.getAppInfo()`, and the host checks each IPC sender. External links open in the system browser, other navigation is blocked, and permission requests are denied. Project authority still lives in the renderer; it moves to the host in a later phase.
+
+The desktop renderer uses web presets; its host process uses desktop presets. Node globals are excluded from browser TypeScript programs. Browser lint rules prohibit direct host API imports.
 
 ```json
 { "extends": "@sidecut/config/typescript/web.json" }
@@ -212,6 +214,14 @@ vp exec shadcn add <component> --path src/components
 Use the explicit path with the shared package's CLI to keep generated files inside
 the workspace on Windows. The generated `cn` helper re-exports the `cn` package;
 reuse it rather than adding another helper.
+
+## Desktop
+
+```sh
+vp run dev:desktop
+```
+
+This builds the web renderer and desktop bundles, downloads the pinned Electron binary on first run, and opens the app. `vp run build:desktop` builds without launching. To use the web dev server instead, run `vp run dev` and start the app with `SIDECUT_RENDERER_URL=http://127.0.0.1:3000`; only local http URLs are accepted. Electron fails to open a window if `ELECTRON_RUN_AS_NODE` is set in your shell. Desktop data uses Electron's own profile, separate from browser storage. Packaging and installers are not set up yet.
 
 ## Static hosting
 

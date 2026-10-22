@@ -33,7 +33,7 @@ export default defineConfig({
         rules: webLint.rules ?? {},
       },
       {
-        files: ["**/vite.config.ts", "packages/config/**/*.ts"],
+        files: ["**/vite.config.ts", "packages/config/**/*.ts", "apps/desktop/src/**/*.ts"],
         plugins: desktopLint.plugins ?? [],
         env: desktopLint.env ?? {},
         rules: desktopLint.rules ?? {},

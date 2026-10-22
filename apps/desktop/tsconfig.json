@@ -1,0 +1,4 @@
+{
+  "extends": "@sidecut/config/typescript/desktop.json",
+  "include": ["src/main/**/*.ts", "src/shared/**/*.ts", "vite.config.ts"]
+}

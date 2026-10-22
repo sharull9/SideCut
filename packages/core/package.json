@@ -6,6 +6,10 @@
   "exports": {
     "./validation": "./src/validation.ts",
     "./coordinator": "./src/coordinator.ts",
+    "./effects": "./src/effects.ts",
+    "./effect-editing": "./src/effect-editing.ts",
+    "./color-processing": "./src/color-processing.ts",
+    "./cube-lut": "./src/cube-lut.ts",
     "./keyframes": "./src/keyframes.ts",
     "./picture-editing": "./src/picture-editing.ts",
     "./render-plan": "./src/render-plan.ts"

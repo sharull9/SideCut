@@ -59,7 +59,7 @@ describe("timeline view model", () => {
         },
         1.5,
       ),
-    ).toMatch(/rendering features/);
+    ).toBeNull();
     const stacked = {
       ...value,
       videoTracks: [...value.videoTracks, { ...value.videoTracks[0]!, id: "trk_upper" }],

@@ -1,0 +1,864 @@
+[
+  {
+    "type": "colorAdjust",
+    "name": "Colour",
+    "category": "Colour",
+    "domain": "video",
+    "summary": "Exposure, contrast, black level, saturation and white balance.",
+    "params": [
+      {
+        "key": "exposure",
+        "name": "Exposure",
+        "kind": "number",
+        "defaultValue": 0.0,
+        "animatable": true,
+        "min": -3.0,
+        "max": 3.0,
+        "step": 0.05,
+        "unit": "stops"
+      },
+      {
+        "key": "contrast",
+        "name": "Contrast",
+        "kind": "number",
+        "defaultValue": 0.0,
+        "animatable": true,
+        "min": -100.0,
+        "max": 100.0,
+        "step": 1.0
+      },
+      {
+        "key": "blackLevel",
+        "name": "Black level",
+        "kind": "number",
+        "defaultValue": 0.0,
+        "animatable": true,
+        "min": -100.0,
+        "max": 100.0,
+        "step": 1.0
+      },
+      {
+        "key": "highlights",
+        "name": "Highlights",
+        "kind": "number",
+        "defaultValue": 0.0,
+        "animatable": true,
+        "min": -100.0,
+        "max": 100.0,
+        "step": 1.0
+      },
+      {
+        "key": "shadows",
+        "name": "Shadows",
+        "kind": "number",
+        "defaultValue": 0.0,
+        "animatable": true,
+        "min": -100.0,
+        "max": 100.0,
+        "step": 1.0
+      },
+      {
+        "key": "saturation",
+        "name": "Saturation",
+        "kind": "number",
+        "defaultValue": 0.0,
+        "animatable": true,
+        "min": -100.0,
+        "max": 100.0,
+        "step": 1.0
+      },
+      {
+        "key": "vibrance",
+        "name": "Vibrance",
+        "kind": "number",
+        "defaultValue": 0.0,
+        "animatable": true,
+        "min": -100.0,
+        "max": 100.0,
+        "step": 1.0
+      },
+      {
+        "key": "temperature",
+        "name": "Temperature",
+        "kind": "number",
+        "defaultValue": 0.0,
+        "animatable": true,
+        "min": -100.0,
+        "max": 100.0,
+        "step": 1.0
+      },
+      {
+        "key": "tint",
+        "name": "Tint",
+        "kind": "number",
+        "defaultValue": 0.0,
+        "animatable": true,
+        "min": -100.0,
+        "max": 100.0,
+        "step": 1.0
+      }
+    ]
+  },
+  {
+    "type": "hsl",
+    "name": "HSL",
+    "category": "Colour",
+    "domain": "video",
+    "summary": "Saturation per colour range. Mike's camera grade pulls reds down 7 or 8 to calm skin.",
+    "params": [
+      {
+        "key": "redHue",
+        "name": "Red hue",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "redSaturation",
+        "name": "Red saturation",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "redLuminance",
+        "name": "Red luminance",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "orangeHue",
+        "name": "Orange hue",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "orangeSaturation",
+        "name": "Orange saturation",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "orangeLuminance",
+        "name": "Orange luminance",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "yellowHue",
+        "name": "Yellow hue",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "yellowSaturation",
+        "name": "Yellow saturation",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "yellowLuminance",
+        "name": "Yellow luminance",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "greenHue",
+        "name": "Green hue",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "greenSaturation",
+        "name": "Green saturation",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "greenLuminance",
+        "name": "Green luminance",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "aquaHue",
+        "name": "Aqua hue",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "aquaSaturation",
+        "name": "Aqua saturation",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "aquaLuminance",
+        "name": "Aqua luminance",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "blueHue",
+        "name": "Blue hue",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "blueSaturation",
+        "name": "Blue saturation",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "blueLuminance",
+        "name": "Blue luminance",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "purpleHue",
+        "name": "Purple hue",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "purpleSaturation",
+        "name": "Purple saturation",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "purpleLuminance",
+        "name": "Purple luminance",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "magentaHue",
+        "name": "Magenta hue",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "magentaSaturation",
+        "name": "Magenta saturation",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "magentaLuminance",
+        "name": "Magenta luminance",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      }
+    ]
+  },
+  {
+    "type": "colorWheels",
+    "name": "Colour wheels",
+    "category": "Colour",
+    "domain": "video",
+    "summary": "Shadows, midtones and highlights wheels (lift, gamma and gain). Each has a hue in degrees (0 red, 60 yellow, 120 green, 180 cyan, 240 blue, 300 magenta), an amount (how far towards that colour, 100 is strong) and a brightness.",
+    "params": [
+      {
+        "key": "shadowsHue",
+        "name": "Shadows hue",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": 0,
+        "max": 360,
+        "step": 1,
+        "animatable": true,
+        "unit": "degrees"
+      },
+      {
+        "key": "shadowsAmount",
+        "name": "Shadows amount",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "animatable": true,
+        "unit": "%"
+      },
+      {
+        "key": "shadowsBrightness",
+        "name": "Shadows brightness",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "midtonesHue",
+        "name": "Midtones hue",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": 0,
+        "max": 360,
+        "step": 1,
+        "animatable": true,
+        "unit": "degrees"
+      },
+      {
+        "key": "midtonesAmount",
+        "name": "Midtones amount",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "animatable": true,
+        "unit": "%"
+      },
+      {
+        "key": "midtonesBrightness",
+        "name": "Midtones brightness",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      },
+      {
+        "key": "highlightsHue",
+        "name": "Highlights hue",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": 0,
+        "max": 360,
+        "step": 1,
+        "animatable": true,
+        "unit": "degrees"
+      },
+      {
+        "key": "highlightsAmount",
+        "name": "Highlights amount",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "animatable": true,
+        "unit": "%"
+      },
+      {
+        "key": "highlightsBrightness",
+        "name": "Highlights brightness",
+        "kind": "number",
+        "defaultValue": 0,
+        "min": -100,
+        "max": 100,
+        "step": 1,
+        "animatable": true
+      }
+    ]
+  },
+  {
+    "type": "vignette",
+    "name": "Vignette",
+    "category": "Colour",
+    "domain": "video",
+    "summary": "Darkens the edges. Mike's camera grade uses -22 to -37.",
+    "params": [
+      {
+        "key": "amount",
+        "name": "Amount",
+        "kind": "number",
+        "defaultValue": -30.0,
+        "animatable": true,
+        "min": -100.0,
+        "max": 100.0,
+        "step": 1.0
+      },
+      {
+        "key": "size",
+        "name": "Size",
+        "kind": "number",
+        "defaultValue": 50.0,
+        "animatable": true,
+        "min": 0.0,
+        "max": 100.0,
+        "step": 1.0
+      },
+      {
+        "key": "feather",
+        "name": "Feather",
+        "kind": "number",
+        "defaultValue": 50.0,
+        "animatable": true,
+        "min": 0.0,
+        "max": 100.0,
+        "step": 1.0
+      }
+    ]
+  },
+  {
+    "type": "sharpen",
+    "name": "Sharpen",
+    "category": "Colour",
+    "domain": "video",
+    "summary": "Luma sharpening. Mike uses 3 or 4.",
+    "params": [
+      {
+        "key": "amount",
+        "name": "Amount",
+        "kind": "number",
+        "defaultValue": 3.0,
+        "animatable": true,
+        "min": 0.0,
+        "max": 10.0,
+        "step": 0.5
+      }
+    ]
+  },
+  {
+    "type": "lut",
+    "name": "LUT",
+    "category": "Colour",
+    "domain": "video",
+    "summary": "Applies a .cube lookup table.",
+    "params": [
+      {
+        "key": "path",
+        "name": "File",
+        "kind": "string",
+        "defaultValue": "",
+        "animatable": false
+      },
+      {
+        "key": "intensity",
+        "name": "Intensity",
+        "kind": "number",
+        "defaultValue": 1.0,
+        "animatable": true,
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01
+      }
+    ]
+  },
+  {
+    "type": "dropShadow",
+    "name": "Drop shadow",
+    "category": "Style",
+    "domain": "video",
+    "summary": "Shadow behind the layer, following the cutout. Filmora's defaults: distance 4, blur 5, opacity 60.",
+    "params": [
+      {
+        "key": "distance",
+        "name": "Distance",
+        "kind": "number",
+        "defaultValue": 4.0,
+        "animatable": true,
+        "min": 0.0,
+        "max": 100.0,
+        "step": 1.0,
+        "unit": "px@1080"
+      },
+      {
+        "key": "angle",
+        "name": "Angle",
+        "kind": "number",
+        "defaultValue": 135.0,
+        "animatable": true,
+        "min": 0.0,
+        "max": 360.0,
+        "step": 1.0,
+        "unit": "degrees"
+      },
+      {
+        "key": "blur",
+        "name": "Blur",
+        "kind": "number",
+        "defaultValue": 5.0,
+        "animatable": true,
+        "min": 0.0,
+        "max": 100.0,
+        "step": 1.0,
+        "unit": "px@1080"
+      },
+      {
+        "key": "opacity",
+        "name": "Opacity",
+        "kind": "number",
+        "defaultValue": 60.0,
+        "animatable": true,
+        "min": 0.0,
+        "max": 100.0,
+        "step": 1.0,
+        "unit": "%"
+      },
+      {
+        "key": "color",
+        "name": "Colour",
+        "kind": "color",
+        "defaultValue": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 1
+        },
+        "animatable": true
+      }
+    ]
+  },
+  {
+    "type": "border",
+    "name": "Border",
+    "category": "Style",
+    "domain": "video",
+    "summary": "Outline around the layer, for the PiP frame.",
+    "params": [
+      {
+        "key": "width",
+        "name": "Width",
+        "kind": "number",
+        "defaultValue": 4.0,
+        "animatable": true,
+        "min": 0.0,
+        "max": 60.0,
+        "step": 1.0,
+        "unit": "px@1080"
+      },
+      {
+        "key": "color",
+        "name": "Colour",
+        "kind": "color",
+        "defaultValue": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "animatable": true
+      }
+    ]
+  },
+  {
+    "type": "roundedCorners",
+    "name": "Rounded corners",
+    "category": "Style",
+    "domain": "video",
+    "summary": "Rounds the layer's corners.",
+    "params": [
+      {
+        "key": "radius",
+        "name": "Radius",
+        "kind": "number",
+        "defaultValue": 24.0,
+        "animatable": true,
+        "min": 0.0,
+        "max": 500.0,
+        "step": 1.0,
+        "unit": "px@1080"
+      }
+    ]
+  },
+  {
+    "type": "blur",
+    "name": "Blur",
+    "category": "Utility",
+    "domain": "video",
+    "summary": "Gaussian blur.",
+    "params": [
+      {
+        "key": "radius",
+        "name": "Radius",
+        "kind": "number",
+        "defaultValue": 20.0,
+        "animatable": true,
+        "min": 0.0,
+        "max": 200.0,
+        "step": 1.0,
+        "unit": "px@1080"
+      }
+    ]
+  },
+  {
+    "type": "pixelate",
+    "name": "Pixelate",
+    "category": "Utility",
+    "domain": "video",
+    "summary": "Mosaic, for hiding keys and emails on screen.",
+    "params": [
+      {
+        "key": "scale",
+        "name": "Block size",
+        "kind": "number",
+        "defaultValue": 24.0,
+        "animatable": true,
+        "min": 1.0,
+        "max": 200.0,
+        "step": 1.0,
+        "unit": "px@1080"
+      }
+    ]
+  },
+  {
+    "type": "pitchShift",
+    "name": "Pitch shift",
+    "category": "Audio",
+    "domain": "audio",
+    "summary": "Shifts pitch without changing speed.",
+    "params": [
+      {
+        "key": "semitones",
+        "name": "Semitones",
+        "kind": "number",
+        "defaultValue": 0.0,
+        "animatable": true,
+        "min": -12.0,
+        "max": 12.0,
+        "step": 0.5
+      }
+    ]
+  },
+  {
+    "type": "compressor",
+    "name": "Compressor",
+    "category": "Audio",
+    "domain": "audio",
+    "summary": "Turns down sound that goes over the threshold, by the ratio: at 3:1 a passage 9 dB over comes out 3 dB over. The defaults ride a voice that gets louder without touching normal speech at -20 LUFS. Levels are as the clip plays, after levelling and gain.",
+    "params": [
+      {
+        "key": "threshold",
+        "name": "Threshold",
+        "kind": "number",
+        "defaultValue": -14.0,
+        "animatable": false,
+        "min": -60.0,
+        "max": 0.0,
+        "step": 0.5,
+        "unit": "dBFS"
+      },
+      {
+        "key": "ratio",
+        "name": "Ratio",
+        "kind": "number",
+        "defaultValue": 3.0,
+        "animatable": false,
+        "min": 1.0,
+        "max": 20.0,
+        "step": 0.1,
+        "unit": ":1"
+      },
+      {
+        "key": "attack",
+        "name": "Attack",
+        "kind": "number",
+        "defaultValue": 10.0,
+        "animatable": false,
+        "min": 0.1,
+        "max": 200.0,
+        "step": 0.5,
+        "unit": "ms"
+      },
+      {
+        "key": "release",
+        "name": "Release",
+        "kind": "number",
+        "defaultValue": 200.0,
+        "animatable": false,
+        "min": 10.0,
+        "max": 2000.0,
+        "step": 5.0,
+        "unit": "ms"
+      },
+      {
+        "key": "knee",
+        "name": "Knee",
+        "kind": "number",
+        "defaultValue": 6.0,
+        "animatable": false,
+        "min": 0.0,
+        "max": 24.0,
+        "step": 0.5,
+        "unit": "dB"
+      },
+      {
+        "key": "makeup",
+        "name": "Makeup gain",
+        "kind": "number",
+        "defaultValue": 0.0,
+        "animatable": false,
+        "min": -12.0,
+        "max": 24.0,
+        "step": 0.5,
+        "unit": "dB"
+      }
+    ]
+  },
+  {
+    "type": "limiter",
+    "name": "Limiter",
+    "category": "Audio",
+    "domain": "audio",
+    "summary": "Holds true peaks under the ceiling, looking 5 ms ahead so nothing gets through, and lets go over the release. For a mic whose levelling would put bumps and shouts over full scale. Levels are as the clip plays, after levelling and gain.",
+    "params": [
+      {
+        "key": "ceiling",
+        "name": "Ceiling",
+        "kind": "number",
+        "defaultValue": -1.0,
+        "animatable": false,
+        "min": -24.0,
+        "max": 0.0,
+        "step": 0.1,
+        "unit": "dBTP"
+      },
+      {
+        "key": "release",
+        "name": "Release",
+        "kind": "number",
+        "defaultValue": 100.0,
+        "animatable": false,
+        "min": 10.0,
+        "max": 1000.0,
+        "step": 5.0,
+        "unit": "ms"
+      }
+    ]
+  },
+  {
+    "type": "voiceCleanup",
+    "name": "Voice clean-up",
+    "category": "Audio",
+    "domain": "audio",
+    "summary": "A high-pass for rumble and boom, and a gentle expander that turns down the room between words. Put the expander's threshold a few dB over the noise floor, as the clip plays. Goes with voice isolation for a roomy, noisy mic.",
+    "params": [
+      {
+        "key": "highPass",
+        "name": "High-pass",
+        "kind": "number",
+        "defaultValue": 80.0,
+        "animatable": false,
+        "min": 0.0,
+        "max": 300.0,
+        "step": 5.0,
+        "unit": "Hz"
+      },
+      {
+        "key": "expanderThreshold",
+        "name": "Expander threshold",
+        "kind": "number",
+        "defaultValue": -40.0,
+        "animatable": false,
+        "min": -90.0,
+        "max": -20.0,
+        "step": 1.0,
+        "unit": "dBFS"
+      },
+      {
+        "key": "expanderRange",
+        "name": "Expander range",
+        "kind": "number",
+        "defaultValue": 10.0,
+        "animatable": false,
+        "min": 0.0,
+        "max": 40.0,
+        "step": 1.0,
+        "unit": "dB"
+      }
+    ]
+  }
+]

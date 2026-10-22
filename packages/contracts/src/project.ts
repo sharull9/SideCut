@@ -73,6 +73,14 @@ export const KeyframeSchema = keep({
   ),
 });
 
+export const EffectSchema = keep({
+  id: Schema.String,
+  type: Schema.String,
+  enabled: fallback(Schema.Boolean, () => true),
+  params: fallback(Schema.JsonObject, () => ({})),
+});
+export type ClipEffect = typeof EffectSchema.Type;
+
 export const FrameRateSchema = keep({ numerator: positiveInt, denominator: positiveInt });
 const OutputFormat = keep({
   id: Schema.String,

@@ -10,14 +10,14 @@ role/synced placement, angle switching, animated picture compositing, and local 
 
 The [Tandem parity roadmap](docs/tandem-parity-roadmap.md) breaks the editor, media,
 desktop, and agent work into small phases with acceptance checks and a pinned
-upstream feature inventory. Phases 001-054 have implementations, with phase 028's
+upstream feature inventory. Phases 001-060 have implementations, with phase 028's
 public-host acceptance still pending: synthetic reference
 fixtures, exact flick timing, a browser media feasibility probe, and Effect schemas
 for projects, tracks, media, and clips, project validation, atomic command batches,
 undo/redo, a resizable editor frame, sequence properties, project persistence,
 single-writer browser tabs, local media registration/import, track commands,
 non-ripple clip placement, timeline navigation/selection, source preview, and
-audio-clock-driven transport. Thirty-five command families have implementations.
+audio-clock-driven transport. Thirty-nine command families have implementations.
 `insertClip` supports `place` and `insert`; `moveClips` supports `place`. Trimming
 supports both ripple and non-ripple edits. Undo history remains in memory and resets
 on reload.
@@ -28,7 +28,8 @@ Use the ruler to seek, the transport to step/play/pause, and Fit or zoom control
 to navigate. Shift/Ctrl/Command-click selects multiple clips. Preview supports
 multiple video/image/solid layers with fit, position, scale, and clockwise rotation,
 fractional crop, opacity, and picture keyframes, plus one unprocessed audio source
-at a time. Effects, transitions, and audio mixing remain planned. Split with Ctrl/Cmd+K or
+at a time. Color adjustment, HSL, color wheels, LUTs, and vignette render in both
+preview and export. Other effects, transitions, and audio mixing remain planned. Split with Ctrl/Cmd+K or
 Ctrl/Cmd+B, trim with edge handles or inspector fields, and drag clips to move.
 Delete lifts selected clips; Shift+Delete removes their time. Link/Unlink controls
 keep picture and sound edits together. Export renders supported source edits
@@ -60,9 +61,17 @@ immediate or animated from the playhead.
 
 Keyframes support transform, opacity, crop, gain, and existing effect parameter
 paths, with add/update/remove and previous/next navigation. Times are relative to
-the selected clip. Picture keys render in preview/export; sound and effect keys
-remain stored for their later renderers. Motion presets generate full-clip zooms
+the selected clip. Picture and supported color-effect keys render in preview/export.
+Sound and other effect keys remain stored for their later renderers. Motion presets generate full-clip zooms
 and pans with linear position/scale keys and an amount from 1 to 3.
+
+The Effects inspector adds, enables, reorders, resets, and removes effects using
+registry defaults and ranges. Color wheels support pointer dragging, arrow keys,
+and numeric entry. Apply parameters saves the draft; Reset effect removes the
+effect and its keys. Media looks run before clip effects, then crop and transform.
+LUTs accept 1D or 3D `.cube` files up to 32 MB and stay in browser storage. Import
+the referenced LUT on each device; an unavailable LUT blocks rendering. CPU color
+processing can be slower than real time on large sources or long stacks.
 
 Picture speed changes and held frames export locally. Audio at another speed and
 speech levelling still need later renderers and produce explicit preflight errors.
@@ -118,6 +127,9 @@ and composite preview/export pixels.
 The [phases 049-054 report](docs/verification/phases-049-054.md) covers crop and
 opacity, layouts, region zoom, keyframe evaluation/editing, motion presets, and
 animated preview/export pixel checks.
+
+The [phases 055-060 report](docs/verification/phases-055-060.md) records effect
+commands, color processing, LUT storage, browser/export checks, and tolerances.
 
 ## Development
 

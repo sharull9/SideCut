@@ -1,3 +1,5 @@
+import { parseCube } from "@sidecut/core/cube-lut";
+import { validateProject } from "@sidecut/core/validation";
 import { ProjectCoordinator } from "@sidecut/core/coordinator";
 import type { SessionSnapshot, CommitResult } from "@sidecut/core/coordinator";
 import {
@@ -177,7 +179,12 @@ export class BrowserProjectSession {
       saveState: readOnly ? "read-only" : "saved",
       error: null,
       mediaAvailability: {},
-      warnings: typeof file.sidecutRecovery === "string" ? [file.sidecutRecovery] : [],
+      warnings: [
+        ...(typeof file.sidecutRecovery === "string" ? [file.sidecutRecovery] : []),
+        ...validateProject(file.project)
+          .filter((issue) => issue.severity === "warning")
+          .map((issue) => issue.message),
+      ],
     });
   }
 
@@ -368,6 +375,30 @@ export class BrowserProjectSession {
     anchor.click();
     anchor.remove();
     setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  }
+
+  async importLUT(file: File): Promise<string> {
+    this.assertWritable();
+    if (!this.store) throw new Error("Browser storage is closed.");
+    const epoch = this.epoch,
+      projectID = this.state.project.id;
+    this.update({ busy: true, error: null });
+    try {
+      if (file.size > 32 * 1024 * 1024) throw new Error("LUT exceeds the browser's 32 MB limit.");
+      parseCube(await file.text());
+      const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", await file.arrayBuffer()));
+      this.assertOpen(epoch);
+      await this.store.putResource(projectID, `lut:${file.name}`, {
+        file,
+        state: "available",
+        detail: Array.from(hash, (b) => b.toString(16).padStart(2, "0")).join(""),
+      });
+      this.assertOpen(epoch);
+      await this.refreshMedia();
+      return file.name;
+    } finally {
+      if (epoch === this.epoch) this.update({ busy: false });
+    }
   }
 
   async importFiles(files: readonly File[]) {

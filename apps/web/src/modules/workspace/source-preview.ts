@@ -1,4 +1,5 @@
 import { audioRange } from "@sidecut/core/render-plan";
+import { createLUTLoader } from "@sidecut/platform-browser/lut";
 import { paintPicture } from "@sidecut/platform-browser/picture";
 import { LocalMediaReader, PlaybackClock } from "@sidecut/platform-browser/preview";
 import type { Project, Clip } from "@sidecut/contracts/project";
@@ -7,6 +8,7 @@ import type { BrowserProjectSession } from "./browser-session";
 
 export class SourcePreview {
   private project: Project;
+  private readonly lut;
   private readers = new Map<string, Promise<LocalMediaReader>>();
   private context: AudioContext | null = null;
   private clock: PlaybackClock | null = null;
@@ -28,6 +30,7 @@ export class SourcePreview {
     private readonly onError: (message: string | null) => void,
   ) {
     this.project = session.getSnapshot().project;
+    this.lut = createLUTLoader((id) => session.resource(id));
   }
 
   update(project: Project) {
@@ -90,7 +93,14 @@ export class SourcePreview {
     scratch.height = this.canvas.height;
     const stage = scratch.getContext("2d");
     if (!stage) throw new Error("Canvas preview is unavailable.");
-    const timestamp = await paintPicture(stage, this.project, time, (id) => this.reader(id));
+    const timestamp = await paintPicture(
+      stage,
+      this.project,
+      time,
+      (id) => this.reader(id),
+      undefined,
+      this.lut,
+    );
     if (token !== this.token || this.disposed) return;
     const ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("Canvas preview is unavailable.");

@@ -1,3 +1,7 @@
+import { createLUTLoader } from "./lut";
+import { effectsOf } from "@sidecut/core/effect-editing";
+import { resolvedParams } from "@sidecut/core/effects";
+import type { ClipEffect } from "@sidecut/contracts/project";
 import { paintPicture } from "./picture";
 import type { Project, Clip } from "@sidecut/contracts/project";
 import { enabledTracks, audioRange, exportPlan } from "@sidecut/core/render-plan";
@@ -13,6 +17,7 @@ export async function renderWebM(
   const work = new AbortController();
   const signal = AbortSignal.any([externalSignal, work.signal]);
   const plan = exportPlan(project);
+  const lut = createLUTLoader(resource);
   signal.throwIfAborted();
   const {
     Output,
@@ -88,6 +93,33 @@ export async function renderWebM(
       ),
     );
     await Promise.all([...mediaIDs].map(reader));
+    const paths = new Set<string>();
+    for (const track of enabledTracks(project, "video"))
+      for (const clip of track.clips.filter((c) => c.enabled)) {
+        const mediaID =
+          clip.content.media &&
+          typeof clip.content.media === "object" &&
+          "mediaID" in clip.content.media
+            ? clip.content.media.mediaID
+            : null;
+        const media = project.media.find((m) => m.id === mediaID);
+        for (const fx of [
+          ...((media?.look ?? []) as readonly ClipEffect[]),
+          ...effectsOf(clip, "video"),
+        ]) {
+          if (
+            fx.enabled === false ||
+            fx.type !== "lut" ||
+            (Number(resolvedParams(fx).intensity) === 0 &&
+              !clip.keyframes[`video.effects.${fx.id}.intensity`]?.length)
+          )
+            continue;
+          paths.add(String(resolvedParams(fx).path ?? ""));
+          for (const key of clip.keyframes[`video.effects.${fx.id}.path`] ?? [])
+            if (typeof key.value === "string") paths.add(key.value);
+        }
+      }
+    await Promise.all([...paths].map(lut));
     signal.throwIfAborted();
     await output.start();
     const picture = async () => {
@@ -95,7 +127,7 @@ export async function renderWebM(
       for (let index = 0; index < count; index++) {
         signal.throwIfAborted();
         const time = index / plan.fps;
-        await paintPicture(ctx, project, time, reader, signal);
+        await paintPicture(ctx, project, time, reader, signal, lut);
         await video.add(time, 1 / plan.fps);
         onProgress(((index + 1) / count) * 0.95);
         if (index % 3 === 0) await new Promise((resolve) => setTimeout(resolve, 0));

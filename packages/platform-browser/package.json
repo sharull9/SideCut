@@ -9,6 +9,7 @@
     "./media": "./src/media.ts",
     "./save-queue": "./src/save-queue.ts",
     "./preview": "./src/preview.ts",
+    "./lut": "./src/lut.ts",
     "./picture": "./src/picture.ts",
     "./export": "./src/export.ts"
   },

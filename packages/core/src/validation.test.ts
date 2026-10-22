@@ -11,7 +11,9 @@ const errors = (project: Project) =>
 
 describe("project invariants", () => {
   it("accepts the synthetic reference project", () => {
-    expect(validateProject(fixture())).toEqual([]);
+    expect(validateProject(fixture())).toMatchObject([
+      { severity: "warning", code: "pending-effect", objectID: "clip_camera" },
+    ]);
   });
 
   it("reports missing media and duplicate IDs on the affected object", () => {

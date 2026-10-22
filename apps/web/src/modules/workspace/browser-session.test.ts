@@ -58,6 +58,25 @@ describe("persistent browser session", () => {
     vi.restoreAllMocks();
   });
 
+  it("validates and persists local LUTs independently of project media", async () => {
+    const first = session();
+    await first.start();
+    const invalid = new File(["invalid"], "invalid.cube");
+    await expect(first.importLUT(invalid)).rejects.toThrow(/no LUT/);
+    expect(await first.resource("lut:invalid.cube")).toBeNull();
+    expect(first.getSnapshot().busy).toBe(false);
+    const lut = new File(["LUT_1D_SIZE 2\n0 0 0\n1 1 1"], "identity.cube");
+    expect(await first.importLUT(lut)).toBe("identity.cube");
+    expect(first.getSnapshot().project.media).toHaveLength(0);
+    expect(first.getSnapshot().revision).toBe(0);
+    await first.close();
+    const second = session();
+    await second.start();
+    expect(await (await second.resource("lut:identity.cube"))!.file.text()).toContain(
+      "LUT_1D_SIZE",
+    );
+  });
+
   it("saves settings and undo, then restores the last committed snapshot on restart", async () => {
     const first = session();
     await first.start();

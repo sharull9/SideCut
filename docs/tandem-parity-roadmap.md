@@ -1,6 +1,6 @@
 # Tandem parity roadmap
 
-Status: phases 001-027 and 029-054 are implemented and verified on Windows Chromium. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), and [049-054 evidence and limits](verification/phases-049-054.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
+Status: phases 001-027 and 029-060 are implemented and verified on Windows Chromium. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), and [055-060 evidence and limits](verification/phases-055-060.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
 
 ## Goal and baseline
 
@@ -426,43 +426,43 @@ Accept when photo motion respects source overflow and matches generated keyframe
 
 ### Phase 055: Effect stack
 
-- [ ] Implement `addEffect`, `updateEffect`, `removeEffect`, and `moveEffect`.
-- [ ] Build ordered effect controls from registry metadata.
+- [x] Implement `addEffect`, `updateEffect`, `removeEffect`, and `moveEffect`.
+- [x] Build ordered effect controls from registry metadata.
 
 Accept when stack order, enabled state, parameter defaults, and unsupported-effect warnings survive save/reopen.
 
 ### Phase 056: Color adjustment
 
-- [ ] Port `colorAdjust` parameters and rendering.
-- [ ] Connect its inspector controls and reset.
+- [x] Port `colorAdjust` parameters and rendering.
+- [x] Connect its inspector controls and reset.
 
 Accept when synthetic color patches match the agreed reference tolerance.
 
 ### Phase 057: HSL
 
-- [ ] Port `hsl` channel adjustments.
-- [ ] Add the channel mixer controls.
+- [x] Port `hsl` channel adjustments.
+- [x] Add the channel mixer controls.
 
 Accept when hue boundaries and neutral defaults match reference fixtures.
 
 ### Phase 058: Color wheels
 
-- [ ] Port `colorWheels`, including parameter interpolation.
-- [ ] Add wheel controls and reference reset behavior.
+- [x] Port `colorWheels`, including parameter interpolation.
+- [x] Add wheel controls and reference reset behavior.
 
 Accept when lift/gamma/gain and animated hue match reference cases within recorded tolerance.
 
 ### Phase 059: LUT
 
-- [ ] Load and validate the reference LUT format.
-- [ ] Implement `lut` sampling and intensity.
+- [x] Load and validate the reference LUT format.
+- [x] Implement `lut` sampling and intensity.
 
 Accept when identity and test LUTs match preview/export and missing LUTs produce warnings.
 
 ### Phase 060: Vignette
 
-- [ ] Implement `vignette` parameters and rendering.
-- [ ] Add its registry-driven inspector section.
+- [x] Implement `vignette` parameters and rendering.
+- [x] Add its registry-driven inspector section.
 
 Accept when center and edge falloff match the reference test image.
 

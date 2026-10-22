@@ -719,3 +719,41 @@
 .editor-picture-fields > :is(p, button) {
   grid-column: 1 / -1;
 }
+
+.editor-color-wheels {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  font-size: 11px;
+  text-align: center;
+}
+.editor-color-wheel {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  margin-top: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(circle, white, transparent),
+    conic-gradient(from 90deg, red, yellow, lime, cyan, blue, magenta, red);
+  touch-action: none;
+}
+.editor-color-wheel:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+.editor-color-wheel:disabled {
+  opacity: 0.5;
+}
+.editor-color-wheel-puck {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border: 1px solid black;
+  border-radius: 50%;
+  background: white;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}

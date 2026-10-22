@@ -1,3 +1,5 @@
+import { effectDefinition, renderedEffects } from "./effects";
+import { ParamValueSchema } from "@sidecut/contracts/project";
 import { KeyframeSchema } from "@sidecut/contracts/project";
 import { Schema } from "effect";
 import type { Project, Track, Clip } from "@sidecut/contracts/project";
@@ -167,13 +169,45 @@ export function validateProject(project: Project): ValidationIssue[] {
       }
       previous = clip;
       if (clip.linkGroup) groups.set(clip.linkGroup, [...(groups.get(clip.linkGroup) ?? []), clip]);
-      const effects = clip.video?.effects;
-      if (Array.isArray(effects)) {
-        const ids = effects.map((effect) =>
-          effect && typeof effect === "object" && "id" in effect ? effect.id : undefined,
+      for (const kind of ["video", "audio"] as const) {
+        const effects = clip[kind]?.effects;
+        if (!Array.isArray(effects)) continue;
+        const ids = effects.map((fx) =>
+          fx && typeof fx === "object" && "id" in fx ? fx.id : undefined,
         );
-        if (new Set(ids).size !== ids.length)
-          issue("effect-id", `Clip ${clip.id} has two effects with the same ID.`, clip.id);
+        if (new Set(ids).size !== ids.length || ids.some((id) => typeof id !== "string" || !id))
+          issue("effect-id", `Clip ${clip.id} has missing or duplicate effect IDs.`, clip.id);
+        for (const fx of effects) {
+          if (!fx || typeof fx !== "object" || !("type" in fx) || typeof fx.type !== "string")
+            continue;
+          const definition = effectDefinition(fx.type);
+          if (!definition)
+            issue(
+              "unknown-effect",
+              `Unknown effect type "${fx.type}". It's kept, but nothing renders it yet.`,
+              clip.id,
+              "warning",
+            );
+          else if (!renderedEffects.has(fx.type) && fx.enabled !== false)
+            issue(
+              "pending-effect",
+              `Effect "${fx.type}" is stored; its browser renderer is planned.`,
+              clip.id,
+              "warning",
+            );
+          if ("params" in fx && fx.params && typeof fx.params === "object")
+            for (const value of Object.values(fx.params)) {
+              try {
+                Schema.decodeUnknownSync(ParamValueSchema)(value);
+              } catch {
+                issue(
+                  "effect-param",
+                  `Effect ${String(fx.id)} needs finite numbers, booleans, strings, points, or colors.`,
+                  clip.id,
+                );
+              }
+            }
+        }
       }
       const mediaContent = clip.content.media;
       if (mediaContent && typeof mediaContent === "object" && "mediaID" in mediaContent) {

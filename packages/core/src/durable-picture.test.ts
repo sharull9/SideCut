@@ -232,6 +232,6 @@ describe("shared picture plan", () => {
         },
         1,
       ),
-    ).toMatch(/rendering features/);
+    ).toMatch(/Effect "unknown" has no browser renderer/);
   });
 });

@@ -15,12 +15,13 @@ import { validateProject } from "./validation";
 import type { ValidationIssue } from "./validation";
 import { editTimeline, settleTimeline, EditContext, batchSeed } from "./timeline-editing";
 import { editThroughCuts } from "./through-edits";
+import { mergePatch } from "./json-merge-patch";
+import { editEffects } from "./effect-editing";
 import { editPicture } from "./picture-editing";
 import { editAngle } from "./angle-selection";
 import { editPlacement } from "./media-placement";
 
 type Json = typeof Schema.Json.Type;
-type JsonObject = typeof Schema.JsonObject.Type;
 
 export class EditError extends Error {
   constructor(
@@ -74,24 +75,6 @@ function freeze<T>(value: T): T {
   return value;
 }
 
-function object(value: Json): JsonObject | null {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as JsonObject)
-    : null;
-}
-
-// RFC 7396: null removes a key, objects merge recursively, other values replace.
-function mergePatch(current: Json, patch: Json): Json {
-  const fields = object(patch);
-  if (!fields) return patch;
-  const result = new Map(Object.entries(object(current) ?? {}));
-  for (const [key, value] of Object.entries(fields)) {
-    if (value === null) result.delete(key);
-    else result.set(key, mergePatch(result.get(key) ?? null, value));
-  }
-  return Object.fromEntries(result);
-}
-
 function allIDs(project: Project): unknown[] {
   return [
     project.id,
@@ -113,6 +96,7 @@ function applyCommand(
   context: EditContext,
 ): Project {
   let edited =
+    editEffects(project, command, context) ??
     editPicture(project, command, context) ??
     editAngle(project, command, context) ??
     editThroughCuts(project, command, context) ??
@@ -424,7 +408,8 @@ export class ProjectCoordinator {
         .filter(
           (issue) =>
             issue.severity === "warning" &&
-            !existingWarnings.has(`${issue.objectID}|${issue.message}`),
+            !existingWarnings.has(`${issue.objectID}|${issue.message}`) &&
+            !warnings.includes(issue.message),
         )
         .map((issue) => issue.message),
     );

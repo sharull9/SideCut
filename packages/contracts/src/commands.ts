@@ -21,6 +21,32 @@ const defaultText = (value: string) =>
 
 const CommandBody = Schema.Union([
   Schema.Struct({
+    addEffect: Schema.Struct({
+      clipID: Schema.String,
+      effect: Schema.Struct({
+        id: nullable(Schema.String),
+        type: Schema.String,
+        enabled: nullable(Schema.Boolean),
+        params: nullable(Schema.JsonObject),
+      }),
+      index: nullable(index),
+    }),
+  }),
+  Schema.Struct({
+    updateEffect: Schema.Struct({
+      clipID: Schema.String,
+      effectID: Schema.String,
+      patch: Schema.JsonObject,
+    }),
+  }),
+  Schema.Struct({
+    removeEffect: Schema.Struct({ clipID: Schema.String, effectID: Schema.String }),
+  }),
+  Schema.Struct({
+    moveEffect: Schema.Struct({ clipID: Schema.String, effectID: Schema.String, index }),
+  }),
+
+  Schema.Struct({
     applyLayout: Schema.Struct({
       clipIDs: Schema.Array(Schema.String),
       preset: Schema.Literals(["full", "pipRight", "pipLeft", "split", "fill"]),

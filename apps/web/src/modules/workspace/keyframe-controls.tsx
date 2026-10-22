@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Clip } from "@sidecut/contracts/project";
+import { effectDefinition, resolvedParams } from "@sidecut/core/effects";
+import type { ClipEffect } from "@sidecut/contracts/project";
 import { Time } from "@sidecut/contracts/time";
 import { fixedParameters, resolveClip } from "@sidecut/core/keyframes";
 import { Button } from "@sidecut/ui/components/button";
@@ -46,7 +48,12 @@ export function KeyframeControls({ clips }: { clips: readonly Clip[] }) {
           typeof fx.params !== "object"
         )
           continue;
-        for (const name of Object.keys(fx.params))
+        for (const name of new Set([
+          ...Object.keys(fx.params),
+          ...(effectDefinition(String(fx.type))
+            ?.params.filter((p) => p.animatable)
+            .map((p) => p.key) ?? []),
+        ]))
           paths.add(`${kind}.effects.${String(fx.id)}.${name}`);
       }
   }
@@ -61,7 +68,7 @@ export function KeyframeControls({ clips }: { clips: readonly Clip[] }) {
         : null;
       current =
         fx && typeof fx === "object" && "params" in fx && fx.params && typeof fx.params === "object"
-          ? (fx.params as Record<string, unknown>)[parts.slice(3).join(".")]
+          ? resolvedParams(fx as ClipEffect)[parts.slice(3).join(".")]
           : 0;
     } else
       for (const part of parts.slice(1))
@@ -148,8 +155,8 @@ export function KeyframeControls({ clips }: { clips: readonly Clip[] }) {
             onChange={(e) => setValue(e.target.value)}
           />
           <FieldDescription>
-            Use a number, boolean, quoted string, point with x/y, or color with r/g/b/a. Effect and
-            sound keys are saved; their renderers are planned.
+            Use a number, boolean, quoted string, point with x/y, or color with r/g/b/a. Supported
+            picture effects render animated values. Sound and other effect renderers are planned.
           </FieldDescription>
         </Field>
         <Field>

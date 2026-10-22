@@ -1,3 +1,6 @@
+import { effectIssue } from "./color-processing";
+import { effectsOf } from "./effect-editing";
+import type { ClipEffect } from "@sidecut/contracts/project";
 import { resolveClip } from "./keyframes";
 import type { Project, Clip, Track } from "@sidecut/contracts/project";
 import { Time } from "@sidecut/contracts/time";
@@ -94,11 +97,20 @@ export function previewIssue(project: Project, time: number): string | null {
       reference && typeof reference === "object" && "mediaID" in reference
         ? reference.mediaID
         : null;
+    if (track.kind === "video") {
+      const problem = effectIssue([
+        ...((project.media.find((item) => item.id === mediaID)?.look ??
+          []) as readonly ClipEffect[]),
+        ...effectsOf(resolveClip(clip, time), "video"),
+      ]);
+      if (problem) return problem;
+    }
     if (
       track.transitions.length ||
-      project.media.some((item) => item.id === mediaID && item.look.length > 0) ||
       (track.kind === "audio" && Boolean(clip.keyframes["audio.gainDB"]?.length)) ||
-      (track.kind === "video" ? !supportedPicture(clip) : clip.content.media == null) ||
+      (track.kind === "video"
+        ? !supportedPicture(resolveClip(clip, time))
+        : clip.content.media == null) ||
       (clip.audio &&
         Object.entries(clip.audio).some(
           ([key, value]) =>
@@ -218,7 +230,8 @@ function supportedPicture(clip: Clip): boolean {
           typeof v === "number" &&
           Number.isFinite(v),
       );
-    if (key === "effects") return Array.isArray(value) && value.length === 0;
+    if (key === "effects")
+      return Array.isArray(value) && effectIssue(value as unknown as ClipEffect[]) === null;
     if (key === "formatOverrides") return Object.keys(object(value)).length === 0;
     if (key === "cutout") return object(value).enabled === false;
     return false;

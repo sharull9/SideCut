@@ -69,8 +69,10 @@ describe("block audio mixer", () => {
     expect(samples).toHaveLength(500);
     expect(samples[0]).toBe(0);
     expect(samples[99]).toBe(0);
-    expect(samples[100]).toBeCloseTo(0.2);
-    expect(samples[200]).toBeCloseTo(0.7);
+    expect(samples[100]).toBe(0);
+    expect(samples[103]).toBeCloseTo(0.203);
+    expect(samples[200]).toBeCloseTo(0.3);
+    expect(samples[203]).toBeCloseTo(0.706);
     expect(samples[300]).toBeCloseTo(0.5);
     expect(samples[400]).toBe(0);
   });

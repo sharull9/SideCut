@@ -61,9 +61,18 @@ describe("browser export preflight", () => {
         }),
       ),
     ).toThrow(/60 fps/);
+    expect(
+      exportPlan(project([], [{ id: "v", kind: "audio", clips: [{ ...clip, speed: 2 }] }]))
+        .hasAudio,
+    ).toBe(true);
     expect(() =>
-      exportPlan(project([], [{ id: "v", kind: "audio", clips: [{ ...clip, speed: 2 }] }])),
-    ).toThrow(/rendering features/);
+      exportPlan(
+        project(
+          [],
+          [{ id: "v", kind: "audio", clips: [{ ...clip, audio: { voiceIsolation: 1 } }] }],
+        ),
+      ),
+    ).toThrow(/Voice isolation/);
   });
   it("accepts neutral audio properties on ordinary cuts", () => {
     expect(

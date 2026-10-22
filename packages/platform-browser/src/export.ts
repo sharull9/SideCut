@@ -1,4 +1,5 @@
 import { mixTimelineAudio } from "./audio";
+import { measureSource } from "./audio-analysis";
 import { createLUTLoader } from "./lut";
 import { effectsOf } from "@sidecut/core/effect-editing";
 import { resolvedParams } from "@sidecut/core/effects";
@@ -144,6 +145,15 @@ export async function renderWebM(
         48000,
         4096,
         plan.duration,
+        {
+          master: true,
+          measure: async (mediaID) => {
+            const local = await resource(mediaID);
+            if (!local || local.state !== "available")
+              throw new Error(`Source ${mediaID} is missing.`);
+            return measureSource(local.file, await reader(mediaID), signal);
+          },
+        },
       )) {
         signal.throwIfAborted();
         const sample = new AudioSample({

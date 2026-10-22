@@ -1,11 +1,192 @@
 import type { Project } from "@sidecut/contracts/project";
-import { audioSegments } from "@sidecut/core/audio-plan";
+import { audioSegments, seamlessAudio } from "@sidecut/core/audio-plan";
 import { projectDuration } from "@sidecut/core/render-plan";
 import type { LocalMediaReader } from "./preview";
+import type { Clip } from "@sidecut/contracts/project";
+import type { MeasuredSound } from "@sidecut/core/loudness";
+import { LoudnessMeter } from "@sidecut/core/loudness";
+import {
+  audioEnvelope,
+  audioParams,
+  compress,
+  limit,
+  normalizeGain,
+  pitchAndSpeed,
+  gain,
+  clamp,
+} from "@sidecut/core/audio-processing";
+import { effectsOf } from "@sidecut/core/effect-editing";
 interface DecodedAudio {
   timestamp: number;
   duration: number;
   buffer: AudioBuffer;
+}
+interface MixOptions {
+  measure?: (id: string) => Promise<MeasuredSound>;
+  start?: number;
+  master?: boolean;
+  prepared?: ReadonlyMap<string, Float32Array[]>;
+}
+const needsProcessing = (clip: Clip) =>
+  Boolean(
+    clip.speed !== 1 ||
+    clip.keyframes["audio.gainDB"]?.length ||
+    Object.entries(clip.audio ?? {}).some(([key, value]) =>
+      ["gainDB", "fadeIn", "fadeOut"].includes(key)
+        ? value !== 0
+        : key === "normalizeTo"
+          ? value != null
+          : key === "effects" && Array.isArray(value) && value.some((fx) => fx.enabled !== false),
+    ),
+  );
+const checkpoint = (signal?: AbortSignal) => async () => {
+  signal?.throwIfAborted();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  signal?.throwIfAborted();
+};
+async function processedClip(
+  clip: Clip,
+  mediaID: string,
+  reader: Pick<LocalMediaReader, "audio">,
+  signal: AbortSignal,
+  rate: number,
+  options: MixOptions,
+) {
+  if (clip.duration.seconds > 300 || clip.duration.seconds * clip.speed > 600)
+    throw new Error(
+      "Processed browser audio supports clips up to five minutes and source spans up to ten minutes.",
+    );
+  const count = Math.ceil(clip.duration.seconds * clip.speed * rate),
+    input = [new Float32Array(count), new Float32Array(count)],
+    start = clip.sourceStart.seconds;
+  for await (const item of reader.audio(Math.max(0, start), Math.max(0, start + count / rate))) {
+    signal.throwIfAborted();
+    const from = Math.max(0, Math.ceil((item.timestamp - start) * rate - 1e-7)),
+      to = Math.min(count, Math.ceil((item.timestamp + item.duration - start) * rate - 1e-7));
+    for (let c = 0; c < 2; c++) {
+      const values = item.buffer.getChannelData(Math.min(c, item.buffer.numberOfChannels - 1));
+      for (let i = from; i < to; i++) {
+        const position = (start + i / rate - item.timestamp) * item.buffer.sampleRate,
+          j = Math.max(0, Math.floor(position)),
+          f = position - j;
+        input[c]![i] = (values[j] ?? 0) * (1 - f) + (values[j + 1] ?? values[j] ?? 0) * f;
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  let measured = -Infinity;
+  if (typeof clip.audio?.normalizeTo === "number") {
+    if (!options.measure) throw new Error(`Measure source ${mediaID} before speech levelling.`);
+    measured = (await options.measure(mediaID)).integratedLUFS;
+  }
+  signal.throwIfAborted();
+  const output = await pitchAndSpeed(input, rate, clip, 0, checkpoint(signal)),
+    normalization =
+      typeof clip.audio?.normalizeTo === "number"
+        ? normalizeGain(clip.audio.normalizeTo, measured)
+        : 0,
+    lift = 10 ** (clamp(Number(clip.audio?.gainDB ?? 0) + normalization, -120, 150) / 20);
+  for (const channel of output) for (let i = 0; i < channel.length; i++) channel[i]! *= lift;
+  for (const fx of effectsOf(clip, "audio").filter((effect) => effect.enabled)) {
+    const params = audioParams(fx);
+    if (fx.type === "compressor") await compress(output, rate, params, checkpoint(signal));
+    if (fx.type === "limiter")
+      await limit(output, rate, params.ceiling, params.release, checkpoint(signal));
+    signal.throwIfAborted();
+  }
+  const envelopeAt = audioEnvelope(clip, measured);
+  for (let i = 0; i < output[0]!.length; i++) {
+    if (i % 32768 === 0) await checkpoint(signal)();
+    const envelope = envelopeAt(i / rate) / lift;
+    for (const channel of output) channel[i]! *= envelope;
+  }
+  return output;
+}
+// Prepare expensive clip processors before starting the playback clock, including later clips.
+export async function prepareTimelineAudio(
+  project: Project,
+  reader: (id: string) => Promise<Pick<LocalMediaReader, "audio">>,
+  signal: AbortSignal,
+  options: MixOptions = {},
+) {
+  const segments = audioSegments(project).filter(
+    (s) => needsProcessing(s.clip) && s.end > (options.start ?? 0),
+  );
+  if (segments.reduce((sum, s) => sum + s.clip.duration.seconds, 0) > 600)
+    throw new Error(
+      "Processed preview supports up to ten minutes of combined audio clips. Shorten the sequence or disable some audio tracks.",
+    );
+  const result = new Map<string, Float32Array[]>();
+  for (const segment of segments) {
+    signal.throwIfAborted();
+    result.set(
+      segment.clip.id,
+      await processedClip(
+        segment.clip,
+        segment.mediaID,
+        await reader(segment.mediaID),
+        signal,
+        48000,
+        options,
+      ),
+    );
+  }
+  return result;
+}
+
+export async function masterAudio(
+  channels: Float32Array[],
+  rate: number,
+  target: number,
+  ceiling: number,
+  signal?: AbortSignal,
+) {
+  const measure = async (values: Float32Array[]) => {
+    const meter = new LoudnessMeter(rate, values.length);
+    for (let i = 0; i < values[0]!.length; i += 32768) {
+      signal?.throwIfAborted();
+      meter.process(values.map((p) => p.subarray(i, i + 32768)));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    return meter.result();
+  };
+  const first = await measure(channels);
+  const initial = Number.isFinite(first.integratedLUFS)
+    ? clamp(target - first.integratedLUFS, -40, 30)
+    : 0;
+  const render = async (db: number) => {
+    const output = channels.map((channel) =>
+      Float32Array.from(channel, (sample) => sample * gain(db)),
+    );
+    await limit(output, rate, ceiling, 80, checkpoint(signal));
+    return output;
+  };
+  let db = initial;
+  if (first.truePeakDBTP + initial > ceiling) {
+    const points: { db: number; lufs: number }[] = [];
+    for (const extra of [0, 0.75, 1.5, 2.5]) {
+      const level = Math.min(initial + extra, 30),
+        output = await render(level);
+      points.push({ db: level, lufs: (await measure(output)).integratedLUFS });
+    }
+    const below = points.filter((p) => p.lufs <= target).at(-1),
+      above = points.find((p) => p.lufs >= target);
+    if (below && above) {
+      db =
+        above.lufs - below.lufs > 1e-9
+          ? below.db + ((above.db - below.db) * (target - below.lufs)) / (above.lufs - below.lufs)
+          : below.db;
+    } else {
+      const low = target < points[0]!.lufs;
+      const a = points[low ? 0 : points.length - 2]!,
+        b = points[low ? 1 : points.length - 1]!;
+      const slope = clamp((b.lufs - a.lufs) / Math.max(b.db - a.db, 1e-9), 0.3, 1.2);
+      const anchor = low ? a : b;
+      db = anchor.db + (target - anchor.lufs) / slope;
+    }
+    db = clamp(db, -40, 30);
+  }
+  return render(db);
 }
 // A bounded stereo block mixer; separate clip iterators retain their own source offsets.
 export async function* mixTimelineAudio(
@@ -15,16 +196,71 @@ export async function* mixTimelineAudio(
   sampleRate = 48000,
   blockFrames = 4096,
   duration = projectDuration(project).seconds,
+  options: MixOptions = {},
 ) {
+  if (options.master) {
+    if (duration > 300) throw new Error("Browser mastering supports sequences up to five minutes.");
+    const mixed = [
+      new Float32Array(Math.ceil(duration * sampleRate)),
+      new Float32Array(Math.ceil(duration * sampleRate)),
+    ];
+    let offset = 0;
+    for await (const block of mixTimelineAudio(
+      project,
+      reader,
+      signal,
+      sampleRate,
+      blockFrames,
+      duration,
+      { ...options, master: false, start: 0 },
+    )) {
+      for (let c = 0; c < 2; c++)
+        mixed[c]!.set(block.data.subarray(c * block.frames, (c + 1) * block.frames), offset);
+      offset += block.frames;
+    }
+    signal.throwIfAborted();
+    const mastered = await masterAudio(
+      mixed,
+      sampleRate,
+      project.settings.loudnessTarget,
+      project.settings.truePeakCeiling,
+      signal,
+    );
+    for (let first = 0; first < mastered[0]!.length; first += blockFrames) {
+      signal.throwIfAborted();
+      const frames = Math.min(blockFrames, mastered[0]!.length - first),
+        data = new Float32Array(frames * 2);
+      for (let c = 0; c < 2; c++)
+        data.set(mastered[c]!.subarray(first, first + frames), c * frames);
+      yield { data, sampleRate, numberOfChannels: 2, timestamp: first / sampleRate, frames };
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    return;
+  }
   const sources = audioSegments(project).map((segment) => ({
     segment,
     iterator: null as AsyncIterator<DecodedAudio> | null,
     current: null as DecodedAudio | null,
     done: false,
+    processed: options.prepared?.get(segment.clip.id) ?? (null as Float32Array[] | null),
+    microIn:
+      !project.audioTracks
+        .find((t) => t.id === segment.trackID)!
+        .clips.some((c) => seamlessAudio(c, segment.clip)) &&
+      Number(segment.clip.audio?.fadeIn ?? 0) < 0.003,
+    microOut:
+      !project.audioTracks
+        .find((t) => t.id === segment.trackID)!
+        .clips.some((c) => seamlessAudio(segment.clip, c)) &&
+      Number(segment.clip.audio?.fadeOut ?? 0) < 0.003,
   }));
   const total = Math.ceil(duration * sampleRate);
   try {
-    for (let first = 0; first < total; first += blockFrames) {
+    for (
+      let first = Math.max(0, Math.floor((options.start ?? 0) * sampleRate));
+      first < total;
+      first += blockFrames
+    ) {
       signal.throwIfAborted();
       const count = Math.min(blockFrames, total - first),
         start = first / sampleRate,
@@ -32,7 +268,40 @@ export async function* mixTimelineAudio(
         data = new Float32Array(count * 2);
       for (const source of sources) {
         const segment = source.segment;
-        if (source.done || segment.start >= stop || segment.end <= start) continue;
+        const microGain = (time: number) =>
+          (source.microIn ? clamp((time - segment.clip.start.seconds) / 0.003, 0, 1) : 1) *
+          (source.microOut
+            ? clamp(
+                (segment.clip.start.seconds + segment.clip.duration.seconds - time) / 0.003,
+                0,
+                1,
+              )
+            : 1);
+        if (segment.end <= start) {
+          source.processed = null;
+          continue;
+        }
+        if (source.done || segment.start >= stop) continue;
+        const clip = segment.clip;
+        const processing = needsProcessing(clip);
+        if (processing) {
+          source.processed ??= await processedClip(
+            clip,
+            segment.mediaID,
+            await reader(segment.mediaID),
+            signal,
+            sampleRate,
+            options,
+          );
+          for (let i = 0; i < count; i++) {
+            const time = (first + i) / sampleRate;
+            if (time < segment.start || time >= segment.end) continue;
+            const index = Math.round((time - clip.start.seconds) * sampleRate);
+            for (let c = 0; c < 2; c++)
+              data[c * count + i]! += (source.processed[c]![index] ?? 0) * microGain(time);
+          }
+          continue;
+        }
         source.iterator ??= (await reader(segment.mediaID)).audio(
           segment.sourceStart,
           segment.sourceEnd,
@@ -62,7 +331,9 @@ export async function* mixTimelineAudio(
               Math.min(channel, current.buffer.numberOfChannels - 1),
             );
             data[channel * count + index]! +=
-              values[i]! * (1 - fraction) + values[Math.min(i + 1, values.length - 1)]! * fraction;
+              (values[i]! * (1 - fraction) +
+                values[Math.min(i + 1, values.length - 1)]! * fraction) *
+              microGain((first + index) / sampleRate);
           }
         }
       }

@@ -1,6 +1,6 @@
 # Tandem parity roadmap
 
-Status: phases 001-027 and 029-072 are implemented and verified on Windows Chromium. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), [061-066](verification/phases-061-066.md), and [067-072 evidence and limits](verification/phases-067-072.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
+Status: phases 001-027 and 029-078 are implemented and verified on Windows Chromium, within the recorded browser limits. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), [061-066](verification/phases-061-066.md), [067-072](verification/phases-067-072.md), and [073-078 evidence and limits](verification/phases-073-078.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
 
 ## Goal and baseline
 
@@ -554,43 +554,43 @@ Accept when a multi-track pulse fixture remains in sync during seek and playback
 
 ### Phase 073: Gain and fades
 
-- [ ] Apply clip gain, gain keyframes, and fade envelopes in reference order.
-- [ ] Connect audio level and fade controls.
+- [x] Apply clip gain, gain keyframes, and fade envelopes in reference order.
+- [x] Connect audio level and fade controls.
 
 Accept when keyframed gain replaces base gain and silence thresholds match reference behavior.
 
 ### Phase 074: Loudness measurement
 
-- [ ] Measure integrated LUFS, true peak, and loudness range on source audio.
-- [ ] Cache results by source identity and analysis version.
+- [x] Measure integrated LUFS, true peak, and loudness range on source audio.
+- [x] Cache results by source identity and analysis version.
 
 Accept when synthetic calibration signals match recorded reference tolerances.
 
 ### Phase 075: Speech normalization
 
-- [ ] Implement `normalizeSpeech` with measured-source level adjustments.
-- [ ] Match speech-role selection, locked-track warnings, and normalization limits.
+- [x] Implement `normalizeSpeech` with measured-source level adjustments.
+- [x] Match speech-role selection, locked-track warnings, and normalization limits.
 
 Accept when reference normalization produces the expected project patches. Complete protective dynamics after phases 077-078.
 
 ### Phase 076: Pitch shift
 
-- [ ] Implement `pitchShift` with reference parameters.
-- [ ] Connect controls and the speed/pitch behavior required by the reference.
+- [x] Implement `pitchShift` with reference parameters.
+- [x] Connect controls and the speed/pitch behavior required by the reference.
 
 Accept when a tone fixture meets frequency and duration tolerances.
 
 ### Phase 077: Compressor
 
-- [ ] Implement `compressor` with reference parameter ranges.
-- [ ] Match speech normalization's automatic compressor insertion rules.
+- [x] Implement `compressor` with reference parameter ranges.
+- [x] Match speech normalization's automatic compressor insertion rules.
 
 Accept when an amplitude-step fixture and normalization project patches match reference expectations.
 
 ### Phase 078: Limiter and master
 
-- [ ] Implement `limiter` and the reference master loudness/peak pipeline.
-- [ ] Complete normalization's existing-limiter and peak-protection behavior.
+- [x] Implement `limiter` and the reference master loudness/peak pipeline.
+- [x] Complete normalization's existing-limiter and peak-protection behavior.
 
 Accept when export meets the configured ceiling and an explicitly disabled limiter stays disabled.
 

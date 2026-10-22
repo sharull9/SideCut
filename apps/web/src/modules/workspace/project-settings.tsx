@@ -49,6 +49,26 @@ export function ProjectSettings() {
     <section className="editor-inspector-section" aria-labelledby="sequence-title">
       <h3 id="sequence-title">Sequence</h3>
       <FieldGroup>
+        {(
+          [
+            ["speechLoudness", "Speech level", "LUFS", -40, -10],
+            ["loudnessTarget", "Export loudness", "LUFS", -40, -5],
+            ["truePeakCeiling", "Export peak ceiling", "dBTP", -24, 0],
+          ] as const
+        ).map(([key, label, unit, min, max]) => (
+          <Field key={key}>
+            <FieldLabel htmlFor={`setting-${key}`}>{label}</FieldLabel>
+            <CommitInput
+              id={`setting-${key}`}
+              value={project.settings[key]}
+              unit={unit}
+              min={min}
+              max={max}
+              disabled={disabled}
+              onCommit={(value) => settings({ [key]: value })}
+            />
+          </Field>
+        ))}
         <Field data-disabled={disabled}>
           <FieldLabel htmlFor="sequence-name">Name</FieldLabel>
           <CommitInput

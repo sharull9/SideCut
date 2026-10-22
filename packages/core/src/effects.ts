@@ -23,6 +23,9 @@ export interface EffectDefinition {
 export const effectRegistry = definitions as readonly EffectDefinition[];
 export const styleEffects = new Set(["roundedCorners", "border", "dropShadow"]);
 export const renderedEffects = new Set([
+  "pitchShift",
+  "compressor",
+  "limiter",
   "sharpen",
   "blur",
   "pixelate",

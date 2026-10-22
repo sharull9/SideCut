@@ -136,6 +136,9 @@ describe("source preview lifecycle", () => {
       resume: async () => {},
       close: async () => {},
       createBufferSource: () => node,
+      createBuffer: (_channels: number, frames: number) => ({
+        getChannelData: () => new Float32Array(frames),
+      }),
     };
     vi.stubGlobal(
       "AudioContext",
@@ -146,7 +149,16 @@ describe("source preview lifecycle", () => {
     const reader = {
       frame: async () => ({ canvas: {}, width: 64, height: 64, timestamp: 0.2, duration: 0.1 }),
       audio: async function* () {
-        yield { buffer: {}, timestamp: 0, duration: 1 };
+        yield {
+          buffer: {
+            sampleRate: 48000,
+            length: 48000,
+            numberOfChannels: 1,
+            getChannelData: () => new Float32Array(48000).fill(0.5),
+          },
+          timestamp: 0,
+          duration: 1,
+        };
       },
       close: vi.fn(),
     };
@@ -155,8 +167,8 @@ describe("source preview lifecycle", () => {
     await vi.waitFor(() => expect(node.start).toHaveBeenCalled());
     const args = node.start.mock.calls[0];
     expect(args?.[0]).toBeCloseTo(0.1);
-    expect(args?.[1]).toBeCloseTo(0.2);
-    expect(args?.[2]).toBeCloseTo(0.5);
+    expect(args?.[1]).toBe(0);
+    expect(args?.[2]).toBeCloseTo(4096 / 48000);
     engine.pause();
     expect(node.stop).toHaveBeenCalled();
     expect(onError).not.toHaveBeenCalledWith(expect.any(String));

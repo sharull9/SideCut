@@ -68,7 +68,9 @@ function EffectStack({ clip }: { clip: Clip }) {
       <FieldDescription>
         {clip.content.adjustment != null
           ? "Effects change every layer below this track, top to bottom. Animate numeric settings under Keyframes."
-          : "Effects run top to bottom. Animate numeric settings under Keyframes."}
+          : track.kind === "audio"
+            ? "The first active pitch shift changes pitch. Dynamics run top to bottom, before gain animation and fades."
+            : "Effects run top to bottom. Animate numeric settings under Keyframes."}
       </FieldDescription>
       <Field>
         <FieldLabel htmlFor="effect-type">Add effect</FieldLabel>

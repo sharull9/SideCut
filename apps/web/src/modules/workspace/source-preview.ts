@@ -1,5 +1,5 @@
-import { audioSegments } from "@sidecut/core/audio-plan";
-import { audioRange } from "@sidecut/core/render-plan";
+import { mixTimelineAudio, prepareTimelineAudio } from "@sidecut/platform-browser/audio";
+import { measureSource } from "@sidecut/platform-browser/audio-analysis";
 import { createLUTLoader } from "@sidecut/platform-browser/lut";
 import { paintPicture } from "@sidecut/platform-browser/picture";
 import { LocalMediaReader, PlaybackClock } from "@sidecut/platform-browser/preview";
@@ -14,7 +14,7 @@ export class SourcePreview {
   private context: AudioContext | null = null;
   private clock: PlaybackClock | null = null;
   private nodes = new Set<AudioBufferSourceNode>();
-  private audioStarted = new Set<string>();
+  private audioWork: AbortController | null = null;
   private animation = 0;
   private token = 0;
   private playing = false;
@@ -165,10 +165,44 @@ export class SourcePreview {
       );
       await this.draw(time, token);
       if (token !== this.token || this.disposed) return;
+      const work = new AbortController();
+      this.audioWork = work;
+      const measure = async (id: string) => {
+        const local = await this.session.resource(id);
+        if (!local || local.state !== "available") throw new Error(`Source ${id} is missing.`);
+        return measureSource(local.file, await this.reader(id), work.signal);
+      };
+      const prepared = await prepareTimelineAudio(
+        this.project,
+        (id) => this.reader(id),
+        work.signal,
+        { start: time, measure },
+      );
+      work.signal.throwIfAborted();
+      const blocks = mixTimelineAudio(
+        this.project,
+        (id) => this.reader(id),
+        work.signal,
+        48000,
+        4096,
+        end,
+        {
+          start: time,
+          measure,
+          prepared,
+        },
+      );
+      const first = await blocks.next();
+      if (token !== this.token || this.disposed) {
+        await blocks.return();
+        return;
+      }
       this.clock = new PlaybackClock(() => this.context?.currentTime ?? 0);
       this.clock.start(time, 0.1);
       this.playing = true;
-      const segments = audioSegments(this.project);
+      void this.scheduleMix(blocks, first, token).catch((error) => {
+        if (token === this.token) this.fail(error);
+      });
       const tick = () => {
         if (token !== this.token || !this.playing || !this.clock) return;
         const position = this.clock.position(end);
@@ -184,19 +218,6 @@ export class SourcePreview {
             : position,
           token,
         );
-        for (const segment of segments) {
-          const clip = segment.clip;
-          if (
-            segment.end <= position ||
-            segment.start > position + 0.3 ||
-            this.audioStarted.has(clip.id)
-          )
-            continue;
-          this.audioStarted.add(clip.id);
-          void this.scheduleAudio(clip, position, token).catch((error) => {
-            if (token === this.token) this.fail(error);
-          });
-        }
         if (position >= end) {
           this.stop();
           this.onStopped();
@@ -209,44 +230,47 @@ export class SourcePreview {
       if (token === this.token) this.fail(error);
     }
   }
-  private async scheduleAudio(clip: Clip, position: number, token: number) {
+  private async scheduleMix(
+    blocks: ReturnType<typeof mixTimelineAudio>,
+    first: Awaited<ReturnType<ReturnType<typeof mixTimelineAudio>["next"]>>,
+    token: number,
+  ) {
     const context = this.context,
       clock = this.clock;
     if (!context || !clock) return;
-    const range = audioRange(this.project, clip, Math.max(position, clip.start.seconds));
-    if (!range) return;
-    const reader = await this.reader(this.mediaID(clip));
-    const { from, to: until } = range;
-    const buffers = reader.audio(from, until);
     try {
-      for await (const item of buffers) {
+      let next = first;
+      while (!next.done) {
+        const item = next.value;
         if (token !== this.token) return;
-        const start = Math.max(from, item.timestamp);
-        const stop = Math.min(until, item.timestamp + item.duration);
-        const when = clock.audioTime(clip.start.seconds + start - clip.sourceStart.seconds);
+        const when = clock.audioTime(item.timestamp);
         while (when - context.currentTime > 0.25) {
           if (token !== this.token) return;
           await new Promise((resolve) => setTimeout(resolve, 20));
         }
         if (token !== this.token) return;
         const late = Math.max(0, context.currentTime - when);
-        if (stop - start <= late) continue;
-        const node = context.createBufferSource();
-        node.buffer = item.buffer;
-        node.connect(context.destination);
-        this.nodes.add(node);
-        node.onended = () => {
-          node.disconnect();
-          this.nodes.delete(node);
-        };
-        node.start(
-          Math.max(when, context.currentTime),
-          start - item.timestamp + late,
-          stop - start - late,
-        );
+        const duration = item.frames / item.sampleRate;
+        if (duration > late) {
+          const buffer = context.createBuffer(2, item.frames, item.sampleRate);
+          for (let c = 0; c < 2; c++)
+            buffer
+              .getChannelData(c)
+              .set(item.data.subarray(c * item.frames, (c + 1) * item.frames));
+          const node = context.createBufferSource();
+          node.buffer = buffer;
+          node.connect(context.destination);
+          this.nodes.add(node);
+          node.onended = () => {
+            node.disconnect();
+            this.nodes.delete(node);
+          };
+          node.start(Math.max(when, context.currentTime), late, duration - late);
+        }
+        next = await blocks.next();
       }
     } finally {
-      await buffers.return();
+      await blocks.return();
     }
   }
   pause() {
@@ -269,7 +293,8 @@ export class SourcePreview {
       node.disconnect();
     }
     this.nodes.clear();
-    this.audioStarted.clear();
+    this.audioWork?.abort();
+    this.audioWork = null;
   }
   private fail(error: unknown) {
     this.stop();

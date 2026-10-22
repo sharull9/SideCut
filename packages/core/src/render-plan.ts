@@ -1,4 +1,5 @@
 import { audioSegments, enabledTracks } from "./audio-plan";
+import { audioEffectIssue } from "./audio-processing";
 import { transitionWindow } from "./transitions";
 import { effectIssue } from "./color-processing";
 import { effectsOf } from "./effect-editing";
@@ -101,13 +102,17 @@ export function previewIssue(project: Project, time: number): string | null {
       ]);
       if (problem) return problem;
     }
+    if (track.kind === "audio") {
+      const problem = audioEffectIssue(clip);
+      if (problem) return problem;
+    }
     if (
       (track.kind === "audio" && track.transitions.length > 0) ||
-      (track.kind === "audio" && Boolean(clip.keyframes["audio.gainDB"]?.length)) ||
       (track.kind === "video"
         ? !supportedPicture(resolveClip(clip, time))
         : clip.content.media == null) ||
-      (clip.audio &&
+      (track.kind === "video" &&
+        clip.audio &&
         Object.entries(clip.audio).some(
           ([key, value]) =>
             !(
@@ -117,8 +122,7 @@ export function previewIssue(project: Project, time: number): string | null {
               (key === "effects" && Array.isArray(value) && value.length === 0) ||
               (key === "normalizeTo" && value === null)
             ),
-        )) ||
-      (track.kind === "audio" && clip.speed !== 1)
+        ))
     )
       return "This clip needs rendering features that are not available in the source preview yet. Cutout, effects, and sound processing need later renderers. Audio speed changes need pitch correction; speech levelling needs source analysis.";
   }

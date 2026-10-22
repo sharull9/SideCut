@@ -21,6 +21,7 @@ import { editTransitions } from "./transitions";
 import { editPicture } from "./picture-editing";
 import { editAngle } from "./angle-selection";
 import { editPlacement } from "./media-placement";
+import { editAudio } from "./audio-editing";
 
 type Json = typeof Schema.Json.Type;
 
@@ -97,6 +98,7 @@ function applyCommand(
   context: EditContext,
 ): Project {
   let edited =
+    editAudio(project, command, context) ??
     editEffects(project, command, context) ??
     editTransitions(project, command, context) ??
     editPicture(project, command, context) ??

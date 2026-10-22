@@ -1,4 +1,5 @@
 import { TransitionInspector } from "./transition-controls";
+import { AudioControls } from "./audio-controls";
 import { useEditorSession, useEditorView } from "./editor-session";
 import { ClipTrimForm } from "./clip-trim-form";
 import { ClipEditForm } from "./clip-edit-form";
@@ -10,6 +11,7 @@ import { ProjectSettings } from "./project-settings";
 import { useState } from "react";
 const INSPECTOR_TABS = [
   ["picture", "Picture"],
+  ["audio", "Audio"],
   ["effects", "Effects"],
   ["timing", "Timing"],
   ["transitions", "Transitions"],
@@ -59,7 +61,9 @@ export function ClipInspector() {
   const picture = clips.some((c) =>
     snapshot.project.videoTracks.some((t) => t.clips.some((v) => v.id === c.id)),
   );
-  const tabs = INSPECTOR_TABS.filter(([id]) => id !== "picture" || picture);
+  const tabs = INSPECTOR_TABS.filter(
+    ([id]) => (id !== "picture" || picture) && (id !== "audio" || !picture),
+  );
   const current = tabs.find(([id]) => id === tab)?.[0] ?? tabs[0]![0];
   return (
     <div className="editor-clip-inspector">
@@ -133,6 +137,7 @@ export function ClipInspector() {
             aria-labelledby={`inspector-tab-${current}`}
           >
             {current === "picture" && <PictureInspector clips={clips} />}
+            {current === "audio" && <AudioControls key={first.id} clip={first} />}
             {current === "effects" && (
               <>
                 <EffectInspector clips={clips} />

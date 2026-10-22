@@ -21,6 +21,16 @@ const defaultText = (value: string) =>
 
 const CommandBody = Schema.Union([
   Schema.Struct({
+    normalizeSpeech: Schema.Struct({
+      measured: nullable(
+        Schema.Record(
+          Schema.String,
+          Schema.Struct({ integratedLUFS: Schema.Finite, truePeakDBTP: Schema.Finite }),
+        ),
+      ),
+    }),
+  }),
+  Schema.Struct({
     addTransition: Schema.Struct({
       trackID: Schema.String,
       transition: Schema.JsonObject,

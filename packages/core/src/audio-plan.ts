@@ -1,5 +1,38 @@
-// Raw audio scheduling slice of TandemRender/RenderPlan.swift. Gain/fades are a later phase.
+// Audio scheduling from TandemRender/RenderPlan.swift. Notice: tests/fixtures/tandem/TANDEM-LICENSE.
 import type { Project, Track } from "@sidecut/contracts/project";
+import type { Clip } from "@sidecut/contracts/project";
+import { effectsOf } from "./effect-editing";
+
+export function seamlessAudio(a: Clip, b: Clip) {
+  const mediaID = (c: Clip) =>
+    c.content.media && typeof c.content.media === "object" && "mediaID" in c.content.media
+      ? c.content.media.mediaID
+      : null;
+  const effects = (c: Clip) =>
+    effectsOf(c, "audio").map(({ type, enabled, params }) => ({ type, enabled, params }));
+  return (
+    a.enabled &&
+    b.enabled &&
+    !a.audio?.muted &&
+    !b.audio?.muted &&
+    a.start.flicks + a.duration.flicks === b.start.flicks &&
+    mediaID(a) != null &&
+    mediaID(a) === mediaID(b) &&
+    a.speed === b.speed &&
+    !a.freezeFrame &&
+    !b.freezeFrame &&
+    Math.abs(a.sourceStart.seconds + a.duration.seconds * a.speed - b.sourceStart.seconds) <=
+      1 / 48000 &&
+    Number(a.audio?.gainDB ?? 0) === Number(b.audio?.gainDB ?? 0) &&
+    (a.audio?.normalizeTo ?? null) === (b.audio?.normalizeTo ?? null) &&
+    Number(a.audio?.voiceIsolation ?? 0) === Number(b.audio?.voiceIsolation ?? 0) &&
+    JSON.stringify(effects(a)) === JSON.stringify(effects(b)) &&
+    Number(a.audio?.fadeOut ?? 0) === 0 &&
+    Number(b.audio?.fadeIn ?? 0) === 0 &&
+    a.keyframes["audio.gainDB"] == null &&
+    b.keyframes["audio.gainDB"] == null
+  );
+}
 
 export function enabledTracks(project: Project, kind: "video" | "audio"): readonly Track[] {
   const tracks = kind === "video" ? project.videoTracks : project.audioTracks;

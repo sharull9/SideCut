@@ -1,0 +1,74 @@
+{
+  "conflict": "\"Graphics\" already has a clip between 0 and 4.1.",
+  "exported": {
+    "bytes": 166898,
+    "height": 480,
+    "white": 901,
+    "width": 270
+  },
+  "fonts": [
+    ["\"SideCut Card Anton\"", "loaded"],
+    ["\"SideCut Card Sans\"", "loaded"],
+    ["\"SideCut Card Mono\"", "loaded"]
+  ],
+  "hiddenPixel": [0, 0, 255, 255],
+  "initialBytes": 3671,
+  "inserted": {
+    "duration": 4.9,
+    "marker": 6.033333,
+    "start": 1.5666666666666669
+  },
+  "samples": {
+    "0.0000": {
+      "opaque": 0,
+      "visible": 0,
+      "white": 0
+    },
+    "0.2000": {
+      "opaque": 4289,
+      "visible": 4469,
+      "white": 0
+    },
+    "0.4237": {
+      "opaque": 230029,
+      "visible": 230400,
+      "white": 0
+    },
+    "1.2000": {
+      "opaque": 230400,
+      "visible": 230400,
+      "white": 8428
+    },
+    "2.0000": {
+      "opaque": 230400,
+      "visible": 230400,
+      "white": 8428
+    },
+    "3.5897": {
+      "opaque": 230400,
+      "visible": 230400,
+      "white": 538
+    },
+    "3.8000": {
+      "opaque": 15303,
+      "visible": 15627,
+      "white": 0
+    },
+    "4.0000": {
+      "opaque": 0,
+      "visible": 0,
+      "white": 0
+    }
+  },
+  "saved": true,
+  "templates": [
+    {
+      "id": "clip_4rwremav",
+      "start": 0
+    },
+    {
+      "id": "clip_spqvystq",
+      "start": 5
+    }
+  ]
+}

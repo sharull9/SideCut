@@ -24,7 +24,12 @@
     "./sound-sync": "./src/sound-sync.ts",
     "./transcript": "./src/transcript.ts",
     "./speech": "./src/speech.ts",
-    "./text": "./src/text.ts"
+    "./text": "./src/text.ts",
+    "./markers": "./src/markers.ts",
+    "./section-cards": "./src/section-cards.ts",
+    "./templates": "./src/templates.ts",
+    "./formats": "./src/formats.ts",
+    "./short": "./src/short.ts"
   },
   "scripts": {
     "typecheck": "vp exec tsc --noEmit"

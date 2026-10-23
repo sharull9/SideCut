@@ -236,6 +236,22 @@ export const TrackSchema = keep(trackFields).pipe(
   ),
 );
 
+export const markerKinds = ["marker", "section", "chapter", "todo", "comment"] as const;
+// Times are seconds, as the ripple code has always read them. Unknown kinds are kept as written
+// and read as plain markers (reference: TandemCore/Model.swift MarkerKind).
+export const MarkerSchema = keep({
+  id: fallback(Schema.String, id("mk")),
+  time: Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0)),
+  duration: fallback(Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0)), () => 0),
+  name: fallback(Schema.String, () => ""),
+  kind: fallback(Schema.String, () => "marker"),
+  note: optional(Schema.String),
+});
+export type Marker = typeof MarkerSchema.Type;
+export type MarkerKind = (typeof markerKinds)[number];
+export const markerKind = (marker: Pick<Marker, "kind">): MarkerKind =>
+  (markerKinds as readonly string[]).includes(marker.kind) ? (marker.kind as MarkerKind) : "marker";
+
 export const ProjectSchema = keep({
   schemaVersion: fallback(Schema.Literal(SCHEMA_VERSION), () => 2 as const),
   id: fallback(Schema.String, id("prj")),
@@ -246,7 +262,7 @@ export const ProjectSchema = keep({
   media: fallback(Schema.Array(MediaItemSchema), () => []),
   videoTracks: fallback(Schema.Array(TrackSchema), () => []),
   audioTracks: fallback(Schema.Array(TrackSchema), () => []),
-  markers: fallback(Schema.Array(Schema.JsonObject), () => []),
+  markers: fallback(Schema.Array(MarkerSchema), () => []),
   metadata: fallback(Schema.Record(Schema.String, Schema.String), () => ({})),
 });
 

@@ -6,6 +6,8 @@ import { useEditorSession, useEditorView } from "./editor-session";
 import { SourcePreview } from "./source-preview";
 import { JobStatus } from "./job-status";
 import { timecode, stepFrame, projectDuration } from "./timeline-model";
+import { formatOf, formatProject } from "@sidecut/core/formats";
+import { FormatsDialog } from "./formats-dialog";
 
 export function Viewer() {
   const { session, snapshot, editor } = useEditorSession();
@@ -14,7 +16,8 @@ export function Viewer() {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [meter, setMeter] = useState<{ peakDB: number; rmsDB: number } | null>(null);
-  const { project } = snapshot;
+  const format = useEditorView((state) => state.format);
+  const project = formatProject(snapshot.project, format);
   useEffect(() => {
     if (!canvas.current) return;
     const preview = new SourcePreview(
@@ -30,7 +33,7 @@ export function Viewer() {
     const synchronize = () => {
       const next = session.getSnapshot().project;
       if (next.id !== current.id) editor.getState().reset();
-      preview.update(next);
+      preview.update(formatProject(next, editor.getState().format));
       const end = projectDuration(next);
       const clips = new Set(
         [...next.videoTracks, ...next.audioTracks].flatMap((track) =>
@@ -70,6 +73,12 @@ export function Viewer() {
       }
     });
     const unsubscribeView = editor.subscribe((next, previous) => {
+      if (next.format !== previous.format) {
+        next.setPlaying(false);
+        preview.update(formatProject(session.getSnapshot().project, next.format));
+        preview.seek(next.playhead.seconds);
+        return;
+      }
       if (next.seekVersion !== previous.seekVersion) {
         if (
           next.playing &&
@@ -106,9 +115,25 @@ export function Viewer() {
     <section aria-labelledby="viewer-title" className="editor-panel editor-viewer">
       <div className="editor-panel-heading">
         <h2 id="viewer-title">Viewer</h2>
+        <FormatsDialog />
         <span>
           Source preview · {project.settings.width} × {project.settings.height}
         </span>
+        {snapshot.project.settings.alternateFormats.length > 0 && (
+          <select
+            aria-label="Preview format"
+            className="editor-format-select"
+            value={formatOf(snapshot.project, format)?.id ?? ""}
+            onChange={(event) => editor.getState().setFormat(event.target.value || null)}
+          >
+            <option value="">Main canvas</option>
+            {snapshot.project.settings.alternateFormats.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
       <div className="editor-viewer-stage">
         <JobStatus />

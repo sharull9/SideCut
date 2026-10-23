@@ -1,0 +1,35 @@
+{
+  "revision": 0,
+  "project": {
+    "id": "phase_097_100_ui",
+    "name": "Sections and formats",
+    "settings": {
+      "width": 640,
+      "height": 360,
+      "frameRate": { "numerator": 30, "denominator": 1 }
+    },
+    "videoTracks": [
+      {
+        "id": "background",
+        "name": "Background",
+        "kind": "video",
+        "rippleMode": "cut",
+        "clips": [
+          {
+            "id": "blue",
+            "name": "Blue background",
+            "duration": 18,
+            "content": { "solid": { "color": { "r": 0, "g": 0, "b": 1, "a": 1 } } }
+          }
+        ]
+      }
+    ],
+    "markers": [
+      { "id": "section1", "kind": "section", "time": 6, "name": "The method", "note": "Measure the result" },
+      { "id": "section2", "kind": "section", "time": 12, "name": "The result" },
+      { "id": "review1", "kind": "comment", "time": 3, "name": "Check the introduction", "review": { "author": "Fixture" } },
+      { "id": "chapter1", "kind": "chapter", "time": 9, "duration": 2, "name": "Example" },
+      { "id": "todo1", "kind": "todo", "time": 15, "name": "Final review" }
+    ]
+  }
+}

@@ -1,6 +1,9 @@
 import { TransitionBlock } from "./transition-controls";
 import { AdjustmentDialog } from "./adjustment-dialog";
 import { TitleDialog } from "./title-dialog";
+import { MarkerStrips } from "./marker-strip";
+import { SectionCardsDialog } from "./section-cards";
+import { TemplateDialog } from "./template-dialog";
 import { useRef, useState, useEffect, useMemo, useSyncExternalStore } from "react";
 import { placeWords } from "@sidecut/core/transcript";
 import { Time } from "@sidecut/contracts/time";
@@ -157,6 +160,8 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
       <div className="editor-timeline-toolbar">
         <h2 id="timeline-title">Timeline</h2>
         <TitleDialog />
+        <TemplateDialog />
+        <SectionCardsDialog />
         <AdjustmentDialog />
         <Button
           size="xs"
@@ -296,6 +301,7 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
               <div className="editor-playhead-head" style={{ left: playhead.seconds * zoom }} />
             </div>
           </div>
+          <MarkerStrips header={HEADER} width={width} zoom={zoom} run={run} />
           {tracks.map((track) => {
             const list = track.kind === "video" ? project.videoTracks : project.audioTracks;
             const index = list.findIndex((item) => item.id === track.id);

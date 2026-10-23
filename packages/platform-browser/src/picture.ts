@@ -17,6 +17,8 @@ import {
   wordRange,
 } from "@sidecut/core/text";
 import { drawText, ensureFont } from "./text";
+import { cardOf } from "@sidecut/core/section-cards";
+import { drawSectionCard, ensureCardFonts } from "./section-card";
 
 // Text draws at the clip's own scale so a big title stays sharp; animation scales from there.
 async function textLayer(layer: PictureLayer, width: number, height: number) {
@@ -96,9 +98,16 @@ async function paintLayer(
 
   signal?.throwIfAborted();
   const text = await textLayer(layer, width, height);
+  // Graphics draw at the output size and are placed like any picture fitted to the canvas.
+  const card = cardOf(layer.clip);
+  if (card) await ensureCardFonts();
+  const graphic = card
+    ? drawSectionCard(card, width, height, layer.clipTime, layer.clip.duration.seconds)
+    : null;
+  if (card && !graphic) return null;
   const frame = layer.mediaID ? await (await reader(layer.mediaID)).frame(layer.sourceTime) : null;
   signal?.throwIfAborted();
-  if (!frame && !layer.color && !text) return null;
+  if (!frame && !layer.color && !text && !graphic) return null;
   const media = project.media.find((m) => m.id === layer.mediaID);
   const effects = [
     ...((media?.look ?? []) as readonly ClipEffect[]),
@@ -110,7 +119,7 @@ async function paintLayer(
     Math.max(0, Math.min(1, Number(layer.clip.video?.opacity ?? 1))) * (text?.opacity ?? 1);
   const geometry = text?.geometry ?? layerGeometry(layer.clip, width, height, sw, sh);
   if (geometry.width < 1e-4 || geometry.height < 1e-4) return null;
-  let source: CanvasImageSource | null = text?.canvas ?? frame?.canvas ?? null;
+  let source: CanvasImageSource | null = text?.canvas ?? graphic ?? frame?.canvas ?? null;
   if (effects.some((fx) => fx.enabled !== false)) {
     if (!source && layer.color) {
       const solid = document.createElement("canvas");

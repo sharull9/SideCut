@@ -1,3 +1,4 @@
+import { formatProject } from "@sidecut/core/formats";
 import { parseCube } from "@sidecut/core/cube-lut";
 import { validateProject } from "@sidecut/core/validation";
 import { ProjectCoordinator } from "@sidecut/core/coordinator";
@@ -233,11 +234,15 @@ export class BrowserProjectSession {
     return this.store?.resource(this.state.project.id, mediaID) ?? null;
   }
 
-  async exportWebM(signal: AbortSignal, onProgress: (progress: number) => void) {
+  async exportWebM(
+    signal: AbortSignal,
+    onProgress: (progress: number) => void,
+    format: string | null = null,
+  ) {
     if (!this.store || this.state.busy || this.state.saveState === "loading")
       throw new Error("Wait for the current project operation to finish.");
     const store = this.store,
-      project = this.state.project,
+      project = formatProject(this.state.project, format),
       epoch = this.epoch,
       controller = new AbortController();
     this.exportController = controller;

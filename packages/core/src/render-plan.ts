@@ -6,6 +6,7 @@ import { effectsOf } from "./effect-editing";
 import type { ClipEffect } from "@sidecut/contracts/project";
 import { resolveClip } from "./keyframes";
 import { textIssue } from "./text";
+import { SECTION_CARD } from "./section-cards";
 import type { Project, Clip, Track } from "@sidecut/contracts/project";
 import { Time } from "@sidecut/contracts/time";
 export function projectDuration(project: Project): Time {
@@ -95,6 +96,10 @@ export function previewIssue(project: Project, time: number): string | null {
       reference && typeof reference === "object" && "mediaID" in reference
         ? reference.mediaID
         : null;
+    if (track.kind === "video" && clip.content.graphic != null) {
+      const problem = graphicIssue(clip);
+      if (problem) return problem;
+    }
     if (track.kind === "video" && clip.content.text != null) {
       const problem = textIssue(clip.content.text);
       if (problem) return problem;
@@ -211,9 +216,11 @@ function supportedPicture(clip: Clip): boolean {
     clip.content.media == null &&
     clip.content.solid == null &&
     clip.content.adjustment == null &&
-    clip.content.text == null
+    clip.content.text == null &&
+    clip.content.graphic == null
   )
     return false;
+  if (clip.content.graphic != null && graphicIssue(clip)) return false;
   if (clip.content.solid != null) solidColor(clip);
   if (clip.content.text != null && textIssue(clip.content.text)) return false;
   return Object.entries(clip.video ?? {}).every(([key, value]) => {
@@ -239,10 +246,19 @@ function supportedPicture(clip: Clip): boolean {
       );
     if (key === "effects")
       return Array.isArray(value) && effectIssue(value as unknown as ClipEffect[]) === null;
-    if (key === "formatOverrides") return Object.keys(object(value)).length === 0;
+    // Overrides apply when a format renders (formatProject); the main format ignores them.
+    if (key === "formatOverrides")
+      return Object.values(object(value)).every((v) => typeof v === "object");
     if (key === "cutout") return object(value).enabled === false;
     return false;
   });
+}
+
+export function graphicIssue(clip: Clip): string | null {
+  const template = object(clip.content.graphic).template;
+  return template === SECTION_CARD
+    ? null
+    : `Graphic template "${String(template)}" isn't drawn by SideCut; its data is kept.`;
 }
 
 export interface PictureLayer {

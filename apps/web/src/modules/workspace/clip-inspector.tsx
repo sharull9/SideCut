@@ -10,7 +10,10 @@ import { KeyframeControls } from "./keyframe-controls";
 import { ProjectSettings } from "./project-settings";
 import { useState } from "react";
 import { TextInspector } from "./text-inspector";
+import { CardInspector } from "./section-cards";
+import { cardOf } from "@sidecut/core/section-cards";
 const INSPECTOR_TABS = [
+  ["card", "Card"],
   ["text", "Text"],
   ["picture", "Picture"],
   ["audio", "Audio"],
@@ -67,6 +70,7 @@ export function ClipInspector() {
     ([id]) =>
       (id !== "picture" || picture) &&
       (id !== "audio" || !picture) &&
+      (id !== "card" || (clips.length === 1 && cardOf(first) !== null)) &&
       (id !== "text" || (clips.length === 1 && first.content.text != null)),
   );
   const current = tabs.find(([id]) => id === tab)?.[0] ?? tabs[0]![0];
@@ -142,6 +146,7 @@ export function ClipInspector() {
             aria-labelledby={`inspector-tab-${current}`}
           >
             {current === "text" && <TextInspector key={first.id} clip={first} />}
+            {current === "card" && <CardInspector key={first.id} clip={first} />}
             {current === "picture" && <PictureInspector clips={clips} />}
             {current === "audio" && <AudioControls key={first.id} clip={first} />}
             {current === "effects" && (

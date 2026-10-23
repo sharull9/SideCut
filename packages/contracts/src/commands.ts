@@ -1,5 +1,5 @@
 import { Effect, Schema, SchemaTransformation } from "effect";
-import { MediaItemSchema, ClipSchema, TimeSchema, KeyframeSchema } from "./project";
+import { MediaItemSchema, ClipSchema, TimeSchema, KeyframeSchema, MarkerSchema } from "./project";
 
 const nullable = <S extends Schema.Constraint>(schema: S) =>
   Schema.optionalKey(Schema.NullOr(schema));
@@ -19,7 +19,53 @@ const defaultText = (value: string) =>
     Schema.withDecodingDefaultKey(Effect.succeed(value)),
   );
 
+const insertMode = nullable(Schema.Literals(["place", "overwrite", "insert"]));
+const cardSound = nullable(
+  Schema.Struct({
+    mediaID: Schema.String,
+    gainDB: nullable(Schema.Finite),
+    offset: nullable(TimeSchema),
+  }),
+);
+
 const CommandBody = Schema.Union([
+  Schema.Struct({ addMarker: Schema.Struct({ marker: MarkerSchema }) }),
+  Schema.Struct({
+    updateMarker: Schema.Struct({ markerID: Schema.String, patch: Schema.JsonObject }),
+  }),
+  Schema.Struct({ removeMarker: Schema.Struct({ markerID: Schema.String }) }),
+  Schema.Struct({
+    addSectionCards: Schema.Struct({
+      markerIDs: nullable(Schema.Array(Schema.String)),
+      trackID: nullable(Schema.String),
+      duration: nullable(TimeSchema),
+      kicker: nullable(Schema.String),
+      mode: insertMode,
+      soundIn: cardSound,
+      soundOut: cardSound,
+      cuts: nullable(Schema.Record(Schema.String, TimeSchema)),
+    }),
+  }),
+  Schema.Struct({
+    fitSectionCards: Schema.Struct({ clipIDs: nullable(Schema.Array(Schema.String)) }),
+  }),
+  Schema.Struct({
+    insertTemplate: Schema.Struct({
+      template: Schema.JsonObject,
+      at: TimeSchema,
+      values: nullable(Schema.Record(Schema.String, Schema.String)),
+      mode: insertMode,
+    }),
+  }),
+  Schema.Struct({
+    setFormatLayout: Schema.Struct({
+      clipIDs: Schema.Array(Schema.String),
+      format: Schema.String,
+      slot: Schema.Literals(["top", "bottom", "full"]),
+      cutout: nullable(Schema.Boolean),
+    }),
+  }),
+  Schema.Struct({ adoptFormat: Schema.Struct({ format: Schema.String }) }),
   Schema.Struct({
     normalizeSpeech: Schema.Struct({
       measured: nullable(

@@ -23,6 +23,10 @@ import { editAngle } from "./angle-selection";
 import { editPlacement } from "./media-placement";
 import { editAudio } from "./audio-editing";
 import { reconcileTransitionSounds } from "./transition-sounds";
+import { editMarkers } from "./markers";
+import { editSectionCards } from "./section-cards";
+import { editTemplates } from "./templates";
+import { editFormats } from "./formats";
 
 type Json = typeof Schema.Json.Type;
 
@@ -98,7 +102,14 @@ function applyCommandRaw(
   createdIDs: string[],
   context: EditContext,
 ): Project {
+  // Composite commands apply their steps through the same command path.
+  const apply = (p: Project, step: EditCommand) =>
+    applyCommandRaw(p, step, warnings, createdIDs, context);
   let edited =
+    editMarkers(project, command, context) ??
+    editSectionCards(project, command, context, apply) ??
+    editTemplates(project, command, context, apply) ??
+    editFormats(project, command, context) ??
     editAudio(project, command, context) ??
     editEffects(project, command, context) ??
     editTransitions(project, command, context) ??

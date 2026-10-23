@@ -1,6 +1,6 @@
 # Tandem parity roadmap
 
-Status: phases 001-027 and 029-096 are implemented and verified on Windows Chromium, within the recorded browser limits. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. Phase 095's comparison against frames saved by macOS Tandem also remains pending; its animation boundaries are verified against the ported reference formulas. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), [061-066](verification/phases-061-066.md), [067-072](verification/phases-067-072.md), [073-078](verification/phases-073-078.md), [079-084](verification/phases-079-084.md), [085-090](verification/phases-085-090.md), and [091-096 evidence and limits](verification/phases-091-096.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
+Status: phases 001-027 and 029-100 are implemented and verified on Windows Chromium, within the recorded browser limits. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. Phase 095's comparison against frames saved by macOS Tandem also remains pending; its animation boundaries are verified against the ported reference formulas. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), [061-066](verification/phases-061-066.md), [067-072](verification/phases-067-072.md), [073-078](verification/phases-073-078.md), [079-084](verification/phases-079-084.md), [085-090](verification/phases-085-090.md), [091-096](verification/phases-091-096.md), and [097-100 evidence and limits](verification/phases-097-100.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
 
 ## Goal and baseline
 
@@ -724,29 +724,29 @@ Accept when a cut-through-word fixture has matching transcript/caption inclusion
 
 ### Phase 097: Markers and comments
 
-- [ ] Implement `addMarker`, `updateMarker`, and `removeMarker`, including ranges and review metadata.
-- [ ] Add marker/section/chapter, todo, and comment strips with navigation.
+- [x] Implement `addMarker`, `updateMarker`, and `removeMarker`, including ranges and review metadata.
+- [x] Add marker/section/chapter, todo, and comment strips with navigation.
 
 Accept when marker edits, ripple movement, and comment state survive save and undo.
 
 ### Phase 098: Section cards
 
-- [ ] Implement `addSectionCards` with reference placement and insertion behavior.
-- [ ] Implement `fitSectionCards` and render the reference card style and sounds.
+- [x] Implement `addSectionCards` with reference placement and insertion behavior.
+- [x] Implement `fitSectionCards` and render the reference card style and sounds.
 
 Accept when changing section words refits the card correctly and insertion moves its section marker as specified.
 
 ### Phase 099: Templates
 
-- [ ] Implement `insertTemplate`, remapping IDs and relative timing.
-- [ ] Expose the implemented reference template definitions as insertion choices.
+- [x] Implement `insertTemplate`, remapping IDs and relative timing.
+- [x] Expose the implemented reference template definitions as insertion choices.
 
 Accept when repeated insertion has no ID collisions and retains links/effects/credits.
 
 ### Phase 100: Alternate formats
 
-- [ ] Implement `setFormatLayout` and `adoptFormat` with per-format overrides.
-- [ ] Add format preview selection and the reference short-generation proposal.
+- [x] Implement `setFormatLayout` and `adoptFormat` with per-format overrides.
+- [x] Add format preview selection and the reference short-generation proposal.
 
 Accept when adopting portrait preserves keyframe geometry and removes the adopted alternate as the reference does.
 

@@ -1188,3 +1188,73 @@ button.editor-track-name:focus-visible {
 .editor-font-warning {
   color: var(--foreground);
 }
+.editor-marker-strip {
+  display: grid;
+  height: 24px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+}
+.editor-marker-header {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 8px 0 12px;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  color: var(--muted-foreground);
+}
+.editor-marker-header > span {
+  margin-right: auto;
+}
+.editor-marker-lane {
+  position: relative;
+  overflow: hidden;
+}
+.editor-marker {
+  --marker-color: var(--muted-foreground);
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  min-width: 2px;
+  overflow: visible;
+  border-left: 2px solid var(--marker-color);
+  background: color-mix(in oklch, var(--marker-color) 18%, transparent);
+  color: var(--foreground);
+  text-align: left;
+  white-space: nowrap;
+}
+.editor-marker > span {
+  display: block;
+  width: max-content;
+  max-width: 220px;
+  padding: 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 16px;
+}
+.editor-marker[data-kind="section"] {
+  --marker-color: oklch(0.8 0.15 85);
+}
+.editor-marker[data-kind="chapter"] {
+  --marker-color: oklch(0.72 0.14 250);
+}
+.editor-marker[data-kind="todo"] {
+  --marker-color: oklch(0.7 0.18 25);
+}
+.editor-marker[data-kind="comment"] {
+  --marker-color: oklch(0.75 0.13 160);
+}
+.editor-marker:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+.editor-format-select {
+  width: auto;
+  margin-left: 8px;
+}
+.editor-export-format select {
+  width: auto;
+}

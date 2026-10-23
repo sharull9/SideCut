@@ -15,6 +15,7 @@ import { exportPlan } from "@sidecut/core/render-plan";
 import { missingFonts, missingFontWarning } from "@sidecut/core/text";
 import { fontAvailable } from "@sidecut/platform-browser/text";
 import { useFontVersion } from "./text-inspector";
+import { formatOf, formatProject } from "@sidecut/core/formats";
 import { useEditorSession } from "./editor-session";
 
 export function ExportDialog() {
@@ -25,6 +26,9 @@ export function ExportDialog() {
     [error, setError] = useState<string | null>(null),
     [download, setDownload] = useState<{ url: string; name: string } | null>(null);
   const controller = useRef<AbortController | null>(null);
+  const [formatID, setFormatID] = useState("");
+  const format = formatOf(snapshot.project, formatID);
+  const rendered = formatProject(snapshot.project, format?.id);
   useFontVersion();
   useEffect(
     () => () => {
@@ -46,7 +50,7 @@ export function ExportDialog() {
   let issue: string | null = null;
   let plan: ReturnType<typeof exportPlan> | null = null;
   try {
-    plan = exportPlan(snapshot.project);
+    plan = exportPlan(rendered);
   } catch (cause) {
     issue = cause instanceof Error ? cause.message : String(cause);
   }
@@ -58,9 +62,10 @@ export function ExportDialog() {
     setError(null);
     setProgress(0);
     setDownload(null);
-    const filename = snapshot.project.name.replace(/[\\/:*?"<>|]/g, "_") || "SideCut";
+    const base = snapshot.project.name.replace(/[\\/:*?"<>|]/g, "_") || "SideCut";
+    const filename = format ? `${base} ${format.id}` : base;
     try {
-      const blob = await session.exportWebM(abort.signal, setProgress);
+      const blob = await session.exportWebM(abort.signal, setProgress, format?.id ?? null);
       if (abort.signal.aborted) {
         setStatus("cancelled");
         return;
@@ -111,7 +116,29 @@ export function ExportDialog() {
             <AlertDescription>{issue}</AlertDescription>
           </Alert>
         )}
-        {missingFonts(snapshot.project, fontAvailable, true).map((font) => (
+        {snapshot.project.settings.alternateFormats.length > 0 && (
+          <label className="editor-export-format">
+            Format{" "}
+            <select
+              value={format?.id ?? ""}
+              disabled={status === "exporting"}
+              onChange={(event) => {
+                setFormatID(event.target.value);
+                setDownload(null);
+                setStatus("idle");
+                setError(null);
+              }}
+            >
+              <option value="">Main canvas</option>
+              {snapshot.project.settings.alternateFormats.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name} · {f.width} × {f.height}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {missingFonts(rendered, fontAvailable, true).map((font) => (
           <Alert key={font.name}>
             <AlertTitle>Missing font</AlertTitle>
             <AlertDescription>{missingFontWarning(font)}</AlertDescription>

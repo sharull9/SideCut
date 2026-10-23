@@ -81,6 +81,7 @@ describe("source preview lifecycle", () => {
     const state = project();
     const session = {
       jobs: new BrowserJobs(),
+      analysis: { getSnapshot: () => ({}) },
       getSnapshot: () => ({ project: state }),
       resource: async () => ({ state: "available", file: new File(["test"], "test.webm") }),
     } as unknown as BrowserProjectSession;

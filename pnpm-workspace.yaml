@@ -8,6 +8,8 @@ allowBuilds:
   lightningcss: true
   unrs-resolver: true
   msw: false
+  onnxruntime-node: false
+  protobufjs: false
 
 catalog:
   "mediabunny": "1.62.0"

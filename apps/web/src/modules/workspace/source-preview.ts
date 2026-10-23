@@ -64,6 +64,8 @@ export class SourcePreview {
         if (!resource || resource.state !== "available")
           throw new Error(`${item.path}: source is missing or unsupported on this device.`);
         const value = await LocalMediaReader.open(resource.file, item.kind);
+        const proxyState = this.session.analysis.getSnapshot()[id];
+        if (proxyState?.proxyEnabled && proxyState.proxy) value.useProxy(proxyState.proxy);
         if (this.disposed) {
           value.close();
           throw new Error("Preview is closed.");

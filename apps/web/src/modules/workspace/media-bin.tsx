@@ -17,6 +17,8 @@ import {
 import { useEditorSession } from "./editor-session";
 import { placeSource, MEDIA_DRAG_TYPE } from "./placement";
 import { MediaPlacementForm } from "./media-placement-form";
+import { MediaAnalysisControls, TakeIdentification } from "./media-analysis-controls";
+import { SourceSamples } from "./source-samples";
 
 export function MediaBin({
   run,
@@ -88,6 +90,7 @@ export function MediaBin({
           Drag sources to tracks. Picture and sound use separate tracks.
         </p>
       )}
+      {snapshot.project.media.length > 0 && <TakeIdentification run={run} disabled={disabled} />}
       <div
         className="editor-panel-content"
         role="region"
@@ -135,6 +138,7 @@ export function MediaBin({
                         : `${availability.state}: ${availability.detail}`
                       : "Checking source…"}
                   </p>
+                  <SourceSamples mediaID={item.id} audio={item.kind === "audio"} />
                   {(["place", "insert"] as const).map((mode) => (
                     <Button
                       key={mode}
@@ -176,6 +180,7 @@ export function MediaBin({
                     key={`${item.id}:${item.role}:${item.takeID}:${item.takeOffset?.flicks}`}
                     item={item}
                   />
+                  <MediaAnalysisControls item={item} />
                 </li>
               );
             })}

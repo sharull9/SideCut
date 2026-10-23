@@ -15,12 +15,18 @@
     "./preview": "./src/preview.ts",
     "./lut": "./src/lut.ts",
     "./picture": "./src/picture.ts",
-    "./export": "./src/export.ts"
+    "./export": "./src/export.ts",
+    "./derived-cache": "./src/derived-cache.ts",
+    "./source-analysis": "./src/source-analysis.ts",
+    "./proxy": "./src/proxy.ts",
+    "./sound-sync": "./src/sound-sync.ts",
+    "./transcription": "./src/transcription.ts"
   },
   "scripts": {
     "typecheck": "vp exec tsc --noEmit"
   },
   "dependencies": {
+    "@huggingface/transformers": "4.3.1",
     "@jitsi/rnnoise-wasm": "0.2.1",
     "@sidecut/contracts": "workspace:*",
     "@sidecut/core": "workspace:*",

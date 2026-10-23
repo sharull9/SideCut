@@ -1,6 +1,6 @@
 # Tandem parity roadmap
 
-Status: phases 001-027 and 029-084 are implemented and verified on Windows Chromium, within the recorded browser limits. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), [061-066](verification/phases-061-066.md), [067-072](verification/phases-067-072.md), [073-078](verification/phases-073-078.md), and [079-084 evidence and limits](verification/phases-079-084.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
+Status: phases 001-027 and 029-090 are implemented and verified on Windows Chromium, within the recorded browser limits. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), [061-066](verification/phases-061-066.md), [067-072](verification/phases-067-072.md), [073-078](verification/phases-073-078.md), [079-084](verification/phases-079-084.md), and [085-090 evidence and limits](verification/phases-085-090.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
 
 ## Goal and baseline
 
@@ -640,43 +640,43 @@ Accept when cancelling and reopening a job cannot leave a stale result or runnin
 
 ### Phase 085: Thumbnails and waveforms
 
-- [ ] Generate cached thumbnails and waveform peaks.
-- [ ] Render visible timeline/bin samples without decoding every offscreen item.
+- [x] Generate cached thumbnails and waveform peaks.
+- [x] Render visible timeline/bin samples without decoding every offscreen item.
 
 Accept when seeking, resizing, and scrolling reuse valid cached analysis.
 
 ### Phase 086: Proxies
 
-- [ ] Generate a supported lower-resolution proxy while preserving source-time mapping and alpha.
-- [ ] Switch preview sources without changing final-export source selection.
+- [x] Generate a supported lower-resolution proxy while preserving source-time mapping and alpha.
+- [x] Switch preview sources without changing final-export source selection.
 
 Accept when a proxy-backed alpha clip and original export agree on time and transparency. Codec differences remain in the capability report.
 
 ### Phase 087: Take identification
 
-- [ ] Port filename/role pairing and persisted take offsets.
-- [ ] Expose manual correction for ambiguous pairs.
+- [x] Port filename/role pairing and persisted take offsets.
+- [x] Expose manual correction for ambiguous pairs.
 
 Accept when a Record It naming fixture groups as the reference does without merging unrelated takes.
 
 ### Phase 088: Waveform sync
 
-- [ ] Implement reference-style audio alignment for paired takes.
-- [ ] Show confidence/failure and allow offset correction.
+- [x] Implement reference-style audio alignment for paired takes.
+- [x] Show confidence/failure and allow offset correction.
 
 Accept when a known-delay fixture aligns within the documented sample tolerance.
 
 ### Phase 089: Local transcription
 
-- [ ] Integrate one local transcription backend with word timestamps.
-- [ ] Track model availability, progress, cancellation, and source-time cache entries.
+- [x] Integrate one local transcription backend with word timestamps.
+- [x] Track model availability, progress, cancellation, and source-time cache entries.
 
 Accept when a licensed speech fixture yields usable word timing without an undisclosed upload. Backend quality differences are recorded.
 
 ### Phase 090: Timeline words
 
-- [ ] Map transcript words through source trims, speed changes, and cuts.
-- [ ] Render a seekable transcript lane using the same query model.
+- [x] Map transcript words through source trims, speed changes, and cuts.
+- [x] Render a seekable transcript lane using the same query model.
 
 Accept when cut words appear once under the reference majority/half-word rules.
 

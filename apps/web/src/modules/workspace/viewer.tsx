@@ -45,6 +45,19 @@ export function Viewer() {
       preview.seek(editor.getState().playhead.seconds);
     };
     synchronize();
+    let proxySelection = "";
+    const unsubscribeAnalysis = session.analysis.subscribe(() => {
+      const selection = Object.entries(session.analysis.getSnapshot())
+        .filter(([, state]) => state.proxyEnabled)
+        .map(([id]) => id)
+        .sort()
+        .join(",");
+      if (selection === proxySelection) return;
+      proxySelection = selection;
+      editor.getState().setPlaying(false);
+      preview.release();
+      preview.seek(editor.getState().playhead.seconds);
+    });
     const unsubscribeSession = session.subscribe(() => {
       if (session.getSnapshot().project !== current) synchronize();
       if (session.getSnapshot().mediaAvailability !== availability) {
@@ -79,6 +92,7 @@ export function Viewer() {
     return () => {
       unsubscribeView();
       unsubscribeSession();
+      unsubscribeAnalysis();
       document.removeEventListener("visibilitychange", visibility);
       preview.close();
       editor.getState().setPlaying(false);

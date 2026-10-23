@@ -1,6 +1,8 @@
 import { TransitionBlock } from "./transition-controls";
 import { AdjustmentDialog } from "./adjustment-dialog";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo, useSyncExternalStore } from "react";
+import { placeWords } from "@sidecut/core/transcript";
+import { Time } from "@sidecut/contracts/time";
 import {
   RiLockLine,
   RiLockUnlockLine,
@@ -84,6 +86,37 @@ function TrackName({
 
 export function Timeline({ run }: { run: (action: () => unknown) => void }) {
   const { session, snapshot, editor } = useEditorSession();
+  const analysis = useSyncExternalStore(
+    session.analysis.subscribe,
+    session.analysis.getSnapshot,
+    session.analysis.getSnapshot,
+  );
+  const wordsByTrack = useMemo(
+    () =>
+      new Map(
+        [...snapshot.project.videoTracks, ...snapshot.project.audioTracks].map((track) => [
+          track.id,
+          snapshot.project.media
+            .flatMap((media) => {
+              const transcript = analysis[media.id]?.transcript;
+              return transcript
+                ? placeWords(
+                    transcript,
+                    track.clips.filter(
+                      (clip) =>
+                        clip.content.media &&
+                        typeof clip.content.media === "object" &&
+                        "mediaID" in clip.content.media &&
+                        clip.content.media.mediaID === media.id,
+                    ),
+                  )
+                : [];
+            })
+            .sort((a, b) => a.start - b.start),
+        ]),
+      ),
+    [snapshot.project, analysis],
+  );
   const playhead = useEditorView((state) => state.playhead);
   const zoom = useEditorView((state) => state.zoom);
   const selected = useEditorView((state) => state.selected);
@@ -394,6 +427,7 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                 </div>
                 <div
                   className="editor-track-lane"
+                  data-has-words={Boolean(wordsByTrack.get(track.id)?.length)}
                   style={{ backgroundSize: `${tickStep * zoom}px 100%` }}
                   data-track-id={track.id}
                   aria-label={`${track.name} clips`}
@@ -456,6 +490,30 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                       run={run}
                     />
                   ))}
+                  <div
+                    className="editor-transcript-lane"
+                    aria-label={`${track.name} transcript words`}
+                  >
+                    {wordsByTrack.get(track.id)?.map((word) => (
+                      <button
+                        type="button"
+                        key={`${word.clipID}:${word.index}`}
+                        style={{
+                          left: word.start * zoom,
+                          width: Math.max(2, (word.end - word.start) * zoom),
+                        }}
+                        title={`${word.text} · ${word.start.toFixed(3)} s`}
+                        aria-label={`Seek to ${word.text} at ${word.start.toFixed(3)} seconds`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          editor.getState().setPlaying(false);
+                          editor.getState().seek(Time.fromSeconds(word.start));
+                        }}
+                      >
+                        {word.text}
+                      </button>
+                    ))}
+                  </div>
                   <div className="editor-playhead-line" style={{ left: playhead.seconds * zoom }} />
                 </div>
               </div>

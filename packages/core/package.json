@@ -19,7 +19,10 @@
     "./cube-lut": "./src/cube-lut.ts",
     "./keyframes": "./src/keyframes.ts",
     "./picture-editing": "./src/picture-editing.ts",
-    "./render-plan": "./src/render-plan.ts"
+    "./render-plan": "./src/render-plan.ts",
+    "./take-pairing": "./src/take-pairing.ts",
+    "./sound-sync": "./src/sound-sync.ts",
+    "./transcript": "./src/transcript.ts"
   },
   "scripts": {
     "typecheck": "vp exec tsc --noEmit"

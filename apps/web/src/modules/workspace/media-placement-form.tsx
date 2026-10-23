@@ -110,7 +110,7 @@ export function MediaPlacementForm({ item }: { item: MediaItem }) {
               onChange={(e) => setOffset(e.target.value)}
             />
             <FieldDescription>
-              Known sync offset. Automatic alignment by sound is planned.
+              Known sync offset. Use Local analysis and preview to measure it by sound.
             </FieldDescription>
           </Field>
           <Button size="xs" type="submit" variant="outline" disabled={disabled}>

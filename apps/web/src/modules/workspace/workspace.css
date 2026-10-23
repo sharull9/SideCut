@@ -359,6 +359,75 @@
   cursor: grab;
   touch-action: none;
 }
+.editor-source-samples {
+  display: block;
+  position: relative;
+  height: 24px;
+  overflow: hidden;
+  color: var(--foreground);
+  pointer-events: none;
+}
+.editor-source-samples canvas {
+  display: block;
+  width: 100%;
+  height: 24px;
+}
+.editor-clip > .editor-source-samples {
+  position: absolute;
+  inset: auto 8px 1px;
+  opacity: 0.7;
+}
+.editor-clip-label {
+  position: relative;
+  align-self: start;
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  padding-inline: 2px;
+}
+.editor-clip:has(.editor-source-samples) .editor-clip-body {
+  display: flex;
+  align-items: start;
+}
+.editor-take-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-inline: 8px;
+}
+.editor-track:has(> .editor-track-lane[data-has-words="true"]) {
+  height: 90px;
+}
+.editor-track-lane[data-has-words="true"] > .editor-clip {
+  bottom: 29px;
+}
+.editor-transcript-lane {
+  position: absolute;
+  inset: auto 0 0;
+  height: 24px;
+  pointer-events: none;
+}
+.editor-transcript-lane button {
+  position: absolute;
+  height: 24px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--foreground);
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  text-align: left;
+  padding-inline: 3px;
+  font-size: 11px;
+  pointer-events: auto;
+}
+.editor-transcript-lane button:hover {
+  background: var(--accent);
+}
+.editor-transcript-lane button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
 .editor-trim-handle {
   position: absolute;
   top: 0;

@@ -1,0 +1,41 @@
+{
+  "export": {
+    "background": [1, 0, 255, 255],
+    "bytes": 2108,
+    "foreground": [128, 0, 127, 255]
+  },
+  "pixels": [
+    {
+      "alpha": 128,
+      "time": 0,
+      "timestamp": 0
+    },
+    {
+      "alpha": 128,
+      "time": 0.25,
+      "timestamp": 0.25
+    },
+    {
+      "alpha": 128,
+      "time": 0.9,
+      "timestamp": 0.75
+    },
+    {
+      "alpha": 128,
+      "time": 1,
+      "timestamp": 1
+    },
+    {
+      "alpha": 128,
+      "time": 1.9,
+      "timestamp": 1.75
+    }
+  ],
+  "proxy": {
+    "format": "png-sequence-v1",
+    "frames": 8,
+    "height": 360,
+    "width": 640
+  },
+  "thumbnails": 1
+}

@@ -4,6 +4,7 @@ import { useEditorSession } from "./editor-session";
 import { atFrame } from "./timeline-model";
 import { Time } from "@sidecut/contracts/time";
 import { selectionWithLinks } from "./edit-actions";
+import { SourceSamples } from "./source-samples";
 
 interface Gesture {
   operation: "move" | "trim" | "ripple" | "roll" | "slip" | "slide";
@@ -298,6 +299,16 @@ export function ClipBlock({
       style={{ left: start * zoom, width: Math.max(2, duration * zoom) }}
       title={`${clip.name ?? clip.id} · ${start.toFixed(3)} s · ${duration.toFixed(3)} s`}
     >
+      {clip.content.media !== null &&
+        typeof clip.content.media === "object" &&
+        "mediaID" in clip.content.media &&
+        typeof clip.content.media.mediaID === "string" && (
+          <SourceSamples
+            mediaID={clip.content.media.mediaID}
+            clip={clip}
+            audio={track.kind === "audio"}
+          />
+        )}
       <button
         className="editor-clip-body"
         aria-label={`Select clip ${clip.name ?? clip.id}`}
@@ -318,7 +329,7 @@ export function ClipBlock({
           choose(event.shiftKey || event.ctrlKey || event.metaKey);
         }}
       >
-        {clip.name ?? clip.id}
+        <span className="editor-clip-label">{clip.name ?? clip.id}</span>
         {clip.linkGroup && <span aria-label="Linked clip"> ↔</span>}
       </button>
       {(["start", "end"] as const).map((edge) => (

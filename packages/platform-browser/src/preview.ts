@@ -1,4 +1,6 @@
 import type { Input, CanvasSink, AudioBufferSink } from "mediabunny";
+import type { PictureProxy } from "./proxy";
+import { proxyFrameIndex } from "./proxy";
 
 export class LocalMediaReader {
   private input: Input | null = null;
@@ -6,6 +8,17 @@ export class LocalMediaReader {
   private sound: AudioBufferSink | null = null;
   private image: ImageBitmap | null = null;
   private closed = false;
+  private proxy: PictureProxy | undefined;
+  private proxyBitmap: { index: number; bitmap: ImageBitmap } | undefined;
+
+  useProxy(proxy: PictureProxy) {
+    this.proxy = proxy;
+  }
+
+  frames() {
+    if (this.closed || !this.picture) throw new Error("Source has no decodable picture.");
+    return this.picture.canvases();
+  }
 
   static async open(
     file: File,
@@ -25,6 +38,7 @@ export class LocalMediaReader {
         ]);
         if (video)
           reader.picture = new CanvasSink(video, {
+            alpha: true,
             width: Math.min(maxWidth, await video.getDisplayWidth()),
             poolSize: 2,
           });
@@ -38,6 +52,27 @@ export class LocalMediaReader {
   }
   async frame(time: number) {
     if (this.closed) throw new Error("Media reader is closed.");
+    if (this.proxy) {
+      const index = proxyFrameIndex(this.proxy, time),
+        frame = this.proxy.frames[index];
+      if (!frame) return null;
+      if (this.proxyBitmap?.index !== index) {
+        const bitmap = await createImageBitmap(frame.image);
+        if (this.closed) {
+          bitmap.close();
+          throw new Error("Media reader is closed.");
+        }
+        this.proxyBitmap?.bitmap.close();
+        this.proxyBitmap = { index, bitmap };
+      }
+      return {
+        canvas: this.proxyBitmap.bitmap,
+        width: this.proxy.width,
+        height: this.proxy.height,
+        timestamp: frame.timestamp,
+        duration: frame.duration,
+      };
+    }
     if (this.image)
       return {
         canvas: this.image,
@@ -56,6 +91,9 @@ export class LocalMediaReader {
   }
   close() {
     this.closed = true;
+    this.proxyBitmap?.bitmap.close();
+    this.proxyBitmap = undefined;
+    this.proxy = undefined;
     this.input?.dispose();
     this.input = null;
     this.image?.close();

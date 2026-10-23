@@ -13,6 +13,7 @@ import { acquireProjectWriter } from "@sidecut/platform-browser/writer-lock";
 import { SaveQueue } from "@sidecut/platform-browser/save-queue";
 import { BrowserJobs } from "@sidecut/platform-browser/jobs";
 import { probeLocalFile, mediaIdentity } from "@sidecut/platform-browser/media";
+import { MediaAnalysis } from "./media-analysis";
 
 export interface MediaAvailability {
   state: "available" | "missing" | "unsupported";
@@ -64,6 +65,7 @@ function coordinatorState(coordinator: ProjectCoordinator): SessionSnapshot {
 
 export class BrowserProjectSession {
   readonly jobs = new BrowserJobs(2);
+  readonly analysis = new MediaAnalysis(this);
   private archivedRaw: string | null = null;
   private envelope = standardProject("prj_loading");
   private coordinator = new ProjectCoordinator(this.envelope);
@@ -150,6 +152,8 @@ export class BrowserProjectSession {
   }
 
   private attach(file: ProjectFile, readOnly: boolean) {
+    this.jobs.cancelAll();
+    this.analysis.reset();
     this.unsubscribe?.();
     this.envelope = file;
     this.coordinator = new ProjectCoordinator(file);
@@ -480,6 +484,7 @@ export class BrowserProjectSession {
 
   async close() {
     this.jobs.cancelAll();
+    this.analysis.reset();
     this.exportController?.abort();
     ++this.epoch;
     this.unsubscribe?.();

@@ -129,11 +129,23 @@ describe("track and non-ripple placement commands", () => {
         ],
       }),
     ).toThrow(/picture/);
-    expect(() =>
-      value.apply({
-        commands: [{ insertClip: { ...insert("clip_overwrite").insertClip, mode: "overwrite" } }],
-      }),
-    ).toThrow(/not implemented/);
     expect(value.getSnapshot()).toBe(before);
+  });
+  it("overwrites the covered range of the target track", () => {
+    const value = session();
+    value.apply({ commands: [insert()] });
+    value.apply({
+      commands: [
+        { insertClip: { ...insert("clip_overwrite", 0.5, 0.25).insertClip, mode: "overwrite" } },
+      ],
+    });
+    const clips = value.getSnapshot().project.videoTracks[0]!.clips;
+    expect(
+      clips.map((c) => [c.id === "clip_overwrite", c.start.seconds, c.duration.seconds]),
+    ).toEqual([
+      [false, 0, 0.5],
+      [true, 0.5, 0.25],
+      [false, 0.75, 0.25],
+    ]);
   });
 });

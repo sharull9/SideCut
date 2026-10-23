@@ -12,6 +12,9 @@ import {
 import { Progress } from "@sidecut/ui/components/progress";
 import { Alert, AlertTitle, AlertDescription } from "@sidecut/ui/components/alert";
 import { exportPlan } from "@sidecut/core/render-plan";
+import { missingFonts, missingFontWarning } from "@sidecut/core/text";
+import { fontAvailable } from "@sidecut/platform-browser/text";
+import { useFontVersion } from "./text-inspector";
 import { useEditorSession } from "./editor-session";
 
 export function ExportDialog() {
@@ -22,6 +25,7 @@ export function ExportDialog() {
     [error, setError] = useState<string | null>(null),
     [download, setDownload] = useState<{ url: string; name: string } | null>(null);
   const controller = useRef<AbortController | null>(null);
+  useFontVersion();
   useEffect(
     () => () => {
       controller.current?.abort();
@@ -107,6 +111,12 @@ export function ExportDialog() {
             <AlertDescription>{issue}</AlertDescription>
           </Alert>
         )}
+        {missingFonts(snapshot.project, fontAvailable, true).map((font) => (
+          <Alert key={font.name}>
+            <AlertTitle>Missing font</AlertTitle>
+            <AlertDescription>{missingFontWarning(font)}</AlertDescription>
+          </Alert>
+        ))}
         {error && (
           <Alert variant="destructive">
             <AlertTitle>Export failed</AlertTitle>

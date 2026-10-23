@@ -20,12 +20,14 @@
     "./source-analysis": "./src/source-analysis.ts",
     "./proxy": "./src/proxy.ts",
     "./sound-sync": "./src/sound-sync.ts",
-    "./transcription": "./src/transcription.ts"
+    "./transcription": "./src/transcription.ts",
+    "./text": "./src/text.ts"
   },
   "scripts": {
     "typecheck": "vp exec tsc --noEmit"
   },
   "dependencies": {
+    "@fontsource/tilt-warp": "5.3.0",
     "@huggingface/transformers": "4.3.1",
     "@jitsi/rnnoise-wasm": "0.2.1",
     "@sidecut/contracts": "workspace:*",

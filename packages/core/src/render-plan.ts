@@ -5,6 +5,7 @@ import { effectIssue } from "./color-processing";
 import { effectsOf } from "./effect-editing";
 import type { ClipEffect } from "@sidecut/contracts/project";
 import { resolveClip } from "./keyframes";
+import { textIssue } from "./text";
 import type { Project, Clip, Track } from "@sidecut/contracts/project";
 import { Time } from "@sidecut/contracts/time";
 export function projectDuration(project: Project): Time {
@@ -94,6 +95,10 @@ export function previewIssue(project: Project, time: number): string | null {
       reference && typeof reference === "object" && "mediaID" in reference
         ? reference.mediaID
         : null;
+    if (track.kind === "video" && clip.content.text != null) {
+      const problem = textIssue(clip.content.text);
+      if (problem) return problem;
+    }
     if (track.kind === "video") {
       const problem = effectIssue([
         ...((project.media.find((item) => item.id === mediaID)?.look ??
@@ -202,9 +207,15 @@ export function solidColor(clip: Clip): readonly [number, number, number, number
   return result as [number, number, number, number];
 }
 function supportedPicture(clip: Clip): boolean {
-  if (clip.content.media == null && clip.content.solid == null && clip.content.adjustment == null)
+  if (
+    clip.content.media == null &&
+    clip.content.solid == null &&
+    clip.content.adjustment == null &&
+    clip.content.text == null
+  )
     return false;
   if (clip.content.solid != null) solidColor(clip);
+  if (clip.content.text != null && textIssue(clip.content.text)) return false;
   return Object.entries(clip.video ?? {}).every(([key, value]) => {
     if (value == null || key === "layoutPreset") return true;
     if (key === "transform") {
@@ -239,6 +250,8 @@ export interface PictureLayer {
   trackID: string;
   mediaID: string | null;
   sourceTime: number;
+  /** Timeline time relative to the clip start, for title animation and caption words. */
+  clipTime: number;
   color: readonly [number, number, number, number] | null;
 }
 export type PictureNode =
@@ -285,6 +298,7 @@ export function framePlan(project: Project, time: number) {
             trackID: track.id,
             mediaID: typeof reference.mediaID === "string" ? reference.mediaID : null,
             sourceTime: pictureTime(project, clip, time),
+            clipTime: time - clip.start.seconds,
             color: clip.content.solid != null ? solidColor(clip) : null,
           },
         },

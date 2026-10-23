@@ -1,5 +1,6 @@
 import { TransitionBlock } from "./transition-controls";
 import { AdjustmentDialog } from "./adjustment-dialog";
+import { TitleDialog } from "./title-dialog";
 import { useRef, useState, useEffect, useMemo, useSyncExternalStore } from "react";
 import { placeWords } from "@sidecut/core/transcript";
 import { Time } from "@sidecut/contracts/time";
@@ -98,7 +99,8 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
           track.id,
           snapshot.project.media
             .flatMap((media) => {
-              const transcript = analysis[media.id]?.transcript;
+              // Reading analysis keeps the memo current; transcriptFor aligns words to the waveform.
+              const transcript = analysis[media.id] && session.analysis.transcriptFor(media);
               return transcript
                 ? placeWords(
                     transcript,
@@ -115,7 +117,7 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
             .sort((a, b) => a.start - b.start),
         ]),
       ),
-    [snapshot.project, analysis],
+    [snapshot.project, analysis, session],
   );
   const playhead = useEditorView((state) => state.playhead);
   const zoom = useEditorView((state) => state.zoom);
@@ -154,6 +156,7 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
     <section id="timeline-panel" aria-labelledby="timeline-title" className="editor-timeline">
       <div className="editor-timeline-toolbar">
         <h2 id="timeline-title">Timeline</h2>
+        <TitleDialog />
         <AdjustmentDialog />
         <Button
           size="xs"

@@ -6,6 +6,7 @@ import type { SoundMatch } from "@sidecut/core/sound-sync";
 import type { BrowserProjectSession } from "./browser-session";
 import { pairTakes, decodeTakeSidecar } from "@sidecut/core/take-pairing";
 import { derivedCache } from "@sidecut/platform-browser/derived-cache";
+import { alignTranscript } from "@sidecut/core/speech";
 
 export interface MediaAnalysisState {
   samples?: SourceSamples | undefined;
@@ -20,7 +21,45 @@ export class MediaAnalysis {
   private listeners = new Set<() => void>();
   private pending = new Map<string, Promise<unknown>>();
   private generation = 0;
+  private aligned = new WeakMap<Transcript, { samples: SourceSamples; value: Transcript }>();
   constructor(private readonly session: BrowserProjectSession) {}
+  /**
+   * The transcript every speech query reads: word edges pulled to the cached waveform when it is
+   * available, as the reference does on read. The stored transcript keeps the engine's times.
+   */
+  transcriptFor = (item: Pick<MediaItem, "id">): Transcript | undefined => {
+    const state = this.state[item.id];
+    if (!state?.transcript || !state.samples) return state?.transcript;
+    const hit = this.aligned.get(state.transcript);
+    if (hit?.samples === state.samples) return hit.value;
+    const value = alignTranscript(
+      state.transcript,
+      state.samples.peaks,
+      state.samples.peaksPerSecond,
+    );
+    this.aligned.set(state.transcript, { samples: state.samples, value });
+    return value;
+  };
+  /** Loads cached transcripts and waveforms for every sound source available on this device. */
+  async prepareSpeech() {
+    const project = this.session.getSnapshot().project;
+    const used = new Set(
+      [...project.videoTracks, ...project.audioTracks].flatMap((track) =>
+        track.clips.map(
+          (clip) => (clip.content.media as { mediaID?: string } | undefined)?.mediaID,
+        ),
+      ),
+    );
+    await Promise.allSettled(
+      project.media
+        .filter((item) => item.hasAudio)
+        .map(async (item) => {
+          if ((await this.session.resource(item.id))?.state !== "available") return;
+          await this.load(item.id);
+          if (this.state[item.id]?.transcript && used.has(item.id)) await this.samples(item.id);
+        }),
+    );
+  }
   getSnapshot = () => this.state;
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);

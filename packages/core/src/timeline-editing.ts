@@ -632,6 +632,17 @@ export function editTimeline(
     context.createdIDs.push(clip.id);
     return normalizeLinks(p);
   }
+  if ("insertClip" in command && command.insertClip.mode === "overwrite") {
+    const { trackID, clip } = command.insertClip;
+    const track = requireTrack(p, trackID);
+    unlocked(track);
+    guardSounds(track);
+    if (clip.start.flicks < 0n) throw new Error("Clips cannot start before zero.");
+    const cleared = clearRange(track, clip.start, clip.start.add(clip.duration), context);
+    p = replace(p, sorted({ ...cleared, clips: [...cleared.clips, clip] }));
+    context.createdIDs.push(clip.id);
+    return normalizeLinks(p);
+  }
   if ("slip" in command) {
     const { clipID, delta, includeLinked } = command.slip;
     if (delta.flicks === 0n) return p;

@@ -20,6 +20,8 @@ export function EditorSessionProvider({ children }: { children: ReactNode }) {
   const [editor] = useState(createEditorView);
   useEffect(() => {
     void session.start();
+    // Fonts imported in earlier sessions stay on this device.
+    void import("@sidecut/platform-browser/text").then(({ restoreFonts }) => restoreFonts());
     const leave = (event: BeforeUnloadEvent) => {
       const state = session.getSnapshot();
       if (

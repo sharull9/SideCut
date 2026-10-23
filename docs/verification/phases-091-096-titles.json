@@ -1,0 +1,104 @@
+{
+  "tiltWarp": true,
+  "missing": ["Nonexistent Sans 91"],
+  "frames": {
+    "label@0": {
+      "peak": 0
+    },
+    "label@0.0625": {
+      "peak": 16
+    },
+    "label@0.125": {
+      "x": 576,
+      "y": 347,
+      "width": 129,
+      "height": 31,
+      "peak": 128
+    },
+    "label@0.25": {
+      "x": 576,
+      "y": 347,
+      "width": 129,
+      "height": 31,
+      "peak": 255
+    },
+    "label@1": {
+      "x": 576,
+      "y": 347,
+      "width": 129,
+      "height": 31,
+      "peak": 255
+    },
+    "label@1.75": {
+      "x": 576,
+      "y": 347,
+      "width": 129,
+      "height": 31,
+      "peak": 255
+    },
+    "label@1.99": {
+      "peak": 0
+    },
+    "caption@2.2": {
+      "x": 486,
+      "y": 284,
+      "width": 308,
+      "height": 37,
+      "peak": 255,
+      "highlighted": 1277,
+      "highlightX": [486, 567]
+    },
+    "caption@2.6": {
+      "x": 486,
+      "y": 284,
+      "width": 308,
+      "height": 37,
+      "peak": 255,
+      "highlighted": 1306,
+      "highlightX": [581, 661]
+    },
+    "caption@3.2": {
+      "x": 486,
+      "y": 284,
+      "width": 308,
+      "height": 37,
+      "peak": 255,
+      "highlighted": 1939,
+      "highlightX": [675, 792]
+    },
+    "header@2": {
+      "peak": 0
+    },
+    "header@2.1": {
+      "x": 395,
+      "y": 105,
+      "width": 490,
+      "height": 116,
+      "peak": 135
+    },
+    "header@2.45": {
+      "x": 395,
+      "y": 84,
+      "width": 490,
+      "height": 117,
+      "peak": 255
+    },
+    "header@3": {
+      "x": 395,
+      "y": 84,
+      "width": 490,
+      "height": 117,
+      "peak": 255
+    }
+  },
+  "export": {
+    "bytes": 93399,
+    "ink": {
+      "x": 576,
+      "y": 347,
+      "width": 129,
+      "height": 31,
+      "peak": 255
+    }
+  }
+}

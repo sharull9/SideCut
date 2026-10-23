@@ -1,6 +1,6 @@
 # Tandem parity roadmap
 
-Status: phases 001-027 and 029-090 are implemented and verified on Windows Chromium, within the recorded browser limits. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), [061-066](verification/phases-061-066.md), [067-072](verification/phases-067-072.md), [073-078](verification/phases-073-078.md), [079-084](verification/phases-079-084.md), and [085-090 evidence and limits](verification/phases-085-090.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
+Status: phases 001-027 and 029-096 are implemented and verified on Windows Chromium, within the recorded browser limits. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. Phase 095's comparison against frames saved by macOS Tandem also remains pending; its animation boundaries are verified against the ported reference formulas. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), [061-066](verification/phases-061-066.md), [067-072](verification/phases-067-072.md), [073-078](verification/phases-073-078.md), [079-084](verification/phases-079-084.md), [085-090](verification/phases-085-090.md), and [091-096 evidence and limits](verification/phases-091-096.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
 
 ## Goal and baseline
 
@@ -682,43 +682,43 @@ Accept when cut words appear once under the reference majority/half-word rules.
 
 ### Phase 091: Search
 
-- [ ] Implement case/punctuation-insensitive phrase search.
-- [ ] Include partial matches and matches in removed source material as the reference does.
+- [x] Implement case/punctuation-insensitive phrase search.
+- [x] Include partial matches and matches in removed source material as the reference does.
 
 Accept when UI and service queries return the same timeline/source ranges.
 
 ### Phase 092: Pauses
 
-- [ ] Refine word bounds against waveform activity.
-- [ ] Detect pauses only inside fully transcribed speech coverage.
+- [x] Refine word bounds against waveform activity.
+- [x] Detect pauses only inside fully transcribed speech coverage.
 
 Accept when gaps and missing transcripts are not mistaken for removable pauses.
 
 ### Phase 093: Tighten
 
-- [ ] Build a dry-run pause-removal proposal with reference minimum/retained pause options.
-- [ ] Apply accepted cuts through the existing command coordinator.
+- [x] Build a dry-run pause-removal proposal with reference minimum/retained pause options.
+- [x] Apply accepted cuts through the existing command coordinator.
 
 Accept when a preview and its applied cuts agree, with one undo restoring all tracks.
 
 ### Phase 094: Text and fonts
 
-- [ ] Render text content with reference style overrides and preset precedence.
-- [ ] Resolve fonts and report explicit fallback warnings.
+- [x] Render text content with reference style overrides and preset precedence.
+- [x] Resolve fonts and report explicit fallback warnings.
 
 Accept when legacy and current text styles round-trip and missing fonts are visible in preflight.
 
 ### Phase 095: Title animation
 
-- [ ] Port the implemented reference in/out title animations and preset defaults.
-- [ ] Add title text/style/animation inspector controls.
+- [x] Port the implemented reference in/out title animations and preset defaults.
+- [x] Add title text/style/animation inspector controls.
 
 Accept when title layout and animation boundaries match saved reference frames within font tolerances.
 
 ### Phase 096: Captions
 
-- [ ] Generate caption clips from the shared timeline-word query.
-- [ ] Render word highlighting with clip-relative caption timings.
+- [x] Generate caption clips from the shared timeline-word query.
+- [x] Render word highlighting with clip-relative caption timings.
 
 Accept when a cut-through-word fixture has matching transcript/caption inclusion and an undoable generation batch.
 

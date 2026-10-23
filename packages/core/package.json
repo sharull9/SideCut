@@ -22,7 +22,9 @@
     "./render-plan": "./src/render-plan.ts",
     "./take-pairing": "./src/take-pairing.ts",
     "./sound-sync": "./src/sound-sync.ts",
-    "./transcript": "./src/transcript.ts"
+    "./transcript": "./src/transcript.ts",
+    "./speech": "./src/speech.ts",
+    "./text": "./src/text.ts"
   },
   "scripts": {
     "typecheck": "vp exec tsc --noEmit"

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { decodeProjectFile } from "@sidecut/contracts/project";
-import { exportPlan } from "./render-plan";
+import { exportPlan, framePlan } from "./render-plan";
 
 const clip = { id: "clip", start: 0, duration: 2, content: { media: { mediaID: "media" } } };
 function project(video: unknown[], audio: unknown[] = [], settings: unknown = {}) {
@@ -99,6 +99,21 @@ describe("browser export preflight", () => {
         ),
       ).hasAudio,
     ).toBe(true);
+  });
+  it("renders titles and names undrawable title styles", () => {
+    const title = {
+      id: "t",
+      start: 1,
+      duration: 2,
+      content: { text: { text: "Hi", preset: "label" } },
+    };
+    const p = project([{ id: "v", kind: "video", clips: [title] }]);
+    expect(exportPlan(p).duration).toBe(3);
+    expect(framePlan(p, 1.5).layers[0]).toMatchObject({ mediaID: null, clipTime: 0.5 });
+    const bad = { ...title, content: { text: { text: "Hi", style: { weight: "bold" } } } };
+    expect(() => exportPlan(project([{ id: "v", kind: "video", clips: [bad] }]))).toThrow(
+      /weight must be a number/,
+    );
   });
   it("rounds export length to complete output frames", () => {
     expect(

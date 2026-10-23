@@ -37,9 +37,20 @@ export function validateTranscript(value: Transcript): Transcript {
   return value;
 }
 
-export function placeWords(transcript: Transcript, clips: readonly Clip[]): PlacedWord[] {
+// The lane hides disabled clips; search passes them like the reference's `placements(on:)`.
+export function placeWords(
+  transcript: Transcript,
+  clips: readonly Clip[],
+  options: { includeDisabled?: boolean } = {},
+): PlacedWord[] {
   const playing = clips
-    .filter((c) => c.enabled && !c.freezeFrame && c.speed > 0 && c.duration.flicks > 0n)
+    .filter(
+      (c) =>
+        (c.enabled || options.includeDisabled === true) &&
+        !c.freezeFrame &&
+        c.speed > 0 &&
+        c.duration.flicks > 0n,
+    )
     .toSorted((a, b) => a.start.seconds - b.start.seconds);
   const result: PlacedWord[] = [];
   transcript.words.forEach((word, index) => {

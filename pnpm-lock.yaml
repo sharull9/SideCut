@@ -85,7 +85,7 @@ importers:
         version: 6.0.3
       vite-plus:
         specifier: 'catalog:'
-        version: 1.3.0(@types/node@24.12.4)(@vitest/ui@5.0.5(vitest@5.0.5))(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)
+        version: 1.3.0(@types/node@24.12.4)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)
 
   apps/desktop:
     devDependencies:
@@ -245,6 +245,9 @@ importers:
 
   packages/platform-browser:
     dependencies:
+      '@fontsource/tilt-warp':
+        specifier: 5.3.0
+        version: 5.3.0
       '@huggingface/transformers':
         specifier: 4.3.1
         version: 4.3.1(@types/node@24.12.4)
@@ -272,7 +275,7 @@ importers:
         version: 6.0.3
       vite-plus:
         specifier: 'catalog:'
-        version: 1.3.0(@types/node@24.12.4)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)
+        version: 1.3.0(@types/node@24.12.4)(@vitest/ui@5.0.5(vitest@5.0.5))(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.21.0)(typescript@6.0.3)
 
   packages/ui:
     dependencies:
@@ -854,6 +857,9 @@ packages:
 
   '@fontsource-variable/inter@5.3.0':
     resolution: {integrity: sha512-OupL48va4JNofb97w6NYeF9S7W/kHNKM0Er8Dem5nqi4jeOLrVJDoE8tZEpnMJmtkvNbB1EIPPwHcdkF6b1oUA==}
+
+  '@fontsource/tilt-warp@5.3.0':
+    resolution: {integrity: sha512-ZmO5tjNLWHNUyz81pQFu4lrRNZbwC3xVJXr1cXBKWCnLn3KSDWR3gUcl5BR0Fg/3HY/ZhrKocfplVaK904B5jg==}
 
   '@hono/node-server@2.1.5':
     resolution: {integrity: sha512-MgP/I06GdvsilDspMk/qmRzpk8LOUStP6jFAbSRi40W09DhoyUn+Mj7eyKICPqeYKybOjVFLVIAQzvu1bfIa7Q==}
@@ -4488,6 +4494,8 @@ snapshots:
   '@fontsource-variable/geist@5.3.0': {}
 
   '@fontsource-variable/inter@5.3.0': {}
+
+  '@fontsource/tilt-warp@5.3.0': {}
 
   '@hono/node-server@2.1.5(hono@4.13.13)':
     dependencies:

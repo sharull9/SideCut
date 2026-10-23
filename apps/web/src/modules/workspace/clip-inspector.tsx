@@ -9,7 +9,9 @@ import { EffectInspector } from "./effect-inspector";
 import { KeyframeControls } from "./keyframe-controls";
 import { ProjectSettings } from "./project-settings";
 import { useState } from "react";
+import { TextInspector } from "./text-inspector";
 const INSPECTOR_TABS = [
+  ["text", "Text"],
   ["picture", "Picture"],
   ["audio", "Audio"],
   ["effects", "Effects"],
@@ -20,7 +22,7 @@ type InspectorTab = (typeof INSPECTOR_TABS)[number][0];
 
 export function ClipInspector() {
   const { snapshot } = useEditorSession();
-  const [tab, setTab] = useState<InspectorTab>("picture");
+  const [tab, setTab] = useState<InspectorTab | null>(null);
   const selected = useEditorView((state) => state.selected);
   const clips = [...snapshot.project.videoTracks, ...snapshot.project.audioTracks]
     .flatMap((track) => track.clips)
@@ -62,7 +64,10 @@ export function ClipInspector() {
     snapshot.project.videoTracks.some((t) => t.clips.some((v) => v.id === c.id)),
   );
   const tabs = INSPECTOR_TABS.filter(
-    ([id]) => (id !== "picture" || picture) && (id !== "audio" || !picture),
+    ([id]) =>
+      (id !== "picture" || picture) &&
+      (id !== "audio" || !picture) &&
+      (id !== "text" || (clips.length === 1 && first.content.text != null)),
   );
   const current = tabs.find(([id]) => id === tab)?.[0] ?? tabs[0]![0];
   return (
@@ -136,6 +141,7 @@ export function ClipInspector() {
             role="tabpanel"
             aria-labelledby={`inspector-tab-${current}`}
           >
+            {current === "text" && <TextInspector key={first.id} clip={first} />}
             {current === "picture" && <PictureInspector clips={clips} />}
             {current === "audio" && <AudioControls key={first.id} clip={first} />}
             {current === "effects" && (

@@ -1,0 +1,17 @@
+{
+  "packaged": true,
+  "platform": "win32",
+  "arch": "x64",
+  "version": "0.0.1",
+  "isolation": {
+    "node": "undefined",
+    "require": "undefined",
+    "bridge": "function"
+  },
+  "media": {
+    "bytes": 4396,
+    "codecs": ["vp8", "opus"],
+    "duration": 0.228,
+    "decoded": "RIFF"
+  }
+}

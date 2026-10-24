@@ -4,12 +4,14 @@ packages:
 
 allowBuilds:
   electron: false
+  ffmpeg-static: true
   esbuild: true
   lightningcss: true
   unrs-resolver: true
   msw: false
   onnxruntime-node: false
   protobufjs: false
+  electron-winstaller: false
 
 catalog:
   "mediabunny": "1.62.0"

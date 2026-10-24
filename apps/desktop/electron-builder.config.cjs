@@ -1,0 +1,25 @@
+module.exports = {
+  appId: "app.sidecut.editor",
+  productName: "SideCut",
+  directories: { app: ".package", output: "release" },
+  files: ["dist/**/*", "package.json", "!node_modules/**/*"],
+  extraResources: [{ from: ".package/resources", to: "." }],
+  asar: true,
+  npmRebuild: false,
+  publish: null,
+  artifactName: "SideCut-${version}-${os}-${arch}.${ext}",
+  linux: {
+    target: ["AppImage", "deb"],
+    category: "AudioVideo",
+    executableName: "sidecut",
+    maintainer: "SideCut contributors",
+  },
+  mac: {
+    target: ["dmg", "zip"],
+    category: "public.app-category.video",
+    identity: "-",
+    hardenedRuntime: false,
+    notarize: false,
+  },
+  win: { signAndEditExecutable: false },
+};

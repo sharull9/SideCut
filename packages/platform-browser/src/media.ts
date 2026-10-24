@@ -16,7 +16,7 @@ export interface ProbedMedia {
 export function mediaKind(name: string, mime: string): ProbedMedia["kind"] | null {
   if (mime.startsWith("image/") || /\.(png|jpe?g|webp|gif|avif|bmp|heic|svg)$/i.test(name))
     return "image";
-  if (mime.startsWith("audio/") || /\.(wav|mp3|m4a|aac|flac|ogg|opus|aiff?)$/i.test(name))
+  if (mime.startsWith("audio/") || /\.(wav|mp3|m4a|aac|flac|ogg|opus|caf|aiff?)$/i.test(name))
     return "audio";
   if (mime.startsWith("video/") || /\.(mp4|mov|m4v|webm|mkv|avi|mpeg|mpg)$/i.test(name))
     return "video";

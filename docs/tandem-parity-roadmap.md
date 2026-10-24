@@ -1,6 +1,6 @@
 # Tandem parity roadmap
 
-Status: phases 001-027 and 029-105 are implemented and verified on Windows Chromium, within the recorded browser limits. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. Phase 095's comparison against frames saved by macOS Tandem also remains pending; its animation boundaries are verified against the ported reference formulas. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), [061-066](verification/phases-061-066.md), [067-072](verification/phases-067-072.md), [073-078](verification/phases-073-078.md), [079-084](verification/phases-079-084.md), [085-090](verification/phases-085-090.md), [091-096](verification/phases-091-096.md), [097-100](verification/phases-097-100.md), and [101-105 evidence and limits](verification/phases-101-105.md). Phases 106-110 are implemented with fixture and browser checks; see [106-110 evidence and limits](verification/phases-106-110.md). Phase 109 live paid acceptance remains pending. Phase 111 onward remains pending. Full rendering, desktop delivery, and agent tools remain planned.
+Status: phases 001-027 and 029-105 are implemented and verified on Windows Chromium, within the recorded browser limits. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. Phase 095's comparison against frames saved by macOS Tandem also remains pending; its animation boundaries are verified against the ported reference formulas. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), [061-066](verification/phases-061-066.md), [067-072](verification/phases-067-072.md), [073-078](verification/phases-073-078.md), [079-084](verification/phases-079-084.md), [085-090](verification/phases-085-090.md), [091-096](verification/phases-091-096.md), [097-100](verification/phases-097-100.md), and [101-105 evidence and limits](verification/phases-101-105.md). Phases 106-110 are implemented with fixture and browser checks; see [106-110 evidence and limits](verification/phases-106-110.md). Phase 109 live paid acceptance remains pending. Phases 111-115 are implemented and verified against the Windows desktop baseline; see [111-115 evidence and limits](verification/phases-111-115.md). Phase 116 onward remains pending. Full rendering, packaged desktop delivery, and agent tools remain planned.
 
 ## Goal and baseline
 
@@ -826,38 +826,40 @@ Implementation and fixture/browser evidence: [phases 106-110 verification](verif
 
 ### Phase 111: Electron host
 
-- [ ] Load the shared built editor in an isolated Electron renderer.
-- [ ] Add a narrow validated preload bridge with browser/native import boundaries.
+- [x] Load the shared built editor in an isolated Electron renderer.
+- [x] Add a narrow validated preload bridge with browser/native import boundaries.
 
 Accept when the browser build still works and renderer content cannot call arbitrary Node APIs.
 
 ### Phase 112: Host project service
 
-- [ ] Move desktop project authority into the host process.
-- [ ] Connect renderer actions and subscriptions through typed requests/events.
+- [x] Move desktop project authority into the host process.
+- [x] Connect renderer actions and subscriptions through typed requests/events.
 
 Accept when closing/reopening a window cannot create a competing writer.
 
 ### Phase 113: Native persistence
 
-- [ ] Implement atomic file saves, backups, and project locking.
-- [ ] Surface external modification and recovery choices.
+- [x] Implement atomic file saves, backups, and project locking.
+- [x] Surface external modification and recovery choices.
 
 Accept when interruption and lock-contention fixtures preserve the last valid `.tandem` file.
 
 ### Phase 114: Folder scanning
 
-- [ ] Scan selected folders recursively with the reference exclusions and role rules.
-- [ ] Watch for completed new/changed files without importing temporary writes.
+- [x] Scan selected folders recursively with the reference exclusions and role rules.
+- [x] Watch for completed new/changed files without importing temporary writes.
 
 Accept when adding media to a selected folder updates its catalogue without duplicates or recursive cache imports.
 
 ### Phase 115: Native media jobs
 
-- [ ] Add native probing/decode/export execution behind existing service ports.
-- [ ] Integrate progress, cancellation, child-process cleanup, and decoder failure reporting.
+- [x] Add native probing/decode/export execution behind existing service ports.
+- [x] Integrate progress, cancellation, child-process cleanup, and decoder failure reporting.
 
 Accept when one desktop fixture edits/exports and cancellation leaves no orphan process. Each additional codec/backend is a separate follow-up phase.
+
+Implementation and Windows acceptance evidence: [phases 111-115 verification](verification/phases-111-115.md). Native persistence uses a managed profile project; native encoding follows the shared browser compositor. Cross-platform runtime checks and broader native rendering remain open.
 
 ### Phase 116: Relink and archive
 

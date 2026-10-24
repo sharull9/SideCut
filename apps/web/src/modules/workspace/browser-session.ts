@@ -1,3 +1,5 @@
+import type { FolderMedia } from "@sidecut/contracts/desktop";
+import { HostCoordinator, nativeBridge } from "./host-coordinator";
 import { formatProject } from "@sidecut/core/formats";
 import { parseCube } from "@sidecut/core/cube-lut";
 import { validateProject } from "@sidecut/core/validation";
@@ -58,7 +60,7 @@ function standardProject(id: string): ProjectFile {
 }
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
-function coordinatorState(coordinator: ProjectCoordinator): SessionSnapshot {
+function coordinatorState(coordinator: ProjectCoordinator | HostCoordinator): SessionSnapshot {
   const state = coordinator.getSnapshot();
   return {
     project: state.project,
@@ -74,7 +76,11 @@ export class BrowserProjectSession {
   readonly analysis = new MediaAnalysis(this);
   private archivedRaw: string | null = null;
   private envelope = standardProject("prj_loading");
-  private coordinator = new ProjectCoordinator(this.envelope);
+  private coordinator: ProjectCoordinator | HostCoordinator = new ProjectCoordinator(this.envelope);
+  private hostGeneration = 0;
+  private folderStop: (() => void) | null = null;
+  private folderPending = Promise.resolve();
+  readonly native = nativeBridge();
   private state: BrowserSnapshot = {
     warnings: [],
     ...this.coordinator.getSnapshot(),
@@ -120,6 +126,46 @@ export class BrowserProjectSession {
         store.close();
         return;
       }
+      if (this.native) {
+        this.store = store;
+        this.attachHost();
+        this.folderStop = this.native.folderSubscribe((files, error) => {
+          if (error) {
+            this.update({ error });
+            return;
+          }
+          const projectID = this.state.project.id;
+          const generation = this.hostGeneration;
+          this.folderPending = this.folderPending
+            .then(async () => {
+              if (this.state.busy)
+                await new Promise<void>((resolve) => {
+                  const stop = this.subscribe(() => {
+                    if (
+                      !this.state.busy ||
+                      store !== this.store ||
+                      generation !== this.hostGeneration
+                    ) {
+                      stop();
+                      resolve();
+                    }
+                  });
+                });
+              if (
+                store !== this.store ||
+                projectID !== this.state.project.id ||
+                generation !== this.hostGeneration
+              )
+                return;
+              await this.importFolderMedia(files);
+            })
+            .catch((cause) => {
+              if (store === this.store) this.update({ error: message(cause) });
+            });
+        });
+        await this.refreshMedia();
+        return;
+      }
       const file = await store.ensureCurrent(() => standardProject(`prj_${crypto.randomUUID()}`));
       if (epoch !== this.epoch) {
         store.close();
@@ -155,6 +201,107 @@ export class BrowserProjectSession {
         this.update({ saveState: "error", readOnly: true, error: message(error) });
       }
     }
+  }
+
+  private attachHost() {
+    if (!this.native) return;
+    this.unsubscribe?.();
+    if (this.coordinator instanceof HostCoordinator) this.coordinator.close();
+    this.coordinator = new HostCoordinator(this.native, (value) => {
+      this.update({ saveState: value.saveState, error: value.error });
+    });
+    this.hostGeneration = this.coordinator.generation;
+    this.unsubscribe = this.coordinator.subscribe(() => {
+      if (
+        this.coordinator instanceof HostCoordinator &&
+        this.coordinator.generation !== this.hostGeneration
+      ) {
+        this.hostGeneration = this.coordinator.generation;
+        ++this.epoch;
+        this.jobs.cancelAll();
+        this.analysis.reset();
+        this.exportController?.abort();
+        this.update({ busy: false, mediaAvailability: {}, unsupportedJSON: null });
+      }
+      this.update(coordinatorState(this.coordinator));
+      void this.refreshMedia().catch((error) => this.update({ error: message(error) }));
+    });
+    this.update({ ...coordinatorState(this.coordinator), readOnly: false, busy: false });
+  }
+
+  async reloadNativeProject(backup = false) {
+    if (!this.native || !(this.coordinator instanceof HostCoordinator)) return;
+    this.coordinator.receive(await this.native.projectReload(backup));
+  }
+
+  private async importFolderMedia(files: FolderMedia[]) {
+    if (!this.store || !this.native) return;
+    this.assertWritable();
+    const epoch = this.epoch;
+    this.update({ busy: true });
+    try {
+      for (const entry of files) {
+        const file = new File([new Uint8Array(entry.bytes)], entry.path.split("/").at(-1)!, {
+          lastModified: entry.modified,
+        });
+        const idForJob = crypto.randomUUID();
+        const encoded = new Uint8Array(await file.arrayBuffer());
+        const probe = JSON.parse(
+          new TextDecoder().decode(await this.native.nativeMedia(idForJob, "probe", encoded)),
+        ) as {
+          format?: { duration?: string };
+          streams?: { codec_type?: string; width?: number; height?: number }[];
+        };
+        const { item, resource } = await probeLocalFile(file);
+        const duration = Number(probe.format?.duration);
+        if (Number.isFinite(duration) && duration > 0) item.duration = duration;
+        const video = probe.streams?.find((stream) => stream.codec_type === "video");
+        item.hasVideo = Boolean(video);
+        item.hasAudio = Boolean(probe.streams?.some((stream) => stream.codec_type === "audio"));
+        if (video?.width) item.width = video.width;
+        if (video?.height) item.height = video.height;
+        if (resource.state === "unsupported" && item.kind === "audio") {
+          const wav = await this.native.nativeMedia(crypto.randomUUID(), "decode", encoded);
+          resource.file = new File([new Uint8Array(wav)], `${file.name}.wav`, {
+            type: "audio/wav",
+          });
+          resource.state = "available";
+          resource.detail = "Decoded locally by FFmpeg";
+        }
+        this.assertOpen(epoch);
+        const existing = this.state.project.media.find((media) => media.path === entry.path);
+        item.path = entry.path;
+        // Refresh a changed source in place so timeline references remain valid.
+        const id = existing?.id ?? item.id;
+        await this.store.putResource(this.state.project.id, id, resource);
+        this.assertOpen(epoch);
+        const { id: _id, ...fields } = item;
+        const patch = {
+          ...fields,
+          role:
+            entry.shortAudioFallback && item.duration !== undefined && item.duration < 10
+              ? "sfx"
+              : entry.role,
+        };
+        this.coordinator.apply({
+          label: existing ? "Refresh folder media" : "Import folder media",
+          expectedRevision: this.state.revision,
+          commands: [
+            existing
+              ? { updateMedia: { mediaID: id, patch } }
+              : { addMedia: { item: { ...patch, id } } },
+          ],
+        });
+      }
+      await this.native.projectFlush();
+      await this.refreshMedia();
+    } finally {
+      if (epoch === this.epoch) this.update({ busy: false });
+    }
+  }
+
+  async watchFolder() {
+    await this.native?.folderSelect();
   }
 
   private attach(file: ProjectFile, readOnly: boolean) {
@@ -259,16 +406,41 @@ export class BrowserProjectSession {
         "Export video",
         10,
         AbortSignal.any([signal, controller.signal]),
-        (jobSignal, progress) =>
-          renderWebM(
+        async (jobSignal, progress) => {
+          const rendered = await renderWebM(
             project,
             (id) => store.resource(project.id, id),
             jobSignal,
             (value) => {
-              progress(value);
-              onProgress(value);
+              const portion = this.native ? value * 0.8 : value;
+              progress(portion);
+              onProgress(portion);
             },
-          ),
+          );
+          if (!this.native) return rendered;
+          const id = crypto.randomUUID();
+          const stop = this.native.nativeProgress((jobID, value) => {
+            if (jobID === id) {
+              progress(0.8 + value * 0.2);
+              onProgress(0.8 + value * 0.2);
+            }
+          });
+          const cancel = () => {
+            void this.native?.nativeCancel(id);
+          };
+          jobSignal.addEventListener("abort", cancel, { once: true });
+          try {
+            jobSignal.throwIfAborted();
+            const input = new Uint8Array(await rendered.arrayBuffer());
+            jobSignal.throwIfAborted();
+            const bytes = await this.native.nativeMedia(id, "export", input);
+            jobSignal.throwIfAborted();
+            return new Blob([new Uint8Array(bytes)], { type: "video/webm" });
+          } finally {
+            stop();
+            jobSignal.removeEventListener("abort", cancel);
+          }
+        },
       );
     } finally {
       if (this.exportController === controller) this.exportController = null;
@@ -282,6 +454,10 @@ export class BrowserProjectSession {
       return;
     }
     this.assertWritable();
+    if (this.native) {
+      await this.native.projectFlush();
+      return;
+    }
     this.queue?.enqueue(this.projectFile());
     await this.queue?.flush();
   }
@@ -342,6 +518,11 @@ export class BrowserProjectSession {
           "Project JSON exceeds the 20 MB import limit. Select a .tandem project, not a media file.",
         );
       const original = await file.text();
+      if (this.native && this.coordinator instanceof HostCoordinator) {
+        this.coordinator.receive(await this.native.projectImport(original));
+        await this.refreshMedia();
+        return;
+      }
       const inspected = inspectProjectFile(JSON.parse(original));
       if (!inspected.editable) {
         if (!this.state.readOnly) await this.queue?.flush();
@@ -737,6 +918,9 @@ export class BrowserProjectSession {
     ++this.epoch;
     this.unsubscribe?.();
     this.unsubscribe = null;
+    this.folderStop?.();
+    this.folderStop = null;
+    if (this.coordinator instanceof HostCoordinator) this.coordinator.close();
     const store = this.store;
     const release = this.release;
     const queue = this.queue;

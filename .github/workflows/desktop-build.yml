@@ -1,0 +1,62 @@
+name: Desktop builds
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x64
+            os: ubuntu-24.04
+            artifact: sidecut-linux-x64
+          - name: macOS Apple Silicon
+            os: macos-15
+            artifact: sidecut-macos-arm64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: voidzero-dev/setup-vp@v1.21.2
+        with:
+          node-version: 24.18.0
+          cache: true
+          run-install: false
+      - run: vp install --frozen-lockfile
+      - run: vp run check
+      - run: vp run package:desktop
+      - name: Allow Chromium sandbox namespaces on the Linux runner
+        if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Verify packaged app on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run -a vp run verify:packaged
+      - name: Verify packaged app on macOS
+        if: runner.os == 'macOS'
+        run: vp run verify:packaged
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.artifact }}
+          retention-days: 1
+          if-no-files-found: error
+          compression-level: 0
+          path: |
+            apps/desktop/release/*.AppImage
+            apps/desktop/release/*.deb
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.zip
+            apps/desktop/release/smoke-*.json

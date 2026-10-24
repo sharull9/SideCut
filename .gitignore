@@ -19,3 +19,7 @@ coverage
 
 # typescript
 *.tsbuildinfo
+
+# Desktop packaging
+apps/desktop/.package/
+apps/desktop/release/

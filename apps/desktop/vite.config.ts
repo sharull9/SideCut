@@ -2,7 +2,11 @@ import { defineConfig, type UserConfig } from "vite-plus";
 
 type Pack = Extract<UserConfig["pack"], { entry?: unknown }>;
 
-const shared: Pack = { platform: "node", target: "node24", deps: { neverBundle: ["electron"] } };
+const shared: Pack = {
+  platform: "node",
+  target: "node24",
+  deps: { neverBundle: ["electron", "ffmpeg-static", "ffprobe-static"] },
+};
 
 export default defineConfig({
   pack: [

@@ -146,7 +146,9 @@ export function WorkspaceHome() {
           <span data-testid="project-name">{project.name}</span>
           <span className="editor-session-label" role="status">
             {snapshot.saveState === "saved"
-              ? "Saved in browser"
+              ? session.native
+                ? "Saved on this device"
+                : "Saved in browser"
               : snapshot.saveState === "read-only"
                 ? "Read-only"
                 : snapshot.saveState === "loading"
@@ -226,7 +228,25 @@ export function WorkspaceHome() {
         <Alert variant="destructive" className="editor-notice">
           <AlertTitle>Action needs attention</AlertTitle>
           <AlertDescription>{actionError ?? snapshot.error}</AlertDescription>
-          {snapshot.saveState === "error" && (
+          {snapshot.saveState === "error" && session.native && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => run(() => session.reloadNativeProject())}
+              >
+                Reload disk version
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => run(() => session.reloadNativeProject(true))}
+              >
+                Recover backup
+              </Button>
+            </>
+          )}
+          {snapshot.saveState === "error" && !session.native && (
             <Button size="sm" variant="outline" onClick={() => run(() => session.retrySave())}>
               Retry save
             </Button>

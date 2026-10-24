@@ -16,7 +16,9 @@
     "format": "vp fmt",
     "format:check": "vp fmt --check",
     "test": "vp test run --passWithNoTests",
-    "check": "vp run format:check && vp run lint && vp run typecheck && vp run test"
+    "check": "vp run format:check && vp run lint && vp run typecheck && vp run test",
+    "package:desktop": "vp run build:desktop && vp exec node scripts/package-desktop.mjs",
+    "verify:packaged": "vp exec node scripts/verify-packaged.mjs"
   },
   "devDependencies": {
     "@sidecut/config": "workspace:*",

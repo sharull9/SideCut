@@ -1,5 +1,5 @@
-import { BrowserWindow, app, ipcMain, net, protocol, session, shell } from "electron";
-import { stat } from "node:fs/promises";
+import { BrowserWindow, app, dialog, ipcMain, net, protocol, session, shell } from "electron";
+import { stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
@@ -11,8 +11,19 @@ import {
 } from "../shared/bridge.ts";
 import { resolveRendererPath } from "./renderer-path.ts";
 import { DesktopAssetProviders } from "./asset-providers.ts";
+import { HostProjectService } from "./project-service.ts";
+import { NativeProjectStore } from "./project-store.ts";
+import { registerNativeIPC } from "./native-ipc.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
+const smoke = app.commandLine.hasSwitch("smoke-test");
+let exitCode = 0;
+if (smoke) {
+  const profile = app.commandLine.getSwitchValue("smoke-profile");
+  if (!profile || !app.commandLine.getSwitchValue("smoke-output"))
+    throw new Error("Smoke verification requires a profile and output path.");
+  app.setPath("userData", profile);
+}
 
 // SIDECUT_RENDERER_URL points the window at a local web dev server instead of the build.
 const devUrl = (() => {
@@ -77,7 +88,9 @@ const createWindow = () => {
       webSecurity: true,
     },
   });
-  window.once("ready-to-show", () => window.show());
+  window.once("ready-to-show", () => {
+    if (!smoke) window.show();
+  });
 
   const { webContents } = window;
   webContents.setWindowOpenHandler(({ url }) => {
@@ -89,6 +102,7 @@ const createWindow = () => {
   });
 
   void window.loadURL(devUrl?.href ?? `${rendererOrigin}/`);
+  return window;
 };
 
 app.on("web-contents-created", (_event, contents) => {
@@ -153,7 +167,57 @@ void app.whenReady().then(() => {
   });
 
   serveRenderer();
-  createWindow();
+  const project = new HostProjectService(
+    new NativeProjectStore(join(app.getPath("userData"), "current.tandem")),
+  );
+  void project
+    .start()
+    .then(() => {
+      const close = registerNativeIPC(project, isTrusted);
+      let quitting = false;
+      app.on("before-quit", (event) => {
+        if (quitting) return;
+        event.preventDefault();
+        quitting = true;
+        void close().then(
+          () => {
+            if (smoke) app.exit(exitCode);
+            else app.quit();
+          },
+          (error) => {
+            console.error("Could not close the native project service:", error);
+            app.exit(1);
+          },
+        );
+      });
+      const window = createWindow();
+      if (smoke)
+        void import("./packaged-smoke.ts")
+          .then(({ verifyPackaged }) => verifyPackaged(window))
+          .then((result) =>
+            writeFile(
+              app.commandLine.getSwitchValue("smoke-output"),
+              JSON.stringify(result, null, 2) + "\n",
+            ),
+          )
+          .catch((error) => {
+            exitCode = 1;
+            console.error("Packaged verification failed:", error);
+          })
+          .finally(() => app.quit());
+    })
+    .catch((error) => {
+      console.error("Could not start the host project service:", error);
+      if (smoke) {
+        app.exit(1);
+        return;
+      }
+      dialog.showErrorBox(
+        "Could not open SideCut",
+        error instanceof Error ? error.message : String(error),
+      );
+      app.quit();
+    });
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

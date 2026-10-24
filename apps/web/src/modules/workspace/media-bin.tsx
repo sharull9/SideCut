@@ -70,6 +70,16 @@ export function MediaBin({
         >
           <RiAddLine aria-hidden="true" />
         </Button>
+        {session.native && (
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={disabled}
+            onClick={() => run(() => session.watchFolder())}
+          >
+            Watch folder
+          </Button>
+        )}
         {hideButton}
       </div>
       <input

@@ -337,3 +337,21 @@ include settings, transitions, summaries and cached words. Agent edits remain
 pending in status until **Mark agent edits reviewed** is used in the editor;
 acknowledgment survives restart and does not change the project revision. See
 [verification and limits](docs/verification/filmora-queries.md).
+
+Clips queries accept track IDs, names and complete display labels. Diff/restore
+support revision aliases and the durable reviewed baseline. Join previews list
+linked pairs and every skipped cut. Transcription waits return finished/pending
+work and keep jobs running after a deadline. Windows Electron also verifies
+first-run local Whisper acquisition. See [query/history evidence and limits](docs/verification/query-history.md).
+
+Cards can insert in speech pauses and add locally available whooshes in the same
+undo step. Desktop exports support the reference 4K HEVC and 1080p presets.
+Loudness can compare rendered audio with its gain lane. Validate returns `ok`;
+check scans model problems, frames, speech cuts, pending edits, dead air and screen
+recordings. See [render/review verification and limits](docs/verification/render-review.md).
+
+Comments include nearby cached speech. Sync can align short recordings by sound
+and save camera picture-delay defaults. Watch replays recent changes; waits can
+schedule analysis and observe API exports. Archive supports folder copies,
+consolidation, dry runs and optional browser caches. See
+[comments/jobs/archive verification and limits](docs/verification/jobs-archive.md).

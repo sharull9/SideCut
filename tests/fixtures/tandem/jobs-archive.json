@@ -1,0 +1,39 @@
+{
+  "provenance": {
+    "revision": "735a9b8e162c1f951044baa892d94993869f2e77",
+    "sources": [
+      "TandemAPI/Comments.swift",
+      "TandemAPI/Sync.swift",
+      "TandemAPI/Wait.swift",
+      "TandemAPI/EventHub.swift",
+      "TandemAPI/ServiceTypes.swift",
+      "TandemAPI/Archive.swift"
+    ],
+    "kind": "Synthetic contract cases transcribed from pinned source; not captured native responses."
+  },
+  "requests": [
+    { "operation": "comments", "request": {} },
+    { "operation": "sync", "request": { "delay": -0.08, "makeDefault": true, "dryRun": true } },
+    {
+      "operation": "sync",
+      "request": { "files": ["mic"], "to": "camera", "place": false, "dryRun": true }
+    },
+    { "operation": "watch", "request": { "revision": 1, "timeout": 0 } },
+    {
+      "operation": "wait",
+      "request": { "what": "transcript", "media": ["camera"], "timeout": 86400 }
+    },
+    { "operation": "archive", "request": { "to": "../copies", "dryRun": true, "withCache": true } }
+  ],
+  "defaults": {
+    "commentContext": 4,
+    "syncPlace": true,
+    "watchTimeout": 30,
+    "watchLongest": 600,
+    "waitTarget": "jobs",
+    "waitTimeout": 600,
+    "waitLongest": 86400,
+    "withCache": false,
+    "dryRun": false
+  }
+}

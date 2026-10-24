@@ -19,8 +19,8 @@ describe("review and library baseline contracts", () => {
     expect(reviewQuery(file, "check", { quick: true })).toMatchObject({
       frames: 0,
       notes: [
-        { kind: "sliverGap", clipID: "tiny" },
-        { kind: "sliverClip", clipID: "tiny" },
+        { kind: "sliver", clipIDs: ["first", "tiny"] },
+        { kind: "sliver", clipIDs: ["tiny"] },
       ],
     });
     expect(reviewQuery(file, "comments", {})).toMatchObject({
@@ -29,8 +29,9 @@ describe("review and library baseline contracts", () => {
     expect(reviewQuery(file, "check", { quick: true, from: 0, to: 0.5 })).toMatchObject({
       notes: [],
     });
-    expect(() => reviewQuery(file, "check", { quick: true, changed: true })).toThrow(
-      "reviewed-range",
-    );
+    expect(reviewQuery(file, "check", { quick: true, changed: true })).toMatchObject({
+      ranges: [],
+      frames: 0,
+    });
   });
 });

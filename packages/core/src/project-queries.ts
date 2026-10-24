@@ -97,6 +97,7 @@ export function queryClips(file: ProjectFile, input: unknown) {
     trackID = tracks.find(
       ({ track, label }) =>
         track.id === request.track ||
+        label.toLowerCase() === String(request.track).toLowerCase() ||
         track.name.toLowerCase() === String(request.track).toLowerCase() ||
         label.split(" ")[0]!.toLowerCase() === String(request.track).toLowerCase(),
     )?.track.id;

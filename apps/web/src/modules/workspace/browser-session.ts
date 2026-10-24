@@ -627,8 +627,13 @@ export class BrowserProjectSession {
         }
       }
       const projectID = resources.length ? decodeProjectFile(JSON.parse(original)).project.id : "";
+      if (archive) {
+        const { restoreArchiveCaches } = await import("./service-archive-cache");
+        await restoreArchiveCaches(resources);
+      }
       // Stage copies before publishing a project that references them.
       for (const entry of resources) {
+        if (entry.key.startsWith("cache:")) continue;
         await this.store.putResource(projectID, entry.key, {
           file: new File([entry.bytes.slice().buffer], entry.name, { type: entry.type }),
           state: "available",
@@ -728,11 +733,15 @@ export class BrowserProjectSession {
     );
   }
 
-  async archiveBytes() {
+  async archiveBytes(
+    options: { allowMissing?: boolean; preserveIdentity?: boolean; withCache?: boolean } = {},
+  ) {
     if (!this.store) throw new Error("Storage is closed.");
     const epoch = this.epoch,
       file = this.projectFile();
-    const stored = await this.store.resources(file.project.id);
+    const stored = (await this.store.resources(file.project.id)).filter(
+      ({ key }) => !key.startsWith("cache:"),
+    );
     if (stored.reduce((sum, entry) => sum + entry.resource.file.size, 0) > 256 * 1024 * 1024)
       throw new Error("Archive exceeds the 256 MiB limit.");
     const resources: ArchiveResource[] = [];
@@ -747,7 +756,11 @@ export class BrowserProjectSession {
     }
     if (this.state.revision !== file.revision)
       throw new Error("Project changed during archive. Retry.");
-    return createArchive(file, resources);
+    if (options.withCache) {
+      const { archiveCaches } = await import("./service-archive-cache");
+      resources.push(...(await archiveCaches(stored)));
+    }
+    return createArchive(file, resources, options);
   }
 
   async downloadArchive() {
@@ -1016,6 +1029,21 @@ export class BrowserProjectSession {
       });
     await this.refreshMedia();
     return { mediaID };
+  }
+
+  async stageServiceResource(projectID: string, mediaID: string, file: File, signal: AbortSignal) {
+    this.assertWritable();
+    signal.throwIfAborted();
+    if (!this.store || this.state.project.id !== projectID)
+      throw new Error("Project was replaced.");
+    const epoch = this.epoch;
+    await this.store.putResource(projectID, mediaID, {
+      file,
+      state: "available",
+      detail: "Available from local asset library",
+    });
+    signal.throwIfAborted();
+    this.assertOpen(epoch);
   }
 
   async saveSelectionAsSegment(ids: readonly string[], name: string) {

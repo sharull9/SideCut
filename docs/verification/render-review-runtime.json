@@ -1,0 +1,194 @@
+{
+  "history": {
+    "previewRevision": 1,
+    "editRevision": 2,
+    "repeated": true,
+    "diff": 1,
+    "restored": 3,
+    "undo": 4,
+    "redo": 5,
+    "entries": 5
+  },
+  "queryHistoryFollowups": {
+    "clipIDs": ["speech_b"],
+    "diffDetails": ["gain 0 -> -3 dB"],
+    "editRecords": 1,
+    "transcriptWait": {
+      "what": "transcript",
+      "done": true,
+      "timedOut": false,
+      "elapsed": 0.023600000001490117,
+      "finished": [
+        {
+          "kind": "transcript",
+          "mediaID": "med_voice",
+          "path": "voice.wav",
+          "state": "ready",
+          "words": 4
+        }
+      ],
+      "pending": []
+    },
+    "uncachedMissingSource": [
+      {
+        "kind": "transcript",
+        "mediaID": "med_missing",
+        "path": "unavailable.wav",
+        "state": "failed",
+        "message": "Import this source on this device before analysing it."
+      }
+    ]
+  },
+  "speech": {
+    "words": 4,
+    "hits": 2,
+    "pauses": 2,
+    "transcribe": "ready"
+  },
+  "helpers": {
+    "join": {
+      "commands": 1,
+      "warnings": []
+    },
+    "captions": {
+      "commands": 5,
+      "warnings": []
+    },
+    "short": {
+      "commands": 1,
+      "warnings": []
+    },
+    "cards": {
+      "commands": 1,
+      "warnings": []
+    },
+    "tighten": {
+      "commands": 2,
+      "warnings": []
+    }
+  },
+  "sectionCards": {
+    "previewSounds": "a whoosh on each sweep, from the asset library, on SFX (copied into the project when applied)",
+    "appliedSounds": "a whoosh on each sweep, from the asset library, on SFX",
+    "soundClips": 2,
+    "gains": [-14.1, -17],
+    "oneUndoStep": true,
+    "cards": [
+      {
+        "number": "01",
+        "title": "Next section",
+        "markerID": "section",
+        "at": 3,
+        "start": 2.566666666666667,
+        "end": 6.566666666666666,
+        "cut": 3
+      }
+    ],
+    "warnings": []
+  },
+  "images": {
+    "frame": {
+      "width": 160,
+      "height": 90
+    },
+    "sheet": {
+      "width": 344,
+      "height": 134
+    },
+    "screenshot": {
+      "width": 1424,
+      "height": 835
+    },
+    "frameBytes": 710,
+    "pixelBGRA": [179, 102, 26, 255],
+    "screenshotBytes": 106324
+  },
+  "renderReview": {
+    "scanCancellation": true,
+    "greenProblems": ["unkeyed"],
+    "gainFollow": [
+      {
+        "trackID": "voice",
+        "track": "Voice",
+        "compared": 1.7,
+        "lateBy": null,
+        "worstDB": 0.03441298299180984,
+        "mismatches": []
+      }
+    ],
+    "validate": true,
+    "frames": 6,
+    "scanWarnings": [],
+    "cutEdges": 2,
+    "cutProblems": 0,
+    "changedRanges": [
+      {
+        "start": 0,
+        "duration": 4
+      }
+    ],
+    "advanced": {
+      "deadAir": [
+        {
+          "kind": "deadAir",
+          "start": 0.58,
+          "end": 1.67,
+          "message": "Dead air: 1.090s with no speech, sound effect or music swell, and a still picture.",
+          "clipIDs": ["solid"]
+        },
+        {
+          "kind": "deadAir",
+          "start": 2.2,
+          "end": 3.75,
+          "message": "Dead air: 1.550s with no speech, sound effect or music swell, and a still picture.",
+          "clipIDs": ["solid"]
+        }
+      ],
+      "lowFrameRate": [
+        {
+          "kind": "lowFrameRate",
+          "start": 0,
+          "end": 3,
+          "message": "Low frame rate: the screen moves at about 5 fps against the project's 30 fps.",
+          "clipIDs": ["screen-cut"]
+        }
+      ],
+      "warnings": []
+    },
+    "fourK": {
+      "codec": "hevc",
+      "width": 3840,
+      "height": 2160,
+      "bytes": 10527
+    }
+  },
+  "render": {
+    "clip": {
+      "bytes": 18141,
+      "width": 1280,
+      "height": 720,
+      "duration": 0.2,
+      "pixelRGB": [34, 102, 174]
+    },
+    "audioOnly": {
+      "bytes": 38444,
+      "codec": "pcm_s16le"
+    },
+    "export": {
+      "bytes": 4480,
+      "codec": "vp8"
+    },
+    "aac": {
+      "bytes": 5898,
+      "codec": "aac"
+    },
+    "portrait": {
+      "width": 1080,
+      "height": 1920
+    },
+    "loudness": {
+      "source": -25.051768879804012,
+      "points": 3
+    }
+  }
+}

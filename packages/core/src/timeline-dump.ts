@@ -57,7 +57,7 @@ const hex = (value: unknown) => {
     (Number(color.a ?? 1) < 1 ? ` at ${num(color.a)}` : "")
   );
 };
-function namesFor(project: Project) {
+export function namesFor(project: Project) {
   const counts = new Map<string, number>();
   for (const m of project.media) counts.set(base(m.path), (counts.get(base(m.path)) ?? 0) + 1);
   return new Map(

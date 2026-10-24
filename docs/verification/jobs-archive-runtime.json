@@ -1,0 +1,98 @@
+{
+  "platform": "win32",
+  "comments": {
+    "id": "comment",
+    "time": 3,
+    "text": "Review this phrase",
+    "said": "Before | After",
+    "clips": [
+      {
+        "track": "V1 Camera",
+        "trackID": "v",
+        "clipID": "cam",
+        "start": 0,
+        "end": 6,
+        "content": "camera.wav [00:00.000-00:06.000]"
+      },
+      {
+        "track": "A1 Voice",
+        "trackID": "a",
+        "clipID": "voice",
+        "start": 0,
+        "end": 6,
+        "content": "camera.wav [00:00.000-00:06.000]"
+      }
+    ]
+  },
+  "sync": {
+    "offset": 0.2500000001970429,
+    "confidence": 206.15893633220284,
+    "oneUndoStep": true
+  },
+  "watch": {
+    "replay": [
+      {
+        "seq": 5,
+        "kind": "edit",
+        "date": "2026-10-24T21:28:36.916Z",
+        "revision": 4,
+        "generation": 1,
+        "label": "Resolve comment",
+        "author": "agent"
+      }
+    ],
+    "cancellation": true,
+    "timeout": true
+  },
+  "wait": {
+    "transcript": {
+      "what": "transcript",
+      "revision": 4,
+      "done": true,
+      "timedOut": false,
+      "elapsed": 0.008699999999254943,
+      "finished": [
+        {
+          "kind": "transcript",
+          "mediaID": "camera",
+          "path": "camera.wav",
+          "state": "ready",
+          "words": 2
+        }
+      ],
+      "pending": [],
+      "items": [
+        {
+          "kind": "transcript",
+          "mediaID": "camera",
+          "path": "camera.wav",
+          "state": "ready",
+          "words": 2
+        }
+      ]
+    },
+    "export": {
+      "what": "export",
+      "done": true,
+      "timedOut": false,
+      "elapsed": 0.21,
+      "finished": [
+        {
+          "kind": "export",
+          "path": "wait-export.wav",
+          "state": "done",
+          "progress": 1
+        }
+      ],
+      "pending": []
+    }
+  },
+  "archive": {
+    "resources": 4,
+    "cache": true,
+    "portableBytes": 200370,
+    "dryRun": true,
+    "consolidateUndo": true,
+    "restoredWords": 2
+  }
+}

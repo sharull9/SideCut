@@ -341,17 +341,23 @@ function join(p: Project, clipID: string): Project {
     });
   return p;
 }
-export function editThroughCuts(
+export function joinThroughEdits(
   p: Project,
-  command: EditCommand,
-  context: EditContext,
-): Project | null {
-  if ("join" in command) return join(p, command.join.clipID);
-  if (!("joinThroughEdits" in command)) return null;
-  const range = command.joinThroughEdits.range,
-    refused = new Set<string>();
-  let count = 0;
-  const skipped: { time: number; message: string }[] = [];
+  range: Extract<EditCommand, { joinThroughEdits: unknown }>["joinThroughEdits"]["range"],
+) {
+  const refused = new Set<string>();
+  const joins: {
+    time: number;
+    pairs: { trackID: string; clipID: string; nextClipID: string }[];
+  }[] = [];
+  const skipped: {
+    time: number;
+    trackID: string;
+    clipID: string;
+    nextClipID: string;
+    reason: string;
+    message: string;
+  }[] = [];
   for (const original of tracks(p)) {
     let index = 0;
     while (true) {
@@ -378,11 +384,25 @@ export function editThroughCuts(
         continue;
       }
       try {
-        p = join(p, left.id);
-        count++;
+        const next = join(p, left.id);
+        const remaining = new Set(tracks(next).flatMap((t) => t.clips.map((c) => c.id)));
+        const pairs = tracks(p).flatMap((t) =>
+          t.clips.flatMap((c, i) => {
+            const following = t.clips[i + 1];
+            return following && !remaining.has(following.id)
+              ? [{ trackID: t.id, clipID: c.id, nextClipID: following.id }]
+              : [];
+          }),
+        );
+        joins.push({ time: cut.seconds, pairs });
+        p = next;
       } catch (error) {
         skipped.push({
           time: cut.seconds,
+          trackID: track.id,
+          clipID: left.id,
+          nextClipID: right.id,
+          reason: error instanceof Error ? error.message : String(error),
           message: `Didn't join at ${cut.seconds} on "${track.name}" (${left.id}, ${right.id}): ${error instanceof Error ? error.message : String(error)}`,
         });
         if (group) refused.add(group);
@@ -390,12 +410,25 @@ export function editThroughCuts(
       }
     }
   }
-  if (!count && !skipped.length) context.warn("No through-edits to join.");
-  for (const skip of skipped.sort((a, b) => a.time - b.time).slice(0, 3))
-    context.warn(skip.message);
+  return {
+    project: p,
+    joins: joins.sort((a, b) => a.time - b.time),
+    skipped: skipped.sort((a, b) => a.time - b.time),
+  };
+}
+export function editThroughCuts(
+  p: Project,
+  command: EditCommand,
+  context: EditContext,
+): Project | null {
+  if ("join" in command) return join(p, command.join.clipID);
+  if (!("joinThroughEdits" in command)) return null;
+  const { project, joins, skipped } = joinThroughEdits(p, command.joinThroughEdits.range);
+  if (!joins.length && !skipped.length) context.warn("No through-edits to join.");
+  for (const skip of skipped.slice(0, 3)) context.warn(skip.message);
   if (skipped.length > 3)
     context.warn(
       `Didn't join ${skipped.length - 3} more through-edits because their playback would change.`,
     );
-  return p;
+  return project;
 }

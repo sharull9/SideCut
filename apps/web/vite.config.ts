@@ -6,6 +6,8 @@ import { nitro } from "nitro/vite";
 
 export default defineConfig({
   resolve: { tsconfigPaths: true },
+  // First transcription must not reload the editor while its worker is running.
+  optimizeDeps: { include: ["@sidecut/platform-browser > @huggingface/transformers"] },
   plugins:
     lazyPlugins(() => [
       tailwindcss(),

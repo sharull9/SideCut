@@ -40,7 +40,11 @@ export interface ArchiveResource {
   type: string;
   bytes: Uint8Array;
 }
-export function createArchive(file: ProjectFile, resources: readonly ArchiveResource[]) {
+export function createArchive(
+  file: ProjectFile,
+  resources: readonly ArchiveResource[],
+  options: { allowMissing?: boolean; preserveIdentity?: boolean } = {},
+) {
   new ProjectCoordinator(file).getSnapshot();
   const entries: Record<string, Uint8Array> = Object.create(null);
   const paths = new Map<string, string>();
@@ -61,7 +65,8 @@ export function createArchive(file: ProjectFile, resources: readonly ArchiveReso
     return { key: resource.key, path, type: resource.type, name: resource.name };
   });
   for (const item of file.project.media)
-    if (!keys.has(item.id)) throw new Error(`Cannot archive missing source: ${item.path}`);
+    if (!keys.has(item.id) && !options.allowMissing)
+      throw new Error(`Cannot archive missing source: ${item.path}`);
   const requireLUTs = (value: unknown): void => {
     if (Array.isArray(value)) value.forEach(requireLUTs);
     else if (value && typeof value === "object") {
@@ -76,16 +81,16 @@ export function createArchive(file: ProjectFile, resources: readonly ArchiveReso
       Object.values(node).forEach(requireLUTs);
     }
   };
-  requireLUTs(file.project);
+  if (!options.allowMissing) requireLUTs(file.project);
   const clipIDs = [...file.project.videoTracks, ...file.project.audioTracks].flatMap((track) =>
     track.clips.map((clip) => clip.id),
   );
-  if (clipIDs.length)
+  if (clipIDs.length && !options.allowMissing)
     for (const resource of makeSegment(file.project, clipIDs, "archive").resources)
       if (!resource.optional && !keys.has(resource.key))
         throw new Error(`Cannot archive missing resource: ${resource.key}`);
   for (const use of assetUses(file.project))
-    if (!use.mediaID && !keys.has(`asset-file:${use.asset.id}`))
+    if (!use.mediaID && !keys.has(`asset-file:${use.asset.id}`) && !options.allowMissing)
       throw new Error(`Cannot archive missing library asset: ${use.asset.name}`);
   const rewrite = (value: unknown): unknown => {
     if (typeof value === "string") return paths.get(value) ?? value;
@@ -99,13 +104,17 @@ export function createArchive(file: ProjectFile, resources: readonly ArchiveReso
   if (metadata[ASSET_USES])
     metadata[ASSET_USES] = JSON.stringify(rewrite(JSON.parse(metadata[ASSET_USES])));
   // An archive is an independent snapshot; old journal paths must not replay over it.
-  project.id = `prj_${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
+  if (!options.preserveIdentity)
+    project.id = `prj_${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
   entries["project.tandem"] = strToU8(
-    encodeProjectFile(decodeProjectFile({ revision: 0, project })),
+    encodeProjectFile(
+      decodeProjectFile({ revision: options.preserveIdentity ? file.revision : 0, project }),
+    ),
   );
   entries["manifest.json"] = strToU8(
     JSON.stringify({
       version: 1,
+      allowMissing: options.allowMissing === true,
       resources: manifest.map((r) => ({
         ...r,
         key: r.key.startsWith("lut:") ? `lut:${paths.get(r.key.slice(4)) ?? r.path}` : r.key,
@@ -148,8 +157,9 @@ export function openArchive(bytes: Uint8Array) {
     return { key: r.key, name: r.name, type: r.type, bytes: resourceBytes };
   });
   for (const media of file.project.media) {
-    safeArchivePath(media.path);
-    if (!keys.has(media.id)) throw new Error("Archive media is missing.");
+    if (keys.has(media.id)) safeArchivePath(media.path);
+    if (!keys.has(media.id) && manifest.allowMissing !== true)
+      throw new Error("Archive media is missing.");
   }
   return { file, resources };
 }

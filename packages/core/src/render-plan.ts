@@ -139,7 +139,7 @@ export function previewIssue(project: Project, time: number): string | null {
   return null;
 }
 
-export function exportPlan(project: Project) {
+export function exportPlan(project: Project, fullResolution = false) {
   const duration = projectDuration(project).seconds;
   if (duration <= 0) throw new Error("Place a source before exporting.");
   if (duration > 300)
@@ -162,7 +162,9 @@ export function exportPlan(project: Project) {
   );
   const w = project.settings.width,
     h = project.settings.height;
-  const scale = Math.min(1, 1920 / Math.max(w, h), 1080 / Math.min(w, h));
+  const scale = fullResolution ? 1 : Math.min(1, 1920 / Math.max(w, h), 1080 / Math.min(w, h));
+  if (fullResolution && (Math.max(w, h) > 8192 || w * h > 16777216))
+    throw new Error("Export frame is too large.");
   const frameCount = Math.ceil(duration * fps - 1e-7);
   return {
     duration: frameCount / fps,

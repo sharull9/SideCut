@@ -16,6 +16,7 @@ export class NativeMedia {
     progress: (value: number) => void,
     start = 0,
     duration?: number,
+    encoding?: { codec: "h264" | "hevc"; videoBitrate: number; audioBitrate: number },
   ): Promise<Uint8Array> {
     if (
       !["probe", "decode", "export", "mp4", "aac"].includes(String(operation)) ||
@@ -30,6 +31,17 @@ export class NativeMedia {
       (duration !== undefined && (!Number.isFinite(duration) || duration <= 0 || duration > 300))
     )
       throw new Error("Invalid native media range.");
+    if (
+      encoding &&
+      (!["h264", "hevc"].includes(encoding.codec) ||
+        !Number.isSafeInteger(encoding.videoBitrate) ||
+        encoding.videoBitrate < 100000 ||
+        encoding.videoBitrate > 300000000 ||
+        !Number.isSafeInteger(encoding.audioBitrate) ||
+        encoding.audioBitrate < 64000 ||
+        encoding.audioBitrate > 320000)
+    )
+      throw new Error("Invalid native encoding settings.");
     signal.throwIfAborted();
     const folder = await mkdtemp(join(tmpdir(), "sidecut-media-")),
       input = join(folder, "input"),
@@ -91,17 +103,30 @@ export class NativeMedia {
                   : operation === "mp4"
                     ? [
                         "-c:v",
-                        "libx264",
+                        encoding?.codec === "hevc" ? "libx265" : "libx264",
+                        ...(encoding?.codec === "hevc"
+                          ? [
+                              "-tag:v",
+                              "hvc1",
+                              "-x265-params",
+                              "pools=2:frame-threads=2:log-level=error",
+                            ]
+                          : []),
                         "-preset",
                         "veryfast",
-                        "-crf",
-                        "18",
+                        ...(encoding ? ["-b:v", String(encoding.videoBitrate)] : ["-crf", "18"]),
                         "-pix_fmt",
                         "yuv420p",
+                        "-color_primaries",
+                        "bt709",
+                        "-color_trc",
+                        "bt709",
+                        "-colorspace",
+                        "bt709",
                         "-c:a",
                         "aac",
                         "-b:a",
-                        "192k",
+                        String(encoding?.audioBitrate ?? 192000),
                         "-movflags",
                         "+faststart",
                       ]

@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./service-sync": "./src/service-sync.ts",
     "./query-state": "./src/query-state.ts",
     "./media-role": "./src/media-role.ts",
     "./export-presets": "./src/export-presets.ts",
@@ -43,7 +44,12 @@
     "./templates": "./src/templates.ts",
     "./formats": "./src/formats.ts",
     "./short": "./src/short.ts",
-    "./sqlite": "./src/sqlite.ts"
+    "./sqlite": "./src/sqlite.ts",
+    "./service-export": "./src/service-export.ts",
+    "./gain-follow": "./src/gain-follow.ts",
+    "./quality-check": "./src/quality-check.ts",
+    "./cut-audit": "./src/cut-audit.ts",
+    "./quality-notes": "./src/quality-notes.ts"
   },
   "scripts": {
     "typecheck": "vp exec tsc --noEmit"

@@ -33,6 +33,21 @@ export class HostProjectService {
   private error: string | null = null;
   private pending: Promise<void> = Promise.resolve();
   private listeners = new Set<(snapshot: HostSnapshot) => void>();
+  private events: {
+    seq: number;
+    kind: string;
+    date: string;
+    revision: number;
+    generation: number;
+    label?: string;
+    author?: string;
+  }[] = [];
+  private eventSequence = 0;
+  private eventRevision = 0;
+  private eventGeneration = 0;
+  recentEvents() {
+    return this.events.slice();
+  }
   private replacing = false;
   savedRevision = 0;
   private reviewedRevision = 0;
@@ -133,6 +148,21 @@ export class HostProjectService {
   private publish() {
     this.sequence++;
     const snapshot = this.snapshot();
+    const revision = this.coordinator.getSnapshot().revision;
+    if (revision !== this.eventRevision || this.generation !== this.eventGeneration) {
+      const change = snapshot.lastChange;
+      this.events.push({
+        seq: ++this.eventSequence,
+        kind: this.generation !== this.eventGeneration ? "reload" : (change?.kind ?? "reload"),
+        date: new Date().toISOString(),
+        revision,
+        generation: this.generation,
+        ...(change ? { label: change.label, author: change.author } : {}),
+      });
+      this.events = this.events.slice(-512);
+      this.eventRevision = revision;
+      this.eventGeneration = this.generation;
+    }
     for (const listener of this.listeners) listener(snapshot);
   }
   request(json: unknown): HostReply {
@@ -162,8 +192,42 @@ export class HostProjectService {
       return { snapshot: this.snapshot(), result: null };
     }
     let result;
-    if (input.type === "apply" && "batch" in input) result = this.coordinator.apply(input.batch);
-    else if ((input.type === "undo" || input.type === "redo") && "revision" in input) {
+    if (input.type === "apply" && "batch" in input) {
+      // Recorder defaults apply only when a source first enters the project.
+      const batch = input.batch;
+      if (
+        batch &&
+        typeof batch === "object" &&
+        "commands" in batch &&
+        Array.isArray(batch.commands)
+      ) {
+        const delay = this.store.cameraPictureDelay();
+        result = this.coordinator.apply({
+          ...batch,
+          commands: batch.commands.map((command: unknown) => {
+            if (!delay || !command || typeof command !== "object" || !("addMedia" in command))
+              return command;
+            const body = command.addMedia;
+            if (!body || typeof body !== "object" || !("item" in body)) return command;
+            const item = body.item;
+            if (
+              !item ||
+              typeof item !== "object" ||
+              !("role" in item) ||
+              item.role !== "camera" ||
+              !("kind" in item) ||
+              item.kind !== "video" ||
+              !("hasVideo" in item) ||
+              item.hasVideo !== true ||
+              ("pictureDelay" in item && item.pictureDelay != null) ||
+              ("pictureDelayCorrected" in item && item.pictureDelayCorrected != null)
+            )
+              return command;
+            return { addMedia: { ...body, item: { ...item, pictureDelay: delay } } };
+          }),
+        });
+      } else result = this.coordinator.apply(batch);
+    } else if ((input.type === "undo" || input.type === "redo") && "revision" in input) {
       if (input.revision !== this.coordinator.getSnapshot().revision)
         throw new EditError("stale-revision", "Stale revision. Retry with the latest project.");
       result = this.coordinator[input.type]();

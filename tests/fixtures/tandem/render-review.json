@@ -1,0 +1,49 @@
+{
+  "reference": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "scope": "Synthetic expected contracts derived from pinned Swift source; not captured macOS responses.",
+  "sources": [
+    "TandemAPI/SectionCards.swift",
+    "TandemAPI/ServiceTypes.swift",
+    "TandemRender/ExportPlan.swift",
+    "TandemRender/MixMeter.swift",
+    "TandemCore/QualityCheck.swift"
+  ],
+  "exports": [
+    {
+      "request": {},
+      "expected": {
+        "preset": "youtube1080",
+        "width": 1920,
+        "height": 1080,
+        "codec": "h264",
+        "videoBitrate": 20000000,
+        "audioBitrate": 320000
+      }
+    },
+    {
+      "request": { "preset": "YouTube 4K" },
+      "expected": {
+        "preset": "youtube4k",
+        "width": 3840,
+        "height": 2160,
+        "codec": "hevc",
+        "videoBitrate": 80000000
+      }
+    },
+    {
+      "request": { "preset": "review" },
+      "expected": { "preset": "review", "width": 1280, "height": 720, "videoBitrate": 5000000 }
+    }
+  ],
+  "cards": {
+    "request": { "insert": true, "sounds": false },
+    "expected": { "cards": [{ "markerID": "section", "subtitle": "Subtitle", "cut": 2.8 }] }
+  },
+  "validate": { "request": {}, "expected": { "revision": 0, "ok": true } },
+  "failures": [
+    { "operation": "export", "request": { "preset": "absent" }, "code": "notFound" },
+    { "operation": "loudness", "request": { "step": "bad" }, "code": "badRequest" },
+    { "operation": "validate", "request": { "unknown": true }, "code": "badRequest" },
+    { "operation": "check", "request": { "quick": true, "cuts": true }, "code": "badRequest" }
+  ]
+}

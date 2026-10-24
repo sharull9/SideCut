@@ -19,6 +19,28 @@ export function speechMediaID(project: Project, track: Track, clip: Clip): strin
     ? media.mediaID
     : null;
 }
+export function speechLevel(project: Project) {
+  const levels = project.audioTracks
+    .flatMap((track) =>
+      track.clips.flatMap((clip) => {
+        const target = clip.audio?.normalizeTo;
+        return speechMediaID(project, track, clip) &&
+          typeof target === "number" &&
+          !clip.audio?.muted
+          ? [{ level: target + Number(clip.audio?.gainDB ?? 0), length: clip.duration.seconds }]
+          : [];
+      }),
+    )
+    .sort((a, b) => a.level - b.level);
+  const total = levels.reduce((sum, item) => sum + item.length, 0);
+  if (total <= 0) return project.settings.speechLoudness;
+  let running = 0;
+  for (const item of levels) {
+    running += item.length;
+    if (running >= total / 2) return item.level;
+  }
+  return levels.at(-1)!.level;
+}
 export function editAudio(
   project: Project,
   command: EditCommand,

@@ -77,9 +77,14 @@ describe("service operations", () => {
     expect(session.getSnapshot().project.audioTracks[0]!.transitions[0]!.id).toBe("crossfade");
     expect(session.getSnapshot().project.audioTracks[0]!.clips[0]!.audio).toBeUndefined();
     session.apply({ commands: [{ removeClips: { clipIDs: ["left"], ripple: false } }] });
-    expect(() => restorePlan(session.projectFile(), file, { clips: ["left"] })).toThrow(
-      /transition-aware/,
-    );
+    const putBack = restorePlan(session.projectFile(), file, { clips: ["left"] });
+    expect(putBack.problem).toBeUndefined();
+    session.apply({ commands: putBack.commands });
+    expect(session.getSnapshot().project.audioTracks[0]!.clips.map((c) => c.id)).toEqual([
+      "left",
+      "right",
+    ]);
+    expect(session.getSnapshot().project.audioTracks[0]!.transitions).toEqual([]);
   });
   it("accepts each pinned operation's request and rejects its malformed counterpart", () => {
     expect(contracts.operations).toHaveLength(21);

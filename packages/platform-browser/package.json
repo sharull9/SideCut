@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./storage-codec": "./src/storage-codec.ts",
     "./export-queue": "./src/export-queue.ts",
     "./asset-providers": "./src/asset-providers.ts",
     "./segments": "./src/segments.ts",

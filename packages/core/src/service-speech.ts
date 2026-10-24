@@ -1,5 +1,6 @@
 import type { ProjectFile } from "@sidecut/contracts/project";
 import { ProjectCoordinator } from "./coordinator";
+import { joinThroughEdits } from "./through-edits";
 import { Time } from "@sidecut/contracts/time";
 import {
   speechMap,
@@ -15,8 +16,8 @@ import {
 import { placeWords } from "./transcript";
 import { QueryError, queryTracks } from "./project-queries";
 import { planShort } from "./short";
-import { cardPlacements } from "./section-cards";
-import { clipChanges } from "./service-edits";
+import { cardPlacements, cardOf } from "./section-cards";
+import { sectionCuts } from "./section-cuts";
 
 export function speechQuery(
   file: ProjectFile,
@@ -92,7 +93,13 @@ export function helperPlan(
       request.duration == null ? undefined : Time.fromSeconds(Number(request.duration));
     const markers = request.markers as string[] | undefined,
       kicker = request.kicker as string | undefined;
-    const placements = cardPlacements(file.project, markers, duration, kicker);
+    let placements = cardPlacements(file.project, markers, duration, kicker);
+    const selected =
+      request.insert === true
+        ? sectionCuts(file.project, placements, transcripts)
+        : { cuts: {}, warnings: [] };
+    if (Object.keys(selected.cuts).length)
+      placements = cardPlacements(file.project, markers, duration, kicker, selected.cuts);
     const track = request.track
       ? queryTracks(file.project).find(
           ({ track: row, label }) =>
@@ -110,34 +117,47 @@ export function helperPlan(
               ...(kicker ? { kicker } : {}),
               ...(track ? { trackID: track.id } : {}),
               mode: request.insert === true ? "insert" : "overwrite",
+              ...(Object.keys(selected.cuts).length
+                ? {
+                    cuts: Object.fromEntries(
+                      Object.entries(selected.cuts).map(([id, time]) => [id, time.seconds]),
+                    ),
+                  }
+                : {}),
             },
           },
         ]
       : [];
+    const checked = new ProjectCoordinator(file).apply({ commands });
     return {
       revision: file.revision,
-      cards: placements.map((p) => ({
-        number: p.number,
-        title: p.marker.name,
-        markerID: p.marker.id,
-        at: p.marker.time,
-        start: p.start.seconds,
-        end: p.start.seconds + p.duration.seconds,
-        ...(p.existingClipID ? { existingClipID: p.existingClipID } : {}),
-      })),
+      cards: placements.map((p) => {
+        const existing = p.existingClipID
+          ? queryTracks(file.project)
+              .flatMap((t) => t.track.clips)
+              .find((c) => c.id === p.existingClipID)
+          : undefined;
+        const props = existing ? cardOf(existing) : null,
+          subtitle = props?.subtitle ?? p.marker.note;
+        return {
+          number: p.number,
+          title: props?.title || p.marker.name,
+          ...(subtitle ? { subtitle } : {}),
+          markerID: p.marker.id,
+          at: p.marker.time,
+          start: p.start.seconds,
+          end: p.start.add(p.duration).seconds,
+          ...(p.existingClipID ? { existingClipID: p.existingClipID } : {}),
+          ...(request.insert === true && !p.existingClipID ? { cut: p.cut.seconds } : {}),
+        };
+      }),
       commands,
-      label: "Add section cards",
-      sounds: "none",
-      warnings: [
-        ...(request.sounds !== false
-          ? ["Library whooshes are unavailable through this adapter; cards have no added sound."]
-          : []),
-        ...(request.insert === true
-          ? [
-              "Card insertion uses marker times; speech-aware section cuts are unavailable through this adapter.",
-            ]
-          : []),
-      ],
+      label: `Add ${placements.length} section card${placements.length === 1 ? "" : "s"}`,
+      sounds:
+        request.sounds === false
+          ? "no sounds (asked for none)"
+          : "silent: the section card whooshes are not available in the local asset library",
+      warnings: [...selected.warnings, ...checked.warnings],
     };
   }
   const range =
@@ -156,38 +176,36 @@ export function helperPlan(
             ) - Number(request.from ?? 0),
         }
       : null;
-  const commands = [{ joinThroughEdits: { range } }],
-    copy = new ProjectCoordinator(file),
-    result = copy.apply({ commands, label: "Join through-edits" });
-  const changes = clipChanges(file, copy.projectFile());
-  const joins = changes
-    .filter((c) => c.kind === "removed")
-    .map((c) => ({
-      time: c.start,
-      clips: [
-        {
-          track: c.track,
-          trackID: c.trackID,
-          nextClipID: c.id,
-          clipID:
-            changes.find(
-              (other) =>
-                other.kind === "changed" &&
-                other.trackID === c.trackID &&
-                other.start <= c.start &&
-                other.end > c.start,
-            )?.id ?? "",
-        },
-      ],
-    }));
+  if (range) range.duration = Math.max(0, range.duration);
+  const command = { joinThroughEdits: { range } },
+    copy = new ProjectCoordinator(file);
+  copy.apply({ commands: [command], label: "Join through-edits" });
+  const report = joinThroughEdits(
+      file.project,
+      range
+        ? { start: Time.fromSeconds(range.start), duration: Time.fromSeconds(range.duration) }
+        : null,
+    ),
+    labels = queryTracks(file.project),
+    label = (id: string) => labels.find((t) => t.track.id === id)?.label ?? id;
   return {
     revision: file.revision,
-    joins,
-    skipped: result.warnings
-      .filter((w) => w.startsWith("Didn't join"))
-      .map((message) => ({ message })),
-    commands: joins.length ? commands : [],
-    warnings: [...result.warnings],
-    label: "Join through-edits",
+    joins: report.joins.map((join) => ({
+      time: join.time,
+      clips: [...join.pairs]
+        .sort(
+          (a, b) =>
+            labels.findIndex((t) => t.track.id === a.trackID) -
+            labels.findIndex((t) => t.track.id === b.trackID),
+        )
+        .map((pair) => ({ ...pair, track: label(pair.trackID) })),
+    })),
+    skipped: report.skipped.map(({ message: _message, ...skip }) => ({
+      ...skip,
+      track: label(skip.trackID),
+    })),
+    commands: report.joins.length ? [command] : [],
+    warnings: [],
+    label: `Join ${report.joins.length} through-edit${report.joins.length === 1 ? "" : "s"}`,
   };
 }

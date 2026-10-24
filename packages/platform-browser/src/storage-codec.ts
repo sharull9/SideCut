@@ -5,7 +5,10 @@ interface FileStorage {
   putFile(bytes: Uint8Array): Promise<string>;
   getFile(id: string): Promise<Uint8Array<ArrayBuffer>>;
 }
-export async function encodeStored(value: unknown, storage: FileStorage): Promise<string> {
+export async function encodeStored(
+  value: unknown,
+  storage: Pick<FileStorage, "putFile">,
+): Promise<string> {
   const encode = async (v: unknown): Promise<unknown> => {
     if (v instanceof Time) return v.toJSON();
     if (
@@ -45,7 +48,10 @@ export async function encodeStored(value: unknown, storage: FileStorage): Promis
   return JSON.stringify(await encode(value));
 }
 
-export async function decodeStored(json: string, storage: FileStorage): Promise<unknown> {
+export async function decodeStored(
+  json: string,
+  storage: Pick<FileStorage, "getFile">,
+): Promise<unknown> {
   const decode = async (v: unknown): Promise<unknown> => {
     if (v === null || typeof v === "string" || typeof v === "boolean" || typeof v === "number")
       return v;

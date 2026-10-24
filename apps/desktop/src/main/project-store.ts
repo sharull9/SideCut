@@ -150,6 +150,27 @@ export class NativeProjectStore {
       throw new Error("Invalid saved review baseline.");
     return revision;
   }
+  cameraPictureDelay(value?: number) {
+    if (value !== undefined) {
+      if (!Number.isFinite(value) || Math.abs(value) > 1)
+        throw new Error("Picture delay must be within one second.");
+      this.repository.request({
+        type: "commit",
+        checks: [],
+        writes: [{ collection: "preferences", key: "cameraPictureDelay", value: String(value) }],
+      });
+    }
+    const saved = Number(
+      this.repository.request({
+        type: "read",
+        collection: "preferences",
+        key: "cameraPictureDelay",
+      })[0]?.value ?? 0,
+    );
+    if (!Number.isFinite(saved) || Math.abs(saved) > 1)
+      throw new Error("Invalid saved camera delay.");
+    return saved;
+  }
   markReviewed(projectID: string, revision: number) {
     if (!Number.isSafeInteger(revision) || revision < 0)
       throw new Error("Invalid review revision.");

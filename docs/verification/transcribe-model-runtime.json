@@ -1,0 +1,46 @@
+{
+  "queued": {
+    "what": "transcript",
+    "done": false,
+    "timedOut": true,
+    "elapsed": 0.005899999998509884,
+    "finished": [],
+    "pending": [
+      {
+        "kind": "transcript",
+        "mediaID": "model_probe",
+        "path": "model-probe.wav",
+        "state": "running"
+      }
+    ]
+  },
+  "result": {
+    "revision": 24,
+    "files": [
+      {
+        "kind": "transcript",
+        "mediaID": "model_probe",
+        "path": "model-probe.wav",
+        "state": "ready",
+        "words": 16
+      }
+    ],
+    "headless": false,
+    "waited": {
+      "what": "transcript",
+      "done": true,
+      "timedOut": false,
+      "elapsed": 53.31380000000075,
+      "finished": [
+        {
+          "kind": "transcript",
+          "mediaID": "model_probe",
+          "path": "model-probe.wav",
+          "state": "ready",
+          "words": 16
+        }
+      ],
+      "pending": []
+    }
+  }
+}

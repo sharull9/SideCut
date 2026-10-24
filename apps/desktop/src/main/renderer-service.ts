@@ -9,7 +9,7 @@ export function rendererService(project: HostProjectService, isTrusted: (url: st
   const ready = new Set<number>(),
     pending = new Map<
       string,
-      { sender: number; finish: (result: unknown, error?: string) => void }
+      { sender: number; operation: string; finish: (result: unknown, error?: string) => void }
     >();
   const check = (event: IpcMainInvokeEvent) => {
     if (event.senderFrame !== event.sender.mainFrame || !isTrusted(event.senderFrame?.url ?? ""))
@@ -49,7 +49,11 @@ export function rendererService(project: HostProjectService, isTrusted: (url: st
     const target = window();
     if (!target)
       return Promise.reject(new QueryError("unavailable", "No ready editor renderer is attached."));
-    if (pending.size >= 8 || (pending.size && !["query-state", "timeline"].includes(operation)))
+    if (
+      pending.size >= 8 ||
+      ([...pending.values()].some((p) => !["wait", "query-state"].includes(p.operation)) &&
+        !["query-state", "timeline", "wait", "comments"].includes(operation))
+    )
       return Promise.reject(
         new QueryError("unavailable", "Another renderer service operation is running."),
       );
@@ -86,6 +90,7 @@ export function rendererService(project: HostProjectService, isTrusted: (url: st
           current.generation !== snapshot.generation ||
           (!rendererMutations.has(operation) &&
             operation !== "wait" &&
+            operation !== "transcribe" &&
             JSON.parse(current.json).revision !== file.revision)
         )
           reject(
@@ -105,11 +110,15 @@ export function rendererService(project: HostProjectService, isTrusted: (url: st
       const timer = setTimeout(
         cancel,
         Math.min(
-          610000,
-          Math.max(1000, Number(input.timeout ?? 600) * 1000 + (operation === "wait" ? 1000 : 0)),
+          ["transcribe", "wait"].includes(operation) ? 86401000 : 610000,
+          Math.max(
+            1000,
+            Number(input.timeout ?? 600) * 1000 +
+              (["wait", "transcribe"].includes(operation) ? 1000 : 0),
+          ),
         ),
       );
-      pending.set(id, { sender: target.webContents.id, finish });
+      pending.set(id, { sender: target.webContents.id, operation, finish });
       target.webContents.once("destroyed", closed);
       signal.addEventListener("abort", cancel, { once: true });
       target.webContents.send(bridgeChannels.serviceRequest, {

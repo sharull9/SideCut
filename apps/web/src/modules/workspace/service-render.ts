@@ -13,7 +13,11 @@ import { fontAvailable } from "@sidecut/platform-browser/text";
 import { resolveText, textContent } from "@sidecut/core/text";
 import { cachedMatte } from "@sidecut/platform-browser/cutout";
 import { normalizeGain } from "@sidecut/core/audio-processing";
-import { speechTracks } from "@sidecut/core/speech";
+import { speechLevel, speechMediaID } from "@sidecut/core/audio-editing";
+import { effectsOf } from "@sidecut/core/effect-editing";
+import { resolvedParams } from "@sidecut/core/effects";
+import { verifyGainLanes } from "./service-gains";
+import { serviceExportPlan } from "@sidecut/core/service-export";
 import { inspectionTimes } from "@sidecut/core/service-requests";
 const png = (canvas: HTMLCanvasElement) =>
   new Promise<Blob>((resolve, reject) =>
@@ -35,7 +39,15 @@ export async function renderService(
   request: Record<string, unknown>,
   signal: AbortSignal,
 ) {
-  let project = formatProject(session.getSnapshot().project, (request.format as string) ?? null);
+  const exportSettings = ["clip", "export"].includes(operation)
+    ? serviceExportPlan(session.getSnapshot().project, request, operation)
+    : null;
+  let project =
+    exportSettings?.project ??
+    formatProject(
+      session.getSnapshot().project,
+      request.format === "main" ? null : ((request.format as string) ?? null),
+    );
   const duration = projectDuration(project).seconds,
     readers = new Map<string, Promise<LocalMediaReader>>(),
     warnings = new Set<string>();
@@ -177,7 +189,7 @@ export async function renderService(
         height: sheet.height,
       };
     }
-    if (request.tracks) {
+    if (Array.isArray(request.tracks) && request.tracks.length) {
       const refs = request.tracks as string[],
         tracks = queryTracks(project);
       const selected = refs.map(
@@ -202,8 +214,6 @@ export async function renderService(
       };
     }
     if (operation === "loudness") {
-      if (request.gains === true)
-        throw new QueryError("notImplemented", "Per-track gain verification is not implemented.");
       const files: {
         mediaID: string;
         path: string;
@@ -212,9 +222,9 @@ export async function renderService(
         loudnessRange: number;
         state: string;
       }[] = [];
-      let curve: unknown, peaks: unknown;
+      let curve: unknown, peaks: unknown, gains: unknown;
       if (
-        request.mediaID != null ||
+        request.gains !== true &&
         !["from", "to", "step", "tracks", "over"].some((key) => request[key] != null)
       ) {
         const items = request.mediaID
@@ -224,7 +234,17 @@ export async function renderService(
           throw new QueryError("notFound", "No matching media.");
         for (const item of items) {
           const local = await resource(item.id);
-          if (!local) throw new Error(`Missing source ${item.path}.`);
+          if (local?.state !== "available") {
+            files.push({
+              mediaID: item.id,
+              path: item.path,
+              integratedLUFS: -Infinity,
+              truePeakDBTP: -Infinity,
+              loudnessRange: 0,
+              state: "none",
+            });
+            continue;
+          }
           const measured = await measureSource(
             local.file,
             await reader(item.id),
@@ -237,19 +257,27 @@ export async function renderService(
       } else {
         const start = Number(request.from ?? 0),
           end = Number(request.to ?? duration),
-          step = Number(request.step ?? Math.max(0.1, (end - start) / 50));
-        if (step <= 0 || end <= start || end > duration || Math.ceil((end - start) / step) > 1000)
+          requestedStep = Number(request.step ?? Math.max(0.1, (end - start) / 50)),
+          step = Math.max(0.1, Math.round(requestedStep / 0.1) * 0.1);
+        if (
+          requestedStep <= 0 ||
+          end <= start ||
+          end > duration ||
+          Math.ceil((end - start) / step) > 1000
+        )
           throw new QueryError("badRequest", "Invalid loudness window range or step.");
         if (end - start > 300)
           throw new QueryError("badRequest", "Loudness ranges are limited to five minutes.");
+        const readStart = Math.max(0, start - 1.5),
+          readEnd = Math.min(duration, end + 1.5);
         const buffers = [
-            new Float32Array(Math.ceil((end - start) * 48000)),
-            new Float32Array(Math.ceil((end - start) * 48000)),
+            new Float32Array(Math.ceil((readEnd - readStart) * 48000) + 2),
+            new Float32Array(Math.ceil((readEnd - readStart) * 48000) + 2),
           ],
           meter = new LoudnessMeter(48000, 2);
         let offset = 0;
-        for await (const block of mixTimelineAudio(project, reader, signal, 48000, 4096, end, {
-          start,
+        for await (const block of mixTimelineAudio(project, reader, signal, 48000, 4096, readEnd, {
+          start: readStart,
           master: false,
           measure: async (id) =>
             measureSource((await resource(id))!.file, await reader(id), signal),
@@ -258,7 +286,9 @@ export async function renderService(
             block.data.subarray(0, block.frames),
             block.data.subarray(block.frames),
           ];
-          meter.process(channels);
+          const begin = Math.max(0, Math.round((start - block.timestamp) * 48000)),
+            stop = Math.min(block.frames, Math.round((end - block.timestamp) * 48000));
+          if (stop > begin) meter.process(channels.map((c) => c.subarray(begin, stop)));
           for (let channel = 0; channel < 2; channel++)
             buffers[channel]!.set(channels[channel]!, offset);
           offset += block.frames;
@@ -266,8 +296,8 @@ export async function renderService(
         const points = [];
         const atWindow = (at: number, span: number) => {
           const local = new LoudnessMeter(48000, 2),
-            begin = Math.max(0, Math.floor((at - start - span / 2) * 48000)),
-            stop = Math.min(offset, Math.ceil((at - start + span / 2) * 48000));
+            begin = Math.max(0, Math.floor((at - readStart - span / 2) * 48000)),
+            stop = Math.min(offset, Math.ceil((at - readStart + span / 2) * 48000));
           const channels = buffers.map((b) => b.subarray(begin, stop));
           local.process(channels);
           let peak = 0;
@@ -286,6 +316,15 @@ export async function renderService(
             peakDBFS: moment.peakDBFS,
           });
         }
+        if (request.gains === true)
+          gains = await verifyGainLanes(
+            project,
+            start,
+            end,
+            reader,
+            async (id) => measureSource((await resource(id))!.file, await reader(id), signal),
+            signal,
+          );
         const measured = meter.result();
         curve = {
           start,
@@ -311,7 +350,6 @@ export async function renderService(
           peaks = { threshold: request.over, windows: selected.length, stretches };
         }
       }
-      const speech = new Set(speechTracks(project).map((track) => track.id));
       const clips = queryTracks(project)
         .filter(({ track }) => track.kind === "audio")
         .flatMap(({ track, label }) =>
@@ -335,7 +373,16 @@ export async function renderService(
                 ...(measured
                   ? { normalizeGainDB: normal, peakDBTP: measured.truePeakDBTP + normal + gain }
                   : {}),
-                speech: speech.has(track.id),
+                speech: speechMediaID(project, track, clip) != null,
+                ...(effectsOf(clip, "audio").some((f) => f.enabled && f.type === "limiter")
+                  ? {
+                      limiterCeiling: Number(
+                        resolvedParams(
+                          effectsOf(clip, "audio").find((f) => f.enabled && f.type === "limiter")!,
+                        ).ceiling,
+                      ),
+                    }
+                  : {}),
                 muted: track.muted || clip.audio?.muted === true || !clip.enabled,
               },
             ];
@@ -345,43 +392,22 @@ export async function renderService(
         JSON.stringify({
           target: project.settings.loudnessTarget,
           truePeakCeiling: project.settings.truePeakCeiling,
-          speechLoudness: project.settings.speechLoudness,
+          speechLoudness: speechLevel(project),
           media: files,
           clips,
           ...(curve ? { curve } : {}),
           ...(request.tracks ? { tracks: request.tracks } : {}),
           ...(peaks ? { peaks } : {}),
+          ...(gains ? { gains } : {}),
         }),
       );
     }
     const start = Number(operation === "clip" ? request.start : (request.from ?? 0)),
       end = Number(operation === "clip" ? request.end : (request.to ?? duration));
-    const preset = String(request.preset ?? (operation === "clip" ? "review" : "final"));
-    if (preset === "youtube4k")
-      throw new QueryError(
-        "notImplemented",
-        "4K HEVC export exceeds the current browser compositor's 1080p limit.",
-      );
-    if (!["review", "final", "short", "webm", "youtube1080"].includes(preset))
-      throw new QueryError(
-        "notFound",
-        "Supported presets are review, youtube1080, final, short and webm.",
-      );
-    if (preset === "short") project = formatProject(project, "portrait");
-    if (preset === "review" || preset === "youtube1080") {
-      const resolution = preset === "review" ? 720 : 1080;
-      const scale = resolution / Math.min(project.settings.width, project.settings.height);
-      if (scale > 1)
-        warnings.add(`${preset} preset upscales the project to a ${resolution}-pixel short side.`);
-      project = {
-        ...project,
-        settings: {
-          ...project.settings,
-          width: Math.max(2, Math.floor((project.settings.width * scale) / 2) * 2),
-          height: Math.max(2, Math.floor((project.settings.height * scale) / 2) * 2),
-        },
-      };
-    }
+    const settings = serviceExportPlan(session.getSnapshot().project, request, operation),
+      preset = settings.preset;
+
+    for (const warning of settings.warnings) warnings.add(warning);
     if (request.audioOnly === true) {
       if (start < 0 || end <= start || end > duration || end - start > 300)
         throw new QueryError("badRequest", "Invalid audio export range.");
@@ -437,16 +463,28 @@ export async function renderService(
     }
     const { renderWebM } = await import("@sidecut/platform-browser/export"),
       began = performance.now();
+    let finalLevels: ReturnType<LoudnessMeter["result"]> | undefined;
     const blob = await renderWebM(project, resource, signal, () => {}, {
       start,
       end,
       master: request.tracks == null,
+      fullResolution: true,
+      bitrate: settings.videoBitrate,
+      onLoudness: (value) => {
+        finalLevels = value;
+      },
     });
-    const plan = exportPlan(project);
+    const plan = exportPlan(project, true);
     return {
       data: await base64(blob),
       bytes: blob.size,
       preset,
+      integratedLUFS:
+        finalLevels && Number.isFinite(finalLevels.integratedLUFS)
+          ? finalLevels.integratedLUFS
+          : null,
+      truePeakDBTP:
+        finalLevels && Number.isFinite(finalLevels.truePeakDBTP) ? finalLevels.truePeakDBTP : null,
       width: plan.width,
       height: plan.height,
       duration: end - start,

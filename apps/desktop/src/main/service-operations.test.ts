@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect, vi } from "vite-plus/test";
-import { mkdtemp, readFile, rm, symlink } from "node:fs/promises";
+import { mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { ProjectAPI } from "./project-api.ts";
@@ -18,7 +18,7 @@ async function setup() {
   await host.start();
   clean.push(() => host.close());
   await host.replace(JSON.stringify(fixture.project));
-  const run = vi.fn(async (operation: string) =>
+  const run = vi.fn(async (operation: string): Promise<Record<string, unknown>> =>
     operation === "captions"
       ? {
           revision: 0,
@@ -35,6 +35,109 @@ async function setup() {
   return { root, host, api, run };
 }
 describe("agent edits and renderer service boundary", () => {
+  it("reports independent snapshot comparisons without inventing edit history and rejects missing baselines", async () => {
+    const { api, root } = await setup();
+    await writeFile(
+      join(root, "snapshot.tandem"),
+      JSON.stringify({
+        ...fixture.project,
+        project: { ...fixture.project.project, videoTracks: [] },
+      }),
+    );
+    const result = await api.handle("diff", { since: "snapshot.tandem" });
+    expect(result).toMatchObject({
+      since: "the project file snapshot.tandem",
+      changes: [{ kind: "added", id: "clip_query" }],
+    });
+    expect(result).not.toHaveProperty("edits");
+    expect(result).not.toHaveProperty("sinceRevision");
+    await expect(api.handle("diff", { since: "missing.tandem" })).rejects.toMatchObject({
+      code: "notFound",
+    });
+    await writeFile(join(root, "bad.tandem"), "invalid");
+    await expect(api.handle("diff", { since: "bad.tandem" })).rejects.toMatchObject({
+      code: "badRequest",
+    });
+  });
+  it("resolves revision aliases and durable reviewed baselines, with per-edit changes", async () => {
+    const { api, host } = await setup();
+    await api.handle("apply", {
+      commands: [{ updateClip: { clipID: "clip_query", patch: { enabled: false } } }],
+      label: "Disable",
+    });
+    await host.flush();
+    const snapshot = host.snapshot();
+    host.request(
+      JSON.stringify({
+        type: "markReviewed",
+        projectID: fixture.project.project.id,
+        generation: snapshot.generation,
+        revision: 1,
+      }),
+    );
+    await api.handle("apply", {
+      commands: [{ updateClip: { clipID: "clip_query", patch: { name: "Changed" } } }],
+      label: "Rename",
+    });
+    expect(await api.handle("diff", { since: " r1 " })).toMatchObject({
+      sinceRevision: 1,
+      edits: [{ revision: 2, label: "Rename", changes: [{ details: ['name none -> "Changed"'] }] }],
+    });
+    expect(await api.handle("diff", { since: "reviewed" })).toMatchObject({ sinceRevision: 1 });
+    expect(await api.handle("restore", { from: "reviewed", clips: ["clip_query"] })).toMatchObject({
+      revision: 2,
+      items: [{ action: "changeBack" }],
+    });
+    const before = host.snapshot().json;
+    await expect(
+      api.handle("restore", { from: 0, clips: ["clip_query"], apply: true, expectedRevision: 1 }),
+    ).rejects.toThrow(/Stale/);
+    expect(host.snapshot().json).toBe(before);
+    await expect(api.handle("diff", { since: "r100" })).rejects.toMatchObject({
+      code: "badRequest",
+    });
+    await expect(api.handle("diff", { since: "r-1" })).rejects.toMatchObject({
+      code: "badRequest",
+    });
+  });
+  it("marks transcription once, reports worker wait results, and avoids edits for camera sources", async () => {
+    const { api, host, run } = await setup();
+    await api.handle("apply", {
+      commands: [{ updateMedia: { mediaID: "med_query", patch: { hasAudio: true } } }],
+    });
+    run.mockResolvedValue({
+      revision: 1,
+      files: [{ mediaID: "med_query", state: "queued" }],
+      waited: {
+        what: "transcript",
+        done: false,
+        timedOut: true,
+        elapsed: 0,
+        finished: [],
+        pending: [{ state: "queued" }],
+      },
+    });
+    expect(
+      await api.handle("transcribe", {
+        media: ["clip_query", "med_query"],
+        wait: true,
+        timeout: 0,
+      }),
+    ).toMatchObject({ applied: { revision: 2 }, waited: { done: false, timedOut: true } });
+    expect(await api.handle("transcribe", { media: ["med_query"] })).not.toHaveProperty("applied");
+    await api.handle("undo", {});
+    await api.handle("apply", {
+      commands: [{ updateMedia: { mediaID: "med_query", patch: { role: "camera" } } }],
+    });
+    const before = host.snapshot().json;
+    expect(await api.handle("transcribe", { media: ["med_query"] })).not.toHaveProperty("applied");
+    expect(host.snapshot().json).toBe(before);
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      api.handle("transcribe", { media: ["med_query"] }, controller.signal),
+    ).rejects.toMatchObject({ name: "AbortError" });
+  });
   it("uses shared revisions, rejects atomic failures and restores from a journal baseline", async () => {
     const { host, api } = await setup();
     const before = host.snapshot();

@@ -20,17 +20,28 @@ import {
   requestJsonSchema,
   serviceRequired,
 } from "@sidecut/core/service-requests";
-import { clipChanges, editOutcome, revisionFile, restorePlan } from "@sidecut/core/service-edits";
+import {
+  clipChanges,
+  editOutcome,
+  revisionFile,
+  restorePlan,
+  diffEdits,
+} from "@sidecut/core/service-edits";
 import { ProjectCoordinator, EditError, type JournalEntry } from "@sidecut/core/coordinator";
 import { helperPlan } from "@sidecut/core/service-speech";
 import { serviceOutput } from "./service-output.ts";
 import { encodeProjectFile } from "@sidecut/contracts/project";
 import { safeArchivePath } from "@sidecut/core/archive";
+import { checkRanges } from "@sidecut/core/quality-check";
 import { reviewQuery } from "@sidecut/core/service-review";
 import { effectRegistry, renderedEffects } from "@sidecut/core/effects";
 import { importEDL, object } from "@sidecut/core/interchange";
 import { readFilmoraSource } from "./filmora-import.ts";
 import { analysisKinds, decodeQueryState } from "@sidecut/core/query-state";
+import { serviceExportPlan } from "@sidecut/core/service-export";
+import { speechTracks } from "@sidecut/core/speech";
+import { resolveServiceMedia, isCameraTake } from "@sidecut/core/service-sync";
+import { folderArchive } from "./service-archive.ts";
 type RendererOperations = {
   ready?: () => boolean;
   run: (operation: string, input: Record<string, unknown>, signal: AbortSignal) => Promise<unknown>;
@@ -38,6 +49,52 @@ type RendererOperations = {
 };
 
 export class ProjectAPI {
+  private exports = new Map<
+    string,
+    { kind: string; path: string; state: string; progress: number; message?: string }
+  >();
+  private async waitExports(request: Record<string, unknown>, signal: AbortSignal) {
+    const started = Date.now(),
+      timeout = Math.min(86400, Math.max(0, Number(request.timeout ?? 600)));
+    const seen = new Set<string>();
+    const observe = async () => {
+      while (true) {
+        signal.throwIfAborted();
+        for (const [id, job] of this.exports) if (job.state === "running") seen.add(id);
+        const all = [...seen].flatMap((id) => this.exports.get(id) ?? []),
+          pending = all.filter((j) => j.state === "running");
+        if (!pending.length || Date.now() - started >= timeout * 1000)
+          return { finished: all.filter((j) => j.state !== "running"), pending };
+        await new Promise<void>((complete, reject) => {
+          const abort = () => {
+            clearTimeout(timer);
+            reject(new QueryError("unavailable", "Wait cancelled."));
+          };
+          const timer = setTimeout(() => {
+            signal.removeEventListener("abort", abort);
+            complete();
+          }, 100);
+          signal.addEventListener("abort", abort, { once: true });
+          if (signal.aborted) abort();
+        });
+      }
+    };
+    const [api, renderer] = await Promise.all([
+      observe(),
+      this.renderer?.run("wait", request, signal),
+    ]);
+    const ui = object(renderer ?? {}),
+      finished = [...api.finished, ...(Array.isArray(ui.finished) ? ui.finished : [])],
+      pending = [...api.pending, ...(Array.isArray(ui.pending) ? ui.pending : [])];
+    return {
+      what: "export",
+      done: !pending.length,
+      timedOut: !!pending.length,
+      elapsed: (Date.now() - started) / 1000,
+      finished,
+      pending,
+    };
+  }
   private mediaRoot: string | null = null;
   private readonly started = new Date().toISOString();
   private port: number | undefined;
@@ -176,22 +233,39 @@ export class ProjectAPI {
     const source = await this.baseline(reference, file);
     if (source.project.id !== file.project.id)
       throw new QueryError("badRequest", "The baseline belongs to a different project.");
+    const numeric = reference.trim() === "reviewed" || /^r?\d+$/.test(reference.trim());
+    let known = numeric;
+    if (!known) {
+      try {
+        known = clipChanges(revisionFile(file, source.revision), source).length === 0;
+      } catch {
+        /* Snapshots can outlive their journal. */
+      }
+    }
+    const description = numeric
+      ? `revision ${source.revision}`
+      : `${/\.(mp4|webm|m4a|wav)$/i.test(reference) ? "the export snapshot" : "the project file"} ${reference.trim()}${known ? ` (revision ${source.revision})` : ""}`;
     if (operation === "diff")
       return {
         revision: file.revision,
-        since: `revision ${source.revision}`,
-        sinceRevision: source.revision,
+        since: description,
+        ...(known ? { sinceRevision: source.revision } : {}),
         changes: clipChanges(source, file),
+        ...(known ? { edits: diffEdits(file, source.revision) } : {}),
       };
     const plan = restorePlan(file, source, request);
+    plan.from = description;
     if (request.apply === true && plan.commands.length) {
       if (plan.problem) throw new QueryError("badRequest", plan.problem);
+      const count = plan.items.filter((item) => item.action !== "unchanged").length;
       return {
         ...plan,
         applied: this.apply(
           {
             commands: plan.commands,
-            label: request.label ?? `Restore from revision ${source.revision}`,
+            label:
+              request.label ??
+              `Restore ${count} clip${count === 1 ? "" : "s"} from ${numeric ? `revision ${source.revision}` : reference.trim()}`,
             author: request.author ?? "agent",
             expectedRevision: request.expectedRevision ?? file.revision,
           },
@@ -203,27 +277,48 @@ export class ProjectAPI {
     return plan;
   }
   private async baseline(reference: string, file: ReturnType<ProjectAPI["file"]>) {
+    reference = reference.trim();
     if (reference === "reviewed")
-      throw new QueryError(
-        "notImplemented",
-        "Reviewed baselines require the review service from phase 126.",
-      );
-    if (/^\d+$/.test(reference)) return revisionFile(file, Number(reference));
+      return revisionFile(file, this.project.store.reviewedRevision(file.project.id));
+    if (/^r?-?\d+$/.test(reference)) {
+      const revision = Number(reference.replace(/^r/, ""));
+      if (!Number.isSafeInteger(revision) || revision < 0 || revision > file.revision)
+        throw new QueryError(
+          "badRequest",
+          "Revision is outside the project history.",
+          file.revision,
+        );
+      return revisionFile(file, revision);
+    }
     const name = safeArchivePath(
       reference.match(/\.(mp4|webm|m4a|wav)$/i) ? reference + ".tandem" : reference,
     );
-    const root = await realpath(dirname(this.project.store.path)),
-      path = await realpath(resolve(root, name)),
-      within = relative(root, path);
+    const root = await realpath(dirname(this.project.store.path));
+    let path: string;
+    try {
+      path = await realpath(resolve(root, name));
+    } catch {
+      throw new QueryError("notFound", `Baseline ${name} was not found.`, file.revision);
+    }
+    const within = relative(root, path);
     if (within.startsWith("..") || isAbsolute(within) || (await stat(path)).size > 20 * 1024 * 1024)
       throw new QueryError("badRequest", "Unsafe or oversized baseline project.");
-    return decodeProjectFile(JSON.parse(await readFile(path, "utf8")));
+    try {
+      return decodeProjectFile(JSON.parse(await readFile(path, "utf8")));
+    } catch {
+      throw new QueryError(
+        "badRequest",
+        "The baseline could not be read as a project.",
+        file.revision,
+      );
+    }
   }
   private async rendererOperation(
     operation: string,
     request: Record<string, unknown>,
     signal: AbortSignal,
   ) {
+    signal.throwIfAborted();
     const file = this.file(),
       snapshot = this.project.snapshot();
     if (request.output != null)
@@ -238,7 +333,7 @@ export class ProjectAPI {
     if (request.expectedRevision != null && request.expectedRevision !== file.revision)
       throw new EditError("stale-revision", "Stale project revision.");
     if (["join", "short", "cards", "tighten", "captions"].includes(operation)) {
-      const plan = ["join", "short", "cards"].includes(operation)
+      const plan = ["join", "short"].includes(operation)
         ? helperPlan(file, operation, request, () => undefined)
         : await this.renderer?.run(operation, request, signal);
       if (!plan) throw new QueryError("unavailable", "This helper requires an attached editor.");
@@ -312,6 +407,7 @@ export class ProjectAPI {
     }
     if (!this.renderer || this.renderer.ready?.() === false)
       throw new QueryError("unavailable", `${operation} requires an attached editor renderer.`);
+    const renderStarted = performance.now();
     let applied;
     if (operation === "transcribe") {
       const refs = request.media as string[],
@@ -325,16 +421,32 @@ export class ProjectAPI {
               .filter((c) => c.id === ref)
               .map(clipMediaID)[0],
         );
-      if (ids.some((id) => !id) || !ids.length)
+      if (!ids.length) throw new QueryError("badRequest", "Name the media to transcribe.");
+      if (ids.some((id) => !id))
         throw new QueryError("notFound", "A transcription source was not found.");
       if (ids.some((id) => !file.project.media.find((m) => m.id === id)?.hasAudio))
         throw new QueryError("badRequest", "Transcription requires audio media.");
+      const speech = new Set(speechTracks(file.project).flatMap((t) => t.clips.map(clipMediaID)));
       const commands = [...new Set(ids)]
-        .filter((id) => file.project.media.find((m) => m.id === id)?.transcribe !== true)
+        .filter((id) => {
+          const item = file.project.media.find((m) => m.id === id)!;
+          return item.transcribe !== true && item.role !== "camera" && !speech.has(id);
+        })
         .map((mediaID) => ({ updateMedia: { mediaID, patch: { transcribe: true } } }));
       if (commands.length)
         applied = this.apply(
-          { commands, label: request.label ?? "Transcribe media", author: "agent" },
+          {
+            commands,
+            label:
+              request.label ??
+              (commands.length === 1
+                ? `Transcribe ${file.project.media
+                    .find((m) => m.id === commands[0]!.updateMedia.mediaID)!
+                    .path.split(/[\\/]/)
+                    .at(-1)}`
+                : `Transcribe ${commands.length} files`),
+            author: "agent",
+          },
           file,
           snapshot.generation,
         );
@@ -393,6 +505,7 @@ export class ProjectAPI {
           () => {},
           0,
           Number(metadata.duration),
+          extension === ".mp4" ? serviceExportPlan(file.project, request, operation) : undefined,
         ),
       );
     }
@@ -411,10 +524,11 @@ export class ProjectAPI {
     }
     return {
       ...metadata,
+      elapsed: (performance.now() - renderStarted) / 1000,
       path,
       codec:
         extension === ".mp4"
-          ? "h264"
+          ? serviceExportPlan(file.project, request, operation).codec
           : extension === ".webm"
             ? request.audioOnly === true
               ? "opus"
@@ -515,6 +629,26 @@ export class ProjectAPI {
           name: this.file().project.name,
         };
       }
+      if (operation === "check") {
+        const file = this.file();
+        const changed =
+          diffEdits(file, this.project.store.reviewedRevision(file.project.id))?.flatMap((e) =>
+            !["human", "user"].includes(e.author) && e.start != null && e.end != null
+              ? [{ start: e.start, end: e.end }]
+              : [],
+          ) ?? [];
+        const ranges = checkRanges(file.project, request, changed);
+        if (request.quick === true || !ranges.length)
+          return reviewQuery(file, operation, request, changed);
+        if (!this.renderer)
+          throw new QueryError(
+            "unavailable",
+            "Rendered and speech-cut checks require an attached editor.",
+          );
+        return this.renderer.run("check-state", { request, ranges }, signal);
+      }
+      if (operation === "comments" && this.renderer && this.renderer.ready?.() !== false)
+        return this.renderer.run(operation, request, signal);
       if (["validate", "check", "comments"].includes(operation))
         return reviewQuery(this.file(), operation, request);
       if (operation === "effects") {
@@ -528,37 +662,26 @@ export class ProjectAPI {
           warnings: ["Effects without a renderer are retained but cannot be rendered."],
         };
       }
-      if (operation === "watch") return this.watch(request, signal);
+      if (operation === "watch") {
+        const result = await this.watch(request, signal);
+        const state = await this.queryState(signal, false);
+        return { ...result, jobs: state?.jobs ?? [] };
+      }
+      if (operation === "wait" && request.what === "export")
+        return this.waitExports(request, signal);
       if (operation === "sync") {
-        if (request.files != null || request.makeDefault === true)
-          throw new QueryError(
-            "notImplemented",
-            "Sound matching and default recorder delay are not exposed by the service yet.",
-          );
         const file = this.file(),
-          refs = request.media as string[] | undefined;
-        const items = file.project.media.filter(
-          (m) =>
-            m.hasVideo &&
-            (!refs ? m.role === "camera" : refs.includes(m.id) || refs.includes(m.path)),
-        );
-        if (refs?.some((ref) => !items.some((m) => m.id === ref || m.path === ref)))
-          throw new QueryError("notFound", "A requested video source was not found.");
-        const applied =
-          request.delay == null || !items.length
-            ? undefined
-            : this.apply({
-                expectedRevision: request.expectedRevision,
-                dryRun: request.dryRun,
-                label: request.label ?? "Set picture delay",
-                commands: items.map((m) => ({
-                  updateMedia: { mediaID: m.id, patch: { pictureDelay: request.delay } },
-                })),
-              });
-        return {
+          generation = this.project.snapshot().generation;
+        if (request.expectedRevision != null && request.expectedRevision !== file.revision)
+          throw new EditError("stale-revision", "Stale revision. Retry with the latest project.");
+        const result = () => ({
           revision: this.file().revision,
           files: this.file()
-            .project.media.filter((m) => m.hasVideo)
+            .project.media.filter((m) => m.kind === "video" && m.hasVideo)
+            .toSorted(
+              (a, b) =>
+                Number(isCameraTake(b)) - Number(isCameraTake(a)) || a.path.localeCompare(b.path),
+            )
             .map((m) => ({
               id: m.id,
               path: m.path,
@@ -566,12 +689,84 @@ export class ProjectAPI {
               pictureDelay: m.pictureDelay?.seconds,
               pictureDelayCorrected: m.pictureDelayCorrected?.seconds,
             })),
-          defaultDelay: 0,
+          defaultDelay: this.project.store.cameraPictureDelay(),
+        });
+        if ((request.files as string[] | undefined)?.length) {
+          if (!this.renderer)
+            throw new QueryError("unavailable", "Sound sync requires a ready editor.");
+          const raw = object(await this.renderer.run("sync", request, signal));
+          if (!Array.isArray(raw.commands) || raw.revision !== file.revision)
+            throw new QueryError("unavailable", "Invalid sound sync plan.");
+          signal.throwIfAborted();
+          const applied = raw.commands.length
+            ? this.apply(
+                {
+                  commands: raw.commands,
+                  label: request.label ?? "Sync by sound",
+                  dryRun: request.dryRun,
+                  expectedRevision: file.revision,
+                },
+                file,
+                generation,
+              )
+            : undefined;
+          return {
+            ...result(),
+            matches: raw.matches,
+            reference: raw.reference,
+            warnings: raw.warnings,
+            ...(applied ? { applied } : {}),
+          };
+        }
+        if (request.to != null || request.place != null)
+          throw new QueryError("badRequest", "to and place require files to align by sound.");
+        if (request.delay == null && (request.media != null || request.makeDefault === true))
+          throw new QueryError("badRequest", "Give the picture delay in seconds too.");
+        if (request.delay != null && Math.abs(Number(request.delay)) > 1)
+          throw new QueryError(
+            "badRequest",
+            "Picture delay must be within one second; 80 ms is 0.08.",
+          );
+        const items =
+          request.media != null
+            ? resolveServiceMedia(file.project, request.media as string[])
+            : file.project.media.filter((m) => isCameraTake(m) && m.pictureDelayCorrected == null);
+        if (request.delay != null && items.some((m) => m.kind !== "video" || !m.hasVideo))
+          throw new QueryError("badRequest", "Picture delay requires moving picture sources.");
+        const changed = items.filter((m) => (m.pictureDelay?.seconds ?? 0) !== request.delay);
+        const applied =
+          request.delay == null || !changed.length
+            ? undefined
+            : this.apply({
+                expectedRevision: request.expectedRevision,
+                dryRun: request.dryRun,
+                label: request.label ?? "Set picture delay",
+                commands: changed.map((m) => ({
+                  updateMedia: {
+                    mediaID: m.id,
+                    patch: { pictureDelay: request.delay === 0 ? null : request.delay },
+                  },
+                })),
+              });
+        if (request.makeDefault === true && request.dryRun !== true)
+          this.project.store.cameraPictureDelay(Number(request.delay));
+        return {
+          ...result(),
           ...(applied ? { applied } : {}),
-          warnings: ["Recorder default settings and sound matching are not included."],
+          warnings: [],
         };
       }
       if (operation === "archive") {
+        if (
+          request.output != null &&
+          (request.to != null || request.dryRun != null || request.withCache != null)
+        )
+          throw new QueryError(
+            "badRequest",
+            "Use output for ZIP export, or to/dryRun/withCache for a folder archive.",
+          );
+        const file = this.file(),
+          generation = this.project.snapshot().generation;
         if (!this.renderer)
           throw new QueryError("unavailable", "A ready editor is required for archive resources.");
         const result = await this.renderer.run(operation, request, signal);
@@ -585,6 +780,25 @@ export class ProjectAPI {
         )
           throw new QueryError("unavailable", "Invalid archive payload.");
         signal.throwIfAborted();
+        if (request.output == null)
+          return folderArchive(
+            this.project.store.path,
+            file,
+            Buffer.from(result.data, "base64"),
+            request,
+            signal,
+            (commands) =>
+              this.apply(
+                {
+                  commands,
+                  label: request.label ?? "Consolidate project resources",
+                  author: request.author ?? "agent",
+                  expectedRevision: file.revision,
+                },
+                file,
+                generation,
+              ),
+          );
         const output = await serviceOutput(
           this.project.store.path,
           String(request.output ?? "project.sidecut"),
@@ -631,6 +845,32 @@ export class ProjectAPI {
       }
       if (["apply", "undo", "redo", "history", "diff", "restore"].includes(operation))
         return this.edit(operation, request);
+      if (["export", "clip"].includes(operation)) {
+        const id = randomUUID(),
+          job = {
+            kind: "export",
+            path: String(request.output ?? operation),
+            state: "running",
+            progress: 0,
+          };
+        this.exports.set(id, job);
+        try {
+          const result = await this.rendererOperation(operation, request, signal);
+          this.exports.set(id, { ...job, state: "done", progress: 1 });
+          return result;
+        } catch (error) {
+          this.exports.set(id, {
+            ...job,
+            state: "failed",
+            message: error instanceof Error ? error.message : String(error),
+          });
+          throw error;
+        } finally {
+          for (const [key, value] of this.exports)
+            if (this.exports.size > 64 && value.state !== "running" && key !== id)
+              this.exports.delete(key);
+        }
+      }
       return this.rendererOperation(operation, request, signal);
     }
     const { request } = queryRequest(operation, input);
@@ -827,20 +1067,29 @@ export class ProjectAPI {
   private watch(request: Record<string, unknown>, signal: AbortSignal) {
     const initial = this.project.snapshot(),
       revision = Number(request.revision ?? this.file().revision),
-      timeout = Number(request.timeout ?? 30);
-    if (timeout <= 0 || timeout > 600)
-      throw new QueryError(
-        "badRequest",
-        "Watch timeout must be greater than zero and at most 600 seconds.",
-      );
+      timeout = Math.min(600, Math.max(0, Number(request.timeout ?? 30)));
     signal.throwIfAborted();
-    return new Promise<unknown>((complete, reject) => {
+    return new Promise<Record<string, unknown>>((complete, reject) => {
       const result = (changed: boolean) => ({
         revision: this.file().revision,
         changed,
-        events: [],
-        jobs: [],
-        resync: true,
+        events: this.project
+          .recentEvents()
+          .filter(
+            (event) =>
+              event.generation === this.project.snapshot().generation && event.revision > revision,
+          ),
+        resync:
+          this.project.snapshot().generation !== (request.generation ?? initial.generation) ||
+          revision > this.file().revision ||
+          (this.file().revision > revision &&
+            !this.project
+              .recentEvents()
+              .some(
+                (event) =>
+                  event.generation === this.project.snapshot().generation &&
+                  event.revision === revision + 1,
+              )),
         generation: this.project.snapshot().generation,
       });
       if (

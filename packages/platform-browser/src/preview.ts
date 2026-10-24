@@ -38,6 +38,22 @@ export class LocalMediaReader {
     if (this.closed || !this.picture) throw new Error("Source has no decodable picture.");
     return this.picture.canvases();
   }
+  async frameTimes(signal: AbortSignal) {
+    signal.throwIfAborted();
+    const video = await this.input?.getPrimaryVideoTrack();
+    if (!video) return [];
+    const { EncodedPacketSink } = await import("mediabunny"),
+      times: number[] = [];
+    for await (const packet of new EncodedPacketSink(video).packets(undefined, undefined, {
+      metadataOnly: true,
+    })) {
+      signal.throwIfAborted();
+      times.push(packet.timestamp);
+      if (times.length > 1000000)
+        throw new Error("Source packet table exceeds one million frames.");
+    }
+    return [...new Set(times)].sort((a, b) => a - b);
+  }
   get animated() {
     return this.animation !== null;
   }

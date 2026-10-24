@@ -1,7 +1,7 @@
 import type { BrowserProjectSession } from "./browser-session";
 import { serviceRequest, rendererMutations } from "@sidecut/core/service-requests";
 import { speechQuery, helperPlan } from "@sidecut/core/service-speech";
-import { mediaIDOf } from "@sidecut/core/speech";
+import { transcribeService } from "./service-transcribe";
 import { QueryError } from "@sidecut/core/project-queries";
 
 export async function rendererOperation(
@@ -13,6 +13,29 @@ export async function rendererOperation(
   if (operation === "query-state" || operation === "timeline") {
     const { rendererQuery } = await import("./service-queries");
     return rendererQuery(session, operation, input, signal);
+  }
+  if (operation === "check-state") {
+    if (
+      !input ||
+      typeof input !== "object" ||
+      !("request" in input) ||
+      !("ranges" in input) ||
+      !Array.isArray(input.ranges) ||
+      !input.ranges.every(
+        (r) =>
+          r &&
+          typeof r === "object" &&
+          typeof r.start === "number" &&
+          typeof r.end === "number" &&
+          Number.isFinite(r.start) &&
+          Number.isFinite(r.end) &&
+          r.start >= 0 &&
+          r.end > r.start,
+      )
+    )
+      throw new QueryError("badRequest", "Invalid check ranges.");
+    const { checkService } = await import("./service-check");
+    return checkService(session, serviceRequest("check", input.request), input.ranges, signal);
   }
   if (operation === "relink") {
     if (
@@ -39,6 +62,10 @@ export async function rendererOperation(
   const request = serviceRequest(operation, input),
     file = session.projectFile();
   signal.throwIfAborted();
+  if (operation === "sync") {
+    const { syncService } = await import("./service-sync");
+    return syncService(session, request, signal);
+  }
   if (
     operation.startsWith("assets-") ||
     ["segments", "save-segment", "insert-segment", "wait", "archive"].includes(operation)
@@ -52,50 +79,24 @@ export async function rendererOperation(
   }
   await session.analysis.prepareSpeech();
   signal.throwIfAborted();
-  if (operation === "transcribe") {
-    const references = request.media as string[];
-    const ids = references.map(
-      (ref) =>
-        file.project.media.find(
-          (m) => m.id === ref || m.path === ref || m.path.split(/[\\/]/).at(-1) === ref,
-        )?.id ??
-        [...file.project.videoTracks, ...file.project.audioTracks]
-          .flatMap((t) => t.clips)
-          .filter((c) => c.id === ref)
-          .map(mediaIDOf)[0],
-    );
-    if (ids.some((id) => !id) || !ids.length)
-      throw new QueryError("notFound", "A requested transcription source was not found.");
-    const items = [...new Set(ids)].map((id) => file.project.media.find((m) => m.id === id)!);
-    if (items.some((m) => !m.hasAudio))
-      throw new QueryError("badRequest", "Transcription requires an audio source.");
-    const jobs = items.map((item) =>
-      session.analysis.transcribe(item.id, request.wait === true ? signal : undefined),
-    );
-    if (request.wait === true) await Promise.allSettled(jobs);
-    else jobs.forEach((job) => void job.catch(() => {}));
-    signal.throwIfAborted();
-    const files = items.map((item) => {
-      const state = session.analysis.getSnapshot()[item.id],
-        transcript = session.analysis.transcriptFor(item);
-      return {
-        kind: "transcript",
-        mediaID: item.id,
-        path: item.path,
-        state: transcript ? "ready" : state?.error ? "failed" : "queued",
-        ...(transcript ? { words: transcript.words.length } : {}),
-        ...(state?.error ? { message: state.error } : {}),
-      };
-    });
-    return {
-      revision: file.revision,
-      files,
-      headless: false,
-      ...(request.wait === true
-        ? { waited: { revision: file.revision, done: true, timedOut: false, items: files } }
-        : {}),
-    };
+  if (operation === "comments") {
+    const { reviewQuery } = await import("@sidecut/core/service-review");
+    return reviewQuery(file, operation, request, undefined, session.analysis.transcriptFor);
   }
+  if (operation === "cards") {
+    const { cardsService } = await import("./service-cards");
+    return cardsService(session, request, signal);
+  }
+  if (operation === "transcribe") {
+    return transcribeService(
+      file,
+      request,
+      session.analysis,
+      signal,
+      () => session.getSnapshot().revision,
+    );
+  }
+
   try {
     if (["transcript", "search", "pauses"].includes(operation))
       return speechQuery(file, operation, request, session.analysis.transcriptFor);
@@ -131,6 +132,7 @@ export function connectRendererOperations(session: BrowserProjectSession) {
         session.getSnapshot().project.id !== request.projectID ||
         (!rendererMutations.has(request.operation) &&
           request.operation !== "wait" &&
+          request.operation !== "transcribe" &&
           session.getSnapshot().revision !== request.revision)
       )
         throw new Error("Editor changed during the operation.");

@@ -48,8 +48,9 @@ describe("service job waits", () => {
         expect.objectContaining({ status: "failed", error: "Fixture failure" }),
       ]),
     });
-    await expect(libraryOperation(session, "wait", { what: "transcript" }, signal)).rejects.toThrow(
-      "Per-source",
-    );
+    expect(await libraryOperation(session, "wait", { what: "transcript" }, signal)).toMatchObject({
+      done: true,
+      pending: [],
+    });
   });
 });

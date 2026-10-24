@@ -43,6 +43,50 @@ async function setup() {
 }
 
 describe("review, watch and CLI host adapters", () => {
+  it("checks pending agent ranges and clears them only after durable human review", async () => {
+    const { api, host } = await setup(),
+      file = JSON.parse(host.snapshot().json);
+    await api.handle("apply", {
+      author: "human",
+      commands: [
+        {
+          insertClip: {
+            trackID: file.project.videoTracks[0].id,
+            clip: {
+              id: "review-solid",
+              duration: 2,
+              content: { solid: { color: { r: 0, g: 0, b: 1, a: 1 } } },
+            },
+          },
+        },
+      ],
+    });
+    expect(await api.handle("check", { changed: true, quick: true })).toMatchObject({
+      ranges: [],
+      frames: 0,
+    });
+    await api.handle("apply", {
+      author: "agent",
+      commands: [{ updateClip: { clipID: "review-solid", patch: { name: "Agent change" } } }],
+    });
+    expect(await api.handle("check", { changed: true, quick: true })).toMatchObject({
+      revision: 2,
+      ranges: [{ start: 0, duration: 2 }],
+      frames: 0,
+    });
+    await host.flush();
+    host.request(
+      JSON.stringify({
+        type: "markReviewed",
+        projectID: file.project.id,
+        generation: host.snapshot().generation,
+        revision: 2,
+      }),
+    );
+    expect(await api.handle("check", { changed: true, quick: true })).toMatchObject({ ranges: [] });
+    await expect(api.handle("check", { quick: true, width: 1 })).rejects.toThrow(/width/);
+    await expect(api.handle("validate", { from: 0 })).rejects.toThrow(/Unknown/);
+  });
   it("sets picture delay with dry-run, stale revision and undo protection", async () => {
     const { api, host } = await setup();
     await api.handle("apply", {
@@ -75,6 +119,38 @@ describe("review, watch and CLI host adapters", () => {
     expect(await api.handle("sync", {})).toMatchObject({
       files: [{ id: "camera", pictureDelay: undefined }],
     });
+    await api.handle("sync", { delay: -0.08, makeDefault: true, dryRun: true });
+    expect(host.store.cameraPictureDelay()).toBe(0);
+    await api.handle("sync", { delay: 0.08, makeDefault: true });
+    await api.handle("apply", {
+      commands: [
+        {
+          addMedia: {
+            item: {
+              id: "new-camera",
+              path: "new.mp4",
+              kind: "video",
+              role: "camera",
+              hasVideo: true,
+            },
+          },
+        },
+      ],
+    });
+    expect(await api.handle("sync", {})).toMatchObject({
+      defaultDelay: 0.08,
+      files: expect.arrayContaining([
+        {
+          id: "new-camera",
+          path: "new.mp4",
+          role: "camera",
+          pictureDelay: 0.08,
+          pictureDelayCorrected: undefined,
+        },
+      ]),
+    });
+    await expect(api.handle("sync", { delay: 80 })).rejects.toThrow(/one second/);
+    await expect(api.handle("sync", { makeDefault: true })).rejects.toThrow(/delay/);
   });
   it("runs CLI create/edit/inspect with strict fields and stable error exits", async () => {
     const { api, host, cli } = await setup();
@@ -96,7 +172,7 @@ describe("review, watch and CLI host adapters", () => {
     });
     expect(JSON.parse(host.snapshot().json).project.name).toBe("CLI edited");
     expect((await cli("apply", "--commands", "[]", "--expected-revision", "0")).code).toBe(4);
-    expect((await cli("check")).code).toBe(6);
+    expect((await cli("check")).code).toBe(2);
     expect((await cli("status", "--constructor", "bad")).code).toBe(2);
     expect((await cli("assets", "show", "--id", "missing")).code).toBe(3);
     expect((await cli("effects", "--type", "missing")).code).toBe(5);
@@ -108,27 +184,41 @@ describe("review, watch and CLI host adapters", () => {
     const { api, host } = await setup();
     const waiting = api.handle("watch", { revision: 0, timeout: 1 });
     await api.handle("apply", { commands: [{ updateProject: { patch: { name: "Changed" } } }] });
-    expect(await waiting).toMatchObject({ changed: true, revision: 1, resync: true });
+    expect(await waiting).toMatchObject({
+      changed: true,
+      revision: 1,
+      resync: false,
+      events: [{ kind: "edit", revision: 1 }],
+    });
     expect(await api.handle("watch", { revision: 0 })).toMatchObject({
       changed: true,
       revision: 1,
     });
-    expect(await api.handle("watch", { revision: 1, timeout: 0.01 })).toMatchObject({
+    await api.handle("undo", {});
+    await api.handle("redo", {});
+    expect(await api.handle("watch", { revision: 0 })).toMatchObject({
+      events: [
+        { seq: 1, kind: "edit" },
+        { seq: 2, kind: "undo" },
+        { seq: 3, kind: "redo" },
+      ],
+    });
+    expect(await api.handle("watch", { revision: 3, timeout: 0.01 })).toMatchObject({
       changed: false,
-      revision: 1,
+      revision: 3,
     });
     const controller = new AbortController();
     const cancelled = api.handle("watch", {}, controller.signal);
     controller.abort();
     await expect(cancelled).rejects.toThrow("cancelled");
-    expect(JSON.parse(host.snapshot().json).revision).toBe(1);
+    expect(JSON.parse(host.snapshot().json).revision).toBe(3);
     const generation = host.snapshot().generation;
-    await api.handle("new", { expectedRevision: 1, name: "Replacement" });
+    await api.handle("new", { expectedRevision: 3, name: "Replacement" });
     expect(await api.handle("watch", { revision: 1, generation, timeout: 0.01 })).toMatchObject({
       changed: true,
       revision: 0,
     });
-    await expect(api.handle("watch", { timeout: 601 })).rejects.toThrow("600");
+    expect(await api.handle("watch", { timeout: 0 })).toMatchObject({ changed: false, events: [] });
   });
   it("lists and resolves marker comments through shared edits and validates warnings", async () => {
     const { api } = await setup();
@@ -146,11 +236,10 @@ describe("review, watch and CLI host adapters", () => {
     await api.handle("undo", {});
     expect(await api.handle("comments", {})).toMatchObject({ comments: [{ id: "comment" }] });
     expect(await api.handle("validate", {})).toMatchObject({ valid: true });
-    expect(await api.handle("check", { quick: true })).toMatchObject({
-      frames: 0,
-      warnings: [expect.stringContaining("not scanned")],
-    });
-    await expect(api.handle("check", { quick: true, cuts: true })).rejects.toThrow("Only quick");
+    await expect(api.handle("check", { quick: true })).rejects.toThrow("Nothing to check");
+    await expect(api.handle("check", { quick: true, cuts: true })).rejects.toThrow(
+      "does not take quick",
+    );
   });
   it("opens/imports safely with revision guards and keeps a project backup", async () => {
     const { root, api, host, cli } = await setup();
@@ -175,7 +264,7 @@ describe("review, watch and CLI host adapters", () => {
     await expect(
       api.handle("open", { path: "../escape.tandem", expectedRevision: 0 }),
     ).rejects.toThrow();
-    await expect(api.handle("sync", { files: [] })).rejects.toThrow("Sound matching");
+    expect(await api.handle("sync", { files: [] })).toMatchObject({ files: [], defaultDelay: 0 });
     await writeFile(
       join(root, "recipe.json"),
       JSON.stringify({

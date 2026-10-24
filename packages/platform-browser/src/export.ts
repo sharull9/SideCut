@@ -8,6 +8,7 @@ import { paintPicture } from "./picture";
 import type { Project, Clip } from "@sidecut/contracts/project";
 import { enabledTracks, exportPlan, projectDuration } from "@sidecut/core/render-plan";
 import type { LocalResource } from "./storage";
+import { LoudnessMeter, type MeasuredSound } from "@sidecut/core/loudness";
 import { LocalMediaReader } from "./preview";
 
 export async function renderWebM(
@@ -15,11 +16,19 @@ export async function renderWebM(
   resource: (id: string) => Promise<LocalResource | null>,
   externalSignal: AbortSignal,
   onProgress: (progress: number) => void,
-  options: { start?: number; end?: number; master?: boolean } = {},
+  options: {
+    start?: number;
+    end?: number;
+    master?: boolean;
+    fullResolution?: boolean;
+    bitrate?: number;
+    onLoudness?: (measurement: MeasuredSound) => void;
+  } = {},
 ): Promise<Blob> {
   const work = new AbortController();
   const signal = AbortSignal.any([externalSignal, work.signal]);
-  const plan = exportPlan(project);
+  const plan = exportPlan(project, options.fullResolution);
+  const bitrate = options.bitrate ?? 4000000;
   const start = options.start ?? 0,
     end = options.end ?? projectDuration(project).seconds;
   if (start < 0 || end <= start || end > projectDuration(project).seconds + 1 / plan.fps)
@@ -41,7 +50,7 @@ export async function renderWebM(
     !(await canEncodeVideo("vp8", {
       width: plan.width,
       height: plan.height,
-      bitrate: 4_000_000,
+      bitrate,
     })) ||
     (plan.hasAudio && !(await canEncodeAudio("opus")))
   )
@@ -54,7 +63,7 @@ export async function renderWebM(
   if (!ctx) throw new Error("Canvas export is unavailable.");
   const target = new BufferTarget(),
     output = new Output({ format: new WebMOutputFormat(), target });
-  const video = new CanvasSource(canvas, { codec: "vp8", bitrate: 4_000_000 });
+  const video = new CanvasSource(canvas, { codec: "vp8", bitrate });
   output.addVideoTrack(video, { frameRate: plan.fps });
   const audio = plan.hasAudio ? new AudioSampleSource({ codec: "opus", bitrate: 128_000 }) : null;
   if (audio) output.addAudioTrack(audio);
@@ -143,6 +152,7 @@ export async function renderWebM(
     };
     const sound = async () => {
       if (!audio) return;
+      const meter = new LoudnessMeter(48000, 2);
       for await (const block of mixTimelineAudio(project, reader, signal, 48000, 4096, end, {
         start,
         master: options.master ?? true,
@@ -154,6 +164,7 @@ export async function renderWebM(
         },
       })) {
         signal.throwIfAborted();
+        meter.process([block.data.subarray(0, block.frames), block.data.subarray(block.frames)]);
         const sample = new AudioSample({
           data: block.data,
           format: "f32-planar",
@@ -168,6 +179,7 @@ export async function renderWebM(
         }
       }
       audio.close();
+      options.onLoudness?.(meter.result());
     };
     const jobs = [picture(), sound()];
     try {

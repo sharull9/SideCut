@@ -14,6 +14,13 @@ describe("native media jobs", () => {
     await expect(
       media.run("decode", new Uint8Array([1]), new AbortController().signal, () => {}),
     ).rejects.toThrow(/could not start/);
+    await expect(
+      media.run("mp4", new Uint8Array([1]), new AbortController().signal, () => {}, 0, 1, {
+        codec: "hevc",
+        videoBitrate: NaN,
+        audioBitrate: 320000,
+      }),
+    ).rejects.toThrow(/encoding settings/);
   });
   it("probes, trims, exports and decodes a real audio fixture", async () => {
     const binaries = mediaBinaries();

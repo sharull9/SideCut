@@ -32,7 +32,14 @@ export const serviceDefinitions = {
     expectedRevision: "integer",
   },
   effects: { type: "string" },
-  archive: { output: "string" },
+  archive: {
+    output: "string",
+    to: "string",
+    withCache: "boolean",
+    dryRun: "boolean",
+    label: "string",
+    author: "string",
+  },
   relink: { mediaID: "string", path: "string" },
   "assets-providers": {},
   "assets-search": {
@@ -197,7 +204,8 @@ export function serviceRequest(operation: string, input: unknown): Record<string
     const kind = Object.hasOwn(fields, key) ? fields[key] : undefined;
     if (!kind) throw new QueryError("badRequest", `Unknown ${operation} field: ${key}.`);
     if (value == null) continue;
-    if (kind === "time") result[key] = parseQueryTime(value);
+    if (kind === "time")
+      result[key] = parseQueryTime(value, operation === "sync" && key === "delay");
     else if (
       kind === "reference" &&
       (typeof value === "string" ||
@@ -238,7 +246,7 @@ export function serviceRequest(operation: string, input: unknown): Record<string
     if (
       result[from!] != null &&
       result[to!] != null &&
-      (operation === "frames" && from === "from"
+      (["frames", "join"].includes(operation) && from === "from"
         ? Number(result[to!]) < Number(result[from!])
         : Number(result[to!]) <= Number(result[from!]))
     )
@@ -246,11 +254,11 @@ export function serviceRequest(operation: string, input: unknown): Record<string
   if (
     operation === "transcribe" &&
     result.timeout != null &&
-    (Number(result.timeout) <= 0 || Number(result.timeout) > 600)
+    (Number(result.timeout) < 0 || Number(result.timeout) > 86400)
   )
     throw new QueryError(
       "badRequest",
-      "Transcription timeout must be between zero and 600 seconds.",
+      "Transcription timeout must be between zero and 86400 seconds.",
     );
   return result;
 }

@@ -53,14 +53,13 @@ Acceptance per operation: compare request defaults, result shape, revision, warn
 - [x] 120.01: status. Shared revision/save state, owner, live renderer jobs/exports, font warnings and durable agent reviews pass host and HTTP runtime checks; stale/malformed renderer snapshots reject.
 - [x] 120.02: timeline. Reference text/summary structure, settings, transitions, words, range JSON and malformed requests pass core and HTTP runtime checks without changing project revision.
 - [x] 120.03: media. Real renderer resource/cache/job states and host metadata are merged at a checked revision. Existing atomic refresh/undo/failure tests pass; HTTP runtime sees copied audio, cached words and loudness.
-- [ ] 120.04: clips.
+- [x] 120.04: clips. Track display order, IDs/names/full labels, media aliases, half-open ranges, empty results and malformed/missing references pass core tests and live Electron HTTP checks.
 
 The original query fixtures and HTTP refresh/undo checks remain in
 `project-queries.test.ts` and `http-service.test.ts`. `timeline-dump.test.ts`,
 `query-state.test.ts` and `verify-finishing.mjs` extend acceptance for the first
 three queries. See [current evidence and compatibility limits](verification/filmora-queries.md).
-Clips remains open for its complete reference result matrix. Cross-platform
-reference output comparisons are not implied by these Windows checks.
+The [query/history follow-up report](verification/query-history.md) records clips and the next four service subphases. Cross-platform reference output comparisons are not implied by these Windows checks.
 
 ## Group 121: Edits and history
 
@@ -70,15 +69,15 @@ Acceptance per operation: compare request defaults, result shape, revision, warn
 - [x] 121.02: undo.
 - [x] 121.03: redo.
 - [x] 121.04: history.
-- [ ] 121.05: diff.
-- [ ] 121.06: restore.
+- [x] 121.05: diff. Shift/trim/property/cut descriptions, per-edit records and places, revision aliases, reviewed baselines and snapshot comparisons pass core/host and Electron HTTP checks.
+- [x] 121.06: restore. Baseline-range selection, same-track patches, transition preservation, replacement-track lookup, dry-run validation and stale apply/undo pass core/host and Electron HTTP checks.
 
 ## Group 122: Speech
 
 Acceptance per operation: compare request defaults, result shape, revision, warnings, and a failure with a pinned contract fixture. Mutations also need atomicity and undo coverage; streams need close/cancellation coverage.
 
 - [x] 122.01: transcript.
-- [ ] 122.02: transcribe.
+- [x] 122.02: transcribe. Shared marking, media resolution, cached/uncached results, finished/pending wait fields, deadline and cancellation cases pass. Windows Electron downloaded the pinned local model and produced 16 words after a zero-second wait returned pending work.
 - [x] 122.03: search.
 - [x] 122.04: pauses.
 - [x] 122.05: tighten.
@@ -87,10 +86,10 @@ Acceptance per operation: compare request defaults, result shape, revision, warn
 
 Acceptance per operation: compare request defaults, result shape, revision, warnings, and a failure with a pinned contract fixture. Mutations also need atomicity and undo coverage; streams need close/cancellation coverage.
 
-- [ ] 123.01: join.
+- [x] 123.01: join. Core planner reports linked pairs, chained survivor IDs and every skipped cut with a reason. Inclusive point ranges, preview/apply/undo and failures pass core/host and Electron HTTP checks.
 - [x] 123.02: captions.
 - [x] 123.03: short.
-- [ ] 123.04: cards.
+- [x] 123.04: cards. Speech-aware insertion, existing-card text, optional local whooshes, speech-relative sound levels, provenance and atomic apply/undo pass core and Electron HTTP checks. Silent fallback performs no download.
 
 ## Group 124: Frame inspection
 
@@ -105,37 +104,40 @@ Acceptance per operation: compare request defaults, result shape, revision, warn
 Acceptance per operation: compare request defaults, result shape, revision, warnings, and a failure with a pinned contract fixture. Mutations also need atomicity and undo coverage; streams need close/cancellation coverage.
 
 - [x] 125.01: clip.
-- [ ] 125.02: export.
-- [ ] 125.03: loudness.
+- [x] 125.02: export. Reference default/preset aliases, even sizing, area/frame-rate bitrate planning, 4K HEVC, Rec.709 tags, output metrics and safe sidecars pass core/native and live Electron checks within the recorded browser bounds.
+- [x] 125.03: loudness. Centered mix windows, source/missing states, speech levels, limiter metadata and gain-lane comparisons pass fixtures and actual audio rendering. The runtime gain ramp stays within 0.035 dB of its lane.
 
-Implementation/acceptance evidence for all 21 operations is recorded in [phases 121-125](verification/phases-121-125.md). `service-operations.json` pins success and malformed request shapes; core/host tests cover shared revisions, history, dry runs and atomic failures. `verify-service.mjs` exercises every operation over actual HTTP, including helper apply/undo, frame dimensions, an actual UI screenshot, H.264/AAC/WAV/WebM outputs and source/mix loudness. Checked items have that baseline acceptance. Unchecked operations have an implementation but retain full-parity gaps: diff/restore details and reviewed/transition baselines, uncached transcription and timeout results, grouped join details, card sounds/section cuts, complete export presets and gain verification.
+Implementation/acceptance evidence for all 21 operations is recorded in [phases 121-125](verification/phases-121-125.md). `service-operations.json` pins success and malformed request shapes; core/host tests cover shared revisions, history, dry runs and atomic failures. `verify-service.mjs` exercises every operation over actual HTTP, including helper apply/undo, frame dimensions, an actual UI screenshot, H.264/AAC/WAV/WebM outputs and source/mix loudness. Checked items have that baseline acceptance. The [query/history follow-up report](verification/query-history.md) supersedes the diff/restore, transcription and join gaps in the original report. The [render/review follow-up](verification/render-review.md) supersedes the card sounds/section cuts, export-preset and gain-verification gaps. Native reference comparisons and the documented bounds remain open.
 
 ## Group 126: Review
 
 Groups 126–130 have baseline implementation coverage. Unchecked items retain
 full compatibility acceptance; the [verification report](verification/phases-126-130.md)
-records the supported behavior and the gaps, including the limited quick scan,
-reviewed state, event replay, native resource semantics and exact CLI/MCP spelling.
+records the supported behavior and the gaps, including comment context, event replay,
+native resource semantics and exact CLI/MCP spelling. The [render/review follow-up](verification/render-review.md) supersedes its original quick-scan limits.
 
 Acceptance per operation: compare request defaults, result shape, revision, warnings, and a failure with a pinned contract fixture. Mutations also need atomicity and undo coverage; streams need close/cancellation coverage.
 
-- [ ] 126.01: validate.
-- [ ] 126.02: check.
-- [ ] 126.03: comments.
+- [x] 126.01: validate. Reference ok/revision/issues fields, error/warning behavior, malformed inputs and read-only host results pass core/HTTP checks. The existing valid alias is retained.
+- [x] 126.02: check. Model checks, composite frame scans, speech cuts, pending-agent ranges, hold fixes, dead air, isolated-screen page changes and source-frame-rate notes pass core and Windows Electron checks. Cancellation, memory bounds and known detector differences are recorded in the render/review report.
+- [x] 126.03: comments. Four-second cached speech context, comment boundary, top-first clip context and read-only listing pass core/HTTP checks. Shared resolution and watch activity are verified in Electron.
 
 ## Group 127: Jobs and streams
 
 Acceptance per operation: compare request defaults, result shape, revision, warnings, and a failure with a pinned contract fixture. Mutations also need atomicity and undo coverage; streams need close/cancellation coverage.
 
-- [ ] 127.01: sync.
-- [ ] 127.02: watch.
-- [ ] 127.03: wait.
+- [x] 127.01: sync. Picture-delay defaults, correction exclusions, signed delays and sound-based take/placement plans pass tests. Electron recovers a 250 ms offset and verifies dry-run/apply/undo and stale failure within the 60-second source limit.
+- [x] 127.02: watch. Revision replay of edit/undo/redo/reload events, labels/authors, generation/resync behavior, timeout and cancellation pass host and Electron checks. SSE progress streaming remains separate.
+- [x] 127.03: wait. Per-media analysis selection/scheduling, cached/failure/pending states, zero/24-hour deadlines and waiter-only cancellation pass tests. Electron observes cached speech and an API export through completion.
+
+See [comments/jobs/archive evidence and limits](verification/jobs-archive.md) for
+these checked adapters and the following archive subphase.
 
 ## Group 128: Resources
 
 Acceptance per operation: compare request defaults, result shape, revision, warnings, and a failure with a pinned contract fixture. Mutations also need atomicity and undo coverage; streams need close/cancellation coverage.
 
-- [ ] 128.01: archive.
+- [x] 128.01: archive. Folder dry runs, standalone copies, registered resources/caches, missing-media reports, safe publication, consolidation through one edit and undo pass core/host and Electron checks. Native folder collection differences are recorded in the follow-up report.
 - [ ] 128.02: relink.
 - [ ] 128.03: effects.
 

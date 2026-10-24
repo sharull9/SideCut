@@ -24,7 +24,7 @@ export class LocalHTTPService {
   );
   constructor(private readonly api: ProjectAPI) {
     this.server.maxConnections = 16;
-    this.server.timeout = 610000;
+    this.server.timeout = 86430000;
     this.server.on("clientError", (_error, socket) =>
       socket.end("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n"),
     );

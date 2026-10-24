@@ -5,6 +5,8 @@ import { SegmentLibrary } from "@sidecut/platform-browser/segments";
 import { starterAssets } from "@sidecut/platform-browser/starter";
 import { projectCredits, creditsText } from "@sidecut/core/asset-use";
 import { QueryError } from "@sidecut/core/project-queries";
+import { readZip } from "@sidecut/core/archive";
+import { object } from "@sidecut/core/interchange";
 
 export async function libraryOperation(
   session: BrowserProjectSession,
@@ -14,7 +16,33 @@ export async function libraryOperation(
 ): Promise<unknown> {
   signal.throwIfAborted();
   if (operation === "archive") {
-    const bytes = await session.archiveBytes();
+    const bytes = await session.archiveBytes({
+      allowMissing: request.output == null,
+      preserveIdentity: request.output == null,
+      withCache: request.withCache === true,
+    });
+    if (request.output == null && request.to == null && request.dryRun !== true) {
+      // LUT references use their path as the resource key; stage the new key before the host edit.
+      const entries = readZip(bytes),
+        manifest = object(JSON.parse(new TextDecoder().decode(entries["manifest.json"])));
+      for (const raw of Array.isArray(manifest.resources) ? manifest.resources : []) {
+        const resource = object(raw);
+        if (
+          typeof resource.key === "string" &&
+          resource.key.startsWith("lut:") &&
+          typeof resource.path === "string" &&
+          entries[resource.path]
+        )
+          await session.stageServiceResource(
+            session.getSnapshot().project.id,
+            resource.key,
+            new File([entries[resource.path]!.slice().buffer], String(resource.name), {
+              type: String(resource.type),
+            }),
+            signal,
+          );
+      }
+    }
     const data = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result).split(",")[1]!);
@@ -24,43 +52,8 @@ export async function libraryOperation(
     return { data };
   }
   if (operation === "wait") {
-    const what = String(request.what ?? "jobs"),
-      timeout = Number(request.timeout ?? 600);
-    if (request.media != null || !["jobs", "export"].includes(what))
-      throw new QueryError(
-        "notImplemented",
-        "Wait currently observes all queued/running editor jobs. Per-source analysis requests are pending.",
-      );
-    if (timeout <= 0 || timeout > 600)
-      throw new QueryError(
-        "badRequest",
-        "Wait timeout must be greater than zero and at most 600 seconds.",
-      );
-    return new Promise((resolve, reject) => {
-      const items = () =>
-        session.jobs.getSnapshot().filter((j) => what !== "export" || j.id.startsWith("export"));
-      const finish = (timedOut: boolean, cancelled = false) => {
-        clearTimeout(timer);
-        stop();
-        signal.removeEventListener("abort", abort);
-        if (cancelled) reject(new QueryError("unavailable", "Wait cancelled."));
-        else
-          resolve({
-            what,
-            revision: session.getSnapshot().revision,
-            done: !items().some((j) => j.status === "queued" || j.status === "running"),
-            timedOut,
-            items: items(),
-          });
-      };
-      const stop = session.jobs.subscribe(() => {
-        if (!items().some((j) => j.status === "queued" || j.status === "running")) finish(false);
-      });
-      const timer = setTimeout(() => finish(true), timeout * 1000),
-        abort = () => finish(false, true);
-      signal.addEventListener("abort", abort, { once: true });
-      if (!items().some((j) => j.status === "queued" || j.status === "running")) finish(false);
-    });
+    const { waitService } = await import("./service-wait");
+    return waitService(session, request, signal);
   }
   if (operation === "assets-credits") {
     const credits = projectCredits(session.getSnapshot().project),

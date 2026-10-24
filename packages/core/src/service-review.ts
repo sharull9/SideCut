@@ -1,18 +1,29 @@
 import type { ProjectFile } from "@sidecut/contracts/project";
 import { markerKind } from "@sidecut/contracts/project";
-import { queryClips, QueryError } from "./project-queries";
+import { queryClips } from "./project-queries";
+import { modelProblems, checkRanges } from "./quality-check";
+import type { Range } from "./speech";
+import { speechMap, type Transcripts } from "./speech";
 import { validateProject } from "./validation";
 
 export function reviewQuery(
   file: ProjectFile,
   operation: string,
   request: Record<string, unknown>,
+  changed?: Range[],
+  transcripts: Transcripts = () => undefined,
 ) {
   const issues = validateProject(file.project);
   if (operation === "validate")
-    return { revision: file.revision, valid: !issues.some((i) => i.severity === "error"), issues };
+    return {
+      revision: file.revision,
+      ok: !issues.some((i) => i.severity === "error"),
+      valid: !issues.some((i) => i.severity === "error"),
+      issues,
+    };
   const clips = queryClips(file, {}).clips;
-  if (operation === "comments")
+  if (operation === "comments") {
+    const words = speechMap(file.project, transcripts).words;
     return {
       revision: file.revision,
       comments: file.project.markers
@@ -22,9 +33,20 @@ export function reviewQuery(
           id: m.id,
           time: m.time,
           text: m.name,
+          ...(() => {
+            const near = words.filter((w) => w.end > m.time - 4 && w.start < m.time + 4);
+            return near.length
+              ? {
+                  said: [
+                    ...near.filter((w) => w.start < m.time).map((w) => w.text),
+                    "|",
+                    ...near.filter((w) => w.start >= m.time).map((w) => w.text),
+                  ].join(" "),
+                }
+              : {};
+          })(),
           clips: clips
-            .filter((c) => c.enabled && c.start <= m.time && c.end > m.time)
-            .reverse()
+            .filter((c) => c.start <= m.time && c.end > m.time)
             .map((c) => ({
               track: c.track,
               trackID: c.trackID,
@@ -35,60 +57,24 @@ export function reviewQuery(
             })),
         })),
     };
-  if (request.quick !== true || request.cuts === true || request.changed === true)
-    throw new QueryError(
-      "notImplemented",
-      "Only quick structural checks are available. Rendered scans, speech-cut checks and reviewed-range checks are pending.",
-    );
-  const duration = Math.max(0, ...clips.map((c) => c.end)),
-    from = Number(request.from ?? 0),
-    to = Number(request.to ?? duration);
-  const notes: { kind: string; time: number; duration: number; clipID: string; message: string }[] =
-    [];
-  const fps =
-    file.project.settings.frameRate.numerator / file.project.settings.frameRate.denominator;
-  for (const track of [...file.project.videoTracks, ...file.project.audioTracks]) {
-    const ordered = track.clips
-      .filter((c) => c.enabled)
-      .toSorted((a, b) => a.start.seconds - b.start.seconds);
-    let end = from;
-    for (const clip of ordered) {
-      const start = clip.start.seconds,
-        stop = start + clip.duration.seconds;
-      if (stop <= from || start >= to) continue;
-      if (start > end && start - end < 1 / fps)
-        notes.push({
-          kind: "sliverGap",
-          time: end,
-          duration: start - end,
-          clipID: clip.id,
-          message: "Gap shorter than one frame.",
-        });
-      if (clip.duration.seconds < 1 / fps)
-        notes.push({
-          kind: "sliverClip",
-          time: start,
-          duration: clip.duration.seconds,
-          clipID: clip.id,
-          message: "Clip shorter than one frame.",
-        });
-      end = Math.max(end, stop);
-    }
   }
-  const problems = issues.filter((i) => i.severity === "error");
+  const ranges = checkRanges(file.project, request, changed);
+  const found = modelProblems(file.project, ranges),
+    notes = found.filter((p) => ["soft", "sliver"].includes(p.kind)),
+    problems = found.filter((p) => !["soft", "sliver"].includes(p.kind));
   return {
     revision: file.revision,
     ok: problems.length === 0,
-    ranges: to > from ? [{ start: from, duration: to - from }] : [],
+    ranges: ranges.map((r) => ({ start: r.start, duration: r.end - r.start })),
     frames: 0,
     seconds: 0,
     problems,
     notes,
     clipNames: Object.fromEntries(clips.map((c) => [c.id, c.name ?? c.content])),
     commands: [],
-    warnings: [
-      "Structural validation and subframe clips/gaps only; black frames, softness and speech cuts were not scanned.",
-      ...issues.filter((i) => i.severity === "warning").map((i) => i.message),
-    ],
+    warnings: [],
+    ...(!ranges.length
+      ? { note: "Nothing is waiting for review, so there was nothing to check." }
+      : {}),
   };
 }

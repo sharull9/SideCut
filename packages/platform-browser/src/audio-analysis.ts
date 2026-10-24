@@ -20,6 +20,10 @@ export async function audioIdentity(file: File) {
 }
 const cache = (key: string, value?: MeasuredSound) =>
   derivedCache<MeasuredSound>(`audio:${key}`, value);
+export async function cachedSourceMeasurement(file: File) {
+  const identity = await audioIdentity(file);
+  return memory.get(identity) ?? (await cache(identity));
+}
 export async function measureSource(
   file: File,
   reader: Pick<LocalMediaReader, "audio">,

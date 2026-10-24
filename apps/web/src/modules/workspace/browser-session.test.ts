@@ -83,6 +83,37 @@ describe("persistent browser session", () => {
     expect(value.getSnapshot().project.media[0]!.path).toBe("media/0-source.wav");
   });
 
+  it("opens Filmora folder metadata and leaves the current project intact on malformed import", async () => {
+    const value = session();
+    await value.start();
+    const file = (path: string, body: unknown) => {
+      const item = new File([JSON.stringify(body)], path.split("/").at(-1)!);
+      Object.defineProperty(item, "webkitRelativePath", {
+        value: `项目.wfp.dir/ProjectFolder/${path}`,
+      });
+      return item;
+    };
+    const info = file("project_info.json", {
+      timeline_mediaId: "main",
+      project_file_name: "Folder project",
+    });
+    const timeline = file("Medias/main/timeline.wesproj", {
+      timelineInfos: [{ timelineId: 1, userData: [{ key: 3, data: "bWFpbg==" }], trackInfos: [] }],
+    });
+    const extra = file("Medias/main/extra.json", {
+      allMarkersInfo: { main: [{ position: 10000000, name: "Start" }] },
+    });
+    const source = file("footage/movie.mov", "ignored source bytes");
+    await value.openFilmoraFolder([info, timeline, extra, source]);
+    expect(value.getSnapshot().project.name).toBe("Folder project");
+    expect(value.getSnapshot().project.markers[0]).toMatchObject({ name: "Start", time: 1 });
+    const before = value.getSnapshot().project;
+    await expect(
+      value.openFilmoraFolder([info, file("Medias/main/timeline.wesproj", {})]),
+    ).rejects.toThrow();
+    expect(value.getSnapshot().project).toEqual(before);
+  });
+
   it("checks relink identity before replacing resources and preserves IDs and undo", async () => {
     const value = session();
     await value.start();

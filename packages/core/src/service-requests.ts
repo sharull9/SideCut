@@ -14,7 +14,7 @@ export const serviceDefinitions = {
   new: { name: "string", expectedRevision: "integer" },
   open: { path: "string", expectedRevision: "integer" },
   "import-edl": { path: "string", expectedRevision: "integer" },
-  "import-filmora": { path: "string", expectedRevision: "integer" },
+  "import-filmora": { path: "string", expectedRevision: "integer", keepLevels: "boolean" },
   validate: {},
   check: { ...range, changed: "boolean", quick: "boolean", cuts: "boolean", width: "integer" },
   comments: {},
@@ -222,7 +222,7 @@ export function serviceRequest(operation: string, input: unknown): Record<string
     )
       result[key] = value;
     else if (kind === "times" && Array.isArray(value) && value.length <= 1000)
-      result[key] = value.map(parseQueryTime);
+      result[key] = value.map((time) => parseQueryTime(time));
     else if ((kind === "string" || kind === "boolean") && typeof value === kind)
       result[key] = value;
     else throw new QueryError("badRequest", `Invalid ${key}.`);

@@ -34,6 +34,19 @@ ports the referenced Swift arithmetic. See [the upstream MIT licence](TANDEM-LIC
   The speed uses Filmora's structured `speedParam` curve and trailing 1x marker.
   `interchange.test.ts` constructs the equivalent container in memory. The source
   path `/FIXTURE/camera.mov` is intentionally missing; there is no footage in it.
+- `filmora-mappings.json`: synthetic project info, timeline document and marker
+  metadata for 118.03–118.07. It has overlapping camera clips, linked voice,
+  source-time animation at 2x, crop/cutout/opacity, shared colour settings,
+  shadow/border, gains and fades. `verify-filmora.mjs` writes it to a disposable
+  Unicode/space folder and exercises the actual editor import control. Mapping
+  rules come from `TandemImport/Filmora` at the same pinned revision. It contains
+  no media; this is import and persistence evidence, without render/audio goldens.
+- `filmora-finishing.json`: synthetic transition, title and nested-template
+  metadata for 118.08–118.09. `verify-finishing.mjs` imports it in browser and
+  Electron, then exercises status/timeline/media over HTTP. Runtime verification
+  relinks the separately licensed eight-second `audio/speech.wav` fixture and
+  writes synthetic transcript words into its real local cache. No model download
+  or paid provider call occurs. The metadata contains no media bytes.
 
 These are schema/round-trip fixtures, not evidence that rendering, editing,
 cross-reference validation, or loading in the macOS app already works. Those

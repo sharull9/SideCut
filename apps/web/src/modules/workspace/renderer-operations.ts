@@ -10,6 +10,10 @@ export async function rendererOperation(
   input: unknown,
   signal: AbortSignal,
 ) {
+  if (operation === "query-state" || operation === "timeline") {
+    const { rendererQuery } = await import("./service-queries");
+    return rendererQuery(session, operation, input, signal);
+  }
   if (operation === "relink") {
     if (
       !input ||

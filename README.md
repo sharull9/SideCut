@@ -321,3 +321,19 @@ On Vercel, use `apps/web` as the root directory and the TanStack Start framework
 GitHub Actions is configured to check and build on Windows, Linux, and macOS. Only local Windows verification has been performed so far.
 
 Browser persistence uses SQLite WASM in a worker and OPFS, with Web Locks coordinating tabs. Legacy IndexedDB projects, media, assets, and segments, plus localStorage preferences, migrate without deleting originals. OPFS failures block saving visibly. See [SQLite migration and verification](docs/verification/sqlite-migration.md) for checks and browser limits.
+
+Use **Filmora folder** to import an unpacked `.wfp.dir`, a folder containing
+`ProjectFolder`, or `ProjectFolder` itself. **Open project** still accepts zipped
+`.wfp` files. Imports now preserve timeline markers, linked picture/sound,
+overlapping clips on extra tracks, picture animation, shared colour looks and
+audio fades. Source media remains offline until relinked. Speech defaults to
+-20 LUFS; the desktop CLI's `import-filmora --keep-levels` preserves Filmora's
+levels. See [supported mappings and verification](docs/verification/filmora-118-03-07.md).
+
+Filmora imports also map transitions, titles and visible nested-template layers
+and sounds, with warnings for approximations. Desktop status/media queries now
+report renderer caches, jobs, queued exports and missing fonts. Timeline queries
+include settings, transitions, summaries and cached words. Agent edits remain
+pending in status until **Mark agent edits reviewed** is used in the editor;
+acknowledgment survives restart and does not change the project revision. See
+[verification and limits](docs/verification/filmora-queries.md).

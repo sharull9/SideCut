@@ -32,6 +32,7 @@ export interface MediaAvailability {
   detail: string;
 }
 export interface BrowserSnapshot extends SessionSnapshot {
+  reviewPendingCount?: number;
   warnings: readonly string[];
   saveState: "loading" | "saving" | "saved" | "error" | "read-only";
   readOnly: boolean;
@@ -81,31 +82,35 @@ export class BrowserProjectSession {
   queueExport(format: string | null = null, preset: ExportPreset | "wav" = "webm") {
     const { project, revision } = this.state;
     const name = `${project.name.replace(/[\\/:*?"<>|]/g, "_") || "SideCut"}${format ? ` ${format}` : ""}${preset === "webm" ? "" : ` ${preset}`}.${preset === "wav" ? "wav" : "webm"}`;
-    return this.exports.enqueue(name, async (signal, progress) => {
-      if (this.state.project.id !== project.id || this.state.revision !== revision)
-        throw new Error("Project changed after this export was queued. Queue it again.");
-      if (preset === "wav") {
-        const { renderService } = await import("./service-render");
-        const duration = Math.max(
-          0,
-          ...[...project.videoTracks, ...project.audioTracks].flatMap((t) =>
-            t.clips.map((c) => c.start.seconds + c.duration.seconds),
-          ),
-        );
-        const result = await renderService(
-          this,
-          "clip",
-          { start: 0, end: duration, audioOnly: true, format },
-          signal,
-        );
-        if (!("data" in result) || typeof result.data !== "string")
-          throw new Error("Audio export returned no data.");
-        return new Blob([Uint8Array.from(atob(result.data), (c) => c.charCodeAt(0))], {
-          type: "audio/wav",
-        });
-      }
-      return this.exportWebM(signal, progress, format, preset);
-    });
+    return this.exports.enqueue(
+      name,
+      async (signal, progress) => {
+        if (this.state.project.id !== project.id || this.state.revision !== revision)
+          throw new Error("Project changed after this export was queued. Queue it again.");
+        if (preset === "wav") {
+          const { renderService } = await import("./service-render");
+          const duration = Math.max(
+            0,
+            ...[...project.videoTracks, ...project.audioTracks].flatMap((t) =>
+              t.clips.map((c) => c.start.seconds + c.duration.seconds),
+            ),
+          );
+          const result = await renderService(
+            this,
+            "clip",
+            { start: 0, end: duration, audioOnly: true, format },
+            signal,
+          );
+          if (!("data" in result) || typeof result.data !== "string")
+            throw new Error("Audio export returned no data.");
+          return new Blob([Uint8Array.from(atob(result.data), (c) => c.charCodeAt(0))], {
+            type: "audio/wav",
+          });
+        }
+        return this.exportWebM(signal, progress, format, preset);
+      },
+      preset,
+    );
   }
   readonly analysis = new MediaAnalysis(this);
   private archivedRaw: string | null = null;
@@ -242,7 +247,11 @@ export class BrowserProjectSession {
     this.unsubscribe?.();
     if (this.coordinator instanceof HostCoordinator) this.coordinator.close();
     this.coordinator = new HostCoordinator(this.native, (value) => {
-      this.update({ saveState: value.saveState, error: value.error });
+      this.update({
+        saveState: value.saveState,
+        error: value.error,
+        reviewPendingCount: value.reviewPendingCount ?? 0,
+      });
     });
     this.hostGeneration = this.coordinator.generation;
     this.unsubscribe = this.coordinator.subscribe(() => {
@@ -542,6 +551,27 @@ export class BrowserProjectSession {
     }
   }
 
+  async openFilmoraFolder(files: readonly File[]) {
+    if (files.length > 10000) throw new Error("Filmora folder exceeds 10000 entries.");
+    const selected = files.filter((file) =>
+      /(?:^|\/)(?:project_info\.json|timeline\.wesproj|extra\.json)$/.test(
+        file.webkitRelativePath || file.name,
+      ),
+    );
+    if (selected.reduce((size, file) => size + file.size, 0) > 20 * 1024 * 1024)
+      throw new Error("Filmora folder metadata exceeds 20 MiB.");
+    const entries: Record<string, Uint8Array> = Object.create(null);
+    for (const file of selected) {
+      const path = file.webkitRelativePath || file.name;
+      if (Object.hasOwn(entries, path)) throw new Error("Duplicate Filmora folder entry.");
+      entries[path] = new Uint8Array(await file.arrayBuffer());
+    }
+    const imported = importFilmora(entries);
+    await this.openProject(
+      new File([encodeProjectFile(imported.file)], "filmora.tandem", { type: "application/json" }),
+    );
+  }
+
   async openProject(file: File) {
     if (!this.store || this.state.busy || this.state.saveState === "loading")
       throw new Error("Wait for browser storage to finish opening.");
@@ -684,6 +714,18 @@ export class BrowserProjectSession {
     anchor.click();
     anchor.remove();
     setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  }
+  markReviewed() {
+    this.assertWritable();
+    if (!this.native) throw new Error("Agent review is available in the desktop app.");
+    this.native.projectRequest(
+      JSON.stringify({
+        type: "markReviewed",
+        projectID: this.state.project.id,
+        generation: this.hostGeneration,
+        revision: this.state.revision,
+      }),
+    );
   }
 
   async archiveBytes() {

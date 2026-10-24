@@ -1,0 +1,66 @@
+{
+  "reference": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "platform": "win32",
+  "runtimes": [
+    {
+      "runtime": "chromium",
+      "version": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36",
+      "passed": [
+        "transition maps once across a cut",
+        "title text/styles/animation",
+        "nested template window and sound deduplication",
+        "SQLite reload retains all project fields"
+      ]
+    },
+    {
+      "runtime": "firefox",
+      "version": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:157.0) Gecko/20100101 Firefox/157.0",
+      "passed": [
+        "transition maps once across a cut",
+        "title text/styles/animation",
+        "nested template window and sound deduplication",
+        "SQLite reload retains all project fields"
+      ]
+    },
+    {
+      "runtime": "electron",
+      "version": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.48 Electron/45.0.0 Safari/537.36",
+      "passed": [
+        "transition maps once across a cut",
+        "title text/styles/animation",
+        "nested template window and sound deduplication",
+        "SQLite reload retains all project fields",
+        "concurrent read queries share the current revision",
+        "HTTP status owner/fonts and shared revision",
+        "media sees copied resource and real cached transcript",
+        "timeline words/summary/JSON are read-only",
+        "status exposes actual UI WAV queue and media loudness cache",
+        "status reads retain pending reviews",
+        "UI acknowledgment persists across reload without editing the project"
+      ]
+    }
+  ],
+  "queries": {
+    "revision": 3,
+    "voiceID": "med_wfp_1",
+    "transitions": 0,
+    "exports": [
+      {
+        "id": "4f88a8e9-cb34-49bd-aeeb-6f9c04864e9f",
+        "output": "Finishing acceptance wav.wav",
+        "preset": "wav",
+        "state": "done",
+        "progress": 1
+      }
+    ],
+    "jobs": [
+      {
+        "id": "Timeline samples:med_wfp_1:waveform",
+        "kind": "waveform",
+        "mediaID": "med_wfp_1",
+        "state": "ready",
+        "progress": 1
+      }
+    ]
+  }
+}

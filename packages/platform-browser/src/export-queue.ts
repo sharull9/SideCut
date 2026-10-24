@@ -1,4 +1,4 @@
-export type ExportEntry = { id: string; name: string; progress: number } & (
+export type ExportEntry = { id: string; name: string; progress: number; preset?: string } & (
   | { status: "queued" | "running" | "cancelled" }
   | { status: "failed"; error: string }
   | { status: "done"; url: string; bytes: number }
@@ -28,11 +28,15 @@ export class ExportQueue {
   enqueue(
     name: string,
     run: (signal: AbortSignal, progress: (value: number) => void) => Promise<Blob>,
+    preset?: string,
   ) {
     if (this.entries.length >= 5)
       throw new Error("Remove an export before adding another (limit five).");
     const id = crypto.randomUUID();
-    this.entries = [...this.entries, { id, name, progress: 0, status: "queued" }];
+    this.entries = [
+      ...this.entries,
+      { id, name, progress: 0, status: "queued", ...(preset ? { preset } : {}) },
+    ];
     this.tasks.set(id, { run, controller: new AbortController() });
     for (const listener of this.listeners) listener();
     void this.pump();
@@ -45,7 +49,7 @@ export class ExportQueue {
     const entry = this.entries.find((e) => e.id === id);
     if (entry?.status === "queued") {
       this.tasks.delete(id);
-      this.update(id, { id, name: entry.name, progress: 0, status: "cancelled" });
+      this.update(id, { ...entry, progress: 0, status: "cancelled" });
     }
   }
   remove(id: string) {

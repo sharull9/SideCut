@@ -23,7 +23,9 @@
     "verify:packaged": "vp exec node scripts/verify-packaged.mjs",
     "verify:browsers": "vp exec node scripts/verify-browsers.mjs",
     "verify:windows-install": "pwsh -NoProfile -File scripts/verify-windows-install.ps1",
-    "verify:sqlite": "vp exec node scripts/verify-sqlite.mjs"
+    "verify:sqlite": "vp exec node scripts/verify-sqlite.mjs",
+    "verify:filmora": "vp exec node scripts/verify-filmora.mjs",
+    "verify:finishing": "vp exec node scripts/verify-finishing.mjs"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",

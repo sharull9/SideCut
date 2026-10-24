@@ -1,0 +1,579 @@
+{
+  "reference": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "provenance": "Synthetic mapping fixture authored from TandemImport/Filmora; no footage or private paths. See TANDEM-LICENSE.",
+  "info": {
+    "timeline_mediaId": "main",
+    "project_file_name": "Filmora mapping acceptance",
+    "project_timeline_resolution": [640, 360],
+    "project_timeline_framerate": [30, 1]
+  },
+  "document": {
+    "currentTimelineId": 1,
+    "timelineInfos": [
+      {
+        "timelineId": 1,
+        "userData": [
+          {
+            "key": 3,
+            "data": "bWFpbi1tYXA="
+          }
+        ],
+        "trackInfos": [
+          {
+            "trackType": 1,
+            "clipList": [
+              {
+                "type": 1,
+                "sourceUuid": "camera",
+                "tlBegin": 0,
+                "tlEnd": 19999999,
+                "inPoint": 10000000,
+                "speed": 2,
+                "userData": [
+                  {
+                    "key": 3,
+                    "data": "cGFpcg=="
+                  },
+                  {
+                    "key": 50,
+                    "data": "U3ludGhldGljIGNhbWVyYQ=="
+                  }
+                ],
+                "humanseg_hair": {
+                  "status": 1
+                },
+                "pipBuf": "{\"Opacity\": 70}",
+                "effectChainList": [
+                  {
+                    "effectList": [
+                      {
+                        "id": "video/effect/transform",
+                        "paramList": [
+                          {
+                            "name": "Scale_x",
+                            "fxParam": {
+                              "unValue": 50
+                            }
+                          },
+                          {
+                            "name": "Scale_y",
+                            "fxParam": {
+                              "unValue": 50
+                            }
+                          },
+                          {
+                            "name": "Position_x",
+                            "fxParam": {
+                              "unValue": 0.8
+                            }
+                          },
+                          {
+                            "name": "Position_y",
+                            "fxParam": {
+                              "unValue": 0.7
+                            }
+                          },
+                          {
+                            "name": "Rotation",
+                            "fxParam": {
+                              "unValue": 10
+                            }
+                          },
+                          {
+                            "name": "EnableShadow",
+                            "fxParam": {
+                              "unValue": 1
+                            }
+                          },
+                          {
+                            "name": "nDistance",
+                            "fxParam": {
+                              "unValue": 6
+                            }
+                          }
+                        ],
+                        "paramMapList": [
+                          {
+                            "name": "Scale_x",
+                            "keyFrame": {
+                              "parameter": "{\"keyframeSets\": [{\"_time\": 1, \"_value\": 50}, {\"_time\": 5, \"_value\": 100}]}"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "id": "662E16ED-4524-4D13-AAE9-11DBA0C63E17",
+                        "paramList": [
+                          {
+                            "name": "u_contrast",
+                            "fxParam": {
+                              "unValue": 12
+                            }
+                          },
+                          {
+                            "name": "u_exposure",
+                            "fxParam": {
+                              "unValue": 25
+                            }
+                          },
+                          {
+                            "name": "Red_satVal",
+                            "fxParam": {
+                              "unValue": 8
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "id": "video/effect/crop-pan-zoom",
+                        "paramList": [
+                          {
+                            "name": "crop_x",
+                            "fxParam": {
+                              "unValue": 0.1
+                            }
+                          },
+                          {
+                            "name": "crop_y",
+                            "fxParam": {
+                              "unValue": 0.1
+                            }
+                          },
+                          {
+                            "name": "crop_width",
+                            "fxParam": {
+                              "unValue": 0.8
+                            }
+                          },
+                          {
+                            "name": "crop_height",
+                            "fxParam": {
+                              "unValue": 0.8
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "id": "border",
+                        "paramList": [
+                          {
+                            "name": "Size",
+                            "fxParam": {
+                              "unValue": 4
+                            }
+                          },
+                          {
+                            "name": "Color",
+                            "fxParam": {
+                              "unValue": 16744448
+                            }
+                          }
+                        ],
+                        "display": "PipBorder"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": 1,
+                "sourceUuid": "camera",
+                "tlBegin": 20000000,
+                "tlEnd": 39999999,
+                "inPoint": 10000000,
+                "speed": 2,
+                "userData": [
+                  {
+                    "key": 50,
+                    "data": "U2Vjb25kIGNhbWVyYQ=="
+                  }
+                ],
+                "humanseg_hair": {
+                  "status": 1
+                },
+                "pipBuf": "{\"Opacity\": 70}",
+                "effectChainList": [
+                  {
+                    "effectList": [
+                      {
+                        "id": "video/effect/transform",
+                        "paramList": [
+                          {
+                            "name": "Scale_x",
+                            "fxParam": {
+                              "unValue": 50
+                            }
+                          },
+                          {
+                            "name": "Scale_y",
+                            "fxParam": {
+                              "unValue": 50
+                            }
+                          },
+                          {
+                            "name": "Position_x",
+                            "fxParam": {
+                              "unValue": 0.8
+                            }
+                          },
+                          {
+                            "name": "Position_y",
+                            "fxParam": {
+                              "unValue": 0.7
+                            }
+                          },
+                          {
+                            "name": "Rotation",
+                            "fxParam": {
+                              "unValue": 10
+                            }
+                          },
+                          {
+                            "name": "EnableShadow",
+                            "fxParam": {
+                              "unValue": 1
+                            }
+                          },
+                          {
+                            "name": "nDistance",
+                            "fxParam": {
+                              "unValue": 6
+                            }
+                          }
+                        ],
+                        "paramMapList": [
+                          {
+                            "name": "Scale_x",
+                            "keyFrame": {
+                              "parameter": "{\"keyframeSets\": [{\"_time\": 1, \"_value\": 50}, {\"_time\": 5, \"_value\": 100}]}"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "id": "662E16ED-4524-4D13-AAE9-11DBA0C63E17",
+                        "paramList": [
+                          {
+                            "name": "u_contrast",
+                            "fxParam": {
+                              "unValue": 12
+                            }
+                          },
+                          {
+                            "name": "u_exposure",
+                            "fxParam": {
+                              "unValue": 25
+                            }
+                          },
+                          {
+                            "name": "Red_satVal",
+                            "fxParam": {
+                              "unValue": 8
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "id": "video/effect/crop-pan-zoom",
+                        "paramList": [
+                          {
+                            "name": "crop_x",
+                            "fxParam": {
+                              "unValue": 0.1
+                            }
+                          },
+                          {
+                            "name": "crop_y",
+                            "fxParam": {
+                              "unValue": 0.1
+                            }
+                          },
+                          {
+                            "name": "crop_width",
+                            "fxParam": {
+                              "unValue": 0.8
+                            }
+                          },
+                          {
+                            "name": "crop_height",
+                            "fxParam": {
+                              "unValue": 0.8
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "id": "border",
+                        "paramList": [
+                          {
+                            "name": "Size",
+                            "fxParam": {
+                              "unValue": 4
+                            }
+                          },
+                          {
+                            "name": "Color",
+                            "fxParam": {
+                              "unValue": 16744448
+                            }
+                          }
+                        ],
+                        "display": "PipBorder"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": 1,
+                "sourceUuid": "camera",
+                "tlBegin": 10000000,
+                "tlEnd": 14999999,
+                "inPoint": 10000000,
+                "speed": 2,
+                "userData": [
+                  {
+                    "key": 50,
+                    "data": "T3ZlcmxhcA=="
+                  }
+                ],
+                "humanseg_hair": {
+                  "status": 1
+                },
+                "pipBuf": "{\"Opacity\": 70}",
+                "effectChainList": [
+                  {
+                    "effectList": [
+                      {
+                        "id": "video/effect/transform",
+                        "paramList": [
+                          {
+                            "name": "Scale_x",
+                            "fxParam": {
+                              "unValue": 50
+                            }
+                          },
+                          {
+                            "name": "Scale_y",
+                            "fxParam": {
+                              "unValue": 50
+                            }
+                          },
+                          {
+                            "name": "Position_x",
+                            "fxParam": {
+                              "unValue": 0.8
+                            }
+                          },
+                          {
+                            "name": "Position_y",
+                            "fxParam": {
+                              "unValue": 0.7
+                            }
+                          },
+                          {
+                            "name": "Rotation",
+                            "fxParam": {
+                              "unValue": 10
+                            }
+                          },
+                          {
+                            "name": "EnableShadow",
+                            "fxParam": {
+                              "unValue": 1
+                            }
+                          },
+                          {
+                            "name": "nDistance",
+                            "fxParam": {
+                              "unValue": 6
+                            }
+                          }
+                        ],
+                        "paramMapList": [
+                          {
+                            "name": "Scale_x",
+                            "keyFrame": {
+                              "parameter": "{\"keyframeSets\": [{\"_time\": 1, \"_value\": 50}, {\"_time\": 5, \"_value\": 100}]}"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "id": "662E16ED-4524-4D13-AAE9-11DBA0C63E17",
+                        "paramList": [
+                          {
+                            "name": "u_contrast",
+                            "fxParam": {
+                              "unValue": 12
+                            }
+                          },
+                          {
+                            "name": "u_exposure",
+                            "fxParam": {
+                              "unValue": 25
+                            }
+                          },
+                          {
+                            "name": "Red_satVal",
+                            "fxParam": {
+                              "unValue": 8
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "id": "video/effect/crop-pan-zoom",
+                        "paramList": [
+                          {
+                            "name": "crop_x",
+                            "fxParam": {
+                              "unValue": 0.1
+                            }
+                          },
+                          {
+                            "name": "crop_y",
+                            "fxParam": {
+                              "unValue": 0.1
+                            }
+                          },
+                          {
+                            "name": "crop_width",
+                            "fxParam": {
+                              "unValue": 0.8
+                            }
+                          },
+                          {
+                            "name": "crop_height",
+                            "fxParam": {
+                              "unValue": 0.8
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "id": "border",
+                        "paramList": [
+                          {
+                            "name": "Size",
+                            "fxParam": {
+                              "unValue": 4
+                            }
+                          },
+                          {
+                            "name": "Color",
+                            "fxParam": {
+                              "unValue": 16744448
+                            }
+                          }
+                        ],
+                        "display": "PipBorder"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "trackType": 2,
+            "userData": [
+              {
+                "key": 20,
+                "data": "AAAAAA=="
+              }
+            ],
+            "clipList": [
+              {
+                "type": 2,
+                "sourceUuid": "camera",
+                "tlBegin": 0,
+                "tlEnd": 19999999,
+                "inPoint": 10000000,
+                "speed": 2,
+                "userData": [
+                  {
+                    "key": 3,
+                    "data": "cGFpcg=="
+                  }
+                ],
+                "effectChainList": [
+                  {
+                    "effectList": [
+                      {
+                        "id": "audio/effect/volume",
+                        "paramList": [
+                          {
+                            "name": "VolumeGain",
+                            "fxParam": {
+                              "unValue": -3
+                            }
+                          },
+                          {
+                            "name": "LoudnessGainEnable",
+                            "fxParam": {
+                              "unValue": true
+                            }
+                          },
+                          {
+                            "name": "LoudnessGain",
+                            "fxParam": {
+                              "unValue": 2
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "id": "audio/effect/fade",
+                        "paramList": [
+                          {
+                            "name": "FadeInTime",
+                            "fxParam": {
+                              "unValue": 0.25
+                            }
+                          },
+                          {
+                            "name": "FadeOutTime",
+                            "fxParam": {
+                              "unValue": 0.4
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "resources": [
+      {
+        "sourceUuid": "camera",
+        "filename": "file:///SYNTHETIC/session-camera.mov",
+        "mediaLength": 200000000,
+        "videoStreamCount": 1,
+        "audioStreamCount": 1,
+        "vidStreamInfo": [
+          {
+            "width": 640,
+            "height": 360
+          }
+        ]
+      }
+    ]
+  },
+  "extra": {
+    "allMarkersInfo": {
+      "main-map": [
+        {
+          "position": 12500000,
+          "name": "Review",
+          "comments": "Synthetic marker note"
+        }
+      ]
+    }
+  }
+}

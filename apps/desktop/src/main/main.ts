@@ -215,6 +215,7 @@ void app.whenReady().then(() => {
         throw error;
       });
       const discovery = join(app.getPath("userData"), "current.tandem.api.json");
+      api.setOwnerPort(address.port);
       try {
         await writeFile(discovery, JSON.stringify(address), { mode: 0o600 });
       } catch (error) {

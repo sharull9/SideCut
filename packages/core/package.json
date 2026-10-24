@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./query-state": "./src/query-state.ts",
+    "./media-role": "./src/media-role.ts",
     "./export-presets": "./src/export-presets.ts",
     "./service-review": "./src/service-review.ts",
     "./service-requests": "./src/service-requests.ts",

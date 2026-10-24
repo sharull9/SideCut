@@ -138,6 +138,30 @@ export class NativeProjectStore {
     this.expected = json;
   }
 
+  reviewedRevision(projectID: string) {
+    const value = this.repository.request({
+      type: "read",
+      collection: "preferences",
+      key: `reviewed:${projectID}`,
+    })[0]?.value;
+    if (value == null) return 0;
+    const revision = Number(value);
+    if (!Number.isSafeInteger(revision) || revision < 0)
+      throw new Error("Invalid saved review baseline.");
+    return revision;
+  }
+  markReviewed(projectID: string, revision: number) {
+    if (!Number.isSafeInteger(revision) || revision < 0)
+      throw new Error("Invalid review revision.");
+    this.repository.request({
+      type: "commit",
+      checks: [],
+      writes: [
+        { collection: "preferences", key: `reviewed:${projectID}`, value: String(revision) },
+      ],
+    });
+  }
+
   async close() {
     if (!this.locked) return;
     const lock: unknown = JSON.parse((await read(`${this.path}.lock`)) ?? "null");

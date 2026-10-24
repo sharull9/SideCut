@@ -882,6 +882,12 @@ Accept when a synthetic recipe fixture preserves clip order, source ranges, and 
 
 Accept when licensed/synthetic upstream-style fixtures match the reference import mapping. Split container decoding and each mapping family if either exceeds a small phase.
 
+Subphases 118.03–118.07 cover selected folders/markers, source roles and lanes,
+picture animation, shared colour looks and audio settings. See [verification and
+limits](verification/filmora-118-03-07.md). Subphases 118.08–118.09 now add
+transitions, titles and nested templates; see [current verification and remaining
+rendering limits](verification/filmora-queries.md).
+
 ## Agent and review compatibility
 
 ### Phase 119: Local service transport
@@ -894,7 +900,7 @@ Accept when a permitted client reaches the same project coordinator as the rende
 ### Phase 120: Project query operations
 
 - [x] Add `status`, `timeline`, `media`, and `clips` adapters over existing services.
-- [ ] Match filtering, summaries, JSON/text results, warnings, and revision fields.
+- [ ] Match filtering, summaries, JSON/text results, warnings, and revision fields. Status/timeline/media subphases 120.01–120.03 now pass the checks in [current verification](verification/filmora-queries.md); clips acceptance remains open.
 
 Accept one operation per subphase against pinned request/result fixtures, including media's mutation behavior.
 

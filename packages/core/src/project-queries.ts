@@ -1,9 +1,12 @@
 // TandemAPI ServiceTypes.swift, Diff.swift and TimelineDump.swift at 735a9b8.
 // Notice: tests/fixtures/tandem/TANDEM-LICENSE.
-import type { Clip, Project, ProjectFile } from "@sidecut/contracts/project";
+import type { Clip, ProjectFile } from "@sidecut/contracts/project";
 import { encodeProjectFile } from "@sidecut/contracts/project";
 import { Time } from "@sidecut/contracts/time";
-import { object } from "./interchange";
+import { object } from "./import-builder";
+import { timelineText, timelineContent as content, queryTracks } from "./timeline-dump";
+import type { Transcripts } from "./speech";
+export { queryTracks } from "./timeline-dump";
 
 export class QueryError extends Error {
   constructor(
@@ -27,6 +30,8 @@ export const queryDefinitions = {
   clips: { track: "string", from: "time", to: "time", media: "string", ids: "boolean" },
 } as const;
 export function queryRequest(operation: string, input: unknown) {
+  const time = (value: unknown) =>
+    parseQueryTime(value, operation === "timeline" || operation === "clips");
   const request = object(input);
   const fields: Record<string, Record<string, string>> = queryDefinitions;
   const accepted = Object.hasOwn(fields, operation) ? fields[operation] : undefined;
@@ -35,22 +40,37 @@ export function queryRequest(operation: string, input: unknown) {
     const type = Object.hasOwn(accepted, key) ? accepted[key] : undefined;
     if (!type) throw new QueryError("badRequest", `Unknown ${operation} field: ${key}.`);
     if (value == null) continue;
-    if (type === "time") parseQueryTime(value);
+    if (type === "time") time(value);
     else if (typeof value !== type) throw new QueryError("badRequest", `Invalid ${key}.`);
   }
   if (request.format != null && !["text", "json"].includes(String(request.format)))
     throw new QueryError("badRequest", "format must be text or json.");
-  const from = request.from == null ? null : parseQueryTime(request.from),
-    to = request.to == null ? null : parseQueryTime(request.to);
+  const from = request.from == null ? null : time(request.from),
+    to = request.to == null ? null : time(request.to);
   if (from !== null && to !== null && to <= from)
     throw new QueryError("badRequest", "to must be after from.");
   return { request, from, to };
 }
-export function parseQueryTime(value: unknown): number {
+export function parseQueryTime(value: unknown, allowNegative = false): number {
   let seconds = value;
-  if (typeof value === "string" && /^\d+(?::\d{1,2})*(?:\.\d+)?$/.test(value))
-    seconds = value.split(":").reduce((sum, part) => sum * 60 + Number(part), 0);
-  if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds < 0)
+  if (typeof value === "string") {
+    let text = value.trim();
+    const negative = text.startsWith("-");
+    if (negative) text = text.slice(1);
+    if (text.endsWith("s")) text = text.slice(0, -1);
+    const parts = text.split(":");
+    if (
+      parts.length > 3 ||
+      parts.some(
+        (part, i) =>
+          !(i === parts.length - 1 ? /^(?:\d+(?:\.\d*)?|\.\d+)$/ : /^\d+$/).test(part) ||
+          (i > 0 && Number(part) >= 60),
+      )
+    )
+      throw new QueryError("badRequest", "Time must be seconds or mm:ss.mmm.");
+    seconds = parts.reduce((sum, part) => sum * 60 + Number(part), 0) * (negative ? -1 : 1);
+  }
+  if (typeof seconds !== "number" || !Number.isFinite(seconds) || (!allowNegative && seconds < 0))
     throw new QueryError("badRequest", "Time must be nonnegative seconds or mm:ss.mmm.");
   try {
     return Time.fromSeconds(seconds).seconds;
@@ -68,38 +88,6 @@ export const clipMediaID = (clip: Clip) => {
     ? value.mediaID
     : undefined;
 };
-const clock = (seconds: number) => {
-  const ms = Math.round(seconds * 1000);
-  return `${String(Math.floor(ms / 60000)).padStart(2, "0")}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}.${String(ms % 1000).padStart(3, "0")}`;
-};
-export function queryTracks(project: Project) {
-  return [
-    ...project.videoTracks
-      .map((track, index) => ({ track, label: `V${index + 1} ${track.name}` }))
-      .reverse(),
-    ...project.audioTracks.map((track, index) => ({ track, label: `A${index + 1} ${track.name}` })),
-  ];
-}
-function content(clip: Clip, project: Project) {
-  const mediaID = clipMediaID(clip);
-  if (mediaID) {
-    const media = project.media.find((m) => m.id === mediaID);
-    const name = media
-      ? project.media.filter((m) => base(m.path) === base(media.path)).length > 1
-        ? media.path
-        : base(media.path)
-      : `${mediaID} (missing)`;
-    return media?.kind === "image"
-      ? name
-      : clip.freezeFrame
-        ? `${name} frozen at ${clock(clip.sourceStart.seconds)}`
-        : `${name} [${clock(clip.sourceStart.seconds)}-${clock(clip.sourceStart.seconds + clip.duration.seconds * clip.speed)}]`;
-  }
-  if (clip.content.text)
-    return `text "${String(object(clip.content.text).text).replaceAll("\n", " / ").slice(0, 48)}"`;
-  if (clip.content.graphic) return `graphic ${String(object(clip.content.graphic).template)}`;
-  return "solid" in clip.content ? "solid" : "adjustment";
-}
 export function queryClips(file: ProjectFile, input: unknown) {
   const { request, from, to } = queryRequest("clips", input),
     { project, revision } = file;
@@ -154,7 +142,7 @@ export function queryClips(file: ProjectFile, input: unknown) {
     );
   return { revision, clips, ...(request.ids === true ? { idsOnly: true } : {}) };
 }
-export function queryTimeline(file: ProjectFile, input: unknown) {
+export function queryTimeline(file: ProjectFile, input: unknown, transcripts?: Transcripts) {
   const { request, from, to } = queryRequest("timeline", input),
     { project, revision } = file;
   const overlaps = (start: number, end: number) =>
@@ -167,11 +155,31 @@ export function queryTimeline(file: ProjectFile, input: unknown) {
         clips: t.clips.filter((c) =>
           overlaps(c.start.seconds, c.start.seconds + c.duration.seconds),
         ),
+        transitions: t.transitions.filter((transition) =>
+          [transition.fromClipID, transition.toClipID]
+            .filter((id) => id != null)
+            .every((id) =>
+              t.clips.some(
+                (c) =>
+                  c.id === id && overlaps(c.start.seconds, c.start.seconds + c.duration.seconds),
+              ),
+            ),
+        ),
       })),
       audioTracks: project.audioTracks.map((t) => ({
         ...t,
         clips: t.clips.filter((c) =>
           overlaps(c.start.seconds, c.start.seconds + c.duration.seconds),
+        ),
+        transitions: t.transitions.filter((transition) =>
+          [transition.fromClipID, transition.toClipID]
+            .filter((id) => id != null)
+            .every((id) =>
+              t.clips.some(
+                (c) =>
+                  c.id === id && overlaps(c.start.seconds, c.start.seconds + c.duration.seconds),
+              ),
+            ),
         ),
       })),
       markers: project.markers.filter((m) =>
@@ -183,41 +191,13 @@ export function queryTimeline(file: ProjectFile, input: unknown) {
       project: JSON.parse(encodeProjectFile({ ...file, project: filtered })).project,
     };
   }
-  const tracks = queryTracks(project),
-    duration = Math.max(
-      0,
-      ...tracks.flatMap(({ track }) =>
-        track.clips.map((c) => c.start.seconds + c.duration.seconds),
-      ),
-    );
-  const lines = [
-    `${project.name}: ${clock(duration)} long, ${project.settings.width}x${project.settings.height} at ${project.settings.frameRate.numerator / project.settings.frameRate.denominator} fps, revision ${revision}`,
-  ];
-  const listed = queryClips(file, {
-    ...(request.from == null ? {} : { from: request.from }),
-    ...(request.to == null ? {} : { to: request.to }),
-  }).clips;
-  if (request.summary)
-    lines.push(
-      `${tracks.length} tracks, ${tracks.reduce((sum, { track }) => sum + track.clips.length, 0)} clips, ${project.media.length} media files. Read part of it in full with from and to.`,
-    );
-  for (const marker of project.markers.filter(
-    (m) => request.summary || overlaps(m.time, m.time + Math.max(m.duration, 1 / 705600000)),
-  ))
-    lines.push(`  ${clock(marker.time)}  ${marker.kind}  "${marker.name}"  ${marker.id}`);
-  for (const { track, label } of tracks) {
-    lines.push(
-      `${label}  ${track.id}  ${track.rippleMode}${request.summary ? `  ${track.clips.length} clips` : ""}`,
-    );
-    if (!request.summary)
-      for (const clip of listed.filter((c) => c.trackID === track.id))
-        lines.push(
-          `  ${clip.id}  ${clock(clip.start)}-${clock(clip.end)}  ${clip.duration.toFixed(3)}s  ${clip.content}${clip.enabled ? "" : "  disabled"}`,
-        );
-  }
-  if (request.words)
-    lines.push(
-      "Speech words are unavailable through the desktop service; inspect the editor's transcript cache.",
-    );
-  return { revision, text: lines.join("\n") + "\n" };
+  return {
+    revision,
+    text: timelineText(file, {
+      from,
+      to,
+      summary: request.summary === true,
+      ...(request.words === true ? { transcripts: transcripts ?? (() => undefined) } : {}),
+    }),
+  };
 }

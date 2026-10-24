@@ -8,6 +8,7 @@ interface CommitResult {
 
 // Plain wire values only. Project times cross IPC through the project JSON codec.
 export interface HostSnapshot {
+  reviewPendingCount?: number;
   sequence: number;
   generation: number;
   json: string;
@@ -24,7 +25,12 @@ export interface HostSnapshot {
 export type HostRequest =
   | { type: "snapshot" }
   | { type: "apply"; batch: unknown; projectID: string; generation: number }
-  | { type: "undo" | "redo"; revision: number; projectID: string; generation: number };
+  | {
+      type: "undo" | "redo" | "markReviewed";
+      revision: number;
+      projectID: string;
+      generation: number;
+    };
 export interface HostReply {
   snapshot: HostSnapshot;
   result: CommitResult | null;

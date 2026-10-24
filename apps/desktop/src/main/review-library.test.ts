@@ -1,6 +1,6 @@
 import { openSQLite } from "./sqlite-storage.ts";
 import { afterEach, describe, expect, it } from "vite-plus/test";
-import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawn } from "node:child_process";
@@ -153,7 +153,7 @@ describe("review, watch and CLI host adapters", () => {
     await expect(api.handle("check", { quick: true, cuts: true })).rejects.toThrow("Only quick");
   });
   it("opens/imports safely with revision guards and keeps a project backup", async () => {
-    const { root, api, host } = await setup();
+    const { root, api, host, cli } = await setup();
     await writeFile(
       join(root, "open.tandem"),
       JSON.stringify({ revision: 0, project: { id: "opened", name: "Opened" } }),
@@ -194,5 +194,30 @@ describe("review, watch and CLI host adapters", () => {
     expect(
       await api.handle("import-filmora", { path: "basic.wfp", expectedRevision: revision }),
     ).toMatchObject({ revision: expect.any(Number) });
+    const fixture = JSON.parse(
+      await readFile(resolve("tests/fixtures/tandem/filmora-mappings.json"), "utf8"),
+    );
+    const folder = join(root, "电影.wfp.dir/ProjectFolder");
+    await mkdir(join(folder, "Medias/main"), { recursive: true });
+    for (const [path, body] of Object.entries({
+      "project_info.json": fixture.info,
+      "Medias/main/timeline.wesproj": fixture.document,
+      "Medias/main/extra.json": fixture.extra,
+    }))
+      await writeFile(join(folder, path), JSON.stringify(body));
+    const kept = await cli(
+      "import-filmora",
+      "--path",
+      "电影.wfp.dir",
+      "--expected-revision",
+      String(JSON.parse(host.snapshot().json).revision),
+      "--keep-levels",
+    );
+    expect(kept.code).toBe(0);
+    expect(JSON.parse(kept.out).name).toBe("Filmora mapping acceptance");
+    expect(JSON.parse(host.snapshot().json).project.audioTracks[0].clips[0].audio).toMatchObject({
+      gainDB: -1,
+      normalizeTo: -24,
+    });
   });
 });

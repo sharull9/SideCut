@@ -1,6 +1,6 @@
 # Tandem adapter subphases
 
-Status: group 108 is verified. Group 118 has a basic zipped-container importer with mapping follow-ups below. Group 120 has four implemented query adapters and pinned baseline checks; complete compatibility acceptance remains pending. Groups 121-125 have all 21 HTTP adapters. Groups 126-130 now have 20 baseline adapters and a host-backed CLI, with remaining acceptance listed in [the verification report](verification/phases-126-130.md). Groups 131-135 have baseline MCP/client, export-queue, interaction and compact-layout coverage; see [their verification report](verification/phases-131-135.md). Final browser/delivery/inventory work is recorded in [phases 136-140](verification/phases-136-140.md); native macOS/Linux and full parity gates remain open. These subphases expand the numbered groups in [the parity roadmap](tandem-parity-roadmap.md). They are individual units of work, not parallel assignments.
+Status: group 108 is verified. Group 118 has verified subphases 118.01–118.09 within the recorded import/rendering limits. Group 120 has verified status/timeline/media subphases 120.01–120.03; clips acceptance remains pending. Groups 121-125 have all 21 HTTP adapters. Groups 126-130 now have 20 baseline adapters and a host-backed CLI, with remaining acceptance listed in [the verification report](verification/phases-126-130.md). Groups 131-135 have baseline MCP/client, export-queue, interaction and compact-layout coverage; see [their verification report](verification/phases-131-135.md). Final browser/delivery/inventory work is recorded in [phases 136-140](verification/phases-136-140.md); native macOS/Linux and full parity gates remain open. These subphases expand the numbered groups in [the parity roadmap](tandem-parity-roadmap.md). They are individual units of work, not parallel assignments.
 
 Each checkbox has exactly two tasks: implement that single adapter or interaction using the existing service, then verify one success and one relevant failure/cancellation/conflict case against the pinned reference. Record the test and runtime beside the checkbox before completing it. Do not add a second edit coordinator.
 
@@ -27,39 +27,40 @@ Each adapter passed its separate test suite on 2026-10-24. Test files are `packa
 
 ## Group 118: Filmora mapping follow-ups
 
-The zipped WFP baseline preserves basic media/timing, source offsets, uniform
-speed, track order and mute/lock state. `interchange.test.ts` checks a successful
-synthetic import and malformed container; `verify-interchange.mjs` runs the WFP
-fixture in Chromium. Reports retain unsupported and missing-source information.
-See [evidence and limits](verification/phases-116-120.md).
+The WFP importer now reads ZIPs and selected folders, with the five mapping
+families below verified in Chromium, Firefox and Windows Electron. Reports retain
+unsupported and missing-source information. See the [original container evidence](verification/phases-116-120.md)
+and [118.03–118.07 verification and limits](verification/filmora-118-03-07.md).
 
 - [x] 118.01: Safe zipped WFP container decoding.
 - [x] 118.02: Basic media clips, inclusive ticks and uniform speed.
-- [ ] 118.03: Unpacked folders and extra.json markers.
-- [ ] 118.04: Source classification, track naming, linked picture/sound and overlap lanes.
-- [ ] 118.05: Transforms, opacity, crop, cutout and keyframes.
-- [ ] 118.06: Colour, shadow, border and shared media looks.
-- [ ] 118.07: Audio gain, normalization and fades.
-- [ ] 118.08: Transition mapping and approximation reports.
-- [ ] 118.09: Titles and nested template timelines.
+- [x] 118.03: Unpacked folders and extra.json markers. Core folder/marker cases, host path/cancellation checks and editor directory selection pass.
+- [x] 118.04: Source classification, track naming, linked picture/sound and overlap lanes. Core naming/link/lane cases and runtime timeline/save checks pass.
+- [x] 118.05: Transforms, opacity, crop, cutout and keyframes. Core source-clock/interpolation/crop cases and runtime field preservation pass; model and pixel fidelity remain separate acceptance.
+- [x] 118.06: Colour, shadow, border and shared media looks. Core shared/differing grades, LUT metadata and unsupported effects pass; runtime round trips retain looks and clip effects.
+- [x] 118.07: Audio gain, normalization and fades. Core levels/fades/failure cases, CLI keep-levels and runtime save/reload pass; imported mix metering remains unverified.
+- [x] 118.08: Transition mapping and approximation reports. Core type/direction, edge/cut, handle-fit, malformed input and approximation cases pass; runtime imports retain the cut transition across reload.
+- [x] 118.09: Titles and nested template timelines. Core title styling/animation, visible windows, transforms, recursion bounds and sound deduplication pass; Chromium/Firefox/Electron imports retain nested layers and sound. Unsupported rendering settings emit warnings.
+
+See [118.08–120.03 evidence and limits](verification/filmora-queries.md). These
+checks follow the pinned Swift rules using synthetic fixtures; native reference
+render/audio comparisons remain separate acceptance.
 
 ## Group 120: Project queries
 
 Acceptance per operation: compare request defaults, result shape, revision, warnings, and a failure with a pinned contract fixture. Mutations also need atomicity and undo coverage; streams need close/cancellation coverage.
 
-- [ ] 120.01: status.
-- [ ] 120.02: timeline.
-- [ ] 120.03: media.
+- [x] 120.01: status. Shared revision/save state, owner, live renderer jobs/exports, font warnings and durable agent reviews pass host and HTTP runtime checks; stale/malformed renderer snapshots reject.
+- [x] 120.02: timeline. Reference text/summary structure, settings, transitions, words, range JSON and malformed requests pass core and HTTP runtime checks without changing project revision.
+- [x] 120.03: media. Real renderer resource/cache/job states and host metadata are merged at a checked revision. Existing atomic refresh/undo/failure tests pass; HTTP runtime sees copied audio, cached words and loudness.
 - [ ] 120.04: clips.
 
-All four adapters now have baseline success/failure checks in
-`project-queries.test.ts` and `http-service.test.ts`, using
-`tests/fixtures/tandem/project-queries.json`. Media additionally has atomic
-refresh, undo and failed/stale scan checks. HTTP status/clips run against the
-desktop renderer's actual project in `verify-interchange.mjs`. Checkboxes remain
-open for complete compatibility: exact text/summary formatting, renderer
-analysis and job state, font/review warnings and the complete upstream result
-matrix still need acceptance. See [verification](verification/phases-116-120.md).
+The original query fixtures and HTTP refresh/undo checks remain in
+`project-queries.test.ts` and `http-service.test.ts`. `timeline-dump.test.ts`,
+`query-state.test.ts` and `verify-finishing.mjs` extend acceptance for the first
+three queries. See [current evidence and compatibility limits](verification/filmora-queries.md).
+Clips remains open for its complete reference result matrix. Cross-platform
+reference output comparisons are not implied by these Windows checks.
 
 ## Group 121: Edits and history
 

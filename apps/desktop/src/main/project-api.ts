@@ -28,7 +28,9 @@ import { encodeProjectFile } from "@sidecut/contracts/project";
 import { safeArchivePath } from "@sidecut/core/archive";
 import { reviewQuery } from "@sidecut/core/service-review";
 import { effectRegistry, renderedEffects } from "@sidecut/core/effects";
-import { importEDL, importFilmora, object } from "@sidecut/core/interchange";
+import { importEDL, object } from "@sidecut/core/interchange";
+import { readFilmoraSource } from "./filmora-import.ts";
+import { analysisKinds, decodeQueryState } from "@sidecut/core/query-state";
 type RendererOperations = {
   ready?: () => boolean;
   run: (operation: string, input: Record<string, unknown>, signal: AbortSignal) => Promise<unknown>;
@@ -37,6 +39,33 @@ type RendererOperations = {
 
 export class ProjectAPI {
   private mediaRoot: string | null = null;
+  private readonly started = new Date().toISOString();
+  private port: number | undefined;
+  setOwnerPort(port: number) {
+    this.port = port;
+  }
+  private async queryState(signal: AbortSignal, includeMedia: boolean) {
+    signal.throwIfAborted();
+    if (!this.renderer || this.renderer.ready?.() === false) return null;
+    const before = this.project.snapshot(),
+      file = this.file();
+    const raw = await this.renderer.run("query-state", { includeMedia }, signal);
+    signal.throwIfAborted();
+    let state;
+    try {
+      state = decodeQueryState(raw);
+    } catch {
+      throw new QueryError("unavailable", "Invalid editor query snapshot.");
+    }
+    if (
+      state.projectID !== file.project.id ||
+      state.revision !== file.revision ||
+      this.project.snapshot().generation !== before.generation ||
+      this.file().revision !== file.revision
+    )
+      throw new QueryError("unavailable", "Editor query snapshot is stale. Retry the query.");
+    return state;
+  }
   constructor(
     readonly project: HostProjectService,
     private readonly native?: Pick<NativeMedia, "run">,
@@ -461,14 +490,17 @@ export class ProjectAPI {
           if (typeof request.path !== "string")
             throw new QueryError("badRequest", "A source path is required.");
           const path = await this.source(request.path);
-          if ((await stat(path)).size > 20 * 1024 * 1024)
-            throw new QueryError("badRequest", "Project import exceeds 20 MiB.");
-          const bytes = await readFile(path);
-          if (operation === "open") next = decodeProjectFile(JSON.parse(bytes.toString("utf8")));
-          else if (operation === "import-filmora") next = importFilmora(bytes).file;
+          if (operation === "import-filmora")
+            next = (await readFilmoraSource(path, request.keepLevels === true, signal)).file;
           else {
-            const parsed = object(JSON.parse(bytes.toString("utf8")));
-            next = importEDL(parsed.edl, parsed.recipe).file;
+            if ((await stat(path)).size > 20 * 1024 * 1024)
+              throw new QueryError("badRequest", "Project import exceeds 20 MiB.");
+            const bytes = await readFile(path);
+            if (operation === "open") next = decodeProjectFile(JSON.parse(bytes.toString("utf8")));
+            else {
+              const parsed = object(JSON.parse(bytes.toString("utf8")));
+              next = importEDL(parsed.edl, parsed.recipe).file;
+            }
           }
         }
         signal.throwIfAborted();
@@ -665,6 +697,7 @@ export class ProjectAPI {
           );
       }
       const file = this.file();
+      const rendererState = await this.queryState(signal, true);
       const items = await Promise.all(
         file.project.media.map(async (m) => {
           let exists = false;
@@ -673,16 +706,10 @@ export class ProjectAPI {
           } catch {
             /* Missing and out-of-root sources stay references. */
           }
-          const analysis: Record<string, { state: string }> = {};
-          for (const kind of [
-            ...(m.hasVideo || m.kind === "image" ? ["thumbnails"] : []),
-            ...(m.kind === "video" && m.hasVideo ? ["proxy"] : []),
-            ...(m.hasAudio ? ["waveform", "loudness", "transcript"] : []),
-            ...(m.role === "camera"
-              ? [...(m.hasVideo ? ["matte"] : []), ...(m.hasAudio ? ["isolatedVoice"] : [])]
-              : []),
-          ])
-            analysis[kind] = { state: "none" };
+          const cached = rendererState?.media[m.id];
+          const analysis =
+            cached?.analysis ??
+            Object.fromEntries(analysisKinds(m).map((kind) => [kind, { state: "none" }]));
           const {
             id,
             path,
@@ -720,16 +747,38 @@ export class ProjectAPI {
             clips: [...file.project.videoTracks, ...file.project.audioTracks]
               .flatMap((t) => t.clips)
               .filter((c) => clipMediaID(c) === m.id).length,
-            exists,
+            exists: exists || cached?.exists === true,
             analysis,
           };
         }),
       );
-      return { revision: file.revision, added, items };
+      return {
+        revision: file.revision,
+        added,
+        items,
+        ...(!rendererState
+          ? {
+              warnings: [
+                "No ready editor is attached; renderer media copies and analysis caches are unavailable.",
+              ],
+            }
+          : {}),
+      };
     }
     const file = this.file();
     if (operation === "clips") return queryClips(file, input);
-    if (operation === "timeline") return queryTimeline(file, input);
+    if (operation === "timeline") {
+      if (
+        request.words === true &&
+        request.summary !== true &&
+        request.format !== "json" &&
+        this.renderer &&
+        this.renderer.ready?.() !== false
+      )
+        return this.renderer.run("timeline", request, signal);
+      return queryTimeline(file, input);
+    }
+    const rendererState = await this.queryState(signal, false);
     const snapshot = this.project.snapshot(),
       tracks = [...file.project.videoTracks, ...file.project.audioTracks];
     return {
@@ -753,15 +802,24 @@ export class ProjectAPI {
       undo: snapshot.undoLabel,
       redo: snapshot.redoLabel,
       headless: false,
-      jobs: [],
-      exports: [],
-      recoveredEdits: false,
+      openIn: {
+        owner: "app",
+        pid: process.pid,
+        started: this.started,
+        ...(this.port ? { port: this.port } : {}),
+      },
+      jobs: rendererState?.jobs ?? [],
+      exports: rendererState?.exports ?? [],
+      recoveredEdits: typeof file.sidecutRecovery === "string",
+      reviewPending: this.project.reviewPending(),
       apiVersion: "0.1.0",
       warnings: [
         ...validateProject(file.project)
           .filter((i) => i.severity === "warning")
           .map((i) => i.message),
-        "Renderer media copies, analysis jobs and exports are not visible to the host query service.",
+        ...(rendererState?.warnings ?? [
+          "No ready editor is attached; font availability, analysis jobs and exports cannot be inspected.",
+        ]),
       ],
     };
   }

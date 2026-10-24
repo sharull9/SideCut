@@ -1,0 +1,162 @@
+{
+  "reference": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "platform": "win32",
+  "runtimes": [
+    {
+      "runtime": "chromium",
+      "version": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36",
+      "passed": [
+        "folder selection through editor control",
+        "markers, names, linked audio/video and overlap lanes",
+        "transform, crop, opacity, cutout and speed-adjusted keys",
+        "shared colour looks, shadow and border",
+        "speech levels and fades",
+        "SQLite saved reload preserves every project field",
+        "malformed folder preserves current project",
+        "all toolbar buttons fit at 1280 pixels"
+      ],
+      "layout": {
+        "width": 1280,
+        "actions": [
+          {
+            "label": "",
+            "right": 493.921875
+          },
+          {
+            "label": "",
+            "right": 533.921875
+          },
+          {
+            "label": "Reset layout",
+            "right": 652.84375
+          },
+          {
+            "label": "Open project",
+            "right": 825.421875
+          },
+          {
+            "label": "Filmora folder",
+            "right": 938.6875
+          },
+          {
+            "label": "Download project",
+            "right": 1074.125
+          },
+          {
+            "label": "Export",
+            "right": 1143.5625
+          },
+          {
+            "label": "Archive project",
+            "right": 1264
+          }
+        ],
+        "scrollWidth": 1280
+      }
+    },
+    {
+      "runtime": "firefox",
+      "version": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:157.0) Gecko/20100101 Firefox/157.0",
+      "passed": [
+        "folder selection through editor control",
+        "markers, names, linked audio/video and overlap lanes",
+        "transform, crop, opacity, cutout and speed-adjusted keys",
+        "shared colour looks, shadow and border",
+        "speech levels and fades",
+        "SQLite saved reload preserves every project field",
+        "malformed folder preserves current project",
+        "all toolbar buttons fit at 1280 pixels"
+      ],
+      "layout": {
+        "width": 1280,
+        "actions": [
+          {
+            "label": "",
+            "right": 493.95001220703125
+          },
+          {
+            "label": "",
+            "right": 533.9500122070312
+          },
+          {
+            "label": "Reset layout",
+            "right": 652.8666839599609
+          },
+          {
+            "label": "Open project",
+            "right": 825.4500122070312
+          },
+          {
+            "label": "Filmora folder",
+            "right": 938.7000122070312
+          },
+          {
+            "label": "Download project",
+            "right": 1074.1333465576172
+          },
+          {
+            "label": "Export",
+            "right": 1143.566635131836
+          },
+          {
+            "label": "Archive project",
+            "right": 1263.999984741211
+          }
+        ],
+        "scrollWidth": 1280
+      }
+    },
+    {
+      "runtime": "electron",
+      "version": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.48 Electron/45.0.0 Safari/537.36",
+      "passed": [
+        "folder selection through editor control",
+        "markers, names, linked audio/video and overlap lanes",
+        "transform, crop, opacity, cutout and speed-adjusted keys",
+        "shared colour looks, shadow and border",
+        "speech levels and fades",
+        "SQLite saved reload preserves every project field",
+        "malformed folder preserves current project",
+        "all toolbar buttons fit at 1280 pixels"
+      ],
+      "layout": {
+        "width": 1280,
+        "actions": [
+          {
+            "label": "",
+            "right": 493.921875
+          },
+          {
+            "label": "",
+            "right": 533.921875
+          },
+          {
+            "label": "Reset layout",
+            "right": 652.84375
+          },
+          {
+            "label": "Open project",
+            "right": 825.421875
+          },
+          {
+            "label": "Filmora folder",
+            "right": 938.6875
+          },
+          {
+            "label": "Download project",
+            "right": 1074.125
+          },
+          {
+            "label": "Export",
+            "right": 1143.5625
+          },
+          {
+            "label": "Archive project",
+            "right": 1264
+          }
+        ],
+        "scrollWidth": 1280
+      }
+    }
+  ]
+}

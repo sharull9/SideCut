@@ -390,6 +390,9 @@ export class ProjectCoordinator {
   }
 
   getSnapshot = (): SessionSnapshot => this.state;
+  journalEntries() {
+    return this.journal;
+  }
 
   projectFile(): ProjectFile {
     const { undoLabel: _undo, redoLabel: _redo, lastChange: _change, ...file } = this.state;

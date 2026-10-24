@@ -162,7 +162,8 @@ describe("portable interchange", () => {
       clip = track.clips[0]!;
     expect(track.locked).toBe(true);
     expect([clip.duration.seconds, clip.sourceStart.seconds, clip.speed]).toEqual([2, 1, 2]);
-    expect(report.warnings.join(" ")).toMatch(/requires relinking.*effectChainList/);
+    expect(report.warnings.join(" ")).toMatch(/requires relinking/);
+    expect(report.warnings.join(" ")).not.toMatch(/effectChainList/);
     expect(() => importFilmora(zipSync({ "wrong.json": strToU8("{}") }))).toThrow(/project_info/);
   });
 });

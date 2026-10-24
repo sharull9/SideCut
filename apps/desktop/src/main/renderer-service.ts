@@ -49,7 +49,7 @@ export function rendererService(project: HostProjectService, isTrusted: (url: st
     const target = window();
     if (!target)
       return Promise.reject(new QueryError("unavailable", "No ready editor renderer is attached."));
-    if (pending.size)
+    if (pending.size >= 8 || (pending.size && !["query-state", "timeline"].includes(operation)))
       return Promise.reject(
         new QueryError("unavailable", "Another renderer service operation is running."),
       );

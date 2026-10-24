@@ -1,0 +1,163 @@
+{
+  "reference": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "provenance": "Synthetic transition/title/template fixture authored from pinned TandemImport/Filmora. No footage. See TANDEM-LICENSE.",
+  "info": {
+    "timeline_mediaId": "main",
+    "project_file_name": "Finishing acceptance",
+    "project_timeline_resolution": [640, 360],
+    "project_timeline_framerate": [30, 1]
+  },
+  "document": {
+    "currentTimelineId": 1,
+    "timelineInfos": [
+      {
+        "timelineId": 1,
+        "trackInfos": [
+          {
+            "trackType": 1,
+            "clipList": [
+              {
+                "type": 1,
+                "sourceUuid": "camera",
+                "tlBegin": 0,
+                "tlEnd": 19999999,
+                "inPoint": 10000000,
+                "postTransition": {
+                  "display": "Push Left",
+                  "tlBegin": 18000000,
+                  "tlEnd": 21999999
+                }
+              },
+              {
+                "type": 1,
+                "sourceUuid": "camera",
+                "tlBegin": 20000000,
+                "tlEnd": 39999999,
+                "inPoint": 30000000,
+                "postTransition": null,
+                "preTransition": {
+                  "display": "Push Left",
+                  "tlBegin": 18000000,
+                  "tlEnd": 21999999
+                }
+              }
+            ]
+          },
+          {
+            "trackType": 1,
+            "clipList": [
+              {
+                "type": 4,
+                "tlBegin": 5000000,
+                "tlEnd": 14999999,
+                "inPoint": 0,
+                "scriptBuf": "{\"Text\": \"Finishing title\", \"ScaleY\": 0.12, \"PosX\": 0.5, \"PosY\": 0.8, \"TextData\": [{\"Basic\": {\"FontName\": \"Missing Fixture Family\", \"TextColor\": [{\"Color\": 16777215}]}}]}",
+                "inAnimation": {
+                  "name": "Fade",
+                  "duration": 2000000
+                }
+              }
+            ]
+          },
+          {
+            "trackType": 1,
+            "clipList": [
+              {
+                "type": 6,
+                "timelineId": 2,
+                "tlBegin": 10000000,
+                "tlEnd": 24999999,
+                "inPoint": 5000000,
+                "userData": [
+                  {
+                    "key": 50,
+                    "data": "TmVzdGVkIGZpeHR1cmU="
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "trackType": 2,
+            "clipList": [
+              {
+                "type": 2,
+                "sourceUuid": "voice",
+                "tlBegin": 0,
+                "tlEnd": 39999999,
+                "inPoint": 0
+              }
+            ]
+          },
+          {
+            "trackType": 2,
+            "clipList": [
+              {
+                "type": 16,
+                "timelineId": 2,
+                "tlBegin": 10000000,
+                "tlEnd": 24999999,
+                "inPoint": 5000000,
+                "userData": [
+                  {
+                    "key": 50,
+                    "data": "TmVzdGVkIGZpeHR1cmU="
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "timelineId": 2,
+        "trackInfos": [
+          {
+            "trackType": 1,
+            "clipList": [
+              {
+                "type": 4,
+                "tlBegin": 0,
+                "tlEnd": 29999999,
+                "inPoint": 0,
+                "scriptBuf": "{\"Text\": \"Finishing title\", \"ScaleY\": 0.12, \"PosX\": 0.5, \"PosY\": 0.8, \"TextData\": [{\"Basic\": {\"FontName\": \"Missing Fixture Family\", \"TextColor\": [{\"Color\": 16777215}]}}]}",
+                "inAnimation": {
+                  "name": "Fade",
+                  "duration": 2000000
+                }
+              }
+            ]
+          },
+          {
+            "trackType": 2,
+            "clipList": [
+              {
+                "type": 2,
+                "sourceUuid": "voice",
+                "tlBegin": 0,
+                "tlEnd": 29999999,
+                "inPoint": 0
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "resources": [
+      {
+        "sourceUuid": "camera",
+        "filename": "file:///SYNTHETIC/take-camera.mov",
+        "mediaLength": 100000000,
+        "videoStreamCount": 1
+      },
+      {
+        "sourceUuid": "voice",
+        "filename": "file:///SYNTHETIC/voice-audio.wav",
+        "mediaLength": 80000000,
+        "streamType": 3,
+        "audioStreamCount": 1
+      }
+    ]
+  },
+  "extra": {}
+}

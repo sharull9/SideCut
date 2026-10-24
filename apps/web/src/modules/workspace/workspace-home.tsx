@@ -65,6 +65,7 @@ function PanelRail({
 export function WorkspaceHome() {
   const { session, snapshot } = useEditorSession();
   const projectPicker = useRef<HTMLInputElement>(null);
+  const filmoraPicker = useRef<HTMLInputElement>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const locked = snapshot.readOnly || snapshot.busy;
   function run(action: () => unknown) {
@@ -219,6 +220,28 @@ export function WorkspaceHome() {
           >
             Open project
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={snapshot.busy || snapshot.saveState === "loading"}
+            onClick={() => filmoraPicker.current?.click()}
+          >
+            Filmora folder
+          </Button>
+          <input
+            ref={filmoraPicker}
+            type="file"
+            multiple
+            {...{ webkitdirectory: "" }}
+            className="sr-only"
+            tabIndex={-1}
+            aria-label="Filmora project folder"
+            onChange={(event) => {
+              const files = Array.from(event.target.files ?? []);
+              event.target.value = "";
+              if (files.length) run(() => session.openFilmoraFolder(files));
+            }}
+          />
           <input
             ref={projectPicker}
             type="file"
@@ -285,6 +308,22 @@ export function WorkspaceHome() {
         <Alert className="editor-notice">
           <AlertTitle>Edit notes</AlertTitle>
           <AlertDescription>{snapshot.warnings.join(" ")}</AlertDescription>
+        </Alert>
+      )}
+      {!!snapshot.reviewPendingCount && (
+        <Alert className="editor-notice">
+          <AlertTitle>Agent edits to review</AlertTitle>
+          <AlertDescription>
+            {snapshot.reviewPendingCount} edit batches are waiting for your review.
+          </AlertDescription>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={locked || snapshot.saveState !== "saved"}
+            onClick={() => run(() => session.markReviewed())}
+          >
+            Mark agent edits reviewed
+          </Button>
         </Alert>
       )}
       {snapshot.readOnly && !snapshot.unsupportedJSON && snapshot.saveState === "read-only" && (

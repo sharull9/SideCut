@@ -1,0 +1,22 @@
+{
+  "name": "@sidecut/assets",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./transport": "./src/transport.ts",
+    "./import-folders": "./src/import-folders.ts"
+  },
+  "scripts": {
+    "typecheck": "vp exec tsc --noEmit"
+  },
+  "dependencies": {
+    "@sidecut/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@sidecut/config": "workspace:*",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

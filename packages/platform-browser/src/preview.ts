@@ -1,12 +1,31 @@
 import type { Input, CanvasSink, AudioBufferSink } from "mediabunny";
+import type { Cutout } from "@sidecut/core/cutout";
 import type { PictureProxy } from "./proxy";
 import { proxyFrameIndex } from "./proxy";
+import { openAnimatedImage, openLottie, type AnimationSource } from "./animation";
 
 export class LocalMediaReader {
+  private file: File | null = null;
+  async cutout(
+    source: CanvasImageSource,
+    width: number,
+    height: number,
+    time: number,
+    settings: Cutout,
+  ) {
+    const { cachedMatte, compositeCutout } = await import("./cutout");
+    const matte = this.file ? await cachedMatte(this.file) : undefined;
+    if (!matte)
+      throw new Error(
+        "Cutout matte is unavailable. Analyse cutout in the Picture inspector first.",
+      );
+    return compositeCutout(source, width, height, matte, this.image ? 0 : time, settings);
+  }
   private input: Input | null = null;
   private picture: CanvasSink | null = null;
   private sound: AudioBufferSink | null = null;
   private image: ImageBitmap | null = null;
+  private animation: AnimationSource | null = null;
   private closed = false;
   private proxy: PictureProxy | undefined;
   private proxyBitmap: { index: number; bitmap: ImageBitmap } | undefined;
@@ -19,6 +38,9 @@ export class LocalMediaReader {
     if (this.closed || !this.picture) throw new Error("Source has no decodable picture.");
     return this.picture.canvases();
   }
+  get animated() {
+    return this.animation !== null;
+  }
 
   static async open(
     file: File,
@@ -26,9 +48,16 @@ export class LocalMediaReader {
     maxWidth = 1280,
   ): Promise<LocalMediaReader> {
     const reader = new LocalMediaReader();
+    reader.file = file;
     try {
-      if (kind === "image") reader.image = await createImageBitmap(file);
-      else {
+      if (kind === "image") {
+        if (file.type === "application/x-sidecut-lottie" || /\.json$/i.test(file.name))
+          reader.animation = await openLottie(file);
+        else {
+          reader.animation = await openAnimatedImage(file);
+          if (!reader.animation) reader.image = await createImageBitmap(file);
+        }
+      } else {
         const { Input, BlobSource, ALL_FORMATS, CanvasSink, AudioBufferSink } =
           await import("mediabunny");
         reader.input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
@@ -52,6 +81,14 @@ export class LocalMediaReader {
   }
   async frame(time: number) {
     if (this.closed) throw new Error("Media reader is closed.");
+    if (this.animation)
+      return {
+        canvas: await this.animation.frame(time),
+        width: this.animation.width,
+        height: this.animation.height,
+        timestamp: time,
+        duration: this.animation.duration,
+      };
     if (this.proxy) {
       const index = proxyFrameIndex(this.proxy, time),
         frame = this.proxy.frames[index];
@@ -91,6 +128,8 @@ export class LocalMediaReader {
   }
   close() {
     this.closed = true;
+    this.animation?.close();
+    this.animation = null;
     this.proxyBitmap?.bitmap.close();
     this.proxyBitmap = undefined;
     this.proxy = undefined;

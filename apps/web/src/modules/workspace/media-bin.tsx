@@ -19,6 +19,8 @@ import { placeSource, MEDIA_DRAG_TYPE } from "./placement";
 import { MediaPlacementForm } from "./media-placement-form";
 import { MediaAnalysisControls, TakeIdentification } from "./media-analysis-controls";
 import { SourceSamples } from "./source-samples";
+import { LocalAssetLibrary } from "./asset-library";
+import { SavedSegments } from "./saved-segments";
 
 export function MediaBin({
   run,
@@ -97,6 +99,8 @@ export function MediaBin({
         aria-label="Project media contents"
         tabIndex={0}
       >
+        <LocalAssetLibrary />
+        <SavedSegments />
         {snapshot.project.media.length ? (
           <ul className="editor-media-list">
             {snapshot.project.media.map((item) => {

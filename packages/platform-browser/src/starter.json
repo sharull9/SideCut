@@ -1,0 +1,360 @@
+{
+  "icons": [
+    "mdi:check-bold",
+    "mdi:close-thick",
+    "mdi:alert",
+    "mdi:rocket-launch",
+    "mdi:fire",
+    "mdi:lightning-bolt",
+    "mdi:clock-outline",
+    "mdi:timer-sand",
+    "mdi:database",
+    "mdi:code-braces",
+    "mdi:console",
+    "mdi:server",
+    "mdi:cloud",
+    "mdi:api",
+    "mdi:web",
+    "mdi:lock",
+    "mdi:key",
+    "mdi:shield-check",
+    "mdi:bug",
+    "mdi:cog",
+    "mdi:account",
+    "mdi:account-group",
+    "mdi:magnify",
+    "mdi:arrow-right",
+    "mdi:refresh",
+    "mdi:lightbulb-on",
+    "mdi:star",
+    "mdi:heart",
+    "mdi:thumb-up",
+    "mdi:source-branch",
+    "mdi:file-code",
+    "mdi:robot"
+  ],
+  "logos": [
+    {
+      "wordmark": false,
+      "categories": ["Database", "Software"],
+      "file": "convex",
+      "title": "Convex",
+      "background": "nil"
+    },
+    {
+      "wordmark": true,
+      "categories": ["Database", "Software"],
+      "file": "convex_wordmark_light",
+      "title": "Convex",
+      "background": "light"
+    },
+    {
+      "wordmark": true,
+      "categories": ["Database", "Software"],
+      "file": "convex_wordmark_dark",
+      "title": "Convex",
+      "background": "dark"
+    },
+    {
+      "wordmark": false,
+      "categories": ["Library"],
+      "file": "react_light",
+      "title": "React",
+      "background": "light"
+    },
+    {
+      "wordmark": false,
+      "categories": ["Library"],
+      "file": "react_dark",
+      "title": "React",
+      "background": "dark"
+    },
+    {
+      "wordmark": false,
+      "categories": ["Framework", "Vercel"],
+      "file": "nextjs_icon_dark",
+      "title": "Next.js",
+      "background": "nil"
+    },
+    {
+      "wordmark": false,
+      "categories": ["Language"],
+      "file": "typescript",
+      "title": "TypeScript",
+      "background": "nil"
+    },
+    {
+      "wordmark": false,
+      "categories": ["AI"],
+      "file": "openai",
+      "title": "OpenAI",
+      "background": "light"
+    },
+    {
+      "wordmark": false,
+      "categories": ["AI"],
+      "file": "openai_dark",
+      "title": "OpenAI",
+      "background": "dark"
+    },
+    {
+      "wordmark": false,
+      "categories": ["AI"],
+      "file": "anthropic_black",
+      "title": "Anthropic",
+      "background": "light"
+    },
+    {
+      "wordmark": false,
+      "categories": ["AI"],
+      "file": "anthropic_white",
+      "title": "Anthropic",
+      "background": "dark"
+    },
+    {
+      "wordmark": false,
+      "categories": ["Hosting", "Vercel"],
+      "file": "vercel",
+      "title": "Vercel",
+      "background": "light"
+    },
+    {
+      "wordmark": false,
+      "categories": ["Hosting", "Vercel"],
+      "file": "vercel_dark",
+      "title": "Vercel",
+      "background": "dark"
+    },
+    {
+      "wordmark": false,
+      "categories": ["Software"],
+      "file": "github_light",
+      "title": "GitHub",
+      "background": "light"
+    },
+    {
+      "wordmark": false,
+      "categories": ["Software"],
+      "file": "github_dark",
+      "title": "GitHub",
+      "background": "dark"
+    }
+  ],
+  "noto": [
+    {
+      "tags": [":rocket:"],
+      "category": "Travel and places",
+      "codepoint": "1f680"
+    },
+    {
+      "tags": [":fire:", ":burn:", ":lit:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f525"
+    },
+    {
+      "tags": [":electricity:", ":zap:", ":lightning:"],
+      "category": "Smileys and emotions",
+      "codepoint": "26a1"
+    },
+    {
+      "tags": [":check-mark:", ":check-mark-green:"],
+      "category": "Symbols",
+      "codepoint": "2705"
+    },
+    {
+      "tags": [":cross-mark:", ":x:"],
+      "category": "Symbols",
+      "codepoint": "274c"
+    },
+    {
+      "tags": [":warning:"],
+      "category": "Symbols",
+      "codepoint": "26a0_fe0f"
+    },
+    {
+      "tags": [":100:", ":one-hundred:", ":hundred:", ":points:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f4af"
+    },
+    {
+      "tags": [":party-popper:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f389"
+    },
+    {
+      "tags": [":partying-face:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f973"
+    },
+    {
+      "tags": [":thinking-face:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f914"
+    },
+    {
+      "tags": [":mind-blown:", ":exploding-head:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f92f"
+    },
+    {
+      "tags": [":eyes:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f440"
+    },
+    {
+      "tags": [":sunglasses-face:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f60e"
+    },
+    {
+      "tags": [":joy:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f602"
+    },
+    {
+      "tags": [":rofl:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f923"
+    },
+    {
+      "tags": [":loudly-crying:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f62d"
+    },
+    {
+      "tags": [":screaming:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f631"
+    },
+    {
+      "tags": [":grin-sweat:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f605"
+    },
+    {
+      "tags": [":upside-down-face:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f643"
+    },
+    {
+      "tags": [":rolling-eyes:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f644"
+    },
+    {
+      "tags": [":wink:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f609"
+    },
+    {
+      "tags": [":heart-eyes:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f60d"
+    },
+    {
+      "tags": [":star-struck:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f929"
+    },
+    {
+      "tags": [":grimacing:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f62c"
+    },
+    {
+      "tags": [":nerd-face:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f913"
+    },
+    {
+      "tags": [":salute:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1fae1"
+    },
+    {
+      "tags": [":thumbs-up:", ":+1:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f44d"
+    },
+    {
+      "tags": [":thumbs-down:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f44e"
+    },
+    {
+      "tags": [":clap:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f44f"
+    },
+    {
+      "tags": [":raising-hands:", ":hooray:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f64c"
+    },
+    {
+      "tags": [":muscle:", ":flex:", ":bicep:", ":strong:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f4aa"
+    },
+    {
+      "tags": [":wave:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f44b"
+    },
+    {
+      "tags": [":light-bulb:"],
+      "category": "Objects",
+      "codepoint": "1f4a1"
+    },
+    {
+      "tags": [":collision:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f4a5"
+    },
+    {
+      "tags": [":sparkles:"],
+      "category": "Smileys and emotions",
+      "codepoint": "2728"
+    },
+    {
+      "tags": [":police-car-light:"],
+      "category": "Travel and places",
+      "codepoint": "1f6a8"
+    },
+    {
+      "tags": [":alarm-clock:"],
+      "category": "Objects",
+      "codepoint": "23f0"
+    },
+    {
+      "tags": [":hourglass-done:"],
+      "category": "Objects",
+      "codepoint": "231b"
+    },
+    {
+      "tags": [":money-with-wings:"],
+      "category": "Objects",
+      "codepoint": "1f4b8"
+    },
+    {
+      "tags": [":bug:"],
+      "category": "Animals and nature",
+      "codepoint": "1f41b"
+    },
+    {
+      "tags": [":skull:"],
+      "category": "Smileys and emotions",
+      "codepoint": "1f480"
+    },
+    {
+      "tags": [":direct-hit:", ":target:"],
+      "category": "Activities and events",
+      "codepoint": "1f3af"
+    },
+    {
+      "tags": [":chart-increasing:"],
+      "category": "Objects",
+      "codepoint": "1f4c8"
+    }
+  ]
+}

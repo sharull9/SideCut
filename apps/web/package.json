@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vp dev --port 3000",
+    "dev": "portless sidecut vp dev --strictPort",
     "generate-routes": "vp exec tsr generate",
     "build": "vp build",
-    "preview": "vp preview --port 3000",
+    "preview": "portless sidecut vp preview --strictPort",
     "typecheck": "vp run generate-routes && vp exec tsc --noEmit && vp exec tsc --noEmit -p tsconfig.node.json"
   },
   "dependencies": {
@@ -38,6 +38,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+    "portless": "0.15.4",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"

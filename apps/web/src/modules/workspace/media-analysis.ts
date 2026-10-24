@@ -1,4 +1,5 @@
 import type { MediaItem } from "@sidecut/contracts/project";
+import type { Matte } from "@sidecut/platform-browser/cutout";
 import type { SourceSamples } from "@sidecut/platform-browser/source-analysis";
 import type { PictureProxy } from "@sidecut/platform-browser/proxy";
 import type { Transcript } from "@sidecut/core/transcript";
@@ -13,6 +14,7 @@ export interface MediaAnalysisState {
   proxy?: PictureProxy | undefined;
   proxyEnabled?: boolean;
   transcript?: Transcript | undefined;
+  matte?: Matte;
   status?: string;
   error?: string | undefined;
 }
@@ -140,6 +142,19 @@ export class MediaAnalysis {
         return sourceSamples(file, item, signal, progress);
       },
       (samples) => ({ samples }),
+    );
+  }
+  cutout(id: string) {
+    return this.run(
+      id,
+      "Analyse cutout",
+      async (signal, progress, { item, file }) => {
+        if (item.kind !== "video" && item.kind !== "image")
+          throw new Error("Cutout needs video or an image.");
+        const { analyseCutout } = await import("@sidecut/platform-browser/cutout");
+        return analyseCutout(file, item.kind, item.duration?.seconds ?? 1, signal, progress);
+      },
+      (matte) => ({ matte }),
     );
   }
   generateProxy(id: string) {

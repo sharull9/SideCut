@@ -4,6 +4,12 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./asset-providers": "./src/asset-providers.ts",
+    "./segments": "./src/segments.ts",
+    "./providers": "./src/providers.ts",
+    "./starter": "./src/starter.ts",
+    "./cutout": "./src/cutout.ts",
+    "./asset-library": "./src/asset-library.ts",
     "./storage": "./src/storage.ts",
     "./writer-lock": "./src/writer-lock.ts",
     "./media": "./src/media.ts",
@@ -33,9 +39,12 @@
     "@fontsource/tilt-warp": "5.3.0",
     "@huggingface/transformers": "4.3.1",
     "@jitsi/rnnoise-wasm": "0.2.1",
+    "@mediapipe/tasks-vision": "0.10.32",
+    "@sidecut/assets": "workspace:*",
     "@sidecut/contracts": "workspace:*",
     "@sidecut/core": "workspace:*",
     "effect": "catalog:",
+    "lottie-web": "5.13.0",
     "mediabunny": "catalog:"
   },
   "devDependencies": {

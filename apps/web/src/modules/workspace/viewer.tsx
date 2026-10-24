@@ -51,8 +51,8 @@ export function Viewer() {
     let proxySelection = "";
     const unsubscribeAnalysis = session.analysis.subscribe(() => {
       const selection = Object.entries(session.analysis.getSnapshot())
-        .filter(([, state]) => state.proxyEnabled)
-        .map(([id]) => id)
+        .filter(([, state]) => state.proxyEnabled || state.matte)
+        .map(([id, state]) => `${id}:${Boolean(state.proxyEnabled)}:${state.matte?.key ?? ""}`)
         .sort()
         .join(",");
       if (selection === proxySelection) return;

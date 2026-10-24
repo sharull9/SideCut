@@ -1,6 +1,6 @@
 # Tandem adapter subphases
 
-Status: all pending. These subphases expand the numbered groups in [the parity roadmap](tandem-parity-roadmap.md). They are individual units of work, not parallel assignments.
+Status: group 108 implemented and verified with pinned fixtures; groups 120 onward remain pending. These subphases expand the numbered groups in [the parity roadmap](tandem-parity-roadmap.md). They are individual units of work, not parallel assignments.
 
 Each checkbox has exactly two tasks: implement that single adapter or interaction using the existing service, then verify one success and one relevant failure/cancellation/conflict case against the pinned reference. Record the test and runtime beside the checkbox before completing it. Do not add a second edit coordinator.
 
@@ -10,18 +10,20 @@ Service subphases require their underlying feature phase and phase 119. Each CLI
 
 Acceptance per provider: preserve source IDs, attribution, setup status, and normalized resources. Use recorded/mock network responses for ordinary checks. Real credentials or paid generation require opt-in tests. The two upstream stubs only need truthful unavailable status, not new provider implementations.
 
-- [ ] 108.01: Shared library.
-- [ ] 108.02: Import folders.
-- [ ] 108.03: Pixabay.
-- [ ] 108.04: Pexels.
-- [ ] 108.05: Freesound.
-- [ ] 108.06: Iconify.
-- [ ] 108.07: SVGL.
-- [ ] 108.08: Noto Emoji.
-- [ ] 108.09: Fontsource.
-- [ ] 108.10: ElevenLabs.
-- [ ] 108.11: Epidemic Sound stub status.
-- [ ] 108.12: Lordicon stub status.
+- [x] 108.01: Shared library.
+- [x] 108.02: Import folders.
+- [x] 108.03: Pixabay.
+- [x] 108.04: Pexels.
+- [x] 108.05: Freesound.
+- [x] 108.06: Iconify.
+- [x] 108.07: SVGL.
+- [x] 108.08: Noto Emoji.
+- [x] 108.09: Fontsource.
+- [x] 108.10: ElevenLabs.
+- [x] 108.11: Epidemic Sound stub status.
+- [x] 108.12: Lordicon stub status.
+
+Each adapter passed its separate test suite on 2026-10-24. Test files are `packages/assets/src/{provider,import-folders,pixabay,pexels,freesound,iconify,svgl,noto,fontsource,elevenlabs,epidemic,lordicon}.test.ts`, in checkbox order. They cover successful mapping and relevant failures or unavailable status. Browser runtime additionally verifies shared folder import, Iconify normalization and mock ElevenLabs result storage. See [verification and limits](verification/phases-106-110.md). Live paid generation acceptance remains pending.
 
 ## Group 120: Project queries
 

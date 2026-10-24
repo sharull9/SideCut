@@ -10,7 +10,9 @@
     "typecheck": "vp exec tsc --noEmit && vp exec tsc --noEmit -p tsconfig.preload.json"
   },
   "devDependencies": {
+    "@sidecut/assets": "workspace:*",
     "@sidecut/config": "workspace:*",
+    "@sidecut/contracts": "workspace:*",
     "@types/node": "catalog:",
     "electron": "catalog:",
     "typescript": "catalog:",

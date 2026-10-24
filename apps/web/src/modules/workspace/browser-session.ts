@@ -15,6 +15,11 @@ import { SaveQueue } from "@sidecut/platform-browser/save-queue";
 import { BrowserJobs } from "@sidecut/platform-browser/jobs";
 import { probeLocalFile, mediaIdentity } from "@sidecut/platform-browser/media";
 import { MediaAnalysis } from "./media-analysis";
+import { recordAssetUse, assetSuggestions } from "@sidecut/core/asset-use";
+import { decodeAsset } from "@sidecut/contracts/assets";
+import { makeSegment, insertableSegment } from "@sidecut/core/segments";
+import { SegmentLibrary, type SegmentEntry } from "@sidecut/platform-browser/segments";
+import type { LibraryEntry } from "@sidecut/platform-browser/asset-library";
 
 export interface MediaAvailability {
   state: "available" | "missing" | "unsupported";
@@ -460,6 +465,244 @@ export class BrowserProjectSession {
       await this.refreshMedia();
     } finally {
       if (epoch === this.epoch) this.update({ busy: false });
+    }
+  }
+
+  async useLibraryAsset(entry: LibraryEntry) {
+    this.assertWritable();
+    if (!this.store || !entry.normalised)
+      throw new Error("Asset file is missing. Reimport it into the library.");
+    const asset = decodeAsset(entry.asset),
+      startEpoch = this.epoch;
+    const record = (mediaID?: string, path?: string) => {
+      this.assertOpen(startEpoch);
+      this.apply({
+        label: "Record asset provenance",
+        expectedRevision: this.state.revision,
+        commands: [
+          {
+            updateProject: {
+              patch: {
+                metadata: recordAssetUse(this.state.project, {
+                  asset,
+                  ...(mediaID ? { mediaID } : {}),
+                  ...(path ? { path } : {}),
+                }),
+              },
+            },
+          },
+        ],
+      });
+    };
+    if (asset.kind === "font") {
+      const { importFont } = await import("@sidecut/platform-browser/text");
+      const font = await importFont(entry.normalised);
+      this.assertOpen(startEpoch);
+      await this.store.putResource(this.state.project.id, `asset-file:${asset.id}`, {
+        file: entry.normalised,
+        state: "available",
+        detail: "Installed font",
+      });
+      record(undefined, entry.normalised.name);
+      if (entry.licence)
+        await this.store.putResource(this.state.project.id, `asset-licence:${asset.id}`, {
+          file: entry.licence,
+          state: "available",
+          detail: "Asset licence",
+        });
+      return { font };
+    }
+    if (asset.kind === "lut") {
+      const lut = await this.importLUT(entry.normalised);
+      this.assertOpen(startEpoch);
+      await this.store.putResource(this.state.project.id, `asset-file:${asset.id}`, {
+        file: entry.normalised,
+        state: "available",
+        detail: "Installed LUT",
+      });
+      record(undefined, lut);
+      return { lut };
+    }
+    const epoch = this.epoch,
+      projectID = this.state.project.id;
+    const known = this.state.project.media.find(
+      (m) => (m.asset as { id?: string } | undefined)?.id === asset.id,
+    );
+    const digest = new Uint8Array(
+      await crypto.subtle.digest("SHA-256", new TextEncoder().encode(asset.id)),
+    );
+    this.assertOpen(epoch);
+    const alphabet = "abcdefghijkmnpqrstuvwxyz23456789",
+      baseID = `med_${[...digest.slice(0, 8)].map((b) => alphabet[b % alphabet.length]).join("")}`;
+    const occupied = new Set([
+      this.state.project.id,
+      ...this.state.project.media.map((m) => m.id),
+      ...this.state.project.markers.map((m) => m.id),
+      ...[...this.state.project.videoTracks, ...this.state.project.audioTracks].flatMap((t) => [
+        t.id,
+        ...t.clips.map((c) => c.id),
+        ...t.transitions.map((x) => String(x.id)),
+      ]),
+    ]);
+    let mediaID = known?.id ?? baseID;
+    if (!known) for (let n = 2; occupied.has(mediaID); n++) mediaID = `${baseID}_${n}`;
+    const existing = known ? await this.store.resource(projectID, mediaID) : null;
+    if (!existing)
+      await this.store.putResource(projectID, mediaID, {
+        file: entry.normalised,
+        state: "available",
+        detail: "Available from local asset library",
+      });
+    this.assertOpen(epoch);
+    this.assertWritable();
+    const path = `assets/${asset.kind}/${asset.name.replace(/[^a-zA-Z0-9._-]/g, "_")}-${mediaID.slice(4)}.${entry.normalised.name.split(".").at(-1)}`;
+    if (!known)
+      this.apply({
+        label: "Add library asset",
+        expectedRevision: this.state.revision,
+        commands: [
+          {
+            addMedia: {
+              item: {
+                id: mediaID,
+                path,
+                kind:
+                  asset.remote.mediaKind ??
+                  (asset.kind === "music" || asset.kind === "sfx"
+                    ? "audio"
+                    : asset.kind === "video"
+                      ? "video"
+                      : "image"),
+                role: assetSuggestions(asset.kind).role,
+                hasVideo: asset.kind !== "music" && asset.kind !== "sfx",
+                hasAudio: asset.kind === "music" || asset.kind === "sfx",
+                width: asset.width ?? null,
+                height: asset.height ?? null,
+                duration: asset.duration ?? null,
+                asset,
+              },
+            },
+          },
+          {
+            updateProject: {
+              patch: { metadata: recordAssetUse(this.state.project, { asset, mediaID, path }) },
+            },
+          },
+        ],
+      });
+    if (entry.licence)
+      await this.store.putResource(projectID, `asset-licence:${asset.id}`, {
+        file: entry.licence,
+        state: "available",
+        detail: "Asset licence",
+      });
+    await this.refreshMedia();
+    return { mediaID };
+  }
+
+  async saveSelectionAsSegment(ids: readonly string[], name: string) {
+    this.assertWritable();
+    if (!this.store) throw new Error("Browser storage is closed.");
+    const epoch = this.epoch,
+      { project, revision } = this.state,
+      segment = makeSegment(project, ids, name, new Date().toISOString()),
+      resources: SegmentEntry["resources"] = {};
+    this.update({ busy: true });
+    let library: SegmentLibrary | undefined;
+    try {
+      for (const item of segment.resources) {
+        const source = await this.store.resource(project.id, item.key);
+        this.assertOpen(epoch);
+        if (source?.state !== "available" && item.optional) continue;
+        if (source?.state !== "available")
+          throw new Error(
+            `Cannot save segment: ${item.key} is missing. Import or relink it first.`,
+          );
+        resources[item.path] = source;
+      }
+      if (this.state.revision !== revision)
+        throw new Error("Project changed while saving the segment. Try again.");
+      segment.resources = segment.resources.filter((r) => resources[r.path]);
+      library = await SegmentLibrary.open();
+      await library.save({ segment, resources });
+      return segment;
+    } finally {
+      library?.close();
+      if (this.epoch === epoch) this.update({ busy: false });
+    }
+  }
+  async insertSavedSegment(
+    entry: SegmentEntry,
+    at: number,
+    mode: "place" | "overwrite" | "insert" = "place",
+  ) {
+    this.assertWritable();
+    if (!this.store) throw new Error("Browser storage is closed.");
+    const epoch = this.epoch,
+      { project, revision } = this.state,
+      template = insertableSegment(entry.segment),
+      prefix = `segments/${encodeURIComponent(entry.segment.id)}/`;
+    const command = { insertTemplate: { template, at, mode } },
+      batch = {
+        label: `Insert ${entry.segment.name}`,
+        expectedRevision: revision,
+        idempotencyKey: crypto.randomUUID(),
+        commands: [command],
+      };
+    const preview = new ProjectCoordinator({ revision, project });
+    preview.apply(batch);
+    const planned = preview.getSnapshot().project;
+    for (const item of entry.segment.resources)
+      if (entry.resources[item.path]?.state !== "available")
+        throw new Error(
+          `Saved segment is missing ${item.path}. Save it again from its source project.`,
+        );
+    this.update({ busy: true });
+    try {
+      for (const item of entry.segment.resources) {
+        this.assertOpen(epoch);
+        const media = planned.media.find((m) => m.path === `${prefix}${item.path}`),
+          key = media?.id ?? (item.key.startsWith("lut:") ? `lut:${prefix}${item.path}` : item.key),
+          existing = await this.store.resource(project.id, key);
+        if (!existing) await this.store.putResource(project.id, key, entry.resources[item.path]!);
+        if (
+          item.key.startsWith("asset-file:") &&
+          entry.segment.assets.some(
+            (a) => a.asset.id === item.key.slice(11) && a.asset.kind === "font",
+          )
+        ) {
+          const { importFont } = await import("@sidecut/platform-browser/text");
+          await importFont(entry.resources[item.path]!.file);
+        }
+      }
+      this.assertOpen(epoch);
+      let metadata = project.metadata;
+      for (const use of entry.segment.assets) {
+        const media = planned.media.find(
+            (m) => m.asset && decodeAsset(m.asset).id === use.asset.id,
+          ),
+          lut = entry.segment.resources.find((r) => r.key === `lut:${use.path}`);
+        metadata = recordAssetUse(
+          { ...project, metadata },
+          {
+            asset: use.asset,
+            ...(media
+              ? { mediaID: media.id, path: media.path }
+              : use.path
+                ? { path: lut ? `${prefix}${lut.path}` : use.path }
+                : {}),
+          },
+        );
+      }
+      const result = this.coordinator.apply({
+        ...batch,
+        commands: [command, { updateProject: { patch: { metadata } } }],
+      });
+      await this.queue?.flush();
+      await this.refreshMedia();
+      return result;
+    } finally {
+      if (this.epoch === epoch) this.update({ busy: false });
     }
   }
 

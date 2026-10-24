@@ -1,0 +1,96 @@
+{
+  "result": {
+    "providers": {
+      "state": "done",
+      "value": {
+        "cancelled": true,
+        "creditLine": "Twitter Emoji icons by Twitter, CC BY 4.0",
+        "creditedID": "iconify:twemoji:rocket",
+        "folderID": "shared:Graphics/camera.svg",
+        "mockGeneratedID": "elevenlabs:sfx_1b61d679-28ec-49a9-ac0e-d8989f4e49a9",
+        "mockRequests": 1,
+        "normalizedBytes": 293,
+        "providers": [
+          {
+            "id": "shared",
+            "state": "ready"
+          },
+          {
+            "id": "import",
+            "state": "ready"
+          },
+          {
+            "id": "pixabay",
+            "state": "unsupported"
+          },
+          {
+            "id": "pexels",
+            "state": "unsupported"
+          },
+          {
+            "id": "freesound",
+            "state": "disabled"
+          },
+          {
+            "id": "iconify",
+            "state": "ready"
+          },
+          {
+            "id": "svgl",
+            "state": "ready"
+          },
+          {
+            "id": "noto",
+            "state": "ready"
+          },
+          {
+            "id": "fontsource",
+            "state": "ready"
+          },
+          {
+            "id": "elevenlabs",
+            "state": "unsupported"
+          },
+          {
+            "id": "epidemic",
+            "state": "stub"
+          },
+          {
+            "id": "lordicon",
+            "state": "stub"
+          }
+        ],
+        "requests": [
+          {
+            "auth": false,
+            "provider": "iconify",
+            "url": "https://api.iconify.design/search?query=rocket&limit=32&start=0"
+          },
+          {
+            "auth": false,
+            "provider": "iconify",
+            "url": "https://api.iconify.design/twemoji/rocket.svg?color=%23FFFFFF"
+          }
+        ],
+        "starterCount": 90
+      }
+    },
+    "segments": {
+      "state": "done",
+      "value": {
+        "clips": 3,
+        "conflictRejected": true,
+        "credits": "Credits\nFixture maker",
+        "duplicateRejected": true,
+        "media": 2,
+        "resourceBytes": 293,
+        "revision": 1,
+        "segment": "Verification c999e74f-45c8-47b4-9a1f-ac58cbb3b5ee",
+        "sourceProject": "Asset target-c999e74f-45c8-47b4-9a1f-ac58cbb3b5ee",
+        "transitionCount": 1,
+        "undoRedo": true
+      }
+    }
+  },
+  "state": "done"
+}

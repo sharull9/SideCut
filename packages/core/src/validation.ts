@@ -1,4 +1,5 @@
 import { TransitionSchema } from "@sidecut/contracts/project";
+import { cutoutSettings } from "./cutout";
 import { effectDefinition, renderedEffects } from "./effects";
 import { ParamValueSchema } from "@sidecut/contracts/project";
 import { KeyframeSchema } from "@sidecut/contracts/project";
@@ -138,6 +139,13 @@ export function validateProject(project: Project): ValidationIssue[] {
   for (const track of tracks) {
     let previous: Clip | undefined;
     for (const clip of track.clips) {
+      if (clip.video?.cutout != null) {
+        try {
+          cutoutSettings(clip.video.cutout);
+        } catch (e) {
+          issue("clip-cutout", e instanceof Error ? e.message : String(e), clip.id);
+        }
+      }
       for (const [kind, properties, schema] of [
         ["video", clip.video, VideoProperties],
         ["audio", clip.audio, AudioProperties],

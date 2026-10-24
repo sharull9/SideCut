@@ -1,6 +1,6 @@
 # Tandem parity roadmap
 
-Status: phases 001-027 and 029-100 are implemented and verified on Windows Chromium, within the recorded browser limits. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. Phase 095's comparison against frames saved by macOS Tandem also remains pending; its animation boundaries are verified against the ported reference formulas. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), [061-066](verification/phases-061-066.md), [067-072](verification/phases-067-072.md), [073-078](verification/phases-073-078.md), [079-084](verification/phases-079-084.md), [085-090](verification/phases-085-090.md), [091-096](verification/phases-091-096.md), and [097-100 evidence and limits](verification/phases-097-100.md). Later phases remain pending. Full rendering, desktop delivery, and agent tools remain planned.
+Status: phases 001-027 and 029-105 are implemented and verified on Windows Chromium, within the recorded browser limits. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. Phase 095's comparison against frames saved by macOS Tandem also remains pending; its animation boundaries are verified against the ported reference formulas. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), [061-066](verification/phases-061-066.md), [067-072](verification/phases-067-072.md), [073-078](verification/phases-073-078.md), [079-084](verification/phases-079-084.md), [085-090](verification/phases-085-090.md), [091-096](verification/phases-091-096.md), [097-100](verification/phases-097-100.md), and [101-105 evidence and limits](verification/phases-101-105.md). Phases 106-110 are implemented with fixture and browser checks; see [106-110 evidence and limits](verification/phases-106-110.md). Phase 109 live paid acceptance remains pending. Phase 111 onward remains pending. Full rendering, desktop delivery, and agent tools remain planned.
 
 ## Goal and baseline
 
@@ -752,73 +752,75 @@ Accept when adopting portrait preserves keyframe geometry and removes the adopte
 
 ### Phase 101: Cutout matte
 
-- [ ] Integrate an equivalent local person/person-and-props segmentation backend.
-- [ ] Cache timestamped mattes and report unavailable or incomplete analysis.
+- [x] Integrate an equivalent local person/person-and-props segmentation backend.
+- [x] Cache timestamped mattes and report unavailable or incomplete analysis.
 
 Accept when a licensed person/microphone fixture meets documented quality/runtime criteria on each claimed target.
 
 ### Phase 102: Cutout controls
 
-- [ ] Composite mattes with reference feather, choke, and repair masks.
-- [ ] Expose cutout controls and include/exclude mask editing.
+- [x] Composite mattes with reference feather, choke, and repair masks.
+- [x] Expose cutout controls and include/exclude mask editing.
 
 Accept when manual repair, transformed PiP, and alpha export match the declared tolerances.
 
 ### Phase 103: Asset catalogue
 
-- [ ] Store asset identity, kind, source, licence, credits, and normalized paths.
-- [ ] Add local library search, detail, and missing-file states.
+- [x] Store asset identity, kind, source, licence, credits, and normalized paths.
+- [x] Add local library search, detail, and missing-file states.
 
 Accept when asset metadata remains attached through project use and save/reopen.
 
 ### Phase 104: Static asset normalization
 
-- [ ] Normalize supported images/SVG and LUT assets into renderable local resources.
-- [ ] Validate imported fonts and keep their licence files.
+- [x] Normalize supported images/SVG and LUT assets into renderable local resources.
+- [x] Validate imported fonts and keep their licence files.
 
 Accept when one fixture of each supported kind imports and unsupported input fails clearly.
 
 ### Phase 105: Animated assets
 
-- [ ] Normalize reference-supported animated sticker/Lottie content with alpha.
-- [ ] Preserve graphic props and warn for unimplemented graphic engines.
+- [x] Normalize reference-supported animated sticker/Lottie content with alpha.
+- [x] Preserve graphic props and warn for unimplemented graphic engines.
 
 Accept when an alpha animation plays over video with matching preview/export timing.
 
 ### Phase 106: Asset use and credits
 
-- [ ] Attach library assets to projects without losing provenance.
-- [ ] Generate credits and install licensed starter content without overwriting user assets.
+- [x] Attach library assets to projects without losing provenance.
+- [x] Generate credits and install licensed starter content without overwriting user assets.
 
 Accept when the project's credit report includes each used credited resource exactly as required.
 
 ### Phase 107: Provider interface
 
-- [ ] Add provider capabilities, setup status, and validated search/fetch contracts.
-- [ ] Add secure platform credential access without exposing secrets in project JSON or logs.
+- [x] Add provider capabilities, setup status, and validated search/fetch contracts.
+- [x] Add secure platform credential access without exposing secrets in project JSON or logs.
 
 Accept when the UI can distinguish missing setup, unsupported browser transport, and a failed provider request.
 
 ### Phase 108: Provider adapters
 
-- [ ] Implement one working pinned-reference provider per subphase, including attribution and normalization.
-- [ ] Cover shared/local import folders, Pixabay, Pexels, Freesound, Iconify, SVGL, Noto Emoji, Fontsource, and ElevenLabs only where upstream actually implements them.
+- [x] Implement one working pinned-reference provider per subphase, including attribution and normalization.
+- [x] Cover shared/local import folders, Pixabay, Pexels, Freesound, Iconify, SVGL, Noto Emoji, Fontsource, and ElevenLabs only where upstream actually implements them.
 
 Accept each subphase independently against its request/result contract. Stubbed upstream providers remain labelled stubs. Do not implement this list as one large change.
 
 ### Phase 109: Generation
 
-- [ ] Port the implemented reference generation request/options and result storage.
-- [ ] Add cost/confirmation behavior for user-initiated paid requests and record generated provenance.
+- [x] Port the implemented reference generation request/options and result storage.
+- [x] Add cost/confirmation behavior for user-initiated paid requests and record generated provenance.
 
 Accept when a mocked provider validates the contract and opt-in live testing records an actual result. No paid request runs as part of ordinary checks.
 
 ### Phase 110: Saved segments
 
-- [ ] Save/list a reusable timeline segment with its media references and metadata.
-- [ ] Insert it with remapped IDs through `insertTemplate` or equivalent reference commands.
+- [x] Save/list a reusable timeline segment with its media references and metadata.
+- [x] Insert it with remapped IDs through `insertTemplate` or equivalent reference commands.
 
 Accept when linked clips, assets, transitions, and credits survive save/insert in another project.
+
+Implementation and fixture/browser evidence: [phases 106-110 verification](verification/phases-106-110.md). Phase 109 live paid acceptance remains pending; its implementation checkboxes do not claim a live result.
 
 ## Desktop and interchange
 

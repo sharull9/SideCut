@@ -10,7 +10,7 @@ role/synced placement, angle switching, animated picture compositing, and local 
 
 The [Tandem parity roadmap](docs/tandem-parity-roadmap.md) breaks the editor, media,
 desktop, and agent work into small phases with acceptance checks and a pinned
-upstream feature inventory. Phases 001-084 have implementations, with phase 028's
+upstream feature inventory. Phases 001-110 have implementations, with phase 028's
 public-host acceptance still pending: synthetic reference
 fixtures, exact flick timing, a browser media feasibility probe, and Effect schemas
 for projects, tracks, media, and clips, project validation, atomic command batches,
@@ -58,8 +58,30 @@ alignment by sound is planned.
 
 Picture controls edit position, scale, clockwise rotation, fractional source crop,
 and opacity. Layout presets include Full, PiP left/right, Split, and Fill. PiP
-preserves the reference cutout/shadow settings. Shadows render; cutout processing
-is still planned and enabled cutout settings block rendering.
+preserves the reference cutout/shadow settings. The Picture inspector can analyse a
+local cutout, keep a person or person and accessories, and edit feather, choke and
+source-coordinate include/exclude repair masks. First use downloads Google's
+MediaPipe Selfie Multiclass model; media stays on the device. Analysis supports
+sources up to 60 seconds, 3,600 frames and 64 MiB of compressed mattes. Accessories
+can need repair masks. Missing or incomplete mattes stop rendering with a clear
+error. Download cutout PNG exports a transparent source frame up to 1280 px wide;
+video export composites the cutout into the existing opaque WebM output.
+
+Local asset library in Project media stores reusable images, SVG icons, stickers,
+fonts and LUTs on this device. Search by name/tags, kind and licence, then choose
+Use in project. Originals and licence companions stay in the catalogue; fonts
+require a licence file. Self-contained Lottie JSON and animated GIF/WebP/PNG retain
+alpha and source timing in preview and export. ImageDecoder is required for
+animated images. External Lottie assets, fonts and expressions are unsupported.
+Browse providers searches supported public catalogues and downloads assets with
+their provenance. Keyed providers and paid ElevenLabs generation require the
+desktop host. Generation requires explicit paid confirmation and retains completed
+takes after cancellation or a later failure. Live paid generation is unverified.
+Credits lists used resources once, and Install starter adds 90 catalogue entries
+without replacing existing assets. Saved segments stores selected and linked clips
+with local resources for reuse in another project through one undoable insertion.
+See the [phases 106-110 report](docs/verification/phases-106-110.md) for provider
+coverage and remaining acceptance limits.
 Reset layout to full removes those settings. Select source region opens an
 original-source preview with drag selection and numeric coordinates. Zoom can be
 immediate or animated from the playhead.
@@ -78,8 +100,8 @@ followed by rounded corners, border, transform, shadow, and group opacity. Each
 style uses its first enabled instance, independent of its position in the stack.
 Style effects in media looks are ignored, as in the reference. Spatial sizes marked
 px@1080 follow the output short side; sharpening follows source resolution.
-Borders provide a colored backing behind transparent image holes. Cutout-following
-outlines remain dependent on the later cutout renderer.
+Borders provide a colored backing behind transparent image holes. Shadows follow
+cutout alpha; cutout-following border outlines remain unimplemented.
 LUTs accept 1D or 3D `.cube` files up to 32 MB and stay in browser storage. Import
 the referenced LUT on each device; an unavailable LUT blocks rendering. CPU color
 processing can be slower than real time on large sources or long stacks. Browser
@@ -159,7 +181,18 @@ vp install --frozen-lockfile
 vp run dev
 ```
 
-The development server starts at http://127.0.0.1:3000. An occupied port may cause Vite to select another; use the URL it prints.
+`vp run dev` serves the app at https://sidecut.localhost through Portless, which
+chooses the internal app port. OpenSSL must be on PATH for local HTTPS certificate
+setup. On Windows with Git installed, its executable is usually in
+`C:\Program Files\Git\mingw64\bin`. Portless sets up its local certificate on
+first use; follow its trust/setup instructions if prompted. If you previously
+configured another proxy port or disabled TLS, run
+`vp exec portless proxy start --https --port 443` from `apps/web` to select HTTPS
+on the standard port.
+
+For a local production preview, run `vp run build` followed by `vp run preview`.
+Preview uses the same URL, so stop dev before starting it. Hosted
+deployments continue to use the production build directly.
 
 ```sh
 vp run check
@@ -183,7 +216,7 @@ Dependency commands are `vp add <package>`, `vp remove <package>`, `vp update`, 
 - `packages/core`: portable project validation and a synchronous atomic coordinator with revision checks, idempotency, subscriptions, and labelled undo/redo.
 - `packages/platform-browser`: IndexedDB project/resource storage, Web Locks writer ownership, save serialization, local media analysis/decoding through MediaBunny, and playback-clock mapping. The web session connects this adapter to the portable coordinator. Zustand owns transient view state in the workspace module.
 
-- `apps/desktop`: Electron shell that loads the built web editor from `apps/web/.output/public` over a privileged `sidecut://app` scheme, with SPA route fallback. The renderer is sandboxed and context-isolated without Node integration; the preload exposes only `window.sidecutDesktop.getAppInfo()`, and the host checks each IPC sender. External links open in the system browser, other navigation is blocked, and permission requests are denied. Project authority still lives in the renderer; it moves to the host in a later phase.
+- `apps/desktop`: Electron shell that loads the built web editor from `apps/web/.output/public` over a privileged `sidecut://app` scheme, with SPA route fallback. The renderer is sandboxed and context-isolated without Node integration; the preload exposes app information and validated provider/credential operations, and the host checks each IPC sender. Provider keys use Electron safeStorage and remain in the host. External links open in the system browser, other navigation is blocked, and permission requests are denied. Project authority still lives in the renderer; it moves to the host in a later phase.
 
 The desktop renderer uses web presets; its host process uses desktop presets. Node globals are excluded from browser TypeScript programs. Browser lint rules prohibit direct host API imports.
 
@@ -221,7 +254,7 @@ reuse it rather than adding another helper.
 vp run dev:desktop
 ```
 
-This builds the web renderer and desktop bundles, downloads the pinned Electron binary on first run, and opens the app. `vp run build:desktop` builds without launching. To use the web dev server instead, run `vp run dev` and start the app with `SIDECUT_RENDERER_URL=http://127.0.0.1:3000`; only local http URLs are accepted. Electron fails to open a window if `ELECTRON_RUN_AS_NODE` is set in your shell. Desktop data uses Electron's own profile, separate from browser storage. Packaging and installers are not set up yet.
+This builds the web renderer and desktop bundles, downloads the pinned Electron binary on first run, and opens the app. `vp run build:desktop` builds without launching. To use the web dev server instead, run `vp run dev` and set `SIDECUT_RENDERER_URL` to the direct `http://127.0.0.1:<port>` address printed by Portless; the desktop window connects directly to the app server because only local http URLs are accepted. Electron fails to open a window if `ELECTRON_RUN_AS_NODE` is set in your shell. Desktop data uses Electron's own profile, separate from browser storage. Packaging and installers are not set up yet.
 
 ## Static hosting
 

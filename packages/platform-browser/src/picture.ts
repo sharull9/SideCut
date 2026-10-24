@@ -18,6 +18,7 @@ import {
 } from "@sidecut/core/text";
 import { drawText, ensureFont } from "./text";
 import { cardOf } from "@sidecut/core/section-cards";
+import { cutoutOf } from "@sidecut/core/cutout";
 import { drawSectionCard, ensureCardFonts } from "./section-card";
 
 // Text draws at the clip's own scale so a big title stays sharp; animation scales from there.
@@ -105,7 +106,8 @@ async function paintLayer(
     ? drawSectionCard(card, width, height, layer.clipTime, layer.clip.duration.seconds)
     : null;
   if (card && !graphic) return null;
-  const frame = layer.mediaID ? await (await reader(layer.mediaID)).frame(layer.sourceTime) : null;
+  const mediaReader = layer.mediaID ? await reader(layer.mediaID) : null;
+  const frame = mediaReader ? await mediaReader.frame(layer.sourceTime) : null;
   signal?.throwIfAborted();
   if (!frame && !layer.color && !text && !graphic) return null;
   const media = project.media.find((m) => m.id === layer.mediaID);
@@ -142,6 +144,11 @@ async function paintLayer(
         signal,
         pixelScale(width, height) / (geometry.width / sw),
       );
+  }
+  const cutout = cutoutOf(layer.clip);
+  if (cutout?.enabled && source) {
+    if (!mediaReader) throw new Error("Cutout requires an image or video source.");
+    source = await mediaReader.cutout(source, sw, sh, layer.sourceTime, cutout);
   }
   const style = layerStyles(effectsOf(layer.clip, "video"), width, height);
   if (source && (style.radius > 0 || style.border > 0 || style.shadow.opacity > 0)) {

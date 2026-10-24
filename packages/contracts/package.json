@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./providers": "./src/providers.ts",
+    "./assets": "./src/assets.ts",
     "./time": "./src/time.ts",
     "./commands": "./src/commands.ts",
     "./project": "./src/project.ts"

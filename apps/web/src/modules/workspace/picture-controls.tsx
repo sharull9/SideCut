@@ -13,6 +13,7 @@ import {
 import { useEditorSession } from "./editor-session";
 import { RegionZoomDialog } from "./region-zoom-dialog";
 import { CommitInput } from "./commit-input";
+import { CutoutControls } from "./cutout-controls";
 
 type PictureKey =
   | "x"
@@ -247,6 +248,7 @@ export function PictureInspector({ clips }: { clips: readonly Clip[] }) {
         </Field>
       )}
       <PictureControls key={clip.id} clip={clip} />
+      <CutoutControls key={`cutout-${clip.id}`} clip={clip} />
     </>
   );
 }

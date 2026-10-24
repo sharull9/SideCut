@@ -1,4 +1,5 @@
 import { audioSegments, enabledTracks } from "./audio-plan";
+import { cutoutSettings } from "./cutout";
 import { audioEffectIssue } from "./audio-processing";
 import { transitionWindow } from "./transitions";
 import { effectIssue } from "./color-processing";
@@ -249,7 +250,14 @@ function supportedPicture(clip: Clip): boolean {
     // Overrides apply when a format renders (formatProject); the main format ignores them.
     if (key === "formatOverrides")
       return Object.values(object(value)).every((v) => typeof v === "object");
-    if (key === "cutout") return object(value).enabled === false;
+    if (key === "cutout") {
+      try {
+        cutoutSettings(value);
+        return true;
+      } catch {
+        return false;
+      }
+    }
     return false;
   });
 }

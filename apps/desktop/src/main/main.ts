@@ -10,6 +10,7 @@ import {
   type DesktopAppInfo,
 } from "../shared/bridge.ts";
 import { resolveRendererPath } from "./renderer-path.ts";
+import { DesktopAssetProviders } from "./asset-providers.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -95,6 +96,46 @@ app.on("web-contents-created", (_event, contents) => {
 });
 
 void app.whenReady().then(() => {
+  const providers = new DesktopAssetProviders(join(app.getPath("userData"), "assets")),
+    requests = new Map<string, AbortController>();
+  ipcMain.handle(bridgeChannels.providerCall, async (event, id: unknown, request: unknown) => {
+    if (
+      !event.senderFrame ||
+      !isTrusted(event.senderFrame.url) ||
+      typeof id !== "string" ||
+      !/^[a-z0-9-]{1,100}$/i.test(id)
+    )
+      throw new Error("Invalid provider sender or request ID.");
+    const prefix = `${event.sender.id}:`,
+      key = `${prefix}${id}`;
+    if (requests.has(key) || [...requests.keys()].filter((k) => k.startsWith(prefix)).length >= 4)
+      throw new Error("Provider request is duplicate or the concurrency limit was reached.");
+    const controller = new AbortController();
+    requests.set(key, controller);
+    const stop = () => controller.abort();
+    event.sender.once("destroyed", stop);
+    try {
+      return await providers.call(request, controller.signal);
+    } finally {
+      requests.delete(key);
+      event.sender.removeListener("destroyed", stop);
+    }
+  });
+  ipcMain.handle(bridgeChannels.providerCancel, (event, id: unknown) => {
+    if (!event.senderFrame || !isTrusted(event.senderFrame.url) || typeof id !== "string")
+      throw new Error("Untrusted provider sender.");
+    requests.get(`${event.sender.id}:${id}`)?.abort();
+  });
+  ipcMain.handle(
+    bridgeChannels.providerCredential,
+    async (event, provider: unknown, action: unknown, secret: unknown) => {
+      if (!event.senderFrame || !isTrusted(event.senderFrame.url) || typeof provider !== "string")
+        throw new Error("Untrusted credential sender.");
+      if (action === "set") await providers.credentials.set(provider, secret);
+      else if (action === "clear") await providers.credentials.clear(provider);
+      else throw new Error("Invalid credential action.");
+    },
+  );
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) =>
     callback(false),
   );

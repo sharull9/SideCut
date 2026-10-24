@@ -1,0 +1,169 @@
+{
+  "animatedImages": {
+    "state": "done",
+    "value": {
+      "apng": {
+        "duration": 1,
+        "results": [
+          {
+            "cleared": [0, 0, 0, 0],
+            "corner": [0, 0, 0, 0],
+            "red": [255, 0, 0, 255],
+            "time": 0
+          },
+          {
+            "cleared": [0, 0, 0, 0],
+            "corner": [0, 0, 0, 0],
+            "red": [255, 0, 0, 255],
+            "time": 0.6
+          },
+          {
+            "cleared": [0, 0, 0, 0],
+            "corner": [0, 0, 0, 0],
+            "red": [255, 0, 0, 255],
+            "time": 0
+          }
+        ]
+      },
+      "gif": {
+        "duration": 1,
+        "results": [
+          {
+            "cleared": [0, 0, 0, 0],
+            "corner": [0, 0, 0, 0],
+            "red": [255, 0, 0, 255],
+            "time": 0
+          },
+          {
+            "cleared": [0, 0, 0, 0],
+            "corner": [0, 0, 0, 0],
+            "red": [255, 0, 0, 255],
+            "time": 0.6
+          },
+          {
+            "cleared": [0, 0, 0, 0],
+            "corner": [0, 0, 0, 0],
+            "red": [255, 0, 0, 255],
+            "time": 0
+          }
+        ]
+      },
+      "webp": {
+        "duration": 1,
+        "results": [
+          {
+            "cleared": [0, 0, 0, 0],
+            "corner": [0, 0, 0, 0],
+            "red": [255, 0, 2, 255],
+            "time": 0
+          },
+          {
+            "cleared": [0, 0, 0, 0],
+            "corner": [0, 0, 0, 0],
+            "red": [255, 0, 2, 255],
+            "time": 0.6
+          },
+          {
+            "cleared": [0, 0, 0, 0],
+            "corner": [0, 0, 0, 0],
+            "red": [255, 0, 2, 255],
+            "time": 0
+          }
+        ]
+      }
+    }
+  },
+  "assets": {
+    "state": "done",
+    "value": {
+      "exportBytes": 849,
+      "exported": {
+        "corner": [1, 0, 255, 255],
+        "middle": [255, 1, 0, 255]
+      },
+      "fontFamily": "Anton",
+      "libraryID": "local:phase-104-svg",
+      "lottieSamples": [
+        {
+          "corner": [0, 0, 0, 0],
+          "left": [255, 0, 0, 255],
+          "middle": [0, 0, 0, 0],
+          "right": [0, 0, 0, 0],
+          "time": 0
+        },
+        {
+          "corner": [0, 0, 0, 0],
+          "left": [0, 0, 0, 0],
+          "middle": [255, 0, 0, 255],
+          "right": [0, 0, 0, 0],
+          "time": 0.5
+        },
+        {
+          "corner": [0, 0, 0, 0],
+          "left": [0, 0, 0, 0],
+          "middle": [0, 0, 0, 0],
+          "right": [255, 0, 0, 255],
+          "time": 0.99
+        },
+        {
+          "corner": [0, 0, 0, 0],
+          "left": [255, 0, 0, 255],
+          "middle": [0, 0, 0, 0],
+          "right": [0, 0, 0, 0],
+          "time": 0
+        }
+      ],
+      "lutBytes": 62,
+      "staticPNG": 866
+    }
+  },
+  "cutout": {
+    "state": "done",
+    "value": {
+      "alphaPNGBytes": 230892,
+      "background": 149790,
+      "cancelled": true,
+      "excludeRepair": true,
+      "foreground": 108455,
+      "frames": 1,
+      "height": 450,
+      "includeRepair": true,
+      "incompleteRejected": true,
+      "matteHeight": 450,
+      "matteWidth": 600,
+      "ms": 1.100000001490116,
+      "width": 600
+    }
+  },
+  "video": {
+    "state": "done",
+    "value": {
+      "analysisFPS": 4545.454539297041,
+      "analysisMs": 1.100000001490116,
+      "exportBytes": 8581,
+      "mae": 1.0583217592592593,
+      "videoFrames": [
+        {
+          "duration": 0.2,
+          "timestamp": 0
+        },
+        {
+          "duration": 0.2,
+          "timestamp": 0.2
+        },
+        {
+          "duration": 0.2,
+          "timestamp": 0.4
+        },
+        {
+          "duration": 0.2,
+          "timestamp": 0.6
+        },
+        {
+          "duration": 0.2,
+          "timestamp": 0.8
+        }
+      ]
+    }
+  }
+}

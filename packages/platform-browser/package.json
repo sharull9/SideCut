@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./export-queue": "./src/export-queue.ts",
     "./asset-providers": "./src/asset-providers.ts",
     "./segments": "./src/segments.ts",
     "./providers": "./src/providers.ts",
@@ -27,7 +28,8 @@
     "./proxy": "./src/proxy.ts",
     "./sound-sync": "./src/sound-sync.ts",
     "./transcription": "./src/transcription.ts",
-    "./text": "./src/text.ts"
+    "./text": "./src/text.ts",
+    "./preferences": "./src/preferences.ts"
   },
   "scripts": {
     "typecheck": "vp exec tsc --noEmit"
@@ -43,6 +45,7 @@
     "@sidecut/assets": "workspace:*",
     "@sidecut/contracts": "workspace:*",
     "@sidecut/core": "workspace:*",
+    "@sqlite.org/sqlite-wasm": "3.54.1-build1",
     "effect": "catalog:",
     "lottie-web": "5.13.0",
     "mediabunny": "catalog:"

@@ -1,11 +1,16 @@
 import { QueryError, parseQueryTime } from "./project-queries";
 import { object } from "./interchange";
 import { Time } from "@sidecut/contracts/time";
-const edit = { apply: "boolean", label: "string", author: "string", expectedRevision: "integer" };
-const range = { from: "time", to: "time" };
-const image = { output: "string", format: "string" };
+const edit = {
+  apply: "boolean",
+  label: "string",
+  author: "string",
+  expectedRevision: "integer",
+} as const;
+const range = { from: "time", to: "time" } as const;
+const image = { output: "string", format: "string" } as const;
 export const rendererMutations = new Set(["relink", "assets-use", "insert-segment"]);
-export const serviceFields: Record<string, Record<string, string>> = {
+export const serviceDefinitions = {
   new: { name: "string", expectedRevision: "integer" },
   open: { path: "string", expectedRevision: "integer" },
   "import-edl": { path: "string", expectedRevision: "integer" },
@@ -131,7 +136,58 @@ export const serviceFields: Record<string, Record<string, string>> = {
     gains: "boolean",
     over: "number",
   },
-};
+} as const;
+export const serviceFields: Record<string, Record<string, string>> = serviceDefinitions;
+export const requiredServiceFields = {
+  apply: ["commands"],
+  diff: ["since"],
+  restore: ["from"],
+  search: ["phrase"],
+  transcribe: ["media"],
+  frame: ["time"],
+  clip: ["start", "end"],
+  new: ["expectedRevision"],
+  open: ["path", "expectedRevision"],
+  "import-edl": ["path", "expectedRevision"],
+  "import-filmora": ["path", "expectedRevision"],
+  "assets-fetch": ["id"],
+  "assets-show": ["id"],
+  "assets-use": ["id"],
+  "save-segment": ["name"],
+  "insert-segment": ["name", "at"],
+} as const;
+export const serviceRequired: Record<string, readonly string[]> = requiredServiceFields;
+export function requestJsonSchema(
+  fields: Record<string, string>,
+  required: readonly string[] = [],
+) {
+  const field = (kind: string): object =>
+    kind === "boolean"
+      ? { type: "boolean" }
+      : kind === "integer"
+        ? { type: "integer", minimum: 0 }
+        : kind === "number"
+          ? { type: "number" }
+          : kind === "time" || kind === "reference"
+            ? { anyOf: [{ type: "number" }, { type: "string" }] }
+            : ["array", "strings", "times"].includes(kind)
+              ? {
+                  type: "array",
+                  items:
+                    kind === "strings"
+                      ? { type: "string" }
+                      : kind === "times"
+                        ? { anyOf: [{ type: "number" }, { type: "string" }] }
+                        : { type: "object" },
+                }
+              : { type: "string" };
+  return {
+    type: "object" as const,
+    properties: Object.fromEntries(Object.entries(fields).map(([key, kind]) => [key, field(kind)])),
+    additionalProperties: false,
+    required,
+  };
+}
 export function serviceRequest(operation: string, input: unknown): Record<string, unknown> {
   const fields = Object.hasOwn(serviceFields, operation) ? serviceFields[operation] : undefined;
   if (!fields) throw new QueryError("notFound", `Unknown operation: ${operation}.`);
@@ -171,21 +227,8 @@ export function serviceRequest(operation: string, input: unknown): Record<string
       result[key] = value;
     else throw new QueryError("badRequest", `Invalid ${key}.`);
   }
-  for (const key of operation === "apply"
-    ? ["commands"]
-    : operation === "diff"
-      ? ["since"]
-      : operation === "restore"
-        ? ["from"]
-        : operation === "search"
-          ? ["phrase"]
-          : operation === "transcribe"
-            ? ["media"]
-            : operation === "frame"
-              ? ["time"]
-              : operation === "clip"
-                ? ["start", "end"]
-                : [])
+  for (const key of (Object.hasOwn(serviceRequired, operation) ? serviceRequired[operation] : []) ??
+    [])
     if (result[key] === undefined) throw new QueryError("badRequest", `${key} is required.`);
   for (const [from, to] of [
     ["from", "to"],

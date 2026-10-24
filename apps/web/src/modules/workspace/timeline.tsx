@@ -26,6 +26,8 @@ import { projectDuration, atFrame, stepFrame, timecode } from "./timeline-model"
 import { ClipBlock } from "./clip-block";
 import { EditToolbar } from "./edit-toolbar";
 import { placeSource, MEDIA_DRAG_TYPE } from "./placement";
+import { PanelDivider } from "./panel-divider";
+import { selectionWithLinks } from "./edit-actions";
 
 const HEADER = 248;
 const RIPPLE_HELP = {
@@ -126,14 +128,35 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
   const zoom = useEditorView((state) => state.zoom);
   const selected = useEditorView((state) => state.selected);
   const scroll = useRef<HTMLDivElement>(null);
+  const [trackHeights, setTrackHeights] = useState<Record<string, number>>({});
+  const drag = useRef<{
+    trackID: string;
+    start: number;
+    shift: boolean;
+    selected: readonly string[];
+    moved: boolean;
+  } | null>(null);
+  const ignoreClick = useRef(false);
+  const [box, setBox] = useState<{ trackID: string; from: number; to: number } | null>(null);
   const [viewport, setViewport] = useState(960);
   useEffect(() => {
     const element = scroll.current;
     if (!element) return;
     const observer = new ResizeObserver(() => setViewport(element.clientWidth));
     observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
+    const wheel = (event: WheelEvent) => {
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+        const state = editor.getState();
+        state.setZoom(state.zoom * (event.deltaY < 0 ? 1.1 : 1 / 1.1));
+      }
+    };
+    element.addEventListener("wheel", wheel, { passive: false });
+    return () => {
+      observer.disconnect();
+      element.removeEventListener("wheel", wheel);
+    };
+  }, [editor]);
   const project = snapshot.project;
   const tracks = [...project.videoTracks.toReversed(), ...project.audioTracks];
   const duration = projectDuration(project).seconds;
@@ -244,7 +267,12 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
         aria-label="Timeline tracks"
         tabIndex={0}
         onKeyDown={(event) => {
-          if (event.key === "Escape") editor.getState().select(null);
+          if (event.key === "Escape") {
+            if (drag.current) editor.getState().selectMany(drag.current.selected);
+            else editor.getState().select(null);
+            drag.current = null;
+            setBox(null);
+          }
         }}
       >
         <div className="editor-timeline-inner" style={{ width: width + HEADER }}>
@@ -311,9 +339,24 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                 key={track.id}
                 className="editor-track"
                 data-kind={track.kind}
-                style={{ gridTemplateColumns: `${HEADER}px ${width}px` }}
+                style={{
+                  gridTemplateColumns: `${HEADER}px ${width}px`,
+                  height: trackHeights[track.id],
+                }}
               >
                 <div className="editor-track-header">
+                  <PanelDivider
+                    controls={`track-lane-${track.id}`}
+                    label={`Resize track ${track.name}`}
+                    orientation="horizontal"
+                    value={trackHeights[track.id] ?? (wordsByTrack.get(track.id)?.length ? 90 : 54)}
+                    min={48}
+                    max={240}
+                    onChange={(value) =>
+                      setTrackHeights((current) => ({ ...current, [track.id]: value }))
+                    }
+                    onReset={() => setTrackHeights((current) => ({ ...current, [track.id]: 54 }))}
+                  />
                   <span className="editor-track-label">
                     {track.kind === "video" ? "V" : "A"}
                     {index + 1}
@@ -436,10 +479,66 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                 </div>
                 <div
                   className="editor-track-lane"
+                  role="group"
+                  id={`track-lane-${track.id}`}
                   data-has-words={Boolean(wordsByTrack.get(track.id)?.length)}
                   style={{ backgroundSize: `${tickStep * zoom}px 100%` }}
                   data-track-id={track.id}
                   aria-label={`${track.name} clips`}
+                  onPointerDown={(event) => {
+                    if (event.button !== 0 || event.target !== event.currentTarget) return;
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                    drag.current = {
+                      trackID: track.id,
+                      start: Math.max(
+                        0,
+                        (event.clientX - event.currentTarget.getBoundingClientRect().left) / zoom,
+                      ),
+                      shift: event.shiftKey,
+                      selected: editor.getState().selected,
+                      moved: false,
+                    };
+                  }}
+                  onPointerMove={(event) => {
+                    const active = drag.current;
+                    if (!active || active.trackID !== track.id) return;
+                    const time = Math.max(
+                      0,
+                      (event.clientX - event.currentTarget.getBoundingClientRect().left) / zoom,
+                    );
+                    if (Math.abs(time - active.start) * zoom < 5 && !active.moved) return;
+                    active.moved = true;
+                    const from = Math.min(time, active.start),
+                      to = Math.max(time, active.start);
+                    setBox({ trackID: track.id, from, to });
+                    if (active.shift)
+                      editor.getState().setRange({
+                        from: atFrame(from, project).seconds,
+                        to: atFrame(to, project).seconds,
+                      });
+                    else
+                      editor.getState().selectMany(
+                        selectionWithLinks(
+                          project,
+                          track.clips
+                            .filter(
+                              (c) =>
+                                c.start.seconds < to && c.start.seconds + c.duration.seconds > from,
+                            )
+                            .map((c) => c.id),
+                        ),
+                      );
+                  }}
+                  onPointerUp={() => {
+                    ignoreClick.current = drag.current?.moved ?? false;
+                    drag.current = null;
+                    setBox(null);
+                  }}
+                  onPointerCancel={() => {
+                    if (drag.current) editor.getState().selectMany(drag.current.selected);
+                    drag.current = null;
+                    setBox(null);
+                  }}
                   onDragOver={(event) => {
                     if (event.dataTransfer.types.includes(MEDIA_DRAG_TYPE)) {
                       event.preventDefault();
@@ -466,6 +565,10 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                     });
                   }}
                   onClick={(event) => {
+                    if (ignoreClick.current) {
+                      ignoreClick.current = false;
+                      return;
+                    }
                     if (event.target === event.currentTarget) {
                       editor.getState().select(null);
                       editor
@@ -490,6 +593,13 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                       run={run}
                     />
                   ))}
+                  {box?.trackID === track.id && (
+                    <div
+                      className="editor-marquee"
+                      aria-hidden="true"
+                      style={{ left: box.from * zoom, width: (box.to - box.from) * zoom }}
+                    />
+                  )}
                   {track.transitions.map((transition) => (
                     <TransitionBlock
                       key={String(transition.id)}
@@ -501,6 +611,7 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                   ))}
                   <div
                     className="editor-transcript-lane"
+                    role="group"
                     aria-label={`${track.name} transcript words`}
                   >
                     {wordsByTrack.get(track.id)?.map((word) => (

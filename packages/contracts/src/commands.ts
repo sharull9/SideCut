@@ -326,3 +326,5 @@ export const EditBatchSchema = Schema.Struct({
 
 export type EditBatch = typeof EditBatchSchema.Type;
 export type EditCommand = typeof EditCommandSchema.Type;
+export const editCommandJsonSchema = () =>
+  Schema.toJsonSchemaDocument(Schema.toType(EditCommandSchema));

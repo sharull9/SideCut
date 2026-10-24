@@ -15,6 +15,7 @@ interface Gesture {
   pointer: number;
   ids: readonly string[];
   target: string | null;
+  scrollStart: number;
 }
 export function snapEdit(
   seconds: number,
@@ -131,6 +132,7 @@ export function ClipBlock({
       pointer: event.pointerId,
       ids: editor.getState().selected,
       target: null,
+      scrollStart: event.currentTarget.closest(".editor-timeline-scroll")?.scrollLeft ?? 0,
     };
     active.current = value;
     setGesture(value);
@@ -138,13 +140,28 @@ export function ClipBlock({
   const move = (event: React.PointerEvent<HTMLElement>) => {
     const value = active.current;
     if (!value) return;
+    const scroller = event.currentTarget.closest<HTMLElement>(".editor-timeline-scroll");
+    if (scroller) {
+      const bounds = scroller.getBoundingClientRect();
+      if (event.clientX > bounds.right - 32) scroller.scrollLeft += 12;
+      else if (event.clientX < bounds.left + 248 + 32) scroller.scrollLeft -= 12;
+    }
     const original =
       value.edge === "end" ? clip.start.seconds + clip.duration.seconds : clip.start.seconds;
-    const proposed = original + (event.clientX - value.x) / zoom;
+    const proposed =
+      original + (event.clientX - value.x + (scroller?.scrollLeft ?? 0) - value.scrollStart) / zoom;
     const snapped =
       value.operation === "ripple" && value.edge === "start" && proposed < 0
         ? Time.fromSeconds(proposed).roundedToFrame(snapshot.project.settings.frameRate)
-        : snapEdit(proposed, snapshot.project, zoom, value.ids, editor.getState().playhead.seconds);
+        : event.ctrlKey || event.metaKey
+          ? atFrame(Math.max(0, proposed), snapshot.project)
+          : snapEdit(
+              proposed,
+              snapshot.project,
+              zoom,
+              value.ids,
+              editor.getState().playhead.seconds,
+            );
     const target =
       document
         .elementFromPoint(event.clientX, event.clientY)

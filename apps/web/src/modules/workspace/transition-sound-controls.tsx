@@ -1,3 +1,4 @@
+import { readPreference, writePreference } from "@sidecut/platform-browser/preferences";
 import { useState } from "react";
 import type { Project, Track } from "@sidecut/contracts/project";
 import { transitionWindow } from "@sidecut/core/transitions";
@@ -23,7 +24,7 @@ export function defaultTransitionSound(
   type: string,
 ): SoundDefault | null | undefined {
   try {
-    const raw = localStorage.getItem(defaultKey(project.id, type));
+    const raw = readPreference(defaultKey(project.id, type));
     if (raw == null) return undefined;
     const value: unknown = JSON.parse(raw);
     if (value === null) return null;
@@ -197,13 +198,12 @@ export function TransitionSoundControls({
           variant="outline"
           disabled={disabled}
           onClick={() => {
-            try {
-              localStorage.setItem(defaultKey(project.id, type), JSON.stringify(sound()));
-              setNotice(`Default saved for ${type} in this project.`);
-              setError(null);
-            } catch (cause) {
-              setError(String(cause));
-            }
+            void writePreference(defaultKey(project.id, type), JSON.stringify(sound()))
+              .then(() => {
+                setNotice(`Default saved for ${type} in this project.`);
+                setError(null);
+              })
+              .catch((cause) => setError(String(cause)));
           }}
         >
           Remember as {type} default

@@ -123,7 +123,7 @@ Schema 1 projects migrate legacy title defaults to schema 2. Unsupported schemas
 or content open read-only with an original-JSON inspector. Download preserves the
 original file text, and that import never replaces the saved project.
 
-Projects and imported source files persist in IndexedDB for this browser profile
+Projects persist in SQLite and imported source files persist in OPFS for this browser profile
 and origin. Download a project copy for backup. A `.tandem` download contains project
 data and media references, not the media bytes. Browser storage can be cleared or
 evicted; portable media archives and general source relinking remain planned.
@@ -214,9 +214,9 @@ Dependency commands are `vp add <package>`, `vp remove <package>`, `vp update`, 
 - `packages/config`: TypeScript, Oxlint, and Oxfmt presets. Each family exports `base`, `web`, and `desktop` entry points.
 - `packages/contracts`: portable Effect project schemas and exact `bigint` flick timing. The decoder supports schema version 2 and migrates schema 1; unsupported formats have a read-only import path.
 - `packages/core`: portable project validation and a synchronous atomic coordinator with revision checks, idempotency, subscriptions, and labelled undo/redo.
-- `packages/platform-browser`: IndexedDB project/resource storage, Web Locks writer ownership, save serialization, local media analysis/decoding through MediaBunny, and playback-clock mapping. The web session connects this adapter to the portable coordinator. Zustand owns transient view state in the workspace module.
+- `packages/platform-browser`: SQLite WASM/OPFS project/resource storage, Web Locks writer ownership, save serialization, local media analysis/decoding through MediaBunny, and playback-clock mapping. The web session connects this adapter to the portable coordinator. Zustand owns transient view state in the workspace module.
 
-- `apps/desktop`: Electron shell that loads the built web editor from `apps/web/.output/public` over a privileged `sidecut://app` scheme, with SPA route fallback. The renderer is sandboxed and context-isolated without Node integration; the preload exposes app information and validated provider/credential operations, and the host checks each IPC sender. Provider keys use Electron safeStorage and remain in the host. External links open in the system browser, other navigation is blocked, and permission requests are denied. One host coordinator owns desktop edits and undo history across windows. The host saves `current.tandem` atomically in its profile with a validated backup and an exclusive lock.
+- `apps/desktop`: Electron shell that loads the built web editor from `apps/web/.output/public` over a privileged `sidecut://app` scheme, with SPA route fallback. The renderer is sandboxed and context-isolated without Node integration; the preload exposes app information and validated provider/credential operations, and the host checks each IPC sender. Provider keys use Electron safeStorage and remain in the host. External links open in the system browser, other navigation is blocked, and permission requests are denied. One host coordinator owns desktop edits and undo history across windows. The host saves project snapshots and validated backups atomically in profile-local SQLite, with an exclusive host lock.
 
 The desktop renderer uses web presets; its host process uses desktop presets. Node globals are excluded from browser TypeScript programs. Browser lint rules prohibit direct host API imports.
 
@@ -256,9 +256,9 @@ vp run dev:desktop
 
 This builds the web renderer and desktop bundles, downloads the pinned Electron binary on first run, and opens the app. `vp run build:desktop` builds without launching. To use the web dev server instead, run `vp run dev` and set `SIDECUT_RENDERER_URL` to the direct `http://127.0.0.1:<port>` address printed by Portless; the desktop window connects directly to the app server because only local http URLs are accepted. Electron fails to open a window if `ELECTRON_RUN_AS_NODE` is set in your shell. Desktop data uses Electron's own profile, separate from browser storage. Linux x64 and Apple Silicon packaging are configured in the [desktop build workflow](docs/desktop-builds.md).
 
-Desktop project saves live in the profile's `current.tandem`, with `current.tandem.bak` and `current.tandem.lock` alongside it. External changes stop saving and show reload/backup recovery actions. Download your unsaved edits before choosing recovery. A crash can leave a lock file; remove it only after confirming that no SideCut host is running.
+Desktop projects, libraries, media references, and preferences live in the profile's `sidecut.sqlite`; media bytes live in `storage-files`. Existing `current.tandem` and `.bak` files are imported once and retained unchanged. Project versions and backups commit together in SQLite. External database changes stop stale saves and show reload/backup recovery actions. The host still uses `current.tandem.lock`; remove a stale lock only after confirming that no SideCut host is running.
 
-`vp install` installs the desktop FFmpeg and FFprobe dependencies, so **Watch folder** and native media jobs need no system installation or PATH setup. FFmpeg uses `ffmpeg-static@5.3.0` and FFprobe uses `ffprobe-static@3.1.0`; the workspace allows FFmpeg's binary download during installation. Host-only `SIDECUT_FFMPEG` and `SIDECUT_FFPROBE` can override the supplied executable paths. Folder watching scans recursively each second and waits two seconds for writes to settle. It ignores hidden folders, exports, dependency/cache folders, Filmora `.wfp.dir` folders, and symlinks. Changed files retain their media IDs. Reselect the folder after restarting the app, or to retry a failed import. Source copies currently remain in the desktop renderer's IndexedDB.
+`vp install` installs the desktop FFmpeg and FFprobe dependencies, so **Watch folder** and native media jobs need no system installation or PATH setup. FFmpeg uses `ffmpeg-static@5.3.0` and FFprobe uses `ffprobe-static@3.1.0`; the workspace allows FFmpeg's binary download during installation. Host-only `SIDECUT_FFMPEG` and `SIDECUT_FFPROBE` can override the supplied executable paths. Folder watching scans recursively each second and waits two seconds for writes to settle. It ignores hidden folders, exports, dependency/cache folders, Filmora `.wfp.dir` folders, and symlinks. Changed files retain their media IDs. Reselect the folder after restarting the app, or to retry a failed import. Source copies live in the profile's `storage-files` directory, with SQLite metadata.
 
 Native probing, audio decoding to WAV, and VP8/Opus WebM export support inputs/outputs up to 256 MiB and decode/export ranges up to five minutes. Desktop timeline export uses the shared browser compositor followed by native encoding, so browser composition/codec limits still apply. Missing binaries and decoder failures appear as errors. Cancellation waits for the child to exit and removes temporary files. The real-codec test runs against the installed binaries without relying on PATH. Native packages stay external to the host JavaScript bundle so their executable paths resolve correctly during development. The installed packages retain their licence files, including FFmpeg's downloaded LICENSE and README companions. Desktop packaging copies the matching binaries and their notices into application resources outside ASAR.
 
@@ -278,7 +278,7 @@ loopback HTTP port and bearer token. `GET /v1/health` is public; `status`, `medi
 `timeline` and `clips` require `Authorization: Bearer <token>`. Use `POST` with
 `Content-Type: application/json` to pass arguments. `media` with `refresh: true`
 scans the selected watched folder and uses the editor's shared edit history.
-Browser-origin requests are rejected. Full query parity and MCP remain pending.
+Browser-origin requests are rejected. Full query and MCP compatibility remain pending.
 
 The desktop service also exposes `apply`, `undo`, `redo`, `history`, `diff`,
 `restore`, speech/transcription operations, `join`, `captions`, `short`, `cards`,
@@ -296,6 +296,20 @@ the CLI commands; select the running host with `--endpoint-file` or
 Checks currently require `quick:true`; provider network calls are opt-in.
 See [CLI usage, verification and compatibility limits](docs/verification/phases-126-130.md).
 
+MCP is available with `node scripts/sidecut-mcp.mjs --endpoint-file <discovery-file>`.
+It exposes 43 tools through the same host, with PNG results for frame inspection.
+`@sidecut/client` derives TypeScript requests from the host definitions.
+The Export dialog now retains queued WebM/WAV downloads, and the editor includes
+more keyboard/clipboard controls and a compact desktop layout. See
+[setup, verification and remaining gaps](docs/verification/phases-131-135.md).
+
+Windows now has a per-user NSIS installer with a bundled CLI launcher. The installed
+app passes import/edit/export/archive/reopen checks in a temporary Unicode/space
+path. Chromium and Firefox pass the production browser journey on Windows;
+the tested WebKit port lacks required media APIs. macOS/Linux installation gates
+are prepared for native CI but remain unverified. See the
+[delivery, browser matrix and pinned parity audit](docs/verification/phases-136-140.md).
+
 Desktop downloads can be built manually from **Actions**, **Desktop builds**, **Run workflow**, or by pushing a version tag such as `v0.1.0`, after the workflow is pushed to GitHub. Linux builds produce AppImage and `.deb`; Apple Silicon builds produce `.dmg` and `.zip`. The workflow verifies the packaged app before uploading downloads, which expire after one day. macOS builds use ad-hoc signing and are not notarized. See [desktop builds](docs/desktop-builds.md) for commands, resource layout, free-tier limits and verification status.
 
 ## Static hosting
@@ -305,3 +319,5 @@ Desktop downloads can be built manually from **Actions**, **Desktop builds**, **
 On Vercel, use `apps/web` as the root directory and the TanStack Start framework preset. Nitro detects Vercel and generates `.vercel/output` with server routing and static assets. Leave the build command and output directory at their framework defaults.
 
 GitHub Actions is configured to check and build on Windows, Linux, and macOS. Only local Windows verification has been performed so far.
+
+Browser persistence uses SQLite WASM in a worker and OPFS, with Web Locks coordinating tabs. Legacy IndexedDB projects, media, assets, and segments, plus localStorage preferences, migrate without deleting originals. OPFS failures block saving visibly. See [SQLite migration and verification](docs/verification/sqlite-migration.md) for checks and browser limits.

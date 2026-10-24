@@ -814,6 +814,82 @@ button.editor-track-name:focus-visible {
   }
 }
 
+.editor-export-dialog {
+  max-height: calc(100svh - 32px);
+  overflow-y: auto;
+}
+.editor-track {
+  position: relative;
+}
+.editor-track-header .editor-divider {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  z-index: 3;
+}
+.editor-marquee {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border: 1px solid var(--primary);
+  background: color-mix(in oklch, var(--primary) 20%, transparent);
+  pointer-events: none;
+  z-index: 4;
+}
+.editor-export-list {
+  display: grid;
+  gap: 12px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.editor-export-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-block: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.editor-export-list strong {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
+}
+.editor-keymap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.editor-keymap select {
+  width: 140px;
+}
+@media (max-width: 1000px) {
+  .editor-topbar {
+    height: auto;
+    min-height: 56px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  .editor-topbar-actions {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+}
+@media (max-width: 760px) {
+  .editor-topbar-actions {
+    flex-basis: 100%;
+  }
+  .editor-brand {
+    font-size: 15px;
+  }
+  .editor-edit-toolbar {
+    flex-wrap: wrap;
+  }
+}
+
 .editor-project-json {
   white-space: pre-wrap;
   overflow-wrap: anywhere;

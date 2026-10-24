@@ -59,7 +59,8 @@ describe("native media jobs", () => {
     const media = new NativeMedia(),
       controller = new AbortController();
     const child = media.execute(process.execPath, [script], controller.signal, () => {});
-    const stopped = expect(child).rejects.toThrow(/cancelled/);
+    // Handle early rejection while waiting for the child to create its marker.
+    void child.catch(() => {});
     try {
       const deadline = Date.now() + 5000;
       let pid = 0;
@@ -69,7 +70,7 @@ describe("native media jobs", () => {
       }
       expect(pid).toBeGreaterThan(0);
       controller.abort();
-      await stopped;
+      await expect(child).rejects.toThrow(/cancelled/);
       expect(() => process.kill(pid, 0)).toThrow();
     } finally {
       controller.abort();

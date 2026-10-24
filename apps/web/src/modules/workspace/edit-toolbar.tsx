@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
 import { Field, FieldLabel, FieldGroup } from "@sidecut/ui/components/field";
@@ -8,13 +8,34 @@ import { TimeEditsDialog } from "./time-edits-dialog";
 import { SpeechToolsDialog } from "./speech-tools";
 
 export function EditToolbar({ run }: { run: (action: () => unknown) => void }) {
-  const { session } = useEditorSession();
+  const { session, editor } = useEditorSession();
+  const keymap = useEditorView((s) => s.keymap),
+    range = useEditorView((s) => s.range);
   const selected = useEditorView((s) => s.selected);
   const actions = useEditActions(run);
   const [start, setStart] = useState("0"),
     [finish, setFinish] = useState("1");
+  useEffect(() => {
+    if (range) {
+      setStart(String(range.from));
+      setFinish(String(range.to));
+    }
+  }, [range]);
   return (
     <div className="editor-edit-toolbar">
+      <label className="editor-keymap">
+        Keys
+        <select
+          aria-label="Keyboard layout"
+          value={keymap}
+          onChange={(event) =>
+            editor.getState().setKeymap(event.target.value === "minimal" ? "minimal" : "premiere")
+          }
+        >
+          <option value="premiere">Premiere subset</option>
+          <option value="minimal">Editing only</option>
+        </select>
+      </label>
       <Button
         variant="ghost"
         size="xs"

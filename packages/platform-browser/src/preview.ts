@@ -71,7 +71,13 @@ export class LocalMediaReader {
             width: Math.min(maxWidth, await video.getDisplayWidth()),
             poolSize: 2,
           });
-        if (audio) reader.sound = new AudioBufferSink(audio);
+        if (audio) {
+          if (typeof AudioBuffer === "undefined")
+            throw new Error(
+              "This browser cannot render audio: Web Audio AudioBuffer support is unavailable.",
+            );
+          reader.sound = new AudioBufferSink(audio);
+        }
       }
       return reader;
     } catch (error) {

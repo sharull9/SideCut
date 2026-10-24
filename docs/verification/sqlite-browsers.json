@@ -1,0 +1,58 @@
+{
+  "testedAt": "2026-10-24T16:30:47.837Z",
+  "source": "Vite-served isolated browser modules",
+  "results": [
+    {
+      "engine": "chromium",
+      "version": "156.0.8078.4",
+      "passed": [
+        "legacy snapshot, journal, and media imported without modifying originals",
+        "asset files and saved segments migrate and round-trip",
+        "preferences and binary cache values round-trip",
+        "interrupted migration is retryable",
+        "stale writer rejected",
+        "missing media remains relinkable without blocking project loading",
+        "failed save retains committed snapshot",
+        "stale writer rejected",
+        "damaged snapshot recovers previous valid version",
+        "projects, media, libraries and preferences survive page restart",
+        "two tabs serialize SQLite access and reject stale compare-and-swap",
+        "damaged legacy data blocks writes and can be repaired and retried"
+      ],
+      "errors": [],
+      "opfs": "available",
+      "accepted": true
+    },
+    {
+      "engine": "firefox",
+      "version": "157.0",
+      "passed": [
+        "legacy snapshot, journal, and media imported without modifying originals",
+        "asset files and saved segments migrate and round-trip",
+        "preferences and binary cache values round-trip",
+        "interrupted migration is retryable",
+        "stale writer rejected",
+        "missing media remains relinkable without blocking project loading",
+        "failed save retains committed snapshot",
+        "stale writer rejected",
+        "damaged snapshot recovers previous valid version",
+        "projects, media, libraries and preferences survive page restart",
+        "two tabs serialize SQLite access and reject stale compare-and-swap",
+        "damaged legacy data blocks writes and can be repaired and retried"
+      ],
+      "errors": [],
+      "opfs": "available",
+      "accepted": true
+    },
+    {
+      "engine": "webkit",
+      "version": "27.2",
+      "passed": [],
+      "errors": [
+        "page.evaluate: Error: SQLite browser storage is unavailable. Use a browser with working OPFS storage or the desktop app. The operation failed for an unknown transient reason (e.g. out of memory)."
+      ],
+      "opfs": "UnknownError: The operation failed for an unknown transient reason (e.g. out of memory).",
+      "accepted": false
+    }
+  ]
+}

@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "mcp": "vp exec node scripts/sidecut-mcp.mjs",
     "cli": "vp exec node scripts/sidecut-cli.mjs",
     "dev": "vp run --filter @sidecut/web dev",
     "dev:desktop": "vp run --filter @sidecut/web build && vp run --filter @sidecut/desktop start",
@@ -19,11 +20,17 @@
     "test": "vp test run --passWithNoTests",
     "check": "vp run format:check && vp run lint && vp run typecheck && vp run test",
     "package:desktop": "vp run build:desktop && vp exec node scripts/package-desktop.mjs",
-    "verify:packaged": "vp exec node scripts/verify-packaged.mjs"
+    "verify:packaged": "vp exec node scripts/verify-packaged.mjs",
+    "verify:browsers": "vp exec node scripts/verify-browsers.mjs",
+    "verify:windows-install": "pwsh -NoProfile -File scripts/verify-windows-install.ps1",
+    "verify:sqlite": "vp exec node scripts/verify-sqlite.mjs"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@sidecut/config": "workspace:*",
     "@types/node": "catalog:",
+    "axe-core": "^4.14.0",
+    "playwright": "^1.64.1",
     "typescript": "catalog:",
     "vite-plus": "catalog:"
   },

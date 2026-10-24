@@ -7,6 +7,11 @@ export interface EditorView {
   seekVersion: number;
   zoom: number;
   selected: readonly string[];
+  selectMany: (ids: readonly string[]) => void;
+  keymap: "premiere" | "minimal";
+  setKeymap: (keymap: "premiere" | "minimal") => void;
+  range: { from: number; to: number } | null;
+  setRange: (range: { from: number; to: number } | null) => void;
   /** The alternate output format the viewer shows, or null for the main canvas. */
   format: string | null;
   setFormat: (format: string | null) => void;
@@ -23,6 +28,11 @@ export function createEditorView() {
     seekVersion: 0,
     zoom: 60,
     selected: [],
+    selectMany: (selected) => set({ selected }),
+    keymap: "premiere",
+    setKeymap: (keymap) => set({ keymap }),
+    range: null,
+    setRange: (range) => set({ range }),
     format: null,
     setFormat: (format) => set({ format }),
     seek: (playhead) => set((state) => ({ playhead, seekVersion: state.seekVersion + 1 })),
@@ -44,6 +54,7 @@ export function createEditorView() {
         playhead: new Time(0n),
         playing: false,
         selected: [],
+        range: null,
         format: null,
         seekVersion: state.seekVersion + 1,
       })),

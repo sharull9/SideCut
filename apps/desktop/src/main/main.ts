@@ -13,6 +13,7 @@ import { resolveRendererPath } from "./renderer-path.ts";
 import { DesktopAssetProviders } from "./asset-providers.ts";
 import { HostProjectService } from "./project-service.ts";
 import { NativeProjectStore } from "./project-store.ts";
+import { NativeStorage } from "./sqlite-storage.ts";
 import { registerNativeIPC } from "./native-ipc.ts";
 import { ProjectAPI } from "./project-api.ts";
 import { LocalHTTPService } from "./http-service.ts";
@@ -81,7 +82,7 @@ const createWindow = () => {
   const window = new BrowserWindow({
     width: 1440,
     height: 900,
-    minWidth: 960,
+    minWidth: 640,
     minHeight: 600,
     title: "SideCut",
     show: false,
@@ -115,6 +116,22 @@ app.on("web-contents-created", (_event, contents) => {
 });
 
 void app.whenReady().then(() => {
+  const storage = new NativeStorage(app.getPath("userData"));
+  for (const [channel, handler] of [
+    [bridgeChannels.storageRequest, (value: unknown) => storage.request(value)],
+    [bridgeChannels.storagePutFile, (value: unknown) => storage.putFile(value)],
+    [bridgeChannels.storageGetFile, (value: unknown) => storage.getFile(value)],
+  ] as const)
+    ipcMain.handle(channel, (event, value: unknown) => {
+      if (
+        !event.senderFrame ||
+        event.senderFrame !== event.sender.mainFrame ||
+        !isTrusted(event.senderFrame.url)
+      )
+        throw new Error("Untrusted storage sender.");
+      return handler(value);
+    });
+  app.once("will-quit", () => storage.close());
   const providers = new DesktopAssetProviders(join(app.getPath("userData"), "assets")),
     requests = new Map<string, AbortController>();
   ipcMain.handle(bridgeChannels.providerCall, async (event, id: unknown, request: unknown) => {
@@ -161,7 +178,11 @@ void app.whenReady().then(() => {
   session.defaultSession.setPermissionCheckHandler(() => false);
 
   ipcMain.handle(bridgeChannels.appInfo, (event): DesktopAppInfo => {
-    if (!event.senderFrame || !isTrusted(event.senderFrame.url))
+    if (
+      !event.senderFrame ||
+      event.senderFrame !== event.sender.mainFrame ||
+      !isTrusted(event.senderFrame.url)
+    )
       throw new Error("Untrusted sender.");
     return {
       name: app.getName(),
@@ -227,7 +248,7 @@ void app.whenReady().then(() => {
       const window = createWindow();
       if (smoke)
         void import("./packaged-smoke.ts")
-          .then(({ verifyPackaged }) => verifyPackaged(window))
+          .then(({ verifyPackaged }) => verifyPackaged(window, providers.credentials))
           .then((result) =>
             writeFile(
               app.commandLine.getSwitchValue("smoke-output"),

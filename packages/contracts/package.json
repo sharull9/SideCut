@@ -9,7 +9,8 @@
     "./time": "./src/time.ts",
     "./commands": "./src/commands.ts",
     "./project": "./src/project.ts",
-    "./desktop": "./src/desktop.ts"
+    "./desktop": "./src/desktop.ts",
+    "./storage": "./src/storage.ts"
   },
   "scripts": {
     "typecheck": "vp exec tsc --noEmit"

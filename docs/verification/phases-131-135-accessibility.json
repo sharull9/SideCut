@@ -1,0 +1,16 @@
+{
+  "violations": [],
+  "passes": 20,
+  "incomplete": [
+    {
+      "id": "color-contrast",
+      "nodes": [["button[aria-label=\"Zoom out timeline\"]"]]
+    }
+  ],
+  "manualContrast": {
+    "target": "Zoom out timeline",
+    "foreground": [250, 250, 250],
+    "background": [23, 23, 23],
+    "ratio": 17.176123405576867
+  }
+}

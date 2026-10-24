@@ -1,3 +1,6 @@
+import type { DurableStorage } from "./sqlite-client";
+import { encodeStored, decodeStored } from "./storage-codec";
+import { migrateLibrary } from "./legacy-storage";
 import { decodeAsset, searchAssets, type Asset } from "@sidecut/contracts/assets";
 import { parseCube } from "@sidecut/core/cube-lut";
 import { openAnimatedImage, openLottie } from "./animation";
@@ -11,26 +14,44 @@ export interface LibraryEntry {
   fontFamily?: string;
   extras?: File[];
 }
-function request<T>(r: IDBRequest<T>) {
-  return new Promise<T>((resolve, reject) => {
-    r.onsuccess = () => resolve(r.result);
-    r.onerror = () => reject(r.error);
-  });
+function libraryEntry(value: unknown): LibraryEntry {
+  if (!value || typeof value !== "object" || !("asset" in value))
+    throw new Error("Invalid stored asset.");
+  const entry: LibraryEntry = { asset: decodeAsset(value.asset) };
+  const file = (raw: unknown) => {
+    if (!(raw instanceof File)) throw new Error("Invalid asset file.");
+    return raw;
+  };
+  if ("original" in value && value.original !== undefined) entry.original = file(value.original);
+  if ("normalised" in value && value.normalised !== undefined)
+    entry.normalised = file(value.normalised);
+  if ("licence" in value && value.licence !== undefined) entry.licence = file(value.licence);
+  if ("fontFamily" in value) {
+    if (typeof value.fontFamily !== "string") throw new Error("Invalid font family.");
+    entry.fontFamily = value.fontFamily;
+  }
+  if ("extras" in value) {
+    if (!Array.isArray(value.extras) || !value.extras.every((v: unknown) => v instanceof File))
+      throw new Error("Invalid asset extra files.");
+    entry.extras = value.extras;
+  }
+  return entry;
 }
 export class AssetLibrary {
-  private constructor(private db: IDBDatabase) {}
+  private constructor(private db: DurableStorage) {}
   static async open() {
-    const r = indexedDB.open("sidecut-assets", 1);
-    r.onupgradeneeded = () => r.result.createObjectStore("assets");
-    return new AssetLibrary(await request(r));
+    return new AssetLibrary(
+      await migrateLibrary("assets", "sidecut-assets", "assets", libraryEntry),
+    );
   }
   async entries(query = "", kind = "", licence = "") {
-    const values = await request<LibraryEntry[]>(
-      this.db.transaction("assets").objectStore("assets").getAll(),
+    const rows = await this.db.request({ type: "read", collection: "assets" });
+    const values = await Promise.all(
+      rows.map(async (r) => libraryEntry(await decodeStored(r.value, this.db))),
     );
     const ids = new Set(
       searchAssets(
-        values.map((v) => decodeAsset(v.asset)),
+        values.map((v) => v.asset),
         query,
         kind,
         licence,
@@ -41,37 +62,50 @@ export class AssetLibrary {
       .sort((a, b) => a.asset.name.localeCompare(b.asset.name));
   }
   async get(id: string) {
-    return await request<LibraryEntry | undefined>(
-      this.db.transaction("assets").objectStore("assets").get(id),
-    );
+    const row = (await this.db.request({ type: "read", collection: "assets", key: id }))[0];
+    return row ? libraryEntry(await decodeStored(row.value, this.db)) : undefined;
   }
   async put(entry: LibraryEntry) {
-    const asset = decodeAsset(entry.asset);
-    await new Promise<void>((resolve, reject) => {
-      const tx = this.db.transaction("assets", "readwrite");
-      tx.objectStore("assets").put({ ...entry, asset }, asset.id);
-      tx.oncomplete = () => resolve();
-      tx.onabort = () =>
-        reject(tx.error ?? new Error("Library save failed. Free browser storage and retry."));
+    const validated = libraryEntry(entry);
+    await this.db.request({
+      type: "commit",
+      checks: [],
+      writes: [
+        {
+          collection: "assets",
+          key: validated.asset.id,
+          value: await encodeStored(validated, this.db),
+        },
+      ],
     });
   }
   async mergeRemote(assets: readonly Asset[]) {
     const decoded = assets.map(decodeAsset);
-    await new Promise<void>((resolve, reject) => {
-      const tx = this.db.transaction("assets", "readwrite"),
-        store = tx.objectStore("assets");
-      for (const asset of decoded) {
-        const r = store.get(asset.id);
-        r.onsuccess = () => {
-          if (!r.result) store.put({ asset }, asset.id);
-        };
-      }
-      tx.oncomplete = () => resolve();
-      tx.onabort = () => reject(tx.error ?? new Error("Starter installation failed."));
-    });
+    const existing = new Set(
+      (await this.db.request({ type: "read", collection: "assets" })).map((r) => r.key),
+    );
+    const missing = decoded.filter((a) => !existing.has(a.id));
+    if (!missing.length) return;
+    try {
+      await this.db.request({
+        type: "commit",
+        checks: missing.map((a) => ({ collection: "assets", key: a.id, value: null })),
+        writes: await Promise.all(
+          missing.map(async (asset) => ({
+            collection: "assets" as const,
+            key: asset.id,
+            value: await encodeStored({ asset }, this.db),
+          })),
+        ),
+      });
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.includes("Save conflict:")) throw error;
+      // A confirmed conflict wrote nothing; preserve the newly added rows and retry the rest.
+      await this.mergeRemote(decoded);
+    }
   }
   close() {
-    this.db.close();
+    /* Shared page connection. */
   }
 }
 export const libraryState = (entry: LibraryEntry) =>

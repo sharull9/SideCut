@@ -17,6 +17,8 @@ import { BrowserProjectStore } from "@sidecut/platform-browser/storage";
 import { acquireProjectWriter } from "@sidecut/platform-browser/writer-lock";
 import { SaveQueue } from "@sidecut/platform-browser/save-queue";
 import { BrowserJobs } from "@sidecut/platform-browser/jobs";
+import { ExportQueue } from "@sidecut/platform-browser/export-queue";
+import { presetProject, type ExportPreset } from "@sidecut/core/export-presets";
 import { probeLocalFile, mediaIdentity } from "@sidecut/platform-browser/media";
 import { MediaAnalysis } from "./media-analysis";
 import { recordAssetUse, assetSuggestions, assetUses } from "@sidecut/core/asset-use";
@@ -75,6 +77,36 @@ function coordinatorState(coordinator: ProjectCoordinator | HostCoordinator): Se
 
 export class BrowserProjectSession {
   readonly jobs = new BrowserJobs(2);
+  readonly exports = new ExportQueue();
+  queueExport(format: string | null = null, preset: ExportPreset | "wav" = "webm") {
+    const { project, revision } = this.state;
+    const name = `${project.name.replace(/[\\/:*?"<>|]/g, "_") || "SideCut"}${format ? ` ${format}` : ""}${preset === "webm" ? "" : ` ${preset}`}.${preset === "wav" ? "wav" : "webm"}`;
+    return this.exports.enqueue(name, async (signal, progress) => {
+      if (this.state.project.id !== project.id || this.state.revision !== revision)
+        throw new Error("Project changed after this export was queued. Queue it again.");
+      if (preset === "wav") {
+        const { renderService } = await import("./service-render");
+        const duration = Math.max(
+          0,
+          ...[...project.videoTracks, ...project.audioTracks].flatMap((t) =>
+            t.clips.map((c) => c.start.seconds + c.duration.seconds),
+          ),
+        );
+        const result = await renderService(
+          this,
+          "clip",
+          { start: 0, end: duration, audioOnly: true, format },
+          signal,
+        );
+        if (!("data" in result) || typeof result.data !== "string")
+          throw new Error("Audio export returned no data.");
+        return new Blob([Uint8Array.from(atob(result.data), (c) => c.charCodeAt(0))], {
+          type: "audio/wav",
+        });
+      }
+      return this.exportWebM(signal, progress, format, preset);
+    });
+  }
   readonly analysis = new MediaAnalysis(this);
   private archivedRaw: string | null = null;
   private envelope = standardProject("prj_loading");
@@ -220,6 +252,7 @@ export class BrowserProjectSession {
       ) {
         this.hostGeneration = this.coordinator.generation;
         ++this.epoch;
+        this.exports.clear();
         this.jobs.cancelAll();
         this.analysis.reset();
         this.exportController?.abort();
@@ -307,6 +340,7 @@ export class BrowserProjectSession {
   }
 
   private attach(file: ProjectFile, readOnly: boolean) {
+    this.exports.clear();
     this.jobs.cancelAll();
     this.analysis.reset();
     this.unsubscribe?.();
@@ -392,11 +426,12 @@ export class BrowserProjectSession {
     signal: AbortSignal,
     onProgress: (progress: number) => void,
     format: string | null = null,
+    preset: ExportPreset = "webm",
   ) {
     if (!this.store || this.state.busy || this.state.saveState === "loading")
       throw new Error("Wait for the current project operation to finish.");
     const store = this.store,
-      project = formatProject(this.state.project, format),
+      project = presetProject(formatProject(this.state.project, format), preset),
       epoch = this.epoch,
       controller = new AbortController();
     this.exportController = controller;
@@ -510,6 +545,7 @@ export class BrowserProjectSession {
   async openProject(file: File) {
     if (!this.store || this.state.busy || this.state.saveState === "loading")
       throw new Error("Wait for browser storage to finish opening.");
+    this.exports.clear();
     this.jobs.cancelAll();
     const epoch = this.epoch;
     this.update({ busy: true, error: null });
@@ -1070,6 +1106,7 @@ export class BrowserProjectSession {
   }
 
   async close() {
+    this.exports.clear();
     this.jobs.cancelAll();
     this.analysis.reset();
     this.exportController?.abort();

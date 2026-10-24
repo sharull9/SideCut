@@ -1,5 +1,11 @@
 # Tandem schema fixtures
 
+`pinned-inventory.json` records all 51 edit commands, 34 project operations,
+11 asset/segment operations, 43 MCP tools, 15 effects and 8 transitions from
+commit `735a9b8e162c1f951044baa892d94993869f2e77`. The capture script checks the
+checkout revision before extraction. Inventory coverage does not establish
+semantic parity; see [the final audit](../../../docs/verification/phases-136-140.md).
+
 These synthetic JSON files were authored for SideCut from the wire format and
 defaults in `Sources/TandemCore/Model.swift`, `Persistence.swift`, and `Time.swift`
 at [Tandem revision 735a9b8](https://github.com/mikecann/tandem/tree/735a9b8e162c1f951044baa892d94993869f2e77).

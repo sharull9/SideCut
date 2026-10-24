@@ -1,6 +1,6 @@
 # Tandem parity roadmap
 
-Status: phases 001-027 and 029-105 are implemented and verified on Windows Chromium, within the recorded browser limits. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. Phase 095's comparison against frames saved by macOS Tandem also remains pending; its animation boundaries are verified against the ported reference formulas. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), [061-066](verification/phases-061-066.md), [067-072](verification/phases-067-072.md), [073-078](verification/phases-073-078.md), [079-084](verification/phases-079-084.md), [085-090](verification/phases-085-090.md), [091-096](verification/phases-091-096.md), [097-100](verification/phases-097-100.md), and [101-105 evidence and limits](verification/phases-101-105.md). Phases 106-110 are implemented with fixture and browser checks; see [106-110 evidence and limits](verification/phases-106-110.md). Phase 109 live paid acceptance remains pending. Phases 111-115 are implemented and verified against the Windows desktop baseline; see [111-115 evidence and limits](verification/phases-111-115.md). Phases 116-119 now have Windows implementations within the recorded import/archive limits. Phase 120 has all four query adapters; full Filmora mapping and exact query-text parity remain pending. See [116-120 evidence and remaining work](verification/phases-116-120.md). Phases 121-125 now expose 21 HTTP operations with Windows fixture and runtime checks; see [121-125 evidence and compatibility gaps](verification/phases-121-125.md). Phase 126 onward remains pending. Full rendering parity, packaged desktop delivery, and CLI/MCP tools remain planned.
+Status: phases 001-027 and 029-105 are implemented and verified on Windows Chromium, within the recorded browser limits. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. Phase 095's comparison against frames saved by macOS Tandem also remains pending; its animation boundaries are verified against the ported reference formulas. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), [061-066](verification/phases-061-066.md), [067-072](verification/phases-067-072.md), [073-078](verification/phases-073-078.md), [079-084](verification/phases-079-084.md), [085-090](verification/phases-085-090.md), [091-096](verification/phases-091-096.md), [097-100](verification/phases-097-100.md), and [101-105 evidence and limits](verification/phases-101-105.md). Phases 106-110 are implemented with fixture and browser checks; see [106-110 evidence and limits](verification/phases-106-110.md). Phase 109 live paid acceptance remains pending. Phases 111-115 are implemented and verified against the Windows desktop baseline; see [111-115 evidence and limits](verification/phases-111-115.md). Phases 116-119 now have Windows implementations within the recorded import/archive limits. Phase 120 has all four query adapters; full Filmora mapping and exact query-text parity remain pending. See [116-120 evidence and remaining work](verification/phases-116-120.md). Phases 121-125 now expose 21 HTTP operations with Windows fixture and runtime checks; see [121-125 evidence and compatibility gaps](verification/phases-121-125.md). Phases 126-130 add review/resource/library adapters and a host-backed CLI; see [126-130 evidence](verification/phases-126-130.md). Phases 131-135 add baseline MCP/client adapters, queued UI exports, editor interactions and compact layout; see [131-135 evidence and gaps](verification/phases-131-135.md). Phases 136-140 now have browser, Windows installer and pinned inventory evidence; see [136-140 results and blockers](verification/phases-136-140.md). Native macOS/Linux delivery, WebKit media, public hosting and Tandem round trips remain open. Full rendering and adapter parity is not claimed.
 
 ## Goal and baseline
 
@@ -981,6 +981,13 @@ Accept when a script creates, edits, inspects, and exports a project through the
 
 ### Phase 131: MCP
 
+Baseline implementation for phases 131–135 is recorded in [the verification
+report](verification/phases-131-135.md): 43 MCP tools, schema-derived client
+requests, queued UI exports, additional editor interactions, and a compact
+layout. Windows runtime and automated accessibility evidence are linked there.
+Full reference schemas/results, preset codecs, context menus, complete keymaps,
+screen readers and other platforms remain open.
+
 - [ ] Add stdio MCP lifecycle, schemas, and reference server instructions.
 - [ ] Wire one of the 43 listed tools per subphase with the correct text/image result blocks.
 
@@ -988,7 +995,7 @@ Accept when a real MCP client can inspect, edit, undo, and inspect a frame while
 
 ### Phase 132: TypeScript client
 
-- [ ] Generate client request/command types from the authoritative schemas.
+- [x] Generate client request/command types from the authoritative schemas.
 - [ ] Port the reference SDK usage patterns over the compatible service.
 
 Accept when a small bulk-edit client handles conflicts and idempotent retries without relying on manually duplicated types.
@@ -998,7 +1005,7 @@ Accept when a small bulk-edit client handles conflicts and idempotent retries wi
 ### Phase 133: Export presets and queue
 
 - [ ] Complete reference preset sizing/quality, alternate-format exports, and audio-only variants.
-- [ ] Add queued jobs, cancellation, error details, and completed-output actions.
+- [x] Add queued jobs, cancellation, error details, and completed-output actions. Baseline UI queue; persistent/service queues remain pending.
 
 Accept each preset/output mode separately against dimensions, frame counts, audio levels, and warnings.
 
@@ -1018,6 +1025,12 @@ Accept each workflow separately with visible focus and no inaccessible essential
 
 ### Phase 136: Browser compatibility
 
+Work and acceptance for phases 136–140 are recorded in [the verification
+report](verification/phases-136-140.md). Chromium/Firefox production journeys
+and Windows NSIS installation/CLI are verified. WebKit media, public hosting,
+native macOS/Linux installation and Tandem reference round trips remain open.
+The pinned inventory audit confirms name coverage and reports partial parity.
+
 - [ ] Run the complete hosted edit/save/reopen/export journey in Chromium, Firefox, and WebKit/Safari.
 - [ ] Publish tested codec, persistence, model, memory, and file-access limits per browser.
 
@@ -1025,8 +1038,8 @@ Accept each browser separately. Unsupported essentials remain open gaps and do n
 
 ### Phase 137: Windows delivery
 
-- [ ] Package/install the desktop application and CLI on Windows.
-- [ ] Verify Unicode/space paths, credential storage, locking, import, edit, archive, and export.
+- [x] Package/install the desktop application and CLI on Windows.
+- [x] Verify Unicode/space paths, credential storage, locking, import, edit, archive, and export.
 
 Accept when the installed build completes the journey and records signing/install limitations.
 

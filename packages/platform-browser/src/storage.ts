@@ -1,275 +1,297 @@
 import { replayJournal } from "@sidecut/core/coordinator";
 import { decodeProjectFile, encodeProjectFile } from "@sidecut/contracts/project";
 import type { ProjectFile } from "@sidecut/contracts/project";
+import type { DurableStorage } from "./sqlite-client";
+import { encodeStored, decodeStored } from "./storage-codec";
+import { migrateLegacy, readLegacy } from "./legacy-storage";
+import type { StorageRequest } from "@sidecut/contracts/storage";
 
 export interface LocalResource {
   file: File;
   state: "available" | "unsupported";
   detail: string;
 }
-
-function request<T>(value: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    value.onsuccess = () => resolve(value.result);
-    value.onerror = () => reject(value.error ?? new Error("Browser storage request failed."));
-  });
-}
-
-function completed(transaction: IDBTransaction): Promise<void> {
-  const promise = new Promise<void>((resolve, reject) => {
-    transaction.oncomplete = () => resolve();
-    transaction.onabort = () =>
-      reject(transaction.error ?? new Error("Browser storage transaction was aborted."));
-    transaction.onerror = () => {
-      /* onabort reports the final failure. */
+export function storedResource(value: unknown): LocalResource | null {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    !("file" in value) ||
+    !("state" in value) ||
+    !("detail" in value) ||
+    typeof value.detail !== "string" ||
+    (value.state !== "available" && value.state !== "unsupported")
+  )
+    return null;
+  const file = value.file;
+  if (file instanceof File) return { file, state: value.state, detail: value.detail };
+  if (
+    file &&
+    typeof file === "object" &&
+    "bytes" in file &&
+    file.bytes instanceof ArrayBuffer &&
+    "name" in file &&
+    typeof file.name === "string" &&
+    "type" in file &&
+    typeof file.type === "string" &&
+    "lastModified" in file &&
+    typeof file.lastModified === "number" &&
+    Number.isFinite(file.lastModified)
+  )
+    return {
+      file: new File([file.bytes], file.name, { type: file.type, lastModified: file.lastModified }),
+      state: value.state,
+      detail: value.detail,
     };
-  });
-  void promise.catch(() => {});
-  return promise;
+  return null;
 }
+
+const decode = (value: string, id: string) => {
+  const file = replayJournal(decodeProjectFile(JSON.parse(value)));
+  if (file.project.id !== id) throw new Error("Saved project ID does not match.");
+  return file;
+};
+const resourceKey = (project: string, media: string) => JSON.stringify([project, media]);
 
 export class BrowserProjectStore {
   private readonly versions = new Map<string, string>();
+  private constructor(private readonly database: DurableStorage) {}
 
-  private constructor(private readonly database: IDBDatabase) {}
-
-  static async open(): Promise<BrowserProjectStore> {
-    const open = indexedDB.open("sidecut", 2);
-    open.onupgradeneeded = () => {
-      for (const name of ["projects", "preferences", "resources", "journals", "previous"])
-        if (!open.result.objectStoreNames.contains(name)) open.result.createObjectStore(name);
-    };
-    const database = await request(open);
-    database.onversionchange = () => database.close();
+  static async open() {
+    const database = await migrateLegacy("sidecut-projects", async (storage) => {
+      const legacy = await readLegacy("sidecut", [
+        "projects",
+        "preferences",
+        "resources",
+        "journals",
+        "previous",
+      ]);
+      const writes: Extract<StorageRequest, { type: "commit" }>["writes"][number][] = [];
+      if (!storage.native) {
+        const ids = new Set(
+          [...(legacy.projects ?? []), ...(legacy.previous ?? []), ...(legacy.journals ?? [])].map(
+            (e) => e.key,
+          ),
+        );
+        for (const id of ids) {
+          if (typeof id !== "string") throw new Error("Invalid legacy project ID.");
+          const current = legacy.projects?.find((e) => e.key === id)?.value;
+          const previous = legacy.previous?.find((e) => e.key === id)?.value;
+          const staged = legacy.journals?.find((e) => e.key === id)?.value;
+          let next = current;
+          if (
+            staged &&
+            typeof staged === "object" &&
+            "previous" in staged &&
+            "next" in staged &&
+            (staged.previous === current || staged.next === current)
+          ) {
+            try {
+              if (typeof staged.next !== "string") throw new Error("Invalid journal.");
+              decode(staged.next, id);
+              next = staged.next;
+            } catch {
+              /* Recover the valid current or previous snapshot below. */
+            }
+          }
+          try {
+            if (typeof next !== "string") throw new Error("Invalid snapshot.");
+            decode(next, id);
+          } catch {
+            if (typeof previous !== "string")
+              throw new Error("Legacy project is damaged and has no valid backup.");
+            decode(previous, id);
+            next = previous;
+          }
+          if (typeof next !== "string") throw new Error("Invalid project snapshot.");
+          writes.push({ collection: "projects", key: id, value: next });
+          if (typeof previous === "string") {
+            try {
+              decode(previous, id);
+              writes.push({ collection: "previous", key: id, value: previous });
+            } catch {
+              /* An invalid backup must not prevent importing a valid current snapshot. */
+            }
+          }
+        }
+        const current = legacy.preferences?.find((e) => e.key === "current")?.value;
+        if (current !== undefined) {
+          if (typeof current !== "string" || !ids.has(current))
+            throw new Error("The legacy current project is missing.");
+          writes.push({ collection: "preferences", key: "current", value: current });
+        }
+      }
+      for (const { key, value } of legacy.resources ?? []) {
+        const resource = storedResource(value);
+        if (
+          !Array.isArray(key) ||
+          key.length !== 2 ||
+          typeof key[0] !== "string" ||
+          typeof key[1] !== "string" ||
+          !resource
+        )
+          throw new Error("Invalid legacy media resource.");
+        writes.push({
+          collection: "resources",
+          key: resourceKey(key[0], key[1]),
+          value: await encodeStored(resource, storage),
+        });
+      }
+      return writes;
+    });
     return new BrowserProjectStore(database);
   }
 
+  private async value(collection: "projects" | "previous" | "preferences", key: string) {
+    return (await this.database.request({ type: "read", collection, key }))[0]?.value ?? null;
+  }
   async ensureCurrent(create: () => ProjectFile): Promise<ProjectFile> {
-    const transaction = this.database.transaction(["projects", "preferences"], "readwrite");
-    const done = completed(transaction);
-    // Register a rejection handler immediately so a failed request cannot leave an unhandled abort.
-    void done.catch(() => {});
-    try {
-      const preferences = transaction.objectStore("preferences");
-      const projects = transaction.objectStore("projects");
-      const current: unknown = await request(preferences.get("current"));
-      if (typeof current === "string") {
-        await done;
-        const file = await this.load(current);
-        if (!file)
-          throw new Error(
-            "The saved project is unavailable. Open a downloaded .tandem file to recover it.",
-          );
-        return file;
-      }
-      const file = create();
-      projects.put(encodeProjectFile(file), file.project.id);
-      preferences.put(file.project.id, "current");
-      await done;
-      this.versions.set(file.project.id, encodeProjectFile(file));
+    const current = await this.value("preferences", "current");
+    if (current !== null) {
+      const file = await this.load(current);
+      if (!file)
+        throw new Error(
+          "The saved project is unavailable. Open a downloaded .tandem file to recover it.",
+        );
       return file;
+    }
+    const file = create(),
+      json = encodeProjectFile(file);
+    try {
+      await this.database.request({
+        type: "commit",
+        checks: [
+          { collection: "preferences", key: "current", value: null },
+          { collection: "projects", key: file.project.id, value: null },
+        ],
+        writes: [
+          { collection: "projects", key: file.project.id, value: json },
+          { collection: "preferences", key: "current", value: file.project.id },
+        ],
+      });
     } catch (error) {
-      try {
-        transaction.abort();
-      } catch {
-        /* Already complete or aborted. */
-      }
+      if (error instanceof Error && error.message.startsWith("Save conflict"))
+        return this.ensureCurrent(create);
       throw error;
     }
+    this.versions.set(file.project.id, json);
+    return file;
   }
-
   async load(id: string): Promise<ProjectFile | null> {
-    const transaction = this.database.transaction(["projects", "journals", "previous"], "readonly");
-    const done = completed(transaction);
-    const [current, staged, previous] = await Promise.all([
-      request(transaction.objectStore("projects").get(id)),
-      request(transaction.objectStore("journals").get(id)),
-      request(transaction.objectStore("previous").get(id)),
-    ]);
-    await done;
-    const decode = (value: unknown) => {
-      if (typeof value !== "string")
-        throw new Error("Saved project has an invalid storage format.");
-      const file = replayJournal(decodeProjectFile(JSON.parse(value)));
-      if (file.project.id !== id) throw new Error("Saved project ID does not match.");
-      return file;
-    };
-    if (current === undefined && staged === undefined && previous === undefined) return null;
-    let file: ProjectFile;
-    let recovery: string | null = null;
+    const current = await this.value("projects", id);
+    if (current === null) return null;
     try {
-      if (
-        staged &&
-        typeof staged === "object" &&
-        "previous" in staged &&
-        "next" in staged &&
-        (current === staged.previous || current === staged.next)
-      ) {
-        try {
-          file = decode(staged.next);
-          if (current !== staged.next)
-            recovery = "Recovered the staged edit journal after an interrupted snapshot save.";
-        } catch {
-          file = decode(current);
-          recovery = "An incomplete journal was ignored; the last valid snapshot was opened.";
-        }
-      } else file = decode(current);
+      const file = decode(current, id);
+      this.versions.set(id, current);
+      return file;
     } catch {
-      file = decode(previous);
-      recovery =
-        "Recovered the previous valid project version. The latest stored snapshot was damaged.";
+      const previous = await this.value("previous", id);
+      if (previous === null)
+        throw new Error("Saved project is damaged and no backup is available.");
+      const file = decode(previous, id);
+      await this.database.request({
+        type: "commit",
+        checks: [{ collection: "projects", key: id, value: current }],
+        writes: [{ collection: "projects", key: id, value: previous }],
+      });
+      this.versions.set(id, previous);
+      return {
+        ...file,
+        sidecutRecovery:
+          "Recovered the previous valid project version. The latest stored snapshot was damaged.",
+      };
     }
-    if (recovery) {
-      const repair = this.database.transaction(["projects", "journals", "previous"], "readwrite");
-      const repaired = completed(repair);
-      // Only repair the exact version inspected above; another writer may have saved meanwhile.
-      const actual = await request(repair.objectStore("projects").get(id));
-      if (actual !== current) {
-        repair.abort();
-        await repaired.catch(() => {});
-        throw new Error("Save conflict during recovery. Reopen the project.");
-      }
-      try {
-        decode(current);
-        if (current !== encodeProjectFile(file)) repair.objectStore("previous").put(current, id);
-      } catch {
-        /* Keep the existing backup when the current snapshot is damaged. */
-      }
-      repair.objectStore("projects").put(encodeProjectFile(file), id);
-      repair.objectStore("journals").delete(id);
-      await repaired;
-    }
-    this.versions.set(id, recovery ? encodeProjectFile(file) : (current as string));
-    return recovery ? { ...file, sidecutRecovery: recovery } : file;
   }
-
-  async save(file: ProjectFile): Promise<void> {
+  async save(file: ProjectFile) {
     replayJournal(file);
     const { sidecutRecovery: _recovery, ...clean } = file;
     const json = encodeProjectFile(clean),
       id = file.project.id;
-    const expected = this.versions.get(id);
-    const stage = this.database.transaction(["projects", "journals"], "readwrite");
-    const staged = completed(stage);
-    try {
-      const current = await request(stage.objectStore("projects").get(id));
-      if (current !== expected && current !== json)
-        throw new Error(
-          "Save conflict: a different version is stored. Download your edits, then reopen the saved project.",
-        );
-      stage.objectStore("journals").put({ previous: current, next: json }, id);
-      await staged;
-    } catch (error) {
-      try {
-        stage.abort();
-      } catch {}
-      await staged.catch(() => {});
-      throw error;
-    }
-    const transaction = this.database.transaction(
-      ["projects", "previous", "journals"],
-      "readwrite",
-    );
-    const done = completed(transaction);
-    try {
-      const projects = transaction.objectStore("projects");
-      const current = await request(projects.get(id));
-      if (current !== expected && current !== json)
-        throw new Error(
-          "Save conflict: the stored project changed during this save. Download your edits and reopen.",
-        );
-      if (current !== undefined && current !== json)
-        transaction.objectStore("previous").put(current, id);
-      projects.put(json, id);
-      transaction.objectStore("journals").delete(id);
-      await done;
-      this.versions.set(id, json);
-    } catch (error) {
-      try {
-        transaction.abort();
-      } catch {}
-      await done.catch(() => {});
-      throw error;
-    }
+    const expected = this.versions.get(id) ?? null;
+    await this.database.request({
+      type: "commit",
+      checks: [{ collection: "projects", key: id, value: expected }],
+      writes: [
+        ...(expected === null
+          ? []
+          : [{ collection: "previous" as const, key: id, value: expected }]),
+        { collection: "projects", key: id, value: json },
+      ],
+    });
+    this.versions.set(id, json);
   }
-
-  async importProject(file: ProjectFile): Promise<void> {
+  async importProject(file: ProjectFile) {
     replayJournal(file);
-    const json = encodeProjectFile(file);
-    const transaction = this.database.transaction(["projects", "preferences"], "readwrite");
-    const done = completed(transaction);
-    void done.catch(() => {});
-    try {
-      const projects = transaction.objectStore("projects");
-      const existing: unknown = await request(projects.get(file.project.id));
-      if (existing !== undefined && existing !== json)
-        throw new Error(
-          "A different saved copy has this project ID. Open its saved copy or use another browser profile; the local copy was not overwritten.",
-        );
-      if (existing === undefined) projects.put(json, file.project.id);
-      transaction.objectStore("preferences").put(file.project.id, "current");
-      await done;
-    } catch (error) {
-      try {
-        transaction.abort();
-      } catch {
-        /* Already complete or aborted. */
-      }
-      throw error;
-    }
+    const json = encodeProjectFile(file),
+      id = file.project.id;
+    const existing = await this.value("projects", id);
+    if (existing !== null && existing !== json)
+      throw new Error(
+        "A different saved copy has this project ID. The local copy was not overwritten.",
+      );
+    await this.database.request({
+      type: "commit",
+      checks: [{ collection: "projects", key: id, value: existing }],
+      writes: [
+        { collection: "projects", key: id, value: json },
+        { collection: "preferences", key: "current", value: id },
+      ],
+    });
   }
-
   async resource(projectID: string, mediaID: string): Promise<LocalResource | null> {
-    const transaction = this.database.transaction("resources", "readonly");
-    const done = completed(transaction);
-    const value: unknown = await request(
-      transaction.objectStore("resources").get([projectID, mediaID]),
-    );
-    await done;
-    if (
-      !value ||
-      typeof value !== "object" ||
-      !("file" in value) ||
-      !(value.file instanceof File) ||
-      !("state" in value) ||
-      !("detail" in value) ||
-      typeof value.detail !== "string" ||
-      (value.state !== "available" && value.state !== "unsupported")
-    )
-      return null;
-    return { file: value.file, state: value.state, detail: value.detail };
+    const row = (
+      await this.database.request({
+        type: "read",
+        collection: "resources",
+        key: resourceKey(projectID, mediaID),
+      })
+    )[0];
+    if (!row) return null;
+    return this.decodeResource(row.value);
   }
-
-  async putResource(projectID: string, mediaID: string, value: LocalResource): Promise<void> {
-    const transaction = this.database.transaction("resources", "readwrite");
-    const done = completed(transaction);
+  private async decodeResource(value: string): Promise<LocalResource | null> {
+    let resource: LocalResource | null;
     try {
-      transaction.objectStore("resources").put(value, [projectID, mediaID]);
+      resource = storedResource(await decodeStored(value, this.database));
     } catch (error) {
-      transaction.abort();
-      await done.catch(() => {});
+      if (error instanceof Error && error.message.includes("Stored media file is missing."))
+        return null;
       throw error;
     }
-    await done;
+    if (!resource) throw new Error("Stored resource has an invalid format.");
+    return resource;
   }
-
-  async resources(projectID: string): Promise<{ key: string; resource: LocalResource }[]> {
-    const transaction = this.database.transaction("resources", "readonly");
-    const done = completed(transaction);
-    const store = transaction.objectStore("resources");
-    const range = IDBKeyRange.bound([projectID], [projectID, []]);
-    const [keys, values] = await Promise.all([
-      request(store.getAllKeys(range)),
-      request(store.getAll(range)),
-    ]);
-    await done;
-    return keys.map((key, index) => ({
-      key: String((key as string[])[1]),
-      resource: values[index] as LocalResource,
-    }));
+  async putResource(projectID: string, mediaID: string, value: LocalResource) {
+    await this.database.request({
+      type: "commit",
+      checks: [],
+      writes: [
+        {
+          collection: "resources",
+          key: resourceKey(projectID, mediaID),
+          value: await encodeStored(value, this.database),
+        },
+      ],
+    });
   }
-
+  async resources(projectID: string) {
+    const values: { key: string; resource: LocalResource }[] = [];
+    for (const row of await this.database.request({ type: "read", collection: "resources" })) {
+      const key: unknown = JSON.parse(row.key);
+      if (
+        !Array.isArray(key) ||
+        key.length !== 2 ||
+        typeof key[0] !== "string" ||
+        typeof key[1] !== "string"
+      )
+        throw new Error("Invalid stored media key.");
+      if (key[0] !== projectID) continue;
+      const resource = await this.decodeResource(row.value);
+      if (resource === null) continue;
+      values.push({ key: key[1], resource });
+    }
+    return values;
+  }
   close() {
-    this.database.close();
+    /* The shared connection lives for the page, including library users. */
   }
 }

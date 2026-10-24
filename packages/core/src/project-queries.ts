@@ -20,14 +20,15 @@ export class QueryError extends Error {
     super(message);
   }
 }
+export const queryDefinitions = {
+  status: {},
+  media: { refresh: "boolean" },
+  timeline: { from: "time", to: "time", format: "string", words: "boolean", summary: "boolean" },
+  clips: { track: "string", from: "time", to: "time", media: "string", ids: "boolean" },
+} as const;
 export function queryRequest(operation: string, input: unknown) {
   const request = object(input);
-  const fields: Record<string, Record<string, string>> = {
-    status: {},
-    media: { refresh: "boolean" },
-    timeline: { from: "time", to: "time", format: "string", words: "boolean", summary: "boolean" },
-    clips: { track: "string", from: "time", to: "time", media: "string", ids: "boolean" },
-  };
+  const fields: Record<string, Record<string, string>> = queryDefinitions;
   const accepted = Object.hasOwn(fields, operation) ? fields[operation] : undefined;
   if (!accepted) throw new QueryError("notFound", `Unknown project query: ${operation}.`);
   for (const [key, value] of Object.entries(request)) {

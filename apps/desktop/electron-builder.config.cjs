@@ -21,5 +21,15 @@ module.exports = {
     hardenedRuntime: false,
     notarize: false,
   },
-  win: { signAndEditExecutable: false },
+  win: { target: ["nsis"], signAndEditExecutable: false },
+  nsis: {
+    oneClick: false,
+    perMachine: false,
+    allowElevation: false,
+    allowToChangeInstallationDirectory: true,
+    createDesktopShortcut: false,
+    createStartMenuShortcut: false,
+    runAfterFinish: false,
+    packElevateHelper: false,
+  },
 };

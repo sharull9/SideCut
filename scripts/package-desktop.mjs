@@ -29,10 +29,6 @@ assert.ok(
   process.argv.slice(2).every((argument) => argument === "--dir"),
   "Only --dir is supported; cross-compiling native binaries is intentionally disabled.",
 );
-assert.ok(
-  process.platform !== "win32" || process.argv.includes("--dir"),
-  "Windows verification supports --dir only; installer targets are Linux and macOS.",
-);
 
 const binaries = { ffmpeg: require("ffmpeg-static"), ffprobe: require("ffprobe-static").path };
 for (const [name, binary] of Object.entries(binaries)) {
@@ -71,6 +67,22 @@ await writeFile(
   ) + "\n",
 );
 const notices = join(stage, "resources/licenses");
+const cli = join(stage, "resources/cli");
+await mkdir(cli, { recursive: true });
+await cp(join(root, "scripts/sidecut-cli.mjs"), join(cli, "sidecut-cli.mjs"));
+if (process.platform === "win32")
+  await writeFile(
+    join(cli, "sidecut.cmd"),
+    '@echo off\r\nsetlocal\r\nset "ELECTRON_RUN_AS_NODE=1"\r\n"%~dp0..\\..\\SideCut.exe" "%~dp0sidecut-cli.mjs" %*\r\n',
+  );
+else {
+  const binary = process.platform === "darwin" ? "../../MacOS/SideCut" : "../../sidecut";
+  await writeFile(
+    join(cli, "sidecut"),
+    `#!/bin/sh\nSIDECUT_CLI_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexport ELECTRON_RUN_AS_NODE=1\nexec "$SIDECUT_CLI_DIR/${binary}" "$SIDECUT_CLI_DIR/sidecut-cli.mjs" "$@"\n`,
+  );
+  await chmod(join(cli, "sidecut"), 0o755);
+}
 await mkdir(notices, { recursive: true });
 for (const [name, binary] of Object.entries(binaries)) {
   const destination = join(

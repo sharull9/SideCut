@@ -1,0 +1,37 @@
+{
+  "packaged": true,
+  "platform": "win32",
+  "arch": "x64",
+  "version": "0.0.1",
+  "isolation": {
+    "node": "undefined",
+    "require": "undefined",
+    "bridge": "function"
+  },
+  "credentialStorage": "encrypted round-trip",
+  "exclusiveLock": true,
+  "archive": {
+    "bytes": 50542
+  },
+  "media": {
+    "bytes": 4396,
+    "codecs": ["vp8", "opus"],
+    "duration": 0.228,
+    "decoded": "RIFF"
+  },
+  "reopened": true,
+  "sqlite": {
+    "format": "SQLite format 3",
+    "legacyPreserved": true,
+    "reopened": true
+  },
+  "cli": true,
+  "unicodeSpaceProfile": true,
+  "installation": {
+    "uninstalled": true,
+    "launcher": true,
+    "installer": "SideCut-0.0.1-win-x64.exe",
+    "unicodeSpacePath": true,
+    "sha256": "d440814cb9add13b7f9594dbe3669b9b580e94e5fb7e9caeb52a442d123cca88"
+  }
+}

@@ -2,6 +2,9 @@ import { contextBridge, ipcRenderer } from "electron";
 import { bridgeChannels, type DesktopAppInfo, type DesktopBridge } from "../shared/bridge.ts";
 
 const bridge: DesktopBridge = {
+  storageRequest: (request) => ipcRenderer.invoke(bridgeChannels.storageRequest, request),
+  storagePutFile: (bytes) => ipcRenderer.invoke(bridgeChannels.storagePutFile, bytes),
+  storageGetFile: (id) => ipcRenderer.invoke(bridgeChannels.storageGetFile, id),
   serviceSubscribe: (listener) => {
     const handler = (_event: Electron.IpcRendererEvent, request: Parameters<typeof listener>[0]) =>
       listener(request);

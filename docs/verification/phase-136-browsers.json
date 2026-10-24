@@ -1,0 +1,121 @@
+{
+  "testedAt": "2026-10-24T16:14:40.326Z",
+  "results": [
+    {
+      "engine": "chromium",
+      "platform": "win32",
+      "production": true,
+      "source": "secure loopback production server",
+      "journey": {
+        "import": true,
+        "edit": true,
+        "reopen": true,
+        "audioImport": true,
+        "save": true,
+        "webm": {
+          "status": "passed",
+          "bytes": 14633,
+          "video": "vp8",
+          "audio": "opus"
+        },
+        "wav": {
+          "status": "passed",
+          "bytes": 384044
+        },
+        "archive": true,
+        "archiveReopen": true
+      },
+      "errors": [],
+      "version": "156.0.8078.4",
+      "capabilities": {
+        "secureContext": true,
+        "indexedDB": true,
+        "webLocks": true,
+        "fileSystemPicker": true,
+        "VideoEncoder": "function",
+        "AudioEncoder": "function",
+        "AudioBuffer": "function",
+        "webGPU": true,
+        "persistentStorage": true
+      },
+      "accepted": true
+    },
+    {
+      "engine": "firefox",
+      "platform": "win32",
+      "production": true,
+      "source": "secure loopback production server",
+      "journey": {
+        "import": true,
+        "edit": true,
+        "reopen": true,
+        "audioImport": true,
+        "save": true,
+        "webm": {
+          "status": "passed",
+          "bytes": 20498,
+          "video": "vp8",
+          "audio": "opus"
+        },
+        "wav": {
+          "status": "passed",
+          "bytes": 384044
+        },
+        "archive": true,
+        "archiveReopen": true
+      },
+      "errors": [
+        "Minified React error #418; visit https://react.dev/errors/418?args[]=HTML&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.",
+        "Minified React error #418; visit https://react.dev/errors/418?args[]=HTML&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+      ],
+      "version": "157.0",
+      "capabilities": {
+        "secureContext": true,
+        "indexedDB": true,
+        "webLocks": true,
+        "fileSystemPicker": false,
+        "VideoEncoder": "function",
+        "AudioEncoder": "function",
+        "AudioBuffer": "function",
+        "webGPU": true,
+        "persistentStorage": true
+      },
+      "accepted": true
+    },
+    {
+      "engine": "webkit",
+      "platform": "win32",
+      "production": true,
+      "source": "secure loopback production server",
+      "journey": {},
+      "errors": [
+        "Minified React error #418; visit https://react.dev/errors/418?args[]=HTML&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.",
+        "locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('project-name').filter({ hasText: 'Browser webkit' }) to be visible\u001b[22m\n"
+      ],
+      "version": "27.2",
+      "capabilities": {
+        "secureContext": true,
+        "indexedDB": true,
+        "webLocks": true,
+        "fileSystemPicker": false,
+        "VideoEncoder": "undefined",
+        "AudioEncoder": "undefined",
+        "AudioBuffer": "undefined",
+        "webGPU": false,
+        "persistentStorage": true
+      },
+      "accepted": false,
+      "alerts": [
+        "Action needs attentionWait for browser storage to finish opening.Retry save",
+        "UnknownError: The operation failed for an unknown transient reason (e.g. out of memory).",
+        "UnknownError: The operation failed for an unknown transient reason (e.g. out of memory).",
+        "Panel sizes could not be saved"
+      ]
+    }
+  ],
+  "limits": [
+    "Loopback production server; public hosted deployment not tested",
+    "Playwright WebKit is not Safari on macOS/iOS",
+    "No first-run model downloads, storage pressure, or real directory-picker permissions tested"
+  ]
+}

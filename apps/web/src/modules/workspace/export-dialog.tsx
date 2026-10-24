@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Button } from "@sidecut/ui/components/button";
 import {
   Dialog,
@@ -12,6 +12,7 @@ import {
 import { Progress } from "@sidecut/ui/components/progress";
 import { Alert, AlertTitle, AlertDescription } from "@sidecut/ui/components/alert";
 import { exportPlan } from "@sidecut/core/render-plan";
+import { presetProject, type ExportPreset } from "@sidecut/core/export-presets";
 import { missingFonts, missingFontWarning } from "@sidecut/core/text";
 import { fontAvailable } from "@sidecut/platform-browser/text";
 import { useFontVersion } from "./text-inspector";
@@ -20,88 +21,39 @@ import { useEditorSession } from "./editor-session";
 
 export function ExportDialog() {
   const { session, snapshot, editor } = useEditorSession();
-  const [open, setOpen] = useState(false),
-    [status, setStatus] = useState<"idle" | "exporting" | "done" | "cancelled" | "error">("idle"),
-    [progress, setProgress] = useState(0),
-    [error, setError] = useState<string | null>(null),
-    [download, setDownload] = useState<{ url: string; name: string } | null>(null);
-  const controller = useRef<AbortController | null>(null);
-  const [formatID, setFormatID] = useState("");
-  const format = formatOf(snapshot.project, formatID);
-  const rendered = formatProject(snapshot.project, format?.id);
+  const [formatID, setFormatID] = useState(""),
+    [preset, setPreset] = useState<ExportPreset | "wav">("webm"),
+    [error, setError] = useState<string | null>(null);
+  const entries = useSyncExternalStore(
+    session.exports.subscribe,
+    session.exports.getSnapshot,
+    session.exports.getSnapshot,
+  );
+  const format = formatOf(snapshot.project, formatID),
+    rendered = presetProject(
+      formatProject(snapshot.project, format?.id),
+      preset === "wav" ? "webm" : preset,
+    );
   useFontVersion();
-  useEffect(
-    () => () => {
-      controller.current?.abort();
-    },
-    [],
-  );
-  useEffect(() => {
-    setDownload(null);
-    setStatus("idle");
-    setError(null);
-  }, [snapshot.project.id, snapshot.revision]);
-  useEffect(
-    () => () => {
-      if (download) URL.revokeObjectURL(download.url);
-    },
-    [download],
-  );
-  let issue: string | null = null;
-  let plan: ReturnType<typeof exportPlan> | null = null;
+  let issue: string | null = null,
+    plan: ReturnType<typeof exportPlan> | null = null;
   try {
     plan = exportPlan(rendered);
   } catch (cause) {
     issue = cause instanceof Error ? cause.message : String(cause);
   }
-  const start = async () => {
-    editor.getState().setPlaying(false);
-    const abort = new AbortController();
-    controller.current = abort;
-    setStatus("exporting");
-    setError(null);
-    setProgress(0);
-    setDownload(null);
-    const base = snapshot.project.name.replace(/[\\/:*?"<>|]/g, "_") || "SideCut";
-    const filename = format ? `${base} ${format.id}` : base;
-    try {
-      const blob = await session.exportWebM(abort.signal, setProgress, format?.id ?? null);
-      if (abort.signal.aborted) {
-        setStatus("cancelled");
-        return;
-      }
-      setDownload({ url: URL.createObjectURL(blob), name: `${filename}.webm` });
-      setStatus("done");
-    } catch (cause) {
-      if (abort.signal.aborted || (cause instanceof DOMException && cause.name === "AbortError"))
-        setStatus("cancelled");
-      else {
-        setError(cause instanceof Error ? cause.message : String(cause));
-        setStatus("error");
-      }
-    } finally {
-      if (controller.current === abort) controller.current = null;
-    }
-  };
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(value) => {
-        if (!value) controller.current?.abort();
-        setOpen(value);
-      }}
-    >
-      <DialogTrigger
-        render={<Button size="sm" disabled={snapshot.busy || snapshot.saveState === "loading"} />}
-      >
+    <Dialog>
+      <DialogTrigger render={<Button size="sm" disabled={snapshot.saveState === "loading"} />}>
         Export
+        {entries.some((e) => e.status === "running" || e.status === "queued") ? " · working" : ""}
       </DialogTrigger>
-      <DialogContent className="dark">
+      <DialogContent className="dark editor-export-dialog">
         <DialogHeader>
           <DialogTitle>Export WebM</DialogTitle>
           <DialogDescription>
-            Render picture and audio tracks locally with VP8 video and Opus sound, using the
-            project's export loudness and peak ceiling. Sequences can be up to five minutes.
+            Render WebM video or WAV audio locally. Queue up to five exports. Downloads stay
+            available here until removed or the project closes.
           </DialogDescription>
         </DialogHeader>
         {plan && (
@@ -116,19 +68,33 @@ export function ExportDialog() {
             <AlertDescription>{issue}</AlertDescription>
           </Alert>
         )}
+        <label>
+          Preset
+          <select
+            value={preset}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (
+                value === "webm" ||
+                value === "review" ||
+                value === "youtube1080" ||
+                value === "short" ||
+                value === "wav"
+              )
+                setPreset(value);
+            }}
+          >
+            <option value="webm">Main canvas · WebM</option>
+            <option value="review">Review · 720p WebM</option>
+            <option value="youtube1080">1080p WebM</option>
+            <option value="short">Portrait · WebM</option>
+            <option value="wav">Audio only · WAV</option>
+          </select>
+        </label>
         {snapshot.project.settings.alternateFormats.length > 0 && (
           <label className="editor-export-format">
-            Format{" "}
-            <select
-              value={format?.id ?? ""}
-              disabled={status === "exporting"}
-              onChange={(event) => {
-                setFormatID(event.target.value);
-                setDownload(null);
-                setStatus("idle");
-                setError(null);
-              }}
-            >
+            Format
+            <select value={format?.id ?? ""} onChange={(event) => setFormatID(event.target.value)}>
               <option value="">Main canvas</option>
               {snapshot.project.settings.alternateFormats.map((f) => (
                 <option key={f.id} value={f.id}>
@@ -144,42 +110,67 @@ export function ExportDialog() {
             <AlertDescription>{missingFontWarning(font)}</AlertDescription>
           </Alert>
         ))}
-        {error && (
-          <Alert variant="destructive">
-            <AlertTitle>Export failed</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        {status === "exporting" && (
-          <Progress value={Math.round(progress * 100)} aria-label="Export progress" />
-        )}
+        {error && <p role="alert">{error}</p>}
+        <ol className="editor-export-list" aria-label="Export queue" aria-live="polite">
+          {entries.map((entry) => (
+            <li key={entry.id}>
+              <strong>{entry.name}</strong>
+              <span>
+                {entry.status}
+                {entry.status === "running" ? ` ${Math.round(entry.progress * 100)}%` : ""}
+              </span>
+              {entry.status === "running" && (
+                <Progress
+                  value={Math.round(entry.progress * 100)}
+                  aria-label={`Export progress for ${entry.name}`}
+                />
+              )}
+              {entry.status === "failed" && <p role="alert">{entry.error}</p>}
+              {entry.status === "done" && (
+                <Button
+                  render={<a href={entry.url} download={entry.name} />}
+                  nativeButton={false}
+                  variant="outline"
+                  size="sm"
+                >
+                  Download {entry.name.endsWith(".wav") ? "WAV" : "WebM"}
+                </Button>
+              )}
+              {entry.status === "queued" || entry.status === "running" ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => session.exports.cancel(entry.id)}
+                >
+                  Cancel export
+                </Button>
+              ) : (
+                <Button size="sm" variant="ghost" onClick={() => session.exports.remove(entry.id)}>
+                  Remove export
+                </Button>
+              )}
+            </li>
+          ))}
+        </ol>
         <p role="status">
-          {status === "exporting"
-            ? `Rendering ${Math.round(progress * 100)}%`
-            : status === "done"
-              ? "Your video is ready to download."
-              : status === "cancelled"
-                ? "Export cancelled. No partial file was downloaded."
-                : "Output fits within 1920 × 1080, or 1080 × 1920 for portrait projects."}
+          Exports run in order. If the project changes before a queued export starts, queue it
+          again. Output fits 1920 × 1080, or 1080 × 1920 for portrait.
         </p>
         <DialogFooter>
-          {status === "exporting" ? (
-            <Button variant="outline" onClick={() => controller.current?.abort()}>
-              Cancel export
-            </Button>
-          ) : (
-            <Button disabled={Boolean(issue) || snapshot.busy} onClick={() => void start()}>
-              {status === "done" ? "Render again" : "Render WebM"}
-            </Button>
-          )}
-          {download && (
-            <Button
-              render={<a href={download.url} download={download.name} />}
-              nativeButton={false}
-            >
-              Download WebM
-            </Button>
-          )}
+          <Button
+            disabled={Boolean(issue) || snapshot.readOnly || entries.length >= 5}
+            onClick={() => {
+              try {
+                setError(null);
+                editor.getState().setPlaying(false);
+                session.queueExport(format?.id ?? null, preset);
+              } catch (cause) {
+                setError(cause instanceof Error ? cause.message : String(cause));
+              }
+            }}
+          >
+            Queue export
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

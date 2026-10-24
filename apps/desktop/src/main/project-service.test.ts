@@ -1,5 +1,6 @@
+import { openSQLite } from "./sqlite-storage.ts";
 import { afterEach, describe, expect, it } from "vite-plus/test";
-import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { HostProjectService } from "./project-service.ts";
@@ -110,24 +111,34 @@ describe("host authority and native persistence", () => {
     }
   });
   it("preserves external edits and offers explicit reload and backup recovery", async () => {
-    const { service, path } = await fixture();
+    const { service } = await fixture();
+    const db = openSQLite(service.store.databasePath);
+    const current = () =>
+      db.repository.request({ type: "read", collection: "projects", key: "host" })[0]!.value;
+    const replace = (value: string) =>
+      db.repository.request({
+        type: "commit",
+        checks: [],
+        writes: [{ collection: "projects", key: "host", value }],
+      });
     try {
       edit(service, 0, "Saved version");
       await service.flush();
-      const saved = await readFile(path, "utf8");
+      const saved = current();
       const external = JSON.parse(saved);
       external.project.name = "External version";
       delete external.sidecutJournal;
-      await writeFile(path, JSON.stringify(external));
+      replace(JSON.stringify(external));
       edit(service, 1, "Unsaved version");
       await expect(service.flush()).rejects.toThrow(/outside SideCut/);
-      expect(JSON.parse(await readFile(path, "utf8")).project.name).toBe("External version");
+      expect(JSON.parse(current()).project.name).toBe("External version");
       expect(JSON.parse((await service.replace()).json).project.name).toBe("External version");
-      await writeFile(path, "interrupted invalid JSON");
+      replace("interrupted invalid JSON");
       const recovered = await service.replace(undefined, true);
       expect(JSON.parse(recovered.json).project.name).toBe("Untitled sequence");
       expect(() => JSON.parse(saved)).not.toThrow();
     } finally {
+      db.database.close();
       await service.close();
     }
   });
@@ -144,9 +155,17 @@ describe("host authority and native persistence", () => {
         throw new Error("Should load existing");
       });
       expect(file.project.name).toBe("Valid");
-      expect(JSON.parse(await readFile(`${path}.bak`, "utf8")).project.name).toBe(
-        "Untitled sequence",
-      );
+      const db = openSQLite(next.databasePath);
+      try {
+        const backup = db.repository.request({
+          type: "read",
+          collection: "previous",
+          key: "host",
+        })[0]!.value;
+        expect(JSON.parse(backup).project.name).toBe("Untitled sequence");
+      } finally {
+        db.database.close();
+      }
     } finally {
       await next.close();
     }

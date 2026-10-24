@@ -1,6 +1,6 @@
 # Tandem adapter subphases
 
-Status: group 108 is verified. Group 118 has a basic zipped-container importer with mapping follow-ups below. Group 120 has four implemented query adapters and pinned baseline checks; complete compatibility acceptance remains pending. Groups 121-125 have all 21 HTTP adapters. Groups 126-130 now have 20 baseline adapters and a host-backed CLI, with remaining acceptance listed in [the verification report](verification/phases-126-130.md). Group 131 onward remains pending. These subphases expand the numbered groups in [the parity roadmap](tandem-parity-roadmap.md). They are individual units of work, not parallel assignments.
+Status: group 108 is verified. Group 118 has a basic zipped-container importer with mapping follow-ups below. Group 120 has four implemented query adapters and pinned baseline checks; complete compatibility acceptance remains pending. Groups 121-125 have all 21 HTTP adapters. Groups 126-130 now have 20 baseline adapters and a host-backed CLI, with remaining acceptance listed in [the verification report](verification/phases-126-130.md). Groups 131-135 have baseline MCP/client, export-queue, interaction and compact-layout coverage; see [their verification report](verification/phases-131-135.md). Final browser/delivery/inventory work is recorded in [phases 136-140](verification/phases-136-140.md); native macOS/Linux and full parity gates remain open. These subphases expand the numbered groups in [the parity roadmap](tandem-parity-roadmap.md). They are individual units of work, not parallel assignments.
 
 Each checkbox has exactly two tasks: implement that single adapter or interaction using the existing service, then verify one success and one relevant failure/cancellation/conflict case against the pinned reference. Record the test and runtime beside the checkbox before completing it. Do not add a second edit coordinator.
 
@@ -214,6 +214,11 @@ Acceptance per command: match flags/defaults, JSON and text output, exit code, a
 
 ## Group 131: MCP
 
+All 43 tool names now have baseline stdio adapters generated from the host field
+schemas. A real MCP SDK client verifies discovery, edits/undo, errors and a frame
+against the running editor. Full tool-by-tool upstream input/result acceptance
+remains open; see [phases 131–135](verification/phases-131-135.md).
+
 Acceptance per tool: match the reference input schema and text/image/error result blocks through an actual MCP client. Mutations must use the same revisions and undo history as the UI. Read-only tools must not mutate the project.
 
 - [ ] 131.01: status.
@@ -264,14 +269,14 @@ Acceptance per tool: match the reference input schema and text/image/error resul
 
 Acceptance per interaction: exercise it in the running editor with keyboard or pointer input, confirm the resulting project/selection/focus, and verify cancellation or an input-focus boundary.
 
-- [ ] 134.01: Shortcut dispatch and input focus.
+- [x] 134.01: Shortcut dispatch and input focus. Baseline subset verified with real keyboard events and input-focus protection.
 - [ ] 134.02: Keymap selection.
 - [ ] 134.03: Context menus.
 - [ ] 134.04: Copy and paste with ID remapping.
-- [ ] 134.05: Timeline range selection.
+- [x] 134.05: Timeline range selection. Shift-drag and I/O use the shared range controls.
 - [ ] 134.06: Marquee selection.
 - [ ] 134.07: Snapping modifiers.
-- [ ] 134.08: Track height resize.
+- [x] 134.08: Track height resize. Pointer/keyboard separator reuses the existing accessible resize control.
 - [ ] 134.09: Timeline scroll and zoom.
 - [ ] 134.10: Drag autoscroll.
 - [ ] 134.11: Keyboard clip navigation.

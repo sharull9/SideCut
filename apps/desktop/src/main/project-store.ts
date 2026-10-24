@@ -1,9 +1,10 @@
-import { open, readFile, rename, unlink, mkdir } from "node:fs/promises";
-import { dirname } from "node:path";
+import { open, readFile, unlink, mkdir } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { decodeProjectFile, encodeProjectFile } from "@sidecut/contracts/project";
 import type { ProjectFile } from "@sidecut/contracts/project";
 import { replayJournal } from "@sidecut/core/coordinator";
+import { openSQLite } from "./sqlite-storage.ts";
 
 const read = async (path: string) =>
   readFile(path, "utf8").catch((error: NodeJS.ErrnoException) => {
@@ -16,7 +17,25 @@ export class NativeProjectStore {
   private expected: string | null = null;
   private token = randomUUID();
   private locked = false;
-  constructor(readonly path: string) {}
+  private connection: ReturnType<typeof openSQLite> | null = null;
+  readonly databasePath: string;
+  constructor(readonly path: string) {
+    this.databasePath = join(dirname(path), "sidecut.sqlite");
+  }
+
+  private get repository() {
+    if (!this.locked || !this.connection) throw new Error("Project lock is not held.");
+    return this.connection.repository;
+  }
+  private current(backup = false) {
+    return (
+      this.repository.request({
+        type: "read",
+        collection: backup ? "previous" : "projects",
+        key: "host",
+      })[0]?.value ?? null
+    );
+  }
 
   async acquire() {
     await mkdir(dirname(this.path), { recursive: true });
@@ -36,8 +55,54 @@ export class NativeProjectStore {
 
   async load(create: () => ProjectFile, backup = false): Promise<ProjectFile> {
     if (!this.locked) throw new Error("Project lock is not held.");
-    const current = await read(this.path);
-    const json = backup ? await read(`${this.path}.bak`) : current;
+    if (!this.connection) this.connection = openSQLite(this.databasePath);
+    const repository = this.repository;
+    if (
+      !repository.request({ type: "read", collection: "migrations", key: "native-project" }).length
+    ) {
+      const legacy = await read(this.path);
+      let previous = await read(`${this.path}.bak`);
+      let current = legacy;
+      if (current === null && previous !== null)
+        current = encodeProjectFile({
+          ...validate(previous),
+          sidecutRecovery: "Recovered the previous valid project during SQLite migration.",
+        });
+      if (current !== null) {
+        try {
+          validate(current);
+        } catch (error) {
+          if (!previous) throw error;
+          validate(previous);
+          current = encodeProjectFile({
+            ...validate(previous),
+            sidecutRecovery: "Recovered the previous valid project during SQLite migration.",
+          });
+        }
+      }
+      if (previous !== null) {
+        try {
+          validate(previous);
+        } catch {
+          previous = null;
+        }
+      }
+      repository.request({
+        type: "commit",
+        checks: [{ collection: "migrations", key: "native-project", value: null }],
+        writes: [
+          ...(current === null
+            ? []
+            : [{ collection: "projects" as const, key: "host", value: current }]),
+          ...(previous === null
+            ? []
+            : [{ collection: "previous" as const, key: "host", value: previous }]),
+          { collection: "migrations", key: "native-project", value: "1" },
+        ],
+      });
+    }
+    const current = this.current(),
+      json = backup ? this.current(true) : current;
     if (backup && !json) throw new Error("No project backup is available.");
     const file = json === null ? create() : validate(json);
     this.expected = current;
@@ -45,55 +110,41 @@ export class NativeProjectStore {
   }
 
   async save(file: ProjectFile) {
-    if (!this.locked) throw new Error("Project lock is not held.");
     const json = encodeProjectFile(file);
     validate(json);
-    const current = await read(this.path);
+    const current = this.current();
     if (current !== this.expected)
       throw new Error(
-        "Project changed outside SideCut. Download your edits, then reload the disk version or recover the backup.",
+        "Project changed outside SideCut. Reload the disk version or recover the backup.",
       );
     if (current === json) return;
-    // Preserve only validated backups, including when recovering a damaged current file.
+    let valid = false;
     if (current !== null) {
-      let valid = false;
       try {
         validate(current);
         valid = true;
       } catch {
-        /* Keep the last valid backup. */
+        /* Keep last valid backup. */
       }
-      if (valid) await this.atomic(`${this.path}.bak`, current);
     }
-    // Recheck after writing the backup so an external edit cannot be silently overwritten.
-    if ((await read(this.path)) !== this.expected)
-      throw new Error("Project changed during save. Reload the disk version.");
-    await this.atomic(this.path, json);
+    this.repository.request({
+      type: "commit",
+      checks: [{ collection: "projects", key: "host", value: this.expected }],
+      writes: [
+        ...(valid ? [{ collection: "previous" as const, key: "host", value: current }] : []),
+        { collection: "projects", key: "host", value: json },
+      ],
+    });
     this.expected = json;
-  }
-
-  private async atomic(path: string, json: string) {
-    const temporary = `${path}.${randomUUID()}.tmp`;
-    try {
-      const handle = await open(temporary, "wx");
-      try {
-        await handle.writeFile(json);
-        await handle.sync();
-      } finally {
-        await handle.close();
-      }
-      await rename(temporary, path);
-    } finally {
-      await unlink(temporary).catch(() => {});
-    }
   }
 
   async close() {
     if (!this.locked) return;
-    const lock = JSON.parse((await read(`${this.path}.lock`)) ?? "null") as {
-      token?: string;
-    } | null;
-    if (lock?.token !== this.token) throw new Error("Project lock ownership changed.");
+    const lock: unknown = JSON.parse((await read(`${this.path}.lock`)) ?? "null");
+    if (!lock || typeof lock !== "object" || !("token" in lock) || lock.token !== this.token)
+      throw new Error("Project lock ownership changed.");
+    this.connection?.database.close();
+    this.connection = null;
     await unlink(`${this.path}.lock`);
     this.locked = false;
   }

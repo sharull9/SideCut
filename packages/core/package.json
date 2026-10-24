@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./export-presets": "./src/export-presets.ts",
     "./service-review": "./src/service-review.ts",
     "./service-requests": "./src/service-requests.ts",
     "./service-edits": "./src/service-edits.ts",
@@ -39,7 +40,8 @@
     "./section-cards": "./src/section-cards.ts",
     "./templates": "./src/templates.ts",
     "./formats": "./src/formats.ts",
-    "./short": "./src/short.ts"
+    "./short": "./src/short.ts",
+    "./sqlite": "./src/sqlite.ts"
   },
   "scripts": {
     "typecheck": "vp exec tsc --noEmit"

@@ -1,3 +1,4 @@
+import { openSQLite } from "./sqlite-storage.ts";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -160,9 +161,17 @@ describe("review, watch and CLI host adapters", () => {
     expect(await api.handle("open", { path: "open.tandem", expectedRevision: 0 })).toMatchObject({
       name: "Opened",
     });
-    expect(JSON.parse(await readFile(host.store.path + ".bak", "utf8")).project.name).toBe(
-      "Untitled sequence",
-    );
+    const db = openSQLite(host.store.databasePath);
+    try {
+      const backup = db.repository.request({
+        type: "read",
+        collection: "previous",
+        key: "host",
+      })[0]!.value;
+      expect(JSON.parse(backup).project.name).toBe("Untitled sequence");
+    } finally {
+      db.database.close();
+    }
     await expect(
       api.handle("open", { path: "../escape.tandem", expectedRevision: 0 }),
     ).rejects.toThrow();

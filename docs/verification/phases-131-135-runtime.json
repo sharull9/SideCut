@@ -1,0 +1,68 @@
+{
+  "platform": "win32",
+  "mcp": {
+    "tools": 43,
+    "image": true,
+    "sharedUndo": true
+  },
+  "interactions": {
+    "clipboard": true,
+    "undo": true,
+    "inputProtected": true,
+    "trackResize": true,
+    "marquee": true,
+    "range": true
+  },
+  "exportQueue": {
+    "download": "Adapter acceptance.webm",
+    "wavBytes": 384044,
+    "retainedAfterClosing": true
+  },
+  "accessibility": {
+    "width": 680,
+    "overflow": false,
+    "violations": 0,
+    "passes": 20
+  },
+  "created": {
+    "name": "Adapter acceptance"
+  },
+  "cli": {
+    "revision": 6,
+    "clips": 2,
+    "exportBytes": 546
+  },
+  "review": {
+    "commentResolved": true,
+    "quickOnly": true
+  },
+  "watch": {
+    "change": true,
+    "timeout": true
+  },
+  "wait": {
+    "idle": true
+  },
+  "resources": {
+    "effects": 15,
+    "archiveBytes": 772406,
+    "relink": 1
+  },
+  "assets": {
+    "providers": 12,
+    "starter": 90,
+    "localUse": "med_ns8qa5mk",
+    "downloads": false,
+    "generation": false
+  },
+  "segments": {
+    "saved": true,
+    "inserted": true
+  },
+  "limits": [
+    "No rendered quality scan, reviewed baseline or sound matching",
+    "No automatic relink search or standalone-folder archive",
+    "No provider network calls or paid generation tested",
+    "Windows development runtime; packaged/macOS/Linux acceptance pending"
+  ]
+}

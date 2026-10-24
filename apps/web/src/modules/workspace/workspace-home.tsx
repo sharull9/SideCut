@@ -1,3 +1,8 @@
+import {
+  openPreferences,
+  readPreference,
+  writePreference,
+} from "@sidecut/platform-browser/preferences";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
@@ -73,16 +78,29 @@ export function WorkspaceHome() {
   const [preferencesReady, setPreferencesReady] = useState(false);
   const [preferenceError, setPreferenceError] = useState(false);
   const container = useRef<HTMLDivElement>(null);
+  const previousWidth = useRef(1280);
   const fitted = fitPanels(sizes, dimensions.width, dimensions.height);
   const { project } = snapshot;
+  useEffect(() => {
+    const width = dimensions.width;
+    if (width < 1000 && previousWidth.current >= 1000)
+      setSizes((current) => ({ ...current, inspectorHidden: true }));
+    if (width < 760 && previousWidth.current >= 760)
+      setSizes((current) => ({ ...current, mediaHidden: true }));
+    previousWidth.current = width;
+  }, [dimensions.width]);
 
   useEffect(() => {
-    try {
-      setSizes(readPanelSizes(localStorage.getItem(PANEL_STORAGE_KEY)));
-    } catch {
-      setPreferenceError(true);
-    }
-    setPreferencesReady(true);
+    let active = true;
+    void openPreferences()
+      .then(() => {
+        if (!active) return;
+        setSizes(readPanelSizes(readPreference(PANEL_STORAGE_KEY)));
+        setPreferencesReady(true);
+      })
+      .catch(() => {
+        if (active) setPreferenceError(true);
+      });
     const element = container.current;
     if (!element) return;
     const observer = new ResizeObserver((entries) => {
@@ -91,17 +109,17 @@ export function WorkspaceHome() {
         setDimensions({ width: entry.contentRect.width, height: entry.contentRect.height });
     });
     observer.observe(element);
-    return () => observer.disconnect();
+    return () => {
+      active = false;
+      observer.disconnect();
+    };
   }, []);
 
   useEffect(() => {
     if (!preferencesReady) return;
-    try {
-      localStorage.setItem(PANEL_STORAGE_KEY, JSON.stringify({ version: 1, ...sizes }));
-      setPreferenceError(false);
-    } catch {
-      setPreferenceError(true);
-    }
+    void writePreference(PANEL_STORAGE_KEY, JSON.stringify({ version: 1, ...sizes }))
+      .then(() => setPreferenceError(false))
+      .catch(() => setPreferenceError(true));
   }, [sizes, preferencesReady]);
 
   function updatePanel<K extends keyof PanelSizes>(panel: K, value: PanelSizes[K]) {
@@ -109,6 +127,8 @@ export function WorkspaceHome() {
   }
   // Hiding moves focus to the rail's show button; showing moves it to the panel's hide button.
   function setPanelHidden(panel: "media" | "inspector", hidden: boolean) {
+    if (!hidden && dimensions.width < 760)
+      updatePanel(panel === "media" ? "inspectorHidden" : "mediaHidden", true);
     updatePanel(panel === "media" ? "mediaHidden" : "inspectorHidden", hidden);
     requestAnimationFrame(() =>
       document.getElementById(`${panel}-${hidden ? "show" : "hide"}`)?.focus(),
@@ -126,7 +146,7 @@ export function WorkspaceHome() {
   const columns = [
     `${fitted.media}px`,
     ...(sizes.mediaHidden ? [] : [`${DIVIDER_SIZE}px`]),
-    `minmax(${VIEWER_MIN}px, 1fr)`,
+    `minmax(${dimensions.width < 1000 ? 180 : VIEWER_MIN}px, 1fr)`,
     ...(sizes.inspectorHidden ? [] : [`${DIVIDER_SIZE}px`]),
     `${fitted.inspector}px`,
   ].join(" ");

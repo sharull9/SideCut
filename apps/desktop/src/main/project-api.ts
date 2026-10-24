@@ -8,12 +8,18 @@ import {
   queryTimeline,
   QueryError,
   clipMediaID,
+  queryDefinitions,
 } from "@sidecut/core/project-queries";
 import { validateProject } from "@sidecut/core/validation";
 import type { HostProjectService } from "./project-service.ts";
 import { scanFolder, mediaRole } from "./folder-scanner.ts";
 import type { NativeMedia } from "./native-media.ts";
-import { serviceRequest, serviceFields } from "@sidecut/core/service-requests";
+import {
+  serviceRequest,
+  serviceFields,
+  requestJsonSchema,
+  serviceRequired,
+} from "@sidecut/core/service-requests";
 import { clipChanges, editOutcome, revisionFile, restorePlan } from "@sidecut/core/service-edits";
 import { ProjectCoordinator, EditError, type JournalEntry } from "@sidecut/core/coordinator";
 import { helperPlan } from "@sidecut/core/service-speech";
@@ -74,12 +80,12 @@ export class ProjectAPI {
   private async edit(operation: string, request: Record<string, unknown>) {
     const file = this.file(),
       snapshot = this.project.snapshot();
+    if (operation === "apply") return this.apply(request, file, snapshot.generation);
     if (request.expectedRevision != null && request.expectedRevision !== file.revision)
       throw new EditError(
         "stale-revision",
         `Stale revision: expected ${request.expectedRevision}, actual ${file.revision}.`,
       );
-    if (operation === "apply") return this.apply(request, file, snapshot.generation);
     const entries = (file.sidecutJournal as { entries: JournalEntry[] } | undefined)?.entries ?? [];
     if (operation === "history") {
       const limit = Number(request.limit ?? 20);
@@ -424,15 +430,16 @@ export class ProjectAPI {
     if (operation === "schema") {
       if (!input || typeof input !== "object" || Object.keys(input).length)
         throw new QueryError("badRequest", "Schema takes no fields.");
+      const operations = { ...queryDefinitions, ...serviceFields };
       return {
         apiVersion: "0.1.0",
-        operations: {
-          status: {},
-          media: { refresh: "boolean" },
-          clips: { track: "string", media: "string", from: "time", to: "time", ids: "boolean" },
-          timeline: { from: "time", to: "time", format: "string" },
-          ...serviceFields,
-        },
+        jsonSchemas: Object.fromEntries(
+          Object.entries(operations).map(([name, fields]) => [
+            name,
+            requestJsonSchema(fields, serviceRequired[name]),
+          ]),
+        ),
+        operations,
       };
     }
     if (Object.hasOwn(serviceFields, operation)) {

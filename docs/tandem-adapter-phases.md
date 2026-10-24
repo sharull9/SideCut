@@ -1,6 +1,6 @@
 # Tandem adapter subphases
 
-Status: group 108 implemented and verified with pinned fixtures; groups 120 onward remain pending. These subphases expand the numbered groups in [the parity roadmap](tandem-parity-roadmap.md). They are individual units of work, not parallel assignments.
+Status: group 108 is verified. Group 118 has a basic zipped-container importer with mapping follow-ups below. Group 120 has four implemented query adapters and pinned baseline checks; complete compatibility acceptance remains pending. Groups 121-125 have all 21 HTTP adapters. Groups 126-130 now have 20 baseline adapters and a host-backed CLI, with remaining acceptance listed in [the verification report](verification/phases-126-130.md). Group 131 onward remains pending. These subphases expand the numbered groups in [the parity roadmap](tandem-parity-roadmap.md). They are individual units of work, not parallel assignments.
 
 Each checkbox has exactly two tasks: implement that single adapter or interaction using the existing service, then verify one success and one relevant failure/cancellation/conflict case against the pinned reference. Record the test and runtime beside the checkbox before completing it. Do not add a second edit coordinator.
 
@@ -25,6 +25,24 @@ Acceptance per provider: preserve source IDs, attribution, setup status, and nor
 
 Each adapter passed its separate test suite on 2026-10-24. Test files are `packages/assets/src/{provider,import-folders,pixabay,pexels,freesound,iconify,svgl,noto,fontsource,elevenlabs,epidemic,lordicon}.test.ts`, in checkbox order. They cover successful mapping and relevant failures or unavailable status. Browser runtime additionally verifies shared folder import, Iconify normalization and mock ElevenLabs result storage. See [verification and limits](verification/phases-106-110.md). Live paid generation acceptance remains pending.
 
+## Group 118: Filmora mapping follow-ups
+
+The zipped WFP baseline preserves basic media/timing, source offsets, uniform
+speed, track order and mute/lock state. `interchange.test.ts` checks a successful
+synthetic import and malformed container; `verify-interchange.mjs` runs the WFP
+fixture in Chromium. Reports retain unsupported and missing-source information.
+See [evidence and limits](verification/phases-116-120.md).
+
+- [x] 118.01: Safe zipped WFP container decoding.
+- [x] 118.02: Basic media clips, inclusive ticks and uniform speed.
+- [ ] 118.03: Unpacked folders and extra.json markers.
+- [ ] 118.04: Source classification, track naming, linked picture/sound and overlap lanes.
+- [ ] 118.05: Transforms, opacity, crop, cutout and keyframes.
+- [ ] 118.06: Colour, shadow, border and shared media looks.
+- [ ] 118.07: Audio gain, normalization and fades.
+- [ ] 118.08: Transition mapping and approximation reports.
+- [ ] 118.09: Titles and nested template timelines.
+
 ## Group 120: Project queries
 
 Acceptance per operation: compare request defaults, result shape, revision, warnings, and a failure with a pinned contract fixture. Mutations also need atomicity and undo coverage; streams need close/cancellation coverage.
@@ -34,14 +52,23 @@ Acceptance per operation: compare request defaults, result shape, revision, warn
 - [ ] 120.03: media.
 - [ ] 120.04: clips.
 
+All four adapters now have baseline success/failure checks in
+`project-queries.test.ts` and `http-service.test.ts`, using
+`tests/fixtures/tandem/project-queries.json`. Media additionally has atomic
+refresh, undo and failed/stale scan checks. HTTP status/clips run against the
+desktop renderer's actual project in `verify-interchange.mjs`. Checkboxes remain
+open for complete compatibility: exact text/summary formatting, renderer
+analysis and job state, font/review warnings and the complete upstream result
+matrix still need acceptance. See [verification](verification/phases-116-120.md).
+
 ## Group 121: Edits and history
 
 Acceptance per operation: compare request defaults, result shape, revision, warnings, and a failure with a pinned contract fixture. Mutations also need atomicity and undo coverage; streams need close/cancellation coverage.
 
-- [ ] 121.01: apply.
-- [ ] 121.02: undo.
-- [ ] 121.03: redo.
-- [ ] 121.04: history.
+- [x] 121.01: apply.
+- [x] 121.02: undo.
+- [x] 121.03: redo.
+- [x] 121.04: history.
 - [ ] 121.05: diff.
 - [ ] 121.06: restore.
 
@@ -49,38 +76,45 @@ Acceptance per operation: compare request defaults, result shape, revision, warn
 
 Acceptance per operation: compare request defaults, result shape, revision, warnings, and a failure with a pinned contract fixture. Mutations also need atomicity and undo coverage; streams need close/cancellation coverage.
 
-- [ ] 122.01: transcript.
+- [x] 122.01: transcript.
 - [ ] 122.02: transcribe.
-- [ ] 122.03: search.
-- [ ] 122.04: pauses.
-- [ ] 122.05: tighten.
+- [x] 122.03: search.
+- [x] 122.04: pauses.
+- [x] 122.05: tighten.
 
 ## Group 123: Helpers
 
 Acceptance per operation: compare request defaults, result shape, revision, warnings, and a failure with a pinned contract fixture. Mutations also need atomicity and undo coverage; streams need close/cancellation coverage.
 
 - [ ] 123.01: join.
-- [ ] 123.02: captions.
-- [ ] 123.03: short.
+- [x] 123.02: captions.
+- [x] 123.03: short.
 - [ ] 123.04: cards.
 
 ## Group 124: Frame inspection
 
 Acceptance per operation: compare request defaults, result shape, revision, warnings, and a failure with a pinned contract fixture. Mutations also need atomicity and undo coverage; streams need close/cancellation coverage.
 
-- [ ] 124.01: frame.
-- [ ] 124.02: frames.
-- [ ] 124.03: screenshot.
+- [x] 124.01: frame.
+- [x] 124.02: frames.
+- [x] 124.03: screenshot.
 
 ## Group 125: Rendering
 
 Acceptance per operation: compare request defaults, result shape, revision, warnings, and a failure with a pinned contract fixture. Mutations also need atomicity and undo coverage; streams need close/cancellation coverage.
 
-- [ ] 125.01: clip.
+- [x] 125.01: clip.
 - [ ] 125.02: export.
 - [ ] 125.03: loudness.
 
+Implementation/acceptance evidence for all 21 operations is recorded in [phases 121-125](verification/phases-121-125.md). `service-operations.json` pins success and malformed request shapes; core/host tests cover shared revisions, history, dry runs and atomic failures. `verify-service.mjs` exercises every operation over actual HTTP, including helper apply/undo, frame dimensions, an actual UI screenshot, H.264/AAC/WAV/WebM outputs and source/mix loudness. Checked items have that baseline acceptance. Unchecked operations have an implementation but retain full-parity gaps: diff/restore details and reviewed/transition baselines, uncached transcription and timeout results, grouped join details, card sounds/section cuts, complete export presets and gain verification.
+
 ## Group 126: Review
+
+Groups 126–130 have baseline implementation coverage. Unchecked items retain
+full compatibility acceptance; the [verification report](verification/phases-126-130.md)
+records the supported behavior and the gaps, including the limited quick scan,
+reviewed state, event replay, native resource semantics and exact CLI/MCP spelling.
 
 Acceptance per operation: compare request defaults, result shape, revision, warnings, and a failure with a pinned contract fixture. Mutations also need atomicity and undo coverage; streams need close/cancellation coverage.
 

@@ -11,6 +11,7 @@ import { decodeProviderQuery, decodeGeneration } from "@sidecut/contracts/provid
 import { folderAssets } from "@sidecut/assets/import-folders";
 import { normalizeAsset, type AssetLibrary, type LibraryEntry } from "./asset-library";
 import { browserProviderEnvironment } from "./providers";
+export { assetLicence } from "@sidecut/assets";
 export interface ProviderBridge {
   providerCall: (id: string, request: unknown) => Promise<unknown>;
   providerCancel: (id: string) => Promise<void>;

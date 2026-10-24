@@ -1,4 +1,6 @@
 import type { FolderMedia } from "@sidecut/contracts/desktop";
+import { createArchive, openArchive, type ArchiveResource } from "@sidecut/core/archive";
+import { importEDL, importFilmora, object } from "@sidecut/core/interchange";
 import { HostCoordinator, nativeBridge } from "./host-coordinator";
 import { formatProject } from "@sidecut/core/formats";
 import { parseCube } from "@sidecut/core/cube-lut";
@@ -17,7 +19,7 @@ import { SaveQueue } from "@sidecut/platform-browser/save-queue";
 import { BrowserJobs } from "@sidecut/platform-browser/jobs";
 import { probeLocalFile, mediaIdentity } from "@sidecut/platform-browser/media";
 import { MediaAnalysis } from "./media-analysis";
-import { recordAssetUse, assetSuggestions } from "@sidecut/core/asset-use";
+import { recordAssetUse, assetSuggestions, assetUses } from "@sidecut/core/asset-use";
 import { decodeAsset } from "@sidecut/contracts/assets";
 import { makeSegment, insertableSegment } from "@sidecut/core/segments";
 import { SegmentLibrary, type SegmentEntry } from "@sidecut/platform-browser/segments";
@@ -513,14 +515,76 @@ export class BrowserProjectSession {
     this.update({ busy: true, error: null });
     let candidateRelease: (() => void) | null = null;
     try {
-      if (file.size > 20 * 1024 * 1024)
+      const archive = /\.sidecut$/i.test(file.name);
+      const filmora = /\.wfp$/i.test(file.name);
+      if (file.size > (archive || filmora ? 256 : 20) * 1024 * 1024)
         throw new Error(
-          "Project JSON exceeds the 20 MB import limit. Select a .tandem project, not a media file.",
+          archive || filmora
+            ? "Archive exceeds the 256 MiB import limit."
+            : "Project JSON exceeds the 20 MB import limit. Select a .tandem project, not a media file.",
         );
-      const original = await file.text();
+      let original: string;
+      let resources: ArchiveResource[] = [];
+      let warnings: string[] = [];
+      if (archive) {
+        const opened = openArchive(new Uint8Array(await file.arrayBuffer()));
+        original = encodeProjectFile(opened.file);
+        resources = opened.resources;
+      } else if (filmora) {
+        const imported = importFilmora(new Uint8Array(await file.arrayBuffer()));
+        original = encodeProjectFile(imported.file);
+        warnings = imported.report.warnings;
+      } else {
+        original = await file.text();
+        const parsed = object(JSON.parse(original));
+        if (parsed.edl != null && parsed.recipe != null) {
+          const imported = importEDL(parsed.edl, parsed.recipe);
+          original = encodeProjectFile(imported.file);
+          warnings = imported.report.warnings;
+        }
+      }
+      this.assertOpen(epoch);
+      const metadata = object(JSON.parse(original)).project;
+      if (!warnings.length && metadata && typeof metadata === "object" && "metadata" in metadata) {
+        const report = object(metadata.metadata ?? {}).sidecutImportReport;
+        if (typeof report === "string") {
+          try {
+            const stored = object(JSON.parse(report));
+            if (
+              Array.isArray(stored.warnings) &&
+              stored.warnings.every((warning) => typeof warning === "string")
+            )
+              warnings = stored.warnings;
+          } catch {
+            /* Unknown import metadata does not prevent opening. */
+          }
+        }
+      }
+      const projectID = resources.length ? decodeProjectFile(JSON.parse(original)).project.id : "";
+      // Stage copies before publishing a project that references them.
+      for (const entry of resources) {
+        await this.store.putResource(projectID, entry.key, {
+          file: new File([entry.bytes.slice().buffer], entry.name, { type: entry.type }),
+          state: "available",
+          detail: "Restored from portable archive",
+        });
+        this.assertOpen(epoch);
+      }
+      if (archive)
+        for (const use of assetUses(decodeProjectFile(JSON.parse(original)).project)) {
+          if (use.asset.kind !== "font") continue;
+          const resource = resources.find((entry) => entry.key === `asset-file:${use.asset.id}`);
+          if (!resource) throw new Error(`Archived font is missing: ${use.asset.name}`);
+          const { importFont } = await import("@sidecut/platform-browser/text");
+          await importFont(
+            new File([resource.bytes.slice().buffer], resource.name, { type: resource.type }),
+          );
+          this.assertOpen(epoch);
+        }
       if (this.native && this.coordinator instanceof HostCoordinator) {
         this.coordinator.receive(await this.native.projectImport(original));
         await this.refreshMedia();
+        this.update({ warnings });
         return;
       }
       const inspected = inspectProjectFile(JSON.parse(original));
@@ -557,6 +621,7 @@ export class BrowserProjectSession {
       this.attach(latest, this.release === null);
       candidateRelease = null;
       await this.refreshMedia();
+      this.update({ warnings });
     } catch (error) {
       candidateRelease?.();
       throw error;
@@ -583,6 +648,100 @@ export class BrowserProjectSession {
     anchor.click();
     anchor.remove();
     setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  }
+
+  async archiveBytes() {
+    if (!this.store) throw new Error("Storage is closed.");
+    const epoch = this.epoch,
+      file = this.projectFile();
+    const stored = await this.store.resources(file.project.id);
+    if (stored.reduce((sum, entry) => sum + entry.resource.file.size, 0) > 256 * 1024 * 1024)
+      throw new Error("Archive exceeds the 256 MiB limit.");
+    const resources: ArchiveResource[] = [];
+    for (const { key, resource } of stored) {
+      resources.push({
+        key,
+        name: resource.file.name,
+        type: resource.file.type,
+        bytes: new Uint8Array(await resource.file.arrayBuffer()),
+      });
+      this.assertOpen(epoch);
+    }
+    if (this.state.revision !== file.revision)
+      throw new Error("Project changed during archive. Retry.");
+    return createArchive(file, resources);
+  }
+
+  async downloadArchive() {
+    this.assertWritable();
+    if (!this.store) throw new Error("Storage is closed.");
+    const epoch = this.epoch;
+    this.update({ busy: true, error: null });
+    try {
+      await this.queue?.flush();
+      await this.native?.projectFlush();
+      const file = this.projectFile();
+      const bytes = await this.archiveBytes();
+      const url = URL.createObjectURL(
+        new Blob([bytes.slice().buffer], { type: "application/zip" }),
+      );
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${file.project.name.replace(/[^a-zA-Z0-9._-]/g, "_") || "project"}.sidecut`;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } finally {
+      if (epoch === this.epoch) this.update({ busy: false });
+    }
+  }
+
+  async relinkMedia(mediaID: string, file: File) {
+    this.assertWritable();
+    if (!this.store) throw new Error("Storage is closed.");
+    const original = this.state.project.media.find((m) => m.id === mediaID);
+    if (!original) throw new Error("Source no longer exists in this project.");
+    const epoch = this.epoch,
+      revision = this.state.revision;
+    this.update({ busy: true, error: null });
+    try {
+      const { item, resource } = await probeLocalFile(file);
+      this.assertOpen(epoch);
+      const identity = (fingerprint: string) => fingerprint.replace(/^(\d+)-\d+-/, "$1-");
+      if (
+        item.kind !== original.kind ||
+        (original.fingerprint && identity(original.fingerprint) !== identity(item.fingerprint)) ||
+        (original.duration &&
+          (item.duration == null || Math.abs(original.duration.seconds - item.duration) > 0.1)) ||
+        (original.width && original.width !== item.width) ||
+        (original.height && original.height !== item.height)
+      )
+        throw new Error("Replacement does not match this source's identity or media properties.");
+      if (this.state.revision !== revision)
+        throw new Error("Project changed during relink. Retry.");
+      const { id: _replacementID, role: _replacementRole, ...patch } = item;
+      const batch = {
+        label: "Relink source",
+        expectedRevision: revision,
+        commands: [{ updateMedia: { mediaID, patch } }],
+      };
+      new ProjectCoordinator(this.projectFile()).apply(batch);
+      await this.store.putResource(this.state.project.id, mediaID, resource);
+      this.assertOpen(epoch);
+      this.coordinator.apply(batch);
+      await this.queue?.flush();
+      await this.refreshMedia();
+      if (!original.fingerprint)
+        this.update({
+          warnings: [
+            ...this.state.warnings,
+            "Relink matched media properties; the original source had no content fingerprint.",
+          ],
+        });
+    } finally {
+      if (epoch === this.epoch) this.update({ busy: false });
+    }
   }
 
   async importLUT(file: File): Promise<string> {
@@ -898,8 +1057,7 @@ export class BrowserProjectSession {
           ? { state: resource.state, detail: resource.detail }
           : {
               state: "missing",
-              detail:
-                "Source is not stored in this browser. Project downloads contain references only. Relinking and portable archives are planned.",
+              detail: "Source is not stored on this device. Relink it or open a portable archive.",
             };
       }),
     );

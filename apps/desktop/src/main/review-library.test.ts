@@ -1,0 +1,189 @@
+import { afterEach, describe, expect, it } from "vite-plus/test";
+import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { spawn } from "node:child_process";
+import { HostProjectService } from "./project-service.ts";
+import { NativeProjectStore } from "./project-store.ts";
+import { ProjectAPI } from "./project-api.ts";
+import { LocalHTTPService } from "./http-service.ts";
+
+const cleanup: (() => Promise<unknown>)[] = [];
+afterEach(async () => {
+  for (const close of cleanup.reverse().splice(0)) await close();
+});
+async function setup() {
+  const root = await mkdtemp(join(tmpdir(), "sidecut-review-"));
+  cleanup.push(() => rm(root, { recursive: true, force: true }));
+  const host = new HostProjectService(new NativeProjectStore(join(root, "current.tandem")));
+  await host.start();
+  cleanup.push(() => host.close());
+  const api = new ProjectAPI(host);
+  const server = new LocalHTTPService(api),
+    address = await server.start();
+  cleanup.push(() => server.close());
+  const discovery = join(root, "endpoint.json");
+  await writeFile(discovery, JSON.stringify(address));
+  const cli = (...args: string[]) =>
+    new Promise<{ code: number | null; out: string; err: string }>((complete, reject) => {
+      const child = spawn(
+        process.execPath,
+        [resolve("scripts/sidecut-cli.mjs"), ...args, "--endpoint-file", discovery],
+        { env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" }, windowsHide: true },
+      );
+      let out = "",
+        err = "";
+      child.stdout.on("data", (chunk) => (out += chunk));
+      child.stderr.on("data", (chunk) => (err += chunk));
+      child.once("error", reject);
+      child.once("close", (code) => complete({ code, out, err }));
+    });
+  return { root, host, api, cli };
+}
+
+describe("review, watch and CLI host adapters", () => {
+  it("sets picture delay with dry-run, stale revision and undo protection", async () => {
+    const { api, host } = await setup();
+    await api.handle("apply", {
+      commands: [
+        {
+          addMedia: {
+            item: {
+              id: "camera",
+              path: "camera.mp4",
+              kind: "video",
+              role: "camera",
+              hasVideo: true,
+              duration: 2,
+            },
+          },
+        },
+      ],
+    });
+    const before = host.snapshot().json;
+    expect(
+      await api.handle("sync", { delay: 0.08, dryRun: true, expectedRevision: 1 }),
+    ).toMatchObject({ revision: 1, applied: { dryRun: true } });
+    expect(host.snapshot().json).toBe(before);
+    expect(await api.handle("sync", { delay: 0.08, expectedRevision: 1 })).toMatchObject({
+      revision: 2,
+      files: [{ id: "camera", pictureDelay: 0.08 }],
+    });
+    await expect(api.handle("sync", { delay: 0, expectedRevision: 1 })).rejects.toThrow("Stale");
+    await api.handle("undo", {});
+    expect(await api.handle("sync", {})).toMatchObject({
+      files: [{ id: "camera", pictureDelay: undefined }],
+    });
+  });
+  it("runs CLI create/edit/inspect with strict fields and stable error exits", async () => {
+    const { api, host, cli } = await setup();
+    expect((await cli("new", "--name", "CLI project")).code).toBe(2);
+    const created = await cli("new", "--name", "CLI project", "--expected-revision", "0");
+    expect(created.code, created.err).toBe(0);
+    expect(JSON.parse(created.out).name).toBe("CLI project");
+    const edited = await cli(
+      "apply",
+      "--commands",
+      JSON.stringify([{ updateProject: { patch: { name: "CLI edited" } } }]),
+      "--expected-revision",
+      "0",
+    );
+    expect(edited.code, edited.err).toBe(0);
+    expect(JSON.parse((await cli("status")).out)).toMatchObject({
+      name: "CLI edited",
+      revision: 1,
+    });
+    expect(JSON.parse(host.snapshot().json).project.name).toBe("CLI edited");
+    expect((await cli("apply", "--commands", "[]", "--expected-revision", "0")).code).toBe(4);
+    expect((await cli("check")).code).toBe(6);
+    expect((await cli("status", "--constructor", "bad")).code).toBe(2);
+    expect((await cli("assets", "show", "--id", "missing")).code).toBe(3);
+    expect((await cli("effects", "--type", "missing")).code).toBe(5);
+    expect(await api.handle("schema", {})).toMatchObject({
+      operations: { "assets-search": { online: "boolean" }, watch: { revision: "integer" } },
+    });
+  });
+  it("watches changes, resumes after a revision, times out and cancels without editing", async () => {
+    const { api, host } = await setup();
+    const waiting = api.handle("watch", { revision: 0, timeout: 1 });
+    await api.handle("apply", { commands: [{ updateProject: { patch: { name: "Changed" } } }] });
+    expect(await waiting).toMatchObject({ changed: true, revision: 1, resync: true });
+    expect(await api.handle("watch", { revision: 0 })).toMatchObject({
+      changed: true,
+      revision: 1,
+    });
+    expect(await api.handle("watch", { revision: 1, timeout: 0.01 })).toMatchObject({
+      changed: false,
+      revision: 1,
+    });
+    const controller = new AbortController();
+    const cancelled = api.handle("watch", {}, controller.signal);
+    controller.abort();
+    await expect(cancelled).rejects.toThrow("cancelled");
+    expect(JSON.parse(host.snapshot().json).revision).toBe(1);
+    const generation = host.snapshot().generation;
+    await api.handle("new", { expectedRevision: 1, name: "Replacement" });
+    expect(await api.handle("watch", { revision: 1, generation, timeout: 0.01 })).toMatchObject({
+      changed: true,
+      revision: 0,
+    });
+    await expect(api.handle("watch", { timeout: 601 })).rejects.toThrow("600");
+  });
+  it("lists and resolves marker comments through shared edits and validates warnings", async () => {
+    const { api } = await setup();
+    await api.handle("apply", {
+      commands: [
+        { addMarker: { marker: { id: "comment", time: 1, name: "Fix this", kind: "comment" } } },
+      ],
+    });
+    expect(await api.handle("comments", {})).toMatchObject({
+      revision: 1,
+      comments: [{ id: "comment", text: "Fix this", time: 1 }],
+    });
+    await api.handle("apply", { commands: [{ removeMarker: { markerID: "comment" } }] });
+    expect(await api.handle("comments", {})).toMatchObject({ comments: [] });
+    await api.handle("undo", {});
+    expect(await api.handle("comments", {})).toMatchObject({ comments: [{ id: "comment" }] });
+    expect(await api.handle("validate", {})).toMatchObject({ valid: true });
+    expect(await api.handle("check", { quick: true })).toMatchObject({
+      frames: 0,
+      warnings: [expect.stringContaining("not scanned")],
+    });
+    await expect(api.handle("check", { quick: true, cuts: true })).rejects.toThrow("Only quick");
+  });
+  it("opens/imports safely with revision guards and keeps a project backup", async () => {
+    const { root, api, host } = await setup();
+    await writeFile(
+      join(root, "open.tandem"),
+      JSON.stringify({ revision: 0, project: { id: "opened", name: "Opened" } }),
+    );
+    expect(await api.handle("open", { path: "open.tandem", expectedRevision: 0 })).toMatchObject({
+      name: "Opened",
+    });
+    expect(JSON.parse(await readFile(host.store.path + ".bak", "utf8")).project.name).toBe(
+      "Untitled sequence",
+    );
+    await expect(
+      api.handle("open", { path: "../escape.tandem", expectedRevision: 0 }),
+    ).rejects.toThrow();
+    await expect(api.handle("sync", { files: [] })).rejects.toThrow("Sound matching");
+    await writeFile(
+      join(root, "recipe.json"),
+      JSON.stringify({
+        edl: { segments: [{ start: 0, end: 1, layout: "cam" }] },
+        recipe: { name: "Imported EDL", takes: [{ start: 0, camera: "camera.mov" }] },
+      }),
+    );
+    expect(
+      await api.handle("import-edl", { path: "recipe.json", expectedRevision: 0 }),
+    ).toMatchObject({ name: "Imported EDL" });
+    await writeFile(
+      join(root, "basic.wfp"),
+      await readFile(resolve("tests/fixtures/tandem/filmora-basic.wfp")),
+    );
+    const revision = JSON.parse(host.snapshot().json).revision;
+    expect(
+      await api.handle("import-filmora", { path: "basic.wfp", expectedRevision: revision }),
+    ).toMatchObject({ revision: expect.any(Number) });
+  });
+});

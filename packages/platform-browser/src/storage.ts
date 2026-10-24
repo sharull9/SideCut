@@ -253,6 +253,22 @@ export class BrowserProjectStore {
     await done;
   }
 
+  async resources(projectID: string): Promise<{ key: string; resource: LocalResource }[]> {
+    const transaction = this.database.transaction("resources", "readonly");
+    const done = completed(transaction);
+    const store = transaction.objectStore("resources");
+    const range = IDBKeyRange.bound([projectID], [projectID, []]);
+    const [keys, values] = await Promise.all([
+      request(store.getAllKeys(range)),
+      request(store.getAll(range)),
+    ]);
+    await done;
+    return keys.map((key, index) => ({
+      key: String((key as string[])[1]),
+      resource: values[index] as LocalResource,
+    }));
+  }
+
   close() {
     this.database.close();
   }

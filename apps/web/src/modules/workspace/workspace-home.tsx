@@ -202,10 +202,10 @@ export function WorkspaceHome() {
           <input
             ref={projectPicker}
             type="file"
-            accept=".tandem,.json,application/json"
+            accept=".tandem,.json,.sidecut,.wfp,application/json"
             className="sr-only"
             tabIndex={-1}
-            aria-label="Tandem project file"
+            aria-label="Project, archive, EDL recipe, or Filmora file"
             onChange={(event) => {
               const file = event.target.files?.[0];
               event.target.value = "";
@@ -221,6 +221,14 @@ export function WorkspaceHome() {
             Download project
           </Button>
           <ExportDialog />
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={locked}
+            onClick={() => run(() => session.downloadArchive())}
+          >
+            Archive project
+          </Button>
         </div>
       </header>
 

@@ -7,6 +7,23 @@ import { cleanVoice } from "@sidecut/core/audio-processing";
 import { audioIdentity, measureSource } from "./audio-analysis";
 import * as voice from "./voice-isolation";
 const rate = 48000;
+it("masters only the requested range and starts its output timestamps at zero", async () => {
+  const values = Float32Array.from({ length: rate }, (_, i) => 0.1 * Math.sin(i / 10));
+  const blocks = [];
+  for await (const block of mixTimelineAudio(
+    p({}),
+    async () => reader(values),
+    new AbortController().signal,
+    rate,
+    4096,
+    0.4,
+    { start: 0.2, master: true },
+  ))
+    blocks.push(block);
+  expect(blocks.reduce((sum, block) => sum + block.frames, 0)).toBe(9600);
+  expect(blocks[0]!.timestamp).toBe(0);
+  expect(blocks.some((block) => block.data.some((sample) => sample !== 0))).toBe(true);
+});
 const buffer = (values: Float32Array) =>
   ({
     sampleRate: rate,

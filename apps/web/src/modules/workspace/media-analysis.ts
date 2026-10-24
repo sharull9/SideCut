@@ -95,6 +95,7 @@ export class MediaAnalysis {
       source: { item: MediaItem; file: File },
     ) => Promise<T>,
     done: (value: T) => Partial<MediaAnalysisState>,
+    externalSignal: AbortSignal = new AbortController().signal,
   ) {
     const key = `${operation}:${id}`,
       old = this.pending.get(key);
@@ -106,7 +107,7 @@ export class MediaAnalysis {
         key,
         `${operation}: ${this.session.getSnapshot().project.media.find((item) => item.id === id)?.path ?? id}`,
         20,
-        new AbortController().signal,
+        externalSignal,
         async (signal, progress) => {
           const source = await this.source(id);
           signal.throwIfAborted();
@@ -194,7 +195,7 @@ export class MediaAnalysis {
     if (enabled && !this.state[id]?.proxy) throw new Error("Generate a proxy first.");
     this.publish(id, { proxyEnabled: enabled });
   }
-  transcribe(id: string) {
+  transcribe(id: string, externalSignal?: AbortSignal) {
     return this.run(
       id,
       "Local transcription",
@@ -218,6 +219,7 @@ export class MediaAnalysis {
         );
       },
       (transcript) => ({ transcript }),
+      externalSignal,
     );
   }
   async identify(sidecarFile?: File) {

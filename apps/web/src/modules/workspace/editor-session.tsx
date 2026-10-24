@@ -4,6 +4,7 @@ import { BrowserProjectSession } from "./browser-session";
 import { useStore } from "zustand";
 import { createEditorView } from "./editor-view";
 import type { EditorView } from "./editor-view";
+import { connectRendererOperations } from "./renderer-operations";
 
 type SessionContextValue = {
   session: BrowserProjectSession;
@@ -19,7 +20,11 @@ export function EditorSessionProvider({ children }: { children: ReactNode }) {
   const [session] = useState(() => new BrowserProjectSession());
   const [editor] = useState(createEditorView);
   useEffect(() => {
-    void session.start();
+    let disconnected = false,
+      stop = () => {};
+    void session.start().then(() => {
+      if (!disconnected) stop = connectRendererOperations(session);
+    });
     // Fonts imported in earlier sessions stay on this device.
     void import("@sidecut/platform-browser/text").then(({ restoreFonts }) => restoreFonts());
     const leave = (event: BeforeUnloadEvent) => {
@@ -42,6 +47,8 @@ export function EditorSessionProvider({ children }: { children: ReactNode }) {
     window.addEventListener("pagehide", hide);
     window.addEventListener("pageshow", show);
     return () => {
+      disconnected = true;
+      stop();
       window.removeEventListener("beforeunload", leave);
       window.removeEventListener("pagehide", hide);
       window.removeEventListener("pageshow", show);

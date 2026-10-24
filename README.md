@@ -264,6 +264,38 @@ Native probing, audio decoding to WAV, and VP8/Opus WebM export support inputs/o
 
 After `vp run build:desktop`, run `vp exec electron ../../tests/desktop/verify.mjs` from `apps/desktop` with `ELECTRON_RUN_AS_NODE` unset to check the production renderer, shared authority, folder updates and a complete timeline export. This uses a temporary profile and synthetic audio.
 
+`Archive project` downloads a portable `.sidecut` archive containing source and
+library copies. Open it through **Open project** in either browser or desktop;
+each import creates an independent project with fresh undo history. Archives
+are limited to 256 MiB and require all source media to be available locally.
+Missing sources have a **Relink source** control that checks fingerprints and
+known media properties. **Open project** also accepts explicit EDL recipe JSON
+and basic zipped Filmora `.wfp` imports. Import reports list unsupported fields.
+See [supported fields and limits](docs/verification/phases-116-120.md).
+
+While the desktop runs, its profile's `current.tandem.api.json` contains the
+loopback HTTP port and bearer token. `GET /v1/health` is public; `status`, `media`,
+`timeline` and `clips` require `Authorization: Bearer <token>`. Use `POST` with
+`Content-Type: application/json` to pass arguments. `media` with `refresh: true`
+scans the selected watched folder and uses the editor's shared edit history.
+Browser-origin requests are rejected. Full query parity and MCP remain pending.
+
+The desktop service also exposes `apply`, `undo`, `redo`, `history`, `diff`,
+`restore`, speech/transcription operations, `join`, `captions`, `short`, `cards`,
+`frame`, `frames`, `screenshot`, `clip`, `export` and `loudness`. Helpers preview
+by default and require `apply: true` to commit. Pass `expectedRevision` to avoid
+overwriting a concurrent edit. Inspection returns PNG data or an output file;
+renders and snapshots are saved as new files under the managed profile's
+`exports` folder. Existing files are not overwritten. See [service capabilities,
+examples and remaining limits](docs/verification/phases-121-125.md).
+
+The service also has baseline review, sync/watch/wait, archive/relink/effects,
+asset-library and segment adapters. `node scripts/sidecut-cli.mjs --help` lists
+the CLI commands; select the running host with `--endpoint-file` or
+`SIDECUT_API_FILE`. The CLI uses the host's schema and shared edit history.
+Checks currently require `quick:true`; provider network calls are opt-in.
+See [CLI usage, verification and compatibility limits](docs/verification/phases-126-130.md).
+
 Desktop downloads can be built manually from **Actions**, **Desktop builds**, **Run workflow**, or by pushing a version tag such as `v0.1.0`, after the workflow is pushed to GitHub. Linux builds produce AppImage and `.deb`; Apple Silicon builds produce `.dmg` and `.zip`. The workflow verifies the packaged app before uploading downloads, which expire after one day. macOS builds use ad-hoc signing and are not notarized. See [desktop builds](docs/desktop-builds.md) for commands, resource layout, free-tier limits and verification status.
 
 ## Static hosting

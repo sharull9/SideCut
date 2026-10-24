@@ -153,6 +153,9 @@ export function MediaBin({
                       : "Checking source…"}
                   </p>
                   <SourceSamples mediaID={item.id} audio={item.kind === "audio"} />
+                  {availability?.state !== "available" && (
+                    <RelinkSource id={item.id} path={item.path} disabled={disabled} run={run} />
+                  )}
                   {(["place", "insert"] as const).map((mode) => (
                     <Button
                       key={mode}
@@ -230,5 +233,45 @@ export function MediaBin({
             : `${snapshot.project.media.length} sources · local files only`}
       </div>
     </section>
+  );
+}
+
+function RelinkSource({
+  id,
+  path,
+  disabled,
+  run,
+}: {
+  id: string;
+  path: string;
+  disabled: boolean;
+  run: (action: () => unknown) => void;
+}) {
+  const { session } = useEditorSession();
+  const picker = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <Button
+        variant="outline"
+        size="xs"
+        disabled={disabled}
+        onClick={() => picker.current?.click()}
+      >
+        Relink source
+      </Button>
+      <input
+        ref={picker}
+        type="file"
+        className="sr-only"
+        tabIndex={-1}
+        disabled={disabled}
+        aria-label={`Relink ${path}`}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) run(() => session.relinkMedia(id, file));
+        }}
+      />
+    </>
   );
 }

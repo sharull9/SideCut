@@ -1,0 +1,131 @@
+{
+  "reference": "Synthetic request contracts from TandemAPI at 735a9b8e162c1f951044baa892d94993869f2e77. These do not certify complete upstream result parity.",
+  "operations": [
+    {
+      "name": "apply",
+      "request": { "commands": [], "dryRun": true, "expectedRevision": 0 },
+      "invalid": { "commands": {} },
+      "resultKeys": ["revision", "dryRun", "repeated", "createdIDs", "added", "removed", "changed"]
+    },
+    {
+      "name": "undo",
+      "request": { "count": 1, "expectedRevision": 0 },
+      "invalid": { "expectedRevision": -1 },
+      "resultKeys": ["action", "revision", "label", "author", "count"]
+    },
+    {
+      "name": "redo",
+      "request": { "count": 1 },
+      "invalid": { "count": "1" },
+      "resultKeys": ["action", "revision", "count"]
+    },
+    {
+      "name": "history",
+      "request": { "limit": 20 },
+      "invalid": { "limit": 1.5 },
+      "resultKeys": ["revision", "undo", "redo", "events", "edits"]
+    },
+    {
+      "name": "diff",
+      "request": { "since": 0 },
+      "invalid": {},
+      "resultKeys": ["revision", "since", "sinceRevision", "changes"]
+    },
+    {
+      "name": "restore",
+      "request": { "from": 0, "clips": ["clip_query"], "apply": false },
+      "invalid": { "from": null },
+      "resultKeys": ["revision", "from", "items", "commands"]
+    },
+    {
+      "name": "transcript",
+      "request": { "id": "med_query", "from": "00:01.000", "to": 2 },
+      "invalid": { "id": 1 },
+      "resultKeys": ["revision", "scope", "timelineTimes", "words", "missing"]
+    },
+    {
+      "name": "transcribe",
+      "request": { "media": ["med_query"], "wait": true, "timeout": 20 },
+      "invalid": { "media": [1] },
+      "resultKeys": ["revision", "files", "headless"]
+    },
+    {
+      "name": "search",
+      "request": { "phrase": "new world", "limit": 20 },
+      "invalid": { "phrase": false },
+      "resultKeys": ["revision", "phrase", "hits", "unused", "missing"]
+    },
+    {
+      "name": "pauses",
+      "request": { "min": 0.6 },
+      "invalid": { "min": -1 },
+      "resultKeys": ["revision", "minimum", "pauses", "total", "missing"]
+    },
+    {
+      "name": "tighten",
+      "request": { "keep": 0.15, "apply": false },
+      "invalid": { "keep": "bad" },
+      "resultKeys": ["revision", "cuts", "commands", "missing", "warnings"]
+    },
+    {
+      "name": "join",
+      "request": { "from": 0, "to": 4, "apply": false },
+      "invalid": { "from": 2, "to": 1 },
+      "resultKeys": ["revision", "joins", "skipped", "commands", "warnings"]
+    },
+    {
+      "name": "captions",
+      "request": { "words": 3, "apply": false },
+      "invalid": { "words": 2.5 },
+      "resultKeys": ["revision", "track", "captions", "commands", "missing"]
+    },
+    {
+      "name": "short",
+      "request": { "apply": false },
+      "invalid": { "copy": "yes" },
+      "resultKeys": ["revision", "format", "placed", "commands", "warnings"]
+    },
+    {
+      "name": "cards",
+      "request": { "sounds": false, "apply": false },
+      "invalid": { "markers": [0] },
+      "resultKeys": ["revision", "cards", "sounds", "commands", "warnings"]
+    },
+    {
+      "name": "frame",
+      "request": { "time": "00:00.100", "maxWidth": 160 },
+      "invalid": {},
+      "resultKeys": ["time", "png", "bytes", "warnings"]
+    },
+    {
+      "name": "frames",
+      "request": { "times": [0.1, 2.1], "width": 160 },
+      "invalid": { "times": [-1] },
+      "resultKeys": ["times", "png", "bytes", "warnings"]
+    },
+    {
+      "name": "screenshot",
+      "request": {},
+      "invalid": { "output": 42 },
+      "resultKeys": ["png", "bytes", "warnings"]
+    },
+    {
+      "name": "clip",
+      "request": { "start": 0.1, "end": 0.3, "preset": "review" },
+      "invalid": { "start": 2, "end": 1 },
+      "resultKeys": ["path", "preset", "duration", "warnings"]
+    },
+    {
+      "name": "export",
+      "request": { "from": 0, "to": 0.2, "preset": "webm" },
+      "invalid": { "from": "bad" },
+      "resultKeys": ["path", "preset", "duration", "warnings"]
+    },
+    {
+      "name": "loudness",
+      "request": { "mediaID": "med_query" },
+      "invalid": { "step": "bad" },
+      "resultKeys": ["target", "truePeakCeiling", "speechLoudness", "media", "clips"]
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "reference": "TandemAPI/ServiceTypes.swift and Diff.swift at 735a9b8e162c1f951044baa892d94993869f2e77; synthetic contract fixture",
+  "project": {
+    "revision": 0,
+    "project": {
+      "id": "prj_query",
+      "name": "Query fixture",
+      "media": [{ "id": "med_query", "path": "takes/camera.mov", "duration": 20 }],
+      "videoTracks": [
+        {
+          "id": "trk_camera",
+          "name": "Camera",
+          "kind": "video",
+          "clips": [
+            {
+              "id": "clip_query",
+              "content": { "media": { "mediaID": "med_query" } },
+              "start": 2,
+              "duration": 3,
+              "sourceStart": 10
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "clips": {
+    "request": { "track": "V1", "from": "00:03", "media": "camera.mov", "ids": true },
+    "result": {
+      "revision": 0,
+      "clips": [
+        {
+          "id": "clip_query",
+          "track": "V1 Camera",
+          "trackID": "trk_camera",
+          "start": 2,
+          "end": 5,
+          "duration": 3,
+          "content": "camera.mov [00:10.000-00:13.000]",
+          "mediaID": "med_query",
+          "enabled": true
+        }
+      ],
+      "idsOnly": true
+    },
+    "failure": { "track": "V9" }
+  },
+  "timeline": {
+    "request": { "format": "json", "from": 5, "to": 6 },
+    "clipIDs": [],
+    "failure": { "from": 2, "to": 1 }
+  },
+  "status": {
+    "request": {},
+    "result": {
+      "name": "Query fixture",
+      "revision": 0,
+      "savedRevision": 0,
+      "dirty": false,
+      "duration": 5,
+      "width": 3840,
+      "height": 2160,
+      "frameRate": 30,
+      "tracks": 1,
+      "clips": 1,
+      "media": 1,
+      "markers": 0,
+      "headless": false,
+      "apiVersion": "0.1.0"
+    },
+    "failure": { "output": "../outside" }
+  },
+  "media": {
+    "request": {},
+    "item": {
+      "id": "med_query",
+      "path": "takes/camera.mov",
+      "kind": "video",
+      "role": "other",
+      "duration": 20,
+      "hasVideo": true,
+      "hasAudio": false,
+      "clips": 1,
+      "exists": false
+    },
+    "failure": { "refresh": "yes" }
+  }
+}

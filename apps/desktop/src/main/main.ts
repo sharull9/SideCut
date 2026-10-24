@@ -1,5 +1,5 @@
 import { BrowserWindow, app, dialog, ipcMain, net, protocol, session, shell } from "electron";
-import { stat, writeFile } from "node:fs/promises";
+import { stat, writeFile, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
@@ -14,6 +14,11 @@ import { DesktopAssetProviders } from "./asset-providers.ts";
 import { HostProjectService } from "./project-service.ts";
 import { NativeProjectStore } from "./project-store.ts";
 import { registerNativeIPC } from "./native-ipc.ts";
+import { ProjectAPI } from "./project-api.ts";
+import { LocalHTTPService } from "./http-service.ts";
+import { NativeMedia } from "./native-media.ts";
+import { mediaBinaries } from "./media-binaries.ts";
+import { rendererService } from "./renderer-service.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const smoke = app.commandLine.hasSwitch("smoke-test");
@@ -172,8 +177,37 @@ void app.whenReady().then(() => {
   );
   void project
     .start()
-    .then(() => {
-      const close = registerNativeIPC(project, isTrusted);
+    .then(async () => {
+      const binaries = mediaBinaries(
+        process.env,
+        app.isPackaged ? process.resourcesPath : undefined,
+      );
+      const renderer = rendererService(project, isTrusted);
+      const api = new ProjectAPI(
+        project,
+        new NativeMedia(binaries.ffmpeg, binaries.ffprobe),
+        renderer,
+      );
+      const http = new LocalHTTPService(api);
+      const address = await http.start().catch(async (error) => {
+        await project.close();
+        throw error;
+      });
+      const discovery = join(app.getPath("userData"), "current.tandem.api.json");
+      try {
+        await writeFile(discovery, JSON.stringify(address), { mode: 0o600 });
+      } catch (error) {
+        await http.close();
+        await project.close();
+        throw error;
+      }
+      const closeNative = registerNativeIPC(project, isTrusted, api);
+      const close = async () => {
+        await http.close();
+        renderer.close();
+        await unlink(discovery).catch(() => {});
+        await closeNative();
+      };
       let quitting = false;
       app.on("before-quit", (event) => {
         if (quitting) return;

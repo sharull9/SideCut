@@ -18,7 +18,7 @@ export class NativeMedia {
     duration?: number,
   ): Promise<Uint8Array> {
     if (
-      !["probe", "decode", "export"].includes(String(operation)) ||
+      !["probe", "decode", "export", "mp4", "aac"].includes(String(operation)) ||
       !(bytes instanceof Uint8Array) ||
       !bytes.length ||
       bytes.length > 256 * 1024 * 1024
@@ -33,7 +33,16 @@ export class NativeMedia {
     signal.throwIfAborted();
     const folder = await mkdtemp(join(tmpdir(), "sidecut-media-")),
       input = join(folder, "input"),
-      output = join(folder, operation === "decode" ? "output.wav" : "output.webm");
+      output = join(
+        folder,
+        operation === "decode"
+          ? "output.wav"
+          : operation === "mp4"
+            ? "output.mp4"
+            : operation === "aac"
+              ? "output.m4a"
+              : "output.webm",
+      );
     try {
       await writeFile(input, bytes);
       const safeInput = [
@@ -77,7 +86,26 @@ export class NativeMedia {
               ...range,
               ...(operation === "decode"
                 ? ["-vn", "-ac", "2", "-ar", "48000", "-c:a", "pcm_s16le"]
-                : ["-c:v", "libvpx", "-b:v", "4M", "-c:a", "libopus"]),
+                : operation === "aac"
+                  ? ["-vn", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart"]
+                  : operation === "mp4"
+                    ? [
+                        "-c:v",
+                        "libx264",
+                        "-preset",
+                        "veryfast",
+                        "-crf",
+                        "18",
+                        "-pix_fmt",
+                        "yuv420p",
+                        "-c:a",
+                        "aac",
+                        "-b:a",
+                        "192k",
+                        "-movflags",
+                        "+faststart",
+                      ]
+                    : ["-c:v", "libvpx", "-b:v", "4M", "-c:a", "libopus"]),
               "-y",
               output,
             ];

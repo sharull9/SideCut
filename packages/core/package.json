@@ -4,6 +4,13 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./service-review": "./src/service-review.ts",
+    "./service-requests": "./src/service-requests.ts",
+    "./service-edits": "./src/service-edits.ts",
+    "./service-speech": "./src/service-speech.ts",
+    "./archive": "./src/archive.ts",
+    "./project-queries": "./src/project-queries.ts",
+    "./interchange": "./src/interchange.ts",
     "./segments": "./src/segments.ts",
     "./asset-use": "./src/asset-use.ts",
     "./cutout": "./src/cutout.ts",
@@ -39,7 +46,8 @@
   },
   "dependencies": {
     "@sidecut/contracts": "workspace:*",
-    "effect": "catalog:"
+    "effect": "catalog:",
+    "fflate": "0.8.3"
   },
   "devDependencies": {
     "@sidecut/config": "workspace:*",

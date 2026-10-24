@@ -242,8 +242,8 @@ export async function* mixTimelineAudio(
   if (options.master) {
     if (duration > 300) throw new Error("Browser mastering supports sequences up to five minutes.");
     const mixed = [
-      new Float32Array(Math.ceil(duration * sampleRate)),
-      new Float32Array(Math.ceil(duration * sampleRate)),
+      new Float32Array(Math.ceil((duration - (options.start ?? 0)) * sampleRate)),
+      new Float32Array(Math.ceil((duration - (options.start ?? 0)) * sampleRate)),
     ];
     let offset = 0;
     for await (const block of mixTimelineAudio(
@@ -253,7 +253,7 @@ export async function* mixTimelineAudio(
       sampleRate,
       blockFrames,
       duration,
-      { ...options, master: false, start: 0 },
+      { ...options, master: false, start: options.start ?? 0 },
     )) {
       for (let c = 0; c < 2; c++)
         mixed[c]!.set(block.data.subarray(c * block.frames, (c + 1) * block.frames), offset);

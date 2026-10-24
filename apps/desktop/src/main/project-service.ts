@@ -1,4 +1,4 @@
-import { ProjectCoordinator } from "@sidecut/core/coordinator";
+import { ProjectCoordinator, EditError } from "@sidecut/core/coordinator";
 import { decodeProjectFile, encodeProjectFile } from "@sidecut/contracts/project";
 import type { HostReply, HostSnapshot } from "@sidecut/contracts/desktop";
 import type { NativeProjectStore } from "./project-store.ts";
@@ -33,6 +33,7 @@ export class HostProjectService {
   private pending: Promise<void> = Promise.resolve();
   private listeners = new Set<(snapshot: HostSnapshot) => void>();
   private replacing = false;
+  savedRevision = 0;
   constructor(readonly store: NativeProjectStore) {}
 
   async start() {
@@ -40,6 +41,7 @@ export class HostProjectService {
     try {
       this.coordinator = new ProjectCoordinator(await this.store.load(fresh));
       await this.store.save(this.coordinator.projectFile());
+      this.savedRevision = this.coordinator.getSnapshot().revision;
     } catch (error) {
       this.state = "error";
       this.error = `${error instanceof Error ? error.message : String(error)}. Recover the backup or reload the disk version.`;
@@ -63,6 +65,9 @@ export class HostProjectService {
     return () => {
       this.listeners.delete(listener);
     };
+  }
+  history(limit = 20) {
+    return this.coordinator.history(limit);
   }
   private publish() {
     this.sequence++;
@@ -89,7 +94,7 @@ export class HostProjectService {
     if (input.type === "apply" && "batch" in input) result = this.coordinator.apply(input.batch);
     else if ((input.type === "undo" || input.type === "redo") && "revision" in input) {
       if (input.revision !== this.coordinator.getSnapshot().revision)
-        throw new Error("Stale revision. Retry with the latest project.");
+        throw new EditError("stale-revision", "Stale revision. Retry with the latest project.");
       result = this.coordinator[input.type]();
     } else throw new Error("Unknown project operation.");
     this.enqueue();
@@ -103,6 +108,7 @@ export class HostProjectService {
       if (this.state === "error") return;
       try {
         await this.store.save(file);
+        this.savedRevision = file.revision;
         if (file.revision === this.coordinator.getSnapshot().revision) this.state = "saved";
       } catch (error) {
         this.state = "error";
@@ -115,11 +121,21 @@ export class HostProjectService {
     await this.pending;
     if (this.error) throw new Error(this.error);
   }
-  async replace(json?: string, backup = false) {
+  async replace(
+    json?: string,
+    backup = false,
+    expected?: { generation: number; revision: number },
+  ) {
     if (this.replacing) throw new Error("Project is being replaced.");
     this.replacing = true;
     try {
       await this.pending;
+      if (
+        expected &&
+        (this.generation !== expected.generation ||
+          this.coordinator.getSnapshot().revision !== expected.revision)
+      )
+        throw new EditError("stale-revision", "Project changed before replacement.");
       // Imports may not discard unsaved edits. Recovery is an explicit reload choice.
       if (json !== undefined && this.error) throw new Error(this.error);
       const file =
@@ -129,6 +145,7 @@ export class HostProjectService {
       const coordinator = new ProjectCoordinator(file);
       if (json !== undefined || backup) await this.store.save(coordinator.projectFile());
       this.coordinator = coordinator;
+      this.savedRevision = file.revision;
       this.generation++;
       this.error = null;
       this.state = "saved";

@@ -16,8 +16,8 @@ allowBuilds:
 catalog:
   "mediabunny": "1.62.0"
   "@shadcn/lint": "0.2.3"
-  "vite-plus": "1.3.0"
-  "vite": "npm:@voidzero-dev/vite-plus-core@1.3.0"
+  "vite-plus": 1.4.0
+  "vite": npm:@voidzero-dev/vite-plus-core@1.4.0
   "typescript": "6.0.3"
   "@types/node": "24.12.4"
   "@types/react": "19.3.0"

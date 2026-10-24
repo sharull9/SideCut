@@ -1,0 +1,49 @@
+{
+  "browser": {
+    "bridge": "undefined",
+    "revision": 1,
+    "resource": "available"
+  },
+  "browserToDesktop": {
+    "path": "media/0-speech.wav",
+    "bytes": 768078,
+    "available": "available",
+    "duration": 0.2
+  },
+  "desktopToBrowser": {
+    "bytes": 768078,
+    "path": "media/0-speech.wav",
+    "clip": "clip_runtime"
+  },
+  "service": {
+    "status": "Portable runtime",
+    "revision": 0,
+    "clip": "clip_runtime",
+    "originRejected": 403,
+    "health": 200
+  },
+  "edl": {
+    "name": "EDL runtime",
+    "source": 10.25,
+    "report": {
+      "format": "edl",
+      "warnings": [],
+      "clips": 3,
+      "media": 2
+    }
+  },
+  "filmora": {
+    "name": "Synthetic Filmora",
+    "duration": 2,
+    "sourceStart": 1,
+    "speed": 2,
+    "warnings": [
+      "Source requires relinking: /FIXTURE/camera.mov",
+      "Unsupported Filmora effectChainList on synthetic."
+    ]
+  },
+  "layout": {
+    "width": 1280,
+    "archiveRight": 1264
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "reference": {
+    "revision": "735a9b8e162c1f951044baa892d94993869f2e77",
+    "sources": [
+      "TandemAPI/Check.swift",
+      "TandemAPI/Comments.swift",
+      "TandemAPI/Sync.swift",
+      "TandemAPI/Wait.swift",
+      "TandemAPI/ServiceTypes.swift",
+      "TandemAPI/AssetTypes.swift",
+      "TandemAPI/SegmentCalls.swift"
+    ],
+    "scope": "SideCut baseline requests derived from pinned reference types; not recorded upstream responses. Archive/relink use SideCut resource transports."
+  },
+  "operations": [
+    { "operation": "validate", "request": {} },
+    { "operation": "check", "request": { "quick": true } },
+    { "operation": "comments", "request": {} },
+    { "operation": "sync", "request": { "delay": 0.08, "dryRun": true } },
+    { "operation": "watch", "request": { "revision": 0, "timeout": 0.01 } },
+    { "operation": "wait", "request": { "what": "jobs", "timeout": 1 } },
+    { "operation": "archive", "request": { "output": "portable.sidecut" } },
+    { "operation": "relink", "request": { "mediaID": "source", "path": "voice.wav" } },
+    { "operation": "effects", "request": { "type": "blur" } },
+    { "operation": "assets-providers", "request": {} },
+    { "operation": "assets-search", "request": { "text": "rocket", "online": false, "limit": 3 } },
+    { "operation": "assets-fetch", "request": { "id": "import:fixture" } },
+    { "operation": "assets-show", "request": { "id": "import:fixture" } },
+    { "operation": "assets-use", "request": { "id": "import:fixture" } },
+    { "operation": "assets-credits", "request": { "includeOptional": true } },
+    {
+      "operation": "assets-generate",
+      "request": { "kind": "sfx", "prompt": "A short click", "confirmedPaid": false }
+    },
+    { "operation": "assets-install-starter", "request": { "online": false } },
+    { "operation": "segments", "request": {} },
+    { "operation": "save-segment", "request": { "name": "Example", "clipIDs": ["solid"] } },
+    { "operation": "insert-segment", "request": { "name": "Example", "at": 1, "mode": "place" } }
+  ],
+  "project": {
+    "revision": 0,
+    "project": {
+      "id": "review-fixture",
+      "videoTracks": [
+        {
+          "id": "picture",
+          "kind": "video",
+          "name": "Picture",
+          "clips": [
+            {
+              "id": "first",
+              "content": { "solid": { "color": { "r": 0, "g": 0, "b": 1, "a": 1 } } },
+              "duration": 1
+            },
+            {
+              "id": "tiny",
+              "content": { "solid": { "color": { "r": 0, "g": 0, "b": 1, "a": 1 } } },
+              "start": 1.01,
+              "duration": 0.01
+            }
+          ]
+        }
+      ],
+      "markers": [
+        { "id": "review-comment", "time": 0.5, "kind": "comment", "name": "Check this picture" }
+      ]
+    }
+  }
+}

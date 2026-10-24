@@ -2,6 +2,18 @@ import { contextBridge, ipcRenderer } from "electron";
 import { bridgeChannels, type DesktopAppInfo, type DesktopBridge } from "../shared/bridge.ts";
 
 const bridge: DesktopBridge = {
+  serviceSubscribe: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, request: Parameters<typeof listener>[0]) =>
+      listener(request);
+    ipcRenderer.on(bridgeChannels.serviceRequest, handler);
+    void ipcRenderer.invoke(bridgeChannels.serviceReady, true);
+    return () => {
+      ipcRenderer.removeListener(bridgeChannels.serviceRequest, handler);
+      void ipcRenderer.invoke(bridgeChannels.serviceReady, false);
+    };
+  },
+  serviceReply: (id, result, error) =>
+    ipcRenderer.invoke(bridgeChannels.serviceReply, id, result, error),
   // Only in-memory edits use sync IPC to preserve the editor's command result API.
   // Disk I/O and media jobs always use asynchronous channels.
   projectRequest: (json) => {

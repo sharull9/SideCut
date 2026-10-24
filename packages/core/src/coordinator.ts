@@ -351,6 +351,14 @@ export class ProjectCoordinator {
   constructor(file: ProjectFile) {
     this.assertValid(file.project);
     const history = file.sidecutJournal as { base: string; entries: JournalEntry[] } | undefined;
+    if (
+      history &&
+      (typeof history.base !== "string" ||
+        !Array.isArray(history.entries) ||
+        decodeProjectFile(JSON.parse(history.base)).sidecutJournal != null ||
+        decodeProjectFile(JSON.parse(history.base)).project.id !== file.project.id)
+    )
+      throw new Error("Invalid project journal.");
     const { sidecutJournal: _history, ...base } = file;
     this.journalBase = history?.base ?? encodeProjectFile(base);
     this.journal = freeze(history ? clone(history.entries) : []);
@@ -358,7 +366,27 @@ export class ProjectCoordinator {
       const key = entry.batch?.idempotencyKey;
       if (typeof key === "string") this.results.set(key, freeze(clone(entry.result)));
     }
-    this.state = freeze({ ...clone(file), undoLabel: null, redoLabel: null, lastChange: null });
+    if (history) {
+      const replay = new ProjectCoordinator(decodeProjectFile(JSON.parse(history.base)));
+      for (const entry of history.entries) {
+        const result = entry.kind === "edit" ? replay.apply(entry.batch) : replay[entry.kind]();
+        if (!result || JSON.stringify(result) !== JSON.stringify(entry.result))
+          throw new Error("Invalid persisted edit history.");
+      }
+      if (
+        encodeProjectFile({ revision: replay.state.revision, project: replay.state.project }) !==
+        encodeProjectFile({ revision: file.revision, project: file.project })
+      )
+        throw new Error("History does not match the project.");
+      this.undoStack = clone(replay.undoStack);
+      this.redoStack = clone(replay.redoStack);
+    }
+    this.state = freeze({
+      ...clone(file),
+      undoLabel: this.undoStack.at(-1)?.label ?? null,
+      redoLabel: this.redoStack.at(-1)?.label ?? null,
+      lastChange: null,
+    });
   }
 
   getSnapshot = (): SessionSnapshot => this.state;
@@ -366,6 +394,16 @@ export class ProjectCoordinator {
   projectFile(): ProjectFile {
     const { undoLabel: _undo, redoLabel: _redo, lastChange: _change, ...file } = this.state;
     return freeze({ ...file, sidecutJournal: { base: this.journalBase, entries: this.journal } });
+  }
+
+  history(limit = 20) {
+    return {
+      undo: this.undoStack
+        .slice(-limit)
+        .reverse()
+        .map(({ label, author }) => ({ label, author })),
+      redo: this.redoStack.at(-1)?.label ?? null,
+    };
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -451,6 +489,7 @@ export class ProjectCoordinator {
       {
         id: `${this.state.project.id}:${result.revision}`,
         kind: "edit",
+        date: new Date().toISOString(),
         batch: Schema.encodeSync(EditBatchSchema)(batch),
         result,
       },
@@ -487,6 +526,7 @@ export class ProjectCoordinator {
       {
         id: `${project.id}:${result.revision}`,
         kind,
+        date: new Date().toISOString(),
         snapshot: encodeProjectFile({ revision: result.revision, project }),
         result,
       },
@@ -541,6 +581,7 @@ export class ProjectCoordinator {
 }
 
 export interface JournalEntry {
+  readonly date?: string;
   readonly id: string;
   readonly kind: "edit" | "undo" | "redo";
   readonly batch?: typeof EditBatchSchema.Encoded;

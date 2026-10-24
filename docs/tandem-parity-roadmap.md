@@ -1,6 +1,6 @@
 # Tandem parity roadmap
 
-Status: phases 001-027 and 029-105 are implemented and verified on Windows Chromium, within the recorded browser limits. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. Phase 095's comparison against frames saved by macOS Tandem also remains pending; its animation boundaries are verified against the ported reference formulas. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), [061-066](verification/phases-061-066.md), [067-072](verification/phases-067-072.md), [073-078](verification/phases-073-078.md), [079-084](verification/phases-079-084.md), [085-090](verification/phases-085-090.md), [091-096](verification/phases-091-096.md), [097-100](verification/phases-097-100.md), and [101-105 evidence and limits](verification/phases-101-105.md). Phases 106-110 are implemented with fixture and browser checks; see [106-110 evidence and limits](verification/phases-106-110.md). Phase 109 live paid acceptance remains pending. Phases 111-115 are implemented and verified against the Windows desktop baseline; see [111-115 evidence and limits](verification/phases-111-115.md). Phase 116 onward remains pending. Full rendering, packaged desktop delivery, and agent tools remain planned.
+Status: phases 001-027 and 029-105 are implemented and verified on Windows Chromium, within the recorded browser limits. Phase 028 is implemented and verified on localhost development and production preview servers; its public hosted-URL acceptance remains pending. Phase 095's comparison against frames saved by macOS Tandem also remains pending; its animation boundaries are verified against the ported reference formulas. See [phases 001-006](verification/phases-001-006.md), [007-012](verification/phases-007-012.md), [013-018](verification/phases-013-018.md), [019-024](verification/phases-019-024.md), [025-030](verification/phases-025-030.md), [031-036](verification/phases-031-036.md), [037-042](verification/phases-037-042.md), [043-048](verification/phases-043-048.md), [049-054](verification/phases-049-054.md), [055-060](verification/phases-055-060.md), [061-066](verification/phases-061-066.md), [067-072](verification/phases-067-072.md), [073-078](verification/phases-073-078.md), [079-084](verification/phases-079-084.md), [085-090](verification/phases-085-090.md), [091-096](verification/phases-091-096.md), [097-100](verification/phases-097-100.md), and [101-105 evidence and limits](verification/phases-101-105.md). Phases 106-110 are implemented with fixture and browser checks; see [106-110 evidence and limits](verification/phases-106-110.md). Phase 109 live paid acceptance remains pending. Phases 111-115 are implemented and verified against the Windows desktop baseline; see [111-115 evidence and limits](verification/phases-111-115.md). Phases 116-119 now have Windows implementations within the recorded import/archive limits. Phase 120 has all four query adapters; full Filmora mapping and exact query-text parity remain pending. See [116-120 evidence and remaining work](verification/phases-116-120.md). Phases 121-125 now expose 21 HTTP operations with Windows fixture and runtime checks; see [121-125 evidence and compatibility gaps](verification/phases-121-125.md). Phase 126 onward remains pending. Full rendering parity, packaged desktop delivery, and CLI/MCP tools remain planned.
 
 ## Goal and baseline
 
@@ -863,22 +863,22 @@ Implementation and Windows acceptance evidence: [phases 111-115 verification](ve
 
 ### Phase 116: Relink and archive
 
-- [ ] Relink missing sources with safe path handling and identity checks.
-- [ ] Archive referenced project/library media and metadata with relative paths.
+- [x] Relink missing sources with safe path handling and identity checks.
+- [x] Archive referenced project/library media and metadata with relative paths.
 
 Accept when a browser-to-desktop archive and desktop-to-browser archive reopen after the original paths are unavailable.
 
 ### Phase 117: EDL import
 
-- [ ] Decode the reference segment EDL and explicit recipe configuration.
-- [ ] Build a project through validated commands and emit an import report.
+- [x] Decode the reference segment EDL and explicit recipe configuration.
+- [x] Build a project through validated commands and emit an import report.
 
 Accept when a synthetic recipe fixture preserves clip order, source ranges, and sync offsets without Mike-specific absolute paths.
 
 ### Phase 118: Filmora import
 
-- [ ] Read supported WFP containers safely and map implemented source fields.
-- [ ] Report unsupported effects, missing sources, and approximations.
+- [x] Read supported WFP containers safely and map implemented source fields.
+- [x] Report unsupported effects, missing sources, and approximations.
 
 Accept when licensed/synthetic upstream-style fixtures match the reference import mapping. Split container decoding and each mapping family if either exceeds a small phase.
 
@@ -886,54 +886,65 @@ Accept when licensed/synthetic upstream-style fixtures match the reference impor
 
 ### Phase 119: Local service transport
 
-- [ ] Expose a loopback host service with reference `/v1/<operation>` envelopes.
-- [ ] Validate/authenticate requests and reject unauthorized origins and unsafe filesystem output paths.
+- [x] Expose a loopback host service with reference `/v1/<operation>` envelopes.
+- [x] Validate/authenticate requests and reject unauthorized origins and unsafe filesystem output paths.
 
 Accept when a permitted client reaches the same project coordinator as the renderer and unrelated web origins cannot mutate it.
 
 ### Phase 120: Project query operations
 
-- [ ] Add `status`, `timeline`, `media`, and `clips` adapters over existing services.
+- [x] Add `status`, `timeline`, `media`, and `clips` adapters over existing services.
 - [ ] Match filtering, summaries, JSON/text results, warnings, and revision fields.
 
 Accept one operation per subphase against pinned request/result fixtures, including media's mutation behavior.
 
+Windows evidence for phases 116-120: [verification and limits](verification/phases-116-120.md). Phase 118 currently supports zipped WFP basic media/timing only; additional mapping families are split into [adapter follow-ups](tandem-adapter-phases.md). Phase 120's exact timeline text, renderer analysis/jobs, font warnings and review fields remain pending. Its matching-results checkbox stays open.
+
 ### Phase 121: Edit and history operations
 
-- [ ] Expose `apply`, `undo`, `redo`, and `history`.
+- [x] Expose `apply`, `undo`, `redo`, and `history`.
 - [ ] Add `diff` and `restore` over the journal and reference review baseline semantics.
 
 Accept one operation per subphase. A concurrent human/agent stale revision must reject without partial edits.
 
 ### Phase 122: Speech operations
 
-- [ ] Expose `transcript`, `transcribe`, `search`, and `pauses`.
-- [ ] Expose `tighten` with the same preview/application policy as the UI.
+- [x] Expose `transcript`, `transcribe`, `search`, and `pauses`.
+- [x] Expose `tighten` with the same preview/application policy as the UI.
 
 Accept one operation per subphase, including missing-analysis and partial-cut cases.
 
 ### Phase 123: Generation and edit helpers
 
-- [ ] Expose `join`, `captions`, `short`, and `cards`.
+- [x] Expose `join`, `captions`, `short`, and `cards`.
 - [ ] Match defaults, dry-run behavior, generated IDs, warnings, and author labels.
 
 Accept one helper per subphase by comparing its proposed/applied project with reference fixtures.
 
 ### Phase 124: Frame inspection
 
-- [ ] Expose `frame` and `frames`, including labelled contact sheets and range limits.
-- [ ] Implement `screenshot` using an actual editor capture where supported.
+- [x] Expose `frame` and `frames`, including labelled contact sheets and range limits.
+- [x] Implement `screenshot` using an actual editor capture where supported.
 
 Accept each operation separately, including requested dimensions and missing-font/matte warnings. Do not substitute a frame for a UI screenshot.
 
 ### Phase 125: Render operations
 
-- [ ] Expose `clip`, `export`, and `loudness` through the existing render pipeline.
+- [x] Expose `clip`, `export`, and `loudness` through the existing render pipeline.
 - [ ] Match ranges, format/preset sizing, stems, audio-only output, and result paths.
 
 Accept one operation per subphase with synthetic audio/video output assertions. Finish each output mode separately if needed.
 
+Windows implementation and runtime evidence for groups 121-125: [verification and limits](verification/phases-121-125.md). All 21 operations are exposed. Open matching/acceptance items include reviewed baselines and transition-aware restore, complete join/card defaults, uncached transcription acceptance, 4K/preset bitrate parity and gain verification. These remain open in the adapter plan; phase 126 is the next numbered group.
+
 ### Phase 126: Quality and review
+
+Baseline implementation and Windows runtime evidence for phases 126–130 are in
+[the verification report](verification/phases-126-130.md). All 20 service operations
+have adapters, plus a host-backed CLI and guarded project creation/import.
+The checkboxes below retain full reference acceptance: rendered/reviewed quality
+scans, event replay, complete wait/sync/resource semantics, exact asset/MCP/CLI
+contracts and packaged cross-platform behavior remain open.
 
 - [ ] Implement `validate`, `check`, and `comments` results over project/review queries.
 - [ ] Add the reference quality scan and review/activity navigation.

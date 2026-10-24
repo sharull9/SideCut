@@ -6,7 +6,7 @@ import { resolvedParams } from "@sidecut/core/effects";
 import type { ClipEffect } from "@sidecut/contracts/project";
 import { paintPicture } from "./picture";
 import type { Project, Clip } from "@sidecut/contracts/project";
-import { enabledTracks, exportPlan } from "@sidecut/core/render-plan";
+import { enabledTracks, exportPlan, projectDuration } from "@sidecut/core/render-plan";
 import type { LocalResource } from "./storage";
 import { LocalMediaReader } from "./preview";
 
@@ -15,10 +15,16 @@ export async function renderWebM(
   resource: (id: string) => Promise<LocalResource | null>,
   externalSignal: AbortSignal,
   onProgress: (progress: number) => void,
+  options: { start?: number; end?: number; master?: boolean } = {},
 ): Promise<Blob> {
   const work = new AbortController();
   const signal = AbortSignal.any([externalSignal, work.signal]);
   const plan = exportPlan(project);
+  const start = options.start ?? 0,
+    end = options.end ?? projectDuration(project).seconds;
+  if (start < 0 || end <= start || end > projectDuration(project).seconds + 1 / plan.fps)
+    throw new Error("Invalid export range.");
+  const count = Math.ceil((end - start) * plan.fps - 1e-7);
   const lut = createLUTLoader(resource);
   signal.throwIfAborted();
   const {
@@ -125,11 +131,10 @@ export async function renderWebM(
     signal.throwIfAborted();
     await output.start();
     const picture = async () => {
-      const count = plan.frameCount;
       for (let index = 0; index < count; index++) {
         signal.throwIfAborted();
         const time = index / plan.fps;
-        await paintPicture(ctx, project, time, reader, signal, lut);
+        await paintPicture(ctx, project, start + time, reader, signal, lut);
         await video.add(time, 1 / plan.fps);
         onProgress(((index + 1) / count) * 0.95);
         if (index % 3 === 0) await new Promise((resolve) => setTimeout(resolve, 0));
@@ -138,30 +143,23 @@ export async function renderWebM(
     };
     const sound = async () => {
       if (!audio) return;
-      for await (const block of mixTimelineAudio(
-        project,
-        reader,
-        signal,
-        48000,
-        4096,
-        plan.duration,
-        {
-          master: true,
-          measure: async (mediaID) => {
-            const local = await resource(mediaID);
-            if (!local || local.state !== "available")
-              throw new Error(`Source ${mediaID} is missing.`);
-            return measureSource(local.file, await reader(mediaID), signal);
-          },
+      for await (const block of mixTimelineAudio(project, reader, signal, 48000, 4096, end, {
+        start,
+        master: options.master ?? true,
+        measure: async (mediaID) => {
+          const local = await resource(mediaID);
+          if (!local || local.state !== "available")
+            throw new Error(`Source ${mediaID} is missing.`);
+          return measureSource(local.file, await reader(mediaID), signal);
         },
-      )) {
+      })) {
         signal.throwIfAborted();
         const sample = new AudioSample({
           data: block.data,
           format: "f32-planar",
           sampleRate: block.sampleRate,
           numberOfChannels: block.numberOfChannels,
-          timestamp: block.timestamp,
+          timestamp: options.master === false ? block.timestamp - start : block.timestamp,
         });
         try {
           await audio.add(sample);

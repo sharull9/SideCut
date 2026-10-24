@@ -5,10 +5,12 @@ import type { HostProjectService } from "./project-service.ts";
 import { StableFolderWatch } from "./folder-scanner.ts";
 import { NativeMedia } from "./native-media.ts";
 import { mediaBinaries } from "./media-binaries.ts";
+import type { ProjectAPI } from "./project-api.ts";
 
 export function registerNativeIPC(
   project: HostProjectService,
   isTrusted: (url: string) => boolean,
+  api?: ProjectAPI,
 ) {
   const folders = new Map<number, StableFolderWatch>(),
     jobs = new Map<string, AbortController>();
@@ -45,6 +47,7 @@ export function registerNativeIPC(
     if (typeof json !== "string" || json.length > 20 * 1024 * 1024)
       throw new Error("Invalid project import.");
     const snapshot = await project.replace(json);
+    api?.setMediaRoot(null);
     for (const folder of folders.values()) folder.close();
     folders.clear();
     return snapshot;
@@ -63,6 +66,7 @@ export function registerNativeIPC(
       title: "Watch a media folder",
     });
     if (result.canceled || !result.filePaths[0]) return;
+    api?.setMediaRoot(result.filePaths[0]);
     folders.get(event.sender.id)?.close();
     const watcher = new StableFolderWatch(result.filePaths[0], (files, error) => {
       if (!event.sender.isDestroyed() && isTrusted(event.sender.getURL()))

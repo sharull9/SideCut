@@ -1,0 +1,49 @@
+{
+  "isolation": {
+    "node": "undefined",
+    "require": "undefined",
+    "bridge": [
+      "folderSelect",
+      "folderSubscribe",
+      "getAppInfo",
+      "nativeCancel",
+      "nativeMedia",
+      "nativeProgress",
+      "projectFlush",
+      "projectImport",
+      "projectReload",
+      "projectRequest",
+      "projectSubscribe",
+      "providerCall",
+      "providerCancel",
+      "providerCredential",
+      "serviceReply",
+      "serviceSubscribe"
+    ]
+  },
+  "sharedWindow": 1,
+  "staleRejected": true,
+  "diskRevision": 3,
+  "reopen": true,
+  "folder": {
+    "count": 1,
+    "stableID": true,
+    "path": "music/fixture.wav",
+    "role": "music",
+    "cacheExcluded": true
+  },
+  "timelineExport": {
+    "bytes": 3377,
+    "codecs": ["vp8", "opus"],
+    "duration": 0.228
+  },
+  "nativeExport": {
+    "bytes": 2336,
+    "codec": "opus",
+    "duration": 0.208
+  },
+  "savedLabel": "Saved on this device",
+  "systemMediaOnPath": true,
+  "platform": "win32",
+  "electron": "45.0.0"
+}

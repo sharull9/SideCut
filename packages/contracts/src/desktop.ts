@@ -37,6 +37,8 @@ export interface FolderMedia {
   shortAudioFallback: boolean;
 }
 export interface NativeBridge {
+  serviceSubscribe?: (listener: (request: RendererServiceRequest) => void) => () => void;
+  serviceReply?: (id: string, result: unknown, error?: string) => Promise<void>;
   projectRequest: (json: string) => HostReply;
   projectSubscribe: (listener: (snapshot: HostSnapshot) => void) => () => void;
   projectFlush: () => Promise<void>;
@@ -54,3 +56,14 @@ export interface NativeBridge {
   nativeCancel: (id: string) => Promise<void>;
   nativeProgress: (listener: (id: string, progress: number) => void) => () => void;
 }
+export type RendererServiceRequest =
+  | { id: string; type: "cancel" }
+  | {
+      id: string;
+      type: "call";
+      operation: string;
+      input: Record<string, unknown>;
+      projectID: string;
+      generation: number;
+      revision: number;
+    };

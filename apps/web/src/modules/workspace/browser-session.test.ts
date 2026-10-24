@@ -6,6 +6,7 @@ import { acquireProjectWriter } from "@sidecut/platform-browser/writer-lock";
 import { probeLocalFile } from "@sidecut/platform-browser/media";
 import type * as MediaModule from "@sidecut/platform-browser/media";
 import { BrowserProjectSession } from "./browser-session";
+import { createArchive } from "@sidecut/core/archive";
 
 vi.mock("@sidecut/platform-browser/writer-lock", () => ({ acquireProjectWriter: vi.fn() }));
 vi.mock("@sidecut/platform-browser/media", async (importOriginal) => ({
@@ -33,6 +34,7 @@ describe("persistent browser session", () => {
     putResource: async (_project: string, id: string, resource: unknown) => {
       resources.set(id, resource);
     },
+    resources: async () => [...resources].map(([key, resource]) => ({ key, resource })),
     close: vi.fn(),
   };
   const session = () => {
@@ -56,6 +58,74 @@ describe("persistent browser session", () => {
   afterEach(async () => {
     await Promise.all(sessions.splice(0).map((value) => value.close()));
     vi.restoreAllMocks();
+  });
+
+  it("restores archive source copies without their original paths", async () => {
+    const value = session();
+    await value.start();
+    const file = decodeProjectFile({
+      revision: 0,
+      project: {
+        id: "prj_archive",
+        media: [{ id: "med_archive", path: "C:/gone/source.wav", kind: "audio" }],
+      },
+    });
+    const bytes = createArchive(file, [
+      {
+        key: "med_archive",
+        name: "source.wav",
+        type: "audio/wav",
+        bytes: new TextEncoder().encode("source bytes"),
+      },
+    ]);
+    await value.openProject(new File([bytes.slice().buffer], "portable.sidecut"));
+    expect(await (await value.resource("med_archive"))!.file.text()).toBe("source bytes");
+    expect(value.getSnapshot().project.media[0]!.path).toBe("media/0-source.wav");
+  });
+
+  it("checks relink identity before replacing resources and preserves IDs and undo", async () => {
+    const value = session();
+    await value.start();
+    const file = decodeProjectFile({
+      revision: 0,
+      project: {
+        id: "prj_relink",
+        media: [{ id: "med_relink", path: "old.wav", kind: "audio", fingerprint: "10-1-abcd" }],
+      },
+    });
+    await value.openProject(new File([encodeProjectFile(file)], "relink.tandem"));
+    const replacement = new File(["replacement"], "new.wav");
+    vi.mocked(probeLocalFile).mockResolvedValue({
+      item: {
+        id: "new",
+        path: "new.wav",
+        kind: "audio",
+        role: "other",
+        fingerprint: "10-2-wrong",
+        hasVideo: false,
+        hasAudio: true,
+      },
+      resource: { file: replacement, state: "available", detail: "local" },
+    });
+    await expect(value.relinkMedia("med_relink", replacement)).rejects.toThrow(/identity/);
+    expect(await value.resource("med_relink")).toBeNull();
+    vi.mocked(probeLocalFile).mockResolvedValue({
+      item: {
+        id: "new",
+        path: "new.wav",
+        kind: "audio",
+        role: "other",
+        fingerprint: "10-2-abcd",
+        hasVideo: false,
+        hasAudio: true,
+      },
+      resource: { file: replacement, state: "available", detail: "local" },
+    });
+    await value.relinkMedia("med_relink", replacement);
+    expect(value.getSnapshot().project.media[0]!.id).toBe("med_relink");
+    expect(value.getSnapshot().project.media[0]!.path).toBe("new.wav");
+    value.undo();
+    expect(value.getSnapshot().project.media[0]!.path).toBe("old.wav");
   });
 
   it("validates and persists local LUTs independently of project media", async () => {

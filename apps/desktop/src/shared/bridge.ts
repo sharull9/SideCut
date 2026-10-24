@@ -3,6 +3,9 @@ export const rendererHost = "app";
 export const rendererOrigin = `${rendererScheme}://${rendererHost}`;
 
 export const bridgeChannels = {
+  serviceReady: "sidecut:service-ready",
+  serviceRequest: "sidecut:service-request",
+  serviceReply: "sidecut:service-reply",
   appInfo: "sidecut:app-info",
   projectRequest: "sidecut:project-request",
   projectChanged: "sidecut:project-changed",

@@ -11,6 +11,16 @@ export async function rendererOperation(
   input: unknown,
   signal: AbortSignal,
 ) {
+  if (operation === "short-copy-resources") {
+    if (
+      !input ||
+      typeof input !== "object" ||
+      !("projectID" in input) ||
+      typeof input.projectID !== "string"
+    )
+      throw new QueryError("badRequest", "Invalid short-copy project.");
+    return session.copyShortResources(input.projectID, signal);
+  }
   if (operation === "query-state" || operation === "timeline") {
     const { rendererQuery } = await import("./service-queries");
     return rendererQuery(session, operation, input, signal);

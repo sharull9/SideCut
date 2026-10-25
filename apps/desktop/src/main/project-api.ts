@@ -350,7 +350,7 @@ export class ProjectAPI {
         if (request.apply !== true)
           return {
             ...result,
-            copy: String(request.copyPath ?? `${file.project.name} Short.tandem`),
+            commands: [...result.commands, { adoptFormat: { format: "portrait" } }],
           };
         const copyFile = decodeProjectFile({
             revision: 0,
@@ -362,15 +362,43 @@ export class ProjectAPI {
           label: request.label ?? result.label,
           author: request.author ?? "agent",
         });
+        const copyName = String(
+          request.copyPath ?? `${file.project.name.replace(/[^a-zA-Z0-9_-]/g, "_")} Short.tandem`,
+        );
+        const warnings = [...result.warnings];
+        if (this.renderer && this.renderer.ready?.() !== false)
+          await this.renderer.run(
+            "short-copy-resources",
+            { projectID: copyFile.project.id },
+            signal,
+          );
+        else if (file.project.media.length)
+          warnings.push(
+            "No ready editor is attached; browser resources were not copied. Open the source in the editor and retry with a new output name.",
+          );
+        if (
+          this.project.snapshot().generation !== snapshot.generation ||
+          this.file().revision !== file.revision
+        )
+          throw new EditError("stale-revision", "Project changed while preparing the short copy.");
         const path = await serviceOutput(
           this.project.store.path,
-          String(
-            request.copyPath ?? `${file.project.name.replace(/[^a-zA-Z0-9_-]/g, "_")} Short.tandem`,
+          copyName,
+          new TextEncoder().encode(
+            encodeProjectFile({
+              revision: file.revision,
+              project: {
+                ...copy.projectFile().project,
+                name: copyName
+                  .split(/[\\/]/)
+                  .at(-1)!
+                  .replace(/\.tandem$/i, ""),
+              },
+            }),
           ),
-          new TextEncoder().encode(encodeProjectFile(copy.projectFile())),
           signal,
         );
-        return { ...result, copy: path };
+        return { ...result, warnings, copy: path };
       }
       if (request.apply === true && result.commands.length) {
         if (result.locked) throw new QueryError("badRequest", result.locked);

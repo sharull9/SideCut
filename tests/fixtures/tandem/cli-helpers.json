@@ -1,0 +1,62 @@
+{
+  "revision": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "sources": [
+    "Sources/TandemCLI/CLI.swift",
+    "Sources/TandemAPI/ReadableText.swift",
+    "Sources/TandemAPI/Join.swift",
+    "Sources/TandemAPI/Captions.swift",
+    "Sources/TandemAPI/Short.swift"
+  ],
+  "defaults": { "apply": false, "json": false, "author": "cli", "captionsWords": 3 },
+  "examples": [
+    {
+      "operation": "pauses",
+      "result": {
+        "minimum": 0.6,
+        "total": 1,
+        "pauses": [{ "start": 1, "end": 2, "duration": 1, "before": "hello", "after": "again" }],
+        "missing": ["m"]
+      },
+      "text": "1 pause of 0.600s or more, 1.000s in all:\n  00:01.000-00:02.000  1.000s  ...hello | again...\nNo transcript yet for m, so pauses there aren't listed."
+    },
+    {
+      "operation": "join",
+      "result": {
+        "revision": 2,
+        "joins": [
+          { "time": 1, "clips": [{ "track": "A1 Voice", "clipID": "a", "nextClipID": "b" }] }
+        ],
+        "skipped": [],
+        "warnings": []
+      },
+      "text": "Join 1 through-edit (dry run, revision 2), each into one clip that plays what the two did:\n  00:01.000  A1 Voice a + b\nNothing changed yet. Run again with --apply (or apply: true) to join them."
+    },
+    {
+      "operation": "captions",
+      "result": {
+        "revision": 2,
+        "track": "Captions",
+        "captions": [{ "start": 0.2, "end": 0.5, "text": "Hello" }],
+        "warnings": []
+      },
+      "text": "1 caption on \"Captions\" (dry run, revision 2):\n  00:00.200-00:00.500  Hello\nNothing changed yet. Run again with --apply (or apply: true) to add them."
+    },
+    {
+      "operation": "short",
+      "result": {
+        "revision": 2,
+        "format": { "name": "Portrait", "width": 1080, "height": 1920 },
+        "placed": { "top": 1 },
+        "commands": [{ "adoptFormat": { "format": "portrait" } }],
+        "warnings": []
+      },
+      "text": "9:16 short \"Portrait\" (1080x1920, dry run, revision 2): 1 in the top half.\nNothing written yet. Run again with --apply to make the copy."
+    },
+    {
+      "operation": "tighten",
+      "result": { "minimum": 0.6, "cuts": [], "widened": [], "protected": [], "warnings": [] },
+      "text": "Nothing to tighten: no pauses of 0.600s or more that would lose a frame."
+    }
+  ],
+  "notice": "Synthetic pinned contract expectations; TANDEM-LICENSE applies. Browser storage/copy and CLI transport bounds are documented separately."
+}

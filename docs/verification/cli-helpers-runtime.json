@@ -1,0 +1,53 @@
+{
+  "platform": "win32",
+  "pauses": {
+    "count": 2,
+    "minimum": 0.6
+  },
+  "tighten": {
+    "cuts": 2,
+    "removed": 2.933333333333333,
+    "protected": 2,
+    "applied": 1,
+    "undo": true,
+    "rules": {
+      "sentence": 0.4,
+      "comma": 0.2,
+      "mid": 0.1
+    }
+  },
+  "join": {
+    "count": 1,
+    "applied": 3,
+    "undo": true
+  },
+  "captions": {
+    "count": 3,
+    "track": "CLI Captions",
+    "applied": 5,
+    "undo": true
+  },
+  "short": {
+    "placed": {
+      "bottom": 1,
+      "top": 1
+    },
+    "applied": 7,
+    "undo": true,
+    "copy": {
+      "width": 1080,
+      "height": 1920,
+      "name": "portrait-copy",
+      "revision": 8,
+      "sourceUnchanged": true,
+      "overwriteRefused": true,
+      "reopenedWithResources": true
+    },
+    "dryRunWritesNothing": true
+  },
+  "limits": [
+    "Cached speech; no model inference",
+    "Short-copy resources are local to this profile; archive for portability",
+    "Windows development runtime; native macOS/Linux unverified"
+  ]
+}

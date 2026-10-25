@@ -769,6 +769,39 @@ export class BrowserProjectSession {
     return createArchive(file, resources, options);
   }
 
+  async copyShortResources(projectID: string, signal: AbortSignal) {
+    this.assertWritable();
+    if (
+      !this.store ||
+      !/^prj_[a-zA-Z0-9_-]{1,120}$/.test(projectID) ||
+      projectID === this.state.project.id
+    )
+      throw new Error("Invalid short-copy project ID.");
+    const epoch = this.epoch,
+      revision = this.state.revision,
+      sourceID = this.state.project.id,
+      check = () => {
+        signal.throwIfAborted();
+        this.assertOpen(epoch);
+        if (this.state.revision !== revision)
+          throw new Error("Project changed while copying resources.");
+      };
+    check();
+    if ((await this.store.resources(projectID)).length)
+      throw new Error("Short-copy resources already exist.");
+    const resources = (await this.store.resources(sourceID)).filter(
+      (r) => !r.key.startsWith("cache:"),
+    );
+    if (resources.reduce((total, r) => total + r.resource.file.size, 0) > 256 * 1024 * 1024)
+      throw new Error("Short-copy resources exceed 256 MiB. Archive the source instead.");
+    for (const resource of resources) {
+      check();
+      await this.store.putResource(projectID, resource.key, resource.resource);
+    }
+    check();
+    return { resources: resources.length };
+  }
+
   async downloadArchive() {
     this.assertWritable();
     if (!this.store) throw new Error("Storage is closed.");

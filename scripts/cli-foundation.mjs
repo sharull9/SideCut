@@ -7,7 +7,7 @@ const switches = new Set(
     " ",
   ),
 );
-const repeatable = new Set(["search", "clips", "field", "value", "media", "tracks"]);
+const repeatable = new Set(["search", "clips", "field", "value", "media", "tracks", "protect"]);
 const aliases = { h: "help", v: "version", o: "output", expect: "expected-revision" };
 export function parseArguments(args) {
   const flags = new Map(),

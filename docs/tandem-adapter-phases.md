@@ -181,11 +181,13 @@ Acceptance per command: match flags/defaults, JSON and text output, exit code, a
 - [x] 130.12: Project command search. Joined phrases, readable/JSON active and unused hits, missing transcripts, signed/zero limits and failure output pass.
       See [CLI query evidence and limits](verification/cli-queries.md) for status through search.
 
-- [ ] 130.13: Project command pauses.
-- [ ] 130.14: Project command tighten.
-- [ ] 130.15: Project command join.
-- [ ] 130.16: Project command captions.
-- [ ] 130.17: Project command short.
+- [x] 130.13: Project command pauses. Readable/JSON pause ranges, minimum, context, missing transcripts and read-only behavior pass.
+- [x] 130.14: Project command tighten. Native keep/rule/preset/protect/widen flags, readable plans, stale rejection and one apply/undo pass.
+- [x] 130.15: Project command join. Readable join/skip reports, preview defaults, authoritative apply, stale guards and undo pass.
+- [x] 130.16: Project command captions. Native max-words/y/track/range flags, readable captions, atomic apply and undo pass Electron.
+- [x] 130.17: Project command short. Portrait preview/apply/undo, dry-run copy reporting, exclusive named snapshots, fresh history and same-profile resource copy/reopen pass.
+      See [CLI helper evidence and limits](verification/cli-helpers.md) for pauses through short.
+
 - [ ] 130.18: Project command cards.
 - [ ] 130.19: Project command apply.
 - [ ] 130.20: Project command undo.

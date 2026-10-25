@@ -2,24 +2,14 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Clip } from "@sidecut/contracts/project";
 import { useEditorSession } from "./editor-session";
 
-/** Offscreen items never request analysis or decode cached thumbnail images. */
-export function SourceSamples({
-  mediaID,
-  clip,
-  audio = false,
-}: {
-  mediaID: string;
-  clip?: Clip;
-  audio?: boolean;
-}) {
+function useSourceSamples(mediaID: string) {
   const { session, snapshot } = useEditorSession();
   const state = useSyncExternalStore(
     session.analysis.subscribe,
     session.analysis.getSnapshot,
     session.analysis.getSnapshot,
   );
-  const host = useRef<HTMLSpanElement>(null),
-    canvas = useRef<HTMLCanvasElement>(null);
+  const host = useRef<HTMLSpanElement>(null);
   const [visible, setVisible] = useState(false);
   const samples = state[mediaID]?.samples;
   const available = snapshot.mediaAvailability[mediaID]?.state === "available";
@@ -34,6 +24,21 @@ export function SourceSamples({
   useEffect(() => {
     if (visible && available && !samples) void session.analysis.samples(mediaID).catch(() => {});
   }, [visible, available, samples, mediaID, session]);
+  return { host, visible, samples };
+}
+
+/** Offscreen items never request analysis or decode cached thumbnail images. */
+export function SourceSamples({
+  mediaID,
+  clip,
+  audio = false,
+}: {
+  mediaID: string;
+  clip?: Clip;
+  audio?: boolean;
+}) {
+  const { host, visible, samples } = useSourceSamples(mediaID);
+  const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const element = canvas.current;
     if (!visible || !samples || !element) return;
@@ -130,9 +135,62 @@ export function SourceSamples({
       window.removeEventListener("scroll", scroll, true);
       for (const bitmap of bitmaps.values()) bitmap.close();
     };
-  }, [samples, visible, clip, audio]);
+  }, [host, samples, visible, clip, audio]);
   return (
     <span ref={host} className="editor-source-samples" aria-hidden="true">
+      {visible && <canvas ref={canvas} />}
+    </span>
+  );
+}
+
+/** One still per source: the first thumbnail for picture, the whole-file waveform for sound. */
+export function MediaThumb({ mediaID, audio = false }: { mediaID: string; audio?: boolean }) {
+  const { host, visible, samples } = useSourceSamples(mediaID);
+  const canvas = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const element = canvas.current;
+    if (!visible || !samples || !element) return;
+    let disposed = false;
+    const width = 320,
+      height = 180;
+    element.width = width;
+    element.height = height;
+    const ctx = element.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, width, height);
+    if (audio) {
+      const count = samples.peaks.length;
+      if (!count) return;
+      ctx.fillStyle = getComputedStyle(element).color;
+      for (let x = 0; x < width; x += 3) {
+        const from = Math.floor((x / width) * count),
+          to = Math.max(from + 1, Math.floor(((x + 3) / width) * count));
+        let peak = 0;
+        for (let i = from; i < to && i < count; i++) peak = Math.max(peak, samples.peaks[i]!);
+        const bar = Math.max(4, peak * height * 0.8);
+        ctx.fillRect(x, (height - bar) / 2, 2, bar);
+      }
+      return;
+    }
+    const thumbnail = samples.thumbnails[0];
+    if (!thumbnail) return;
+    void createImageBitmap(thumbnail.image).then((bitmap) => {
+      if (disposed) {
+        bitmap.close();
+        return;
+      }
+      const scale = Math.max(width / bitmap.width, height / bitmap.height);
+      const w = bitmap.width * scale,
+        h = bitmap.height * scale;
+      ctx.drawImage(bitmap, (width - w) / 2, (height - h) / 2, w, h);
+      bitmap.close();
+    });
+    return () => {
+      disposed = true;
+    };
+  }, [samples, visible, audio]);
+  return (
+    <span ref={host} className="editor-media-thumb-art" aria-hidden="true">
       {visible && <canvas ref={canvas} />}
     </span>
   );

@@ -1,0 +1,466 @@
+/* Inspector: clip summary, tabs, collapsible sections and compact property rows. */
+
+.editor-inspector-notice {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.editor-inspector-notice h3 {
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.editor-inspector-notice p {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+/* Clip summary */
+.editor-clip-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.editor-clip-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.editor-clip-heading h3 {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.editor-kind-badge {
+  flex: none;
+  height: 18px;
+  padding: 0 7px;
+  border: 1px solid color-mix(in oklab, var(--kind) 45%, transparent);
+  border-radius: 9px;
+  background: color-mix(in oklab, var(--kind) 20%, transparent);
+  color: color-mix(in oklab, var(--kind) 55%, white);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 16px;
+}
+.editor-kind-badge[data-kind="video"] {
+  --kind: var(--clip-video);
+}
+.editor-kind-badge[data-kind="audio"] {
+  --kind: var(--clip-audio);
+}
+.editor-kind-badge[data-kind="text"] {
+  --kind: var(--clip-text);
+}
+.editor-kind-badge[data-kind="graphic"] {
+  --kind: var(--clip-graphic);
+}
+.editor-kind-badge[data-kind="adjustment"] {
+  --kind: var(--clip-adjustment);
+}
+.editor-clip-summary dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--border);
+}
+.editor-clip-summary dl > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  padding: 5px 8px;
+  background: color-mix(in oklab, var(--card) 97%, white);
+}
+.editor-clip-summary dt {
+  color: var(--muted-foreground);
+  font-size: 10.5px;
+}
+.editor-clip-summary dd {
+  overflow: hidden;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.editor-clip-summary > p {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+/* Tabs scroll sideways with faded edges instead of wrapping. */
+.editor-inspector-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  gap: 2px;
+  padding: 0 12px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+  scrollbar-width: none;
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 12px,
+    #000 calc(100% - 12px),
+    transparent
+  );
+}
+.editor-inspector-tabs::-webkit-scrollbar {
+  display: none;
+}
+.editor-inspector-tabs [role="tab"] {
+  position: relative;
+  flex: none;
+  height: 32px;
+  padding: 0 8px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.editor-inspector-tabs [role="tab"][aria-selected="true"] {
+  color: var(--foreground);
+}
+.editor-inspector-tabs [role="tab"][aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  inset: auto 8px 0;
+  height: 2px;
+  border-radius: 1px 1px 0 0;
+  background: var(--foreground);
+}
+.editor-inspector-tabs [role="tab"]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .editor-inspector-tabs [role="tab"]:hover {
+    color: var(--foreground);
+  }
+}
+/* Tabs from other panels (section cards) still lay out as plain stacked forms. */
+.editor-inspector-panel > .editor-trim-form {
+  padding: 12px;
+}
+
+/* Sections */
+.editor-section {
+  border-bottom: 1px solid var(--border);
+}
+.editor-section-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+.editor-section-title button {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  height: 32px;
+  padding: 0 12px 0 8px;
+  color: var(--foreground);
+  font: inherit;
+  text-align: left;
+}
+.editor-section-title button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+.editor-section-title svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--muted-foreground);
+  transition: transform 120ms ease-out;
+}
+.editor-section-title svg[data-open="false"] {
+  transform: rotate(-90deg);
+}
+@media (hover: hover) and (pointer: fine) {
+  .editor-section-title button:hover svg {
+    color: var(--foreground);
+  }
+}
+.editor-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 2px 12px 12px;
+}
+.editor-section-body[hidden] {
+  display: none;
+}
+.editor-section-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.editor-section-plain .editor-section-body {
+  padding-top: 12px;
+}
+.editor-sequence-settings > [role="alert"] {
+  margin: 0 12px 12px;
+}
+
+/* Property rows */
+.editor-prop {
+  display: grid;
+  grid-template-columns: minmax(0, 40%) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  min-height: 24px;
+}
+.editor-prop[data-stacked] {
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 4px;
+}
+.editor-prop-label {
+  min-width: 0;
+  color: var(--muted-foreground);
+  font-size: 11.5px;
+  line-height: 1.2;
+}
+.editor-prop-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.editor-prop-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.editor-prop-control > :is(select, .editor-commit-input, .editor-prop-pair, textarea),
+.editor-prop-control > [data-slot="input"]:not([type="color"]) {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.editor-prop-control input[type="checkbox"] {
+  accent-color: var(--primary);
+}
+.editor-prop-control :is(input[type="checkbox"], input[type="color"]):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.editor-prop-control input[type="number"] {
+  appearance: textfield;
+}
+.editor-prop-control input::-webkit-inner-spin-button,
+.editor-prop-control input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+.editor-prop-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.editor-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.editor-check input {
+  accent-color: var(--primary);
+}
+.editor-check input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Hints, actions and readouts */
+.editor-hint {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+.editor-prop + .editor-hint {
+  margin-top: -2px;
+}
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.editor-actions[data-ghost] {
+  margin-left: -8px;
+}
+.editor-actions + * {
+  margin-top: 4px;
+}
+.editor-readout {
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: color-mix(in oklab, var(--muted) 45%, transparent);
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
+}
+
+/* Repeating groups */
+.editor-mask {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--foreground) 3%, transparent);
+}
+.editor-mask legend {
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.editor-effect {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.editor-effect > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  font-weight: 550;
+  list-style: none;
+  cursor: pointer;
+}
+.editor-effect > summary::-webkit-details-marker {
+  display: none;
+}
+.editor-effect > summary::before {
+  content: "";
+  flex: none;
+  box-sizing: content-box;
+  width: 5px;
+  height: 5px;
+  margin: -2px 3px 0 1px;
+  border-right: 1.5px solid var(--muted-foreground);
+  border-bottom: 1.5px solid var(--muted-foreground);
+  transform: rotate(-45deg);
+  transition: transform 120ms ease-out;
+}
+.editor-effect[open] > summary::before {
+  transform: rotate(45deg);
+}
+.editor-effect > summary:focus-visible {
+  border-radius: 8px;
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+.editor-effect-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px;
+  border-top: 1px solid var(--border);
+}
+.editor-effect-body .editor-section {
+  border-bottom: 0;
+}
+.editor-effect-body .editor-section + .editor-section,
+.editor-effect-body .editor-section-form + .editor-section {
+  border-top: 1px solid var(--border);
+}
+.editor-effect-body .editor-section-title button {
+  padding-left: 0;
+}
+.editor-effect-body .editor-section-body {
+  padding-inline: 0;
+}
+/* Numeric inputs with units and scrubbable axis prefixes */
+.editor-commit-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+}
+.editor-commit-input input {
+  font-variant-numeric: tabular-nums;
+}
+.editor-commit-input[data-unit] input {
+  padding-right: 26px;
+}
+.editor-commit-input[data-prefix] input {
+  padding-left: 20px;
+}
+.editor-commit-unit {
+  position: absolute;
+  right: 7px;
+  color: var(--muted-foreground);
+  font-size: 10.5px;
+  pointer-events: none;
+}
+.editor-commit-prefix {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  color: var(--muted-foreground);
+  font-size: 10.5px;
+  font-weight: 600;
+  user-select: none;
+  touch-action: none;
+}
+.editor-commit-prefix[data-scrub] {
+  cursor: ew-resize;
+}
+.editor-commit-prefix[data-active] {
+  color: var(--foreground);
+}
+@media (hover: hover) and (pointer: fine) {
+  .editor-commit-prefix[data-scrub]:hover {
+    color: var(--foreground);
+  }
+}
+/* Hide the browser spinners; arrow keys still step the value. */
+.editor-commit-input input::-webkit-inner-spin-button,
+.editor-commit-input input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+.editor-commit-input input[type="number"] {
+  appearance: textfield;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editor-section-title svg,
+  .editor-effect > summary::before {
+    transition: none;
+  }
+}

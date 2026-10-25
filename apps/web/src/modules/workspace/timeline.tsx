@@ -18,6 +18,12 @@ import {
   RiScissorsCutLine,
   RiLinksLine,
   RiLinkUnlinkM,
+  RiZoomInLine,
+  RiZoomOutLine,
+  RiExpandWidthLine,
+  RiVideoAddLine,
+  RiFileMusicLine,
+  RiCloseCircleLine,
 } from "@remixicon/react";
 import { Button } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
@@ -28,6 +34,8 @@ import { EditToolbar } from "./edit-toolbar";
 import { placeSource, MEDIA_DRAG_TYPE } from "./placement";
 import { PanelDivider } from "./panel-divider";
 import { selectionWithLinks } from "./edit-actions";
+import { ToolTip } from "./tool-tip";
+import "./toolbar.css";
 
 const HEADER = 248;
 const RIPPLE_HELP = {
@@ -182,79 +190,120 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
     <section id="timeline-panel" aria-labelledby="timeline-title" className="editor-timeline">
       <div className="editor-timeline-toolbar">
         <h2 id="timeline-title">Timeline</h2>
-        <TitleDialog />
-        <TemplateDialog />
-        <SectionCardsDialog />
-        <AdjustmentDialog />
-        <Button
-          size="xs"
-          variant="ghost"
-          disabled={disabled}
-          onClick={() =>
-            run(() =>
-              session.apply({
-                label: "Add video track",
-                commands: [{ addTrack: { kind: "video" } }],
-              }),
-            )
-          }
-        >
-          + Video
-        </Button>
-        <Button
-          size="xs"
-          variant="ghost"
-          disabled={disabled}
-          onClick={() =>
-            run(() =>
-              session.apply({
-                label: "Add audio track",
-                commands: [{ addTrack: { kind: "audio" } }],
-              }),
-            )
-          }
-        >
-          + Audio
-        </Button>
-        <Button
-          size="icon-xs"
-          variant="ghost"
-          aria-label="Zoom out timeline"
-          onClick={() => editor.getState().setZoom(zoom / 1.5)}
-        >
-          −
-        </Button>
-        <span className="editor-zoom-label">{Number(zoom.toFixed(1))} px/s</span>
-        <Button
-          size="icon-xs"
-          variant="ghost"
-          aria-label="Zoom in timeline"
-          onClick={() => editor.getState().setZoom(zoom * 1.5)}
-        >
-          +
-        </Button>
-        <Button
-          size="xs"
-          variant="ghost"
-          onClick={() => {
-            editor
-              .getState()
-              .setZoom(
-                ((scroll.current?.clientWidth ?? 960) - HEADER - 32) / Math.max(5, duration + 1),
-              );
-            if (scroll.current) scroll.current.scrollLeft = 0;
-          }}
-        >
-          Fit
-        </Button>
-        <Button
-          size="xs"
-          variant="ghost"
-          disabled={!selected.length}
-          onClick={() => editor.getState().select(null)}
-        >
-          Clear selection
-        </Button>
+        <div className="editor-toolbar-group">
+          <TitleDialog />
+          <TemplateDialog />
+          <SectionCardsDialog />
+          <AdjustmentDialog />
+        </div>
+        <div className="editor-toolbar-group">
+          <ToolTip label="Add video track">
+            <Button
+              size="xs"
+              variant="ghost"
+              className="editor-tool-button"
+              aria-label="+ Video"
+              disabled={disabled}
+              onClick={() =>
+                run(() =>
+                  session.apply({
+                    label: "Add video track",
+                    commands: [{ addTrack: { kind: "video" } }],
+                  }),
+                )
+              }
+            >
+              <RiVideoAddLine data-icon="inline-start" aria-hidden="true" />
+              <span className="editor-tool-text" aria-hidden="true">
+                Video
+              </span>
+            </Button>
+          </ToolTip>
+          <ToolTip label="Add audio track">
+            <Button
+              size="xs"
+              variant="ghost"
+              className="editor-tool-button"
+              aria-label="+ Audio"
+              disabled={disabled}
+              onClick={() =>
+                run(() =>
+                  session.apply({
+                    label: "Add audio track",
+                    commands: [{ addTrack: { kind: "audio" } }],
+                  }),
+                )
+              }
+            >
+              <RiFileMusicLine data-icon="inline-start" aria-hidden="true" />
+              <span className="editor-tool-text" aria-hidden="true">
+                Audio
+              </span>
+            </Button>
+          </ToolTip>
+        </div>
+        <div className="editor-toolbar-group">
+          <ToolTip label="Zoom out timeline">
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              aria-label="Zoom out timeline"
+              onClick={() => editor.getState().setZoom(zoom / 1.5)}
+            >
+              <RiZoomOutLine aria-hidden="true" />
+            </Button>
+          </ToolTip>
+          <span className="editor-zoom-label">{Number(zoom.toFixed(1))} px/s</span>
+          <ToolTip label="Zoom in timeline">
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              aria-label="Zoom in timeline"
+              onClick={() => editor.getState().setZoom(zoom * 1.5)}
+            >
+              <RiZoomInLine aria-hidden="true" />
+            </Button>
+          </ToolTip>
+          <ToolTip label="Fit the whole sequence in view">
+            <Button
+              size="xs"
+              variant="ghost"
+              className="editor-tool-button"
+              aria-label="Fit"
+              onClick={() => {
+                editor
+                  .getState()
+                  .setZoom(
+                    ((scroll.current?.clientWidth ?? 960) - HEADER - 32) /
+                      Math.max(5, duration + 1),
+                  );
+                if (scroll.current) scroll.current.scrollLeft = 0;
+              }}
+            >
+              <RiExpandWidthLine data-icon="inline-start" aria-hidden="true" />
+              <span className="editor-tool-text" aria-hidden="true">
+                Fit
+              </span>
+            </Button>
+          </ToolTip>
+        </div>
+        <div className="editor-toolbar-group">
+          <ToolTip label="Clear selection" shortcut="Esc">
+            <Button
+              size="xs"
+              variant="ghost"
+              className="editor-tool-button"
+              aria-label="Clear selection"
+              disabled={!selected.length}
+              onClick={() => editor.getState().select(null)}
+            >
+              <RiCloseCircleLine data-icon="inline-start" aria-hidden="true" />
+              <span className="editor-tool-text" aria-hidden="true">
+                Clear selection
+              </span>
+            </Button>
+          </ToolTip>
+        </div>
         <span className="editor-timecode" data-testid="timeline-timecode">
           {timecode(playhead, project)}
         </span>

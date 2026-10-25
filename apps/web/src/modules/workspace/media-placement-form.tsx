@@ -42,8 +42,8 @@ export function MediaPlacementForm({ item }: { item: MediaItem }) {
     }
   };
   return (
-    <details className="editor-source-placement">
-      <summary>Role and take placement</summary>
+    <div className="editor-source-placement">
+      <h4>Role and take placement</h4>
       <form
         className="editor-trim-form"
         onSubmit={(e) => {
@@ -180,6 +180,6 @@ export function MediaPlacementForm({ item }: { item: MediaItem }) {
         </FieldDescription>
       </FieldGroup>
       {error && <FieldError role="alert">{error}</FieldError>}
-    </details>
+    </div>
   );
 }

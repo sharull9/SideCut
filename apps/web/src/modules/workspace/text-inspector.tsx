@@ -1,13 +1,9 @@
 import { useRef, useState, useSyncExternalStore } from "react";
 import type { Clip } from "@sidecut/contracts/project";
 import { Button } from "@sidecut/ui/components/button";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@sidecut/ui/components/field";
+import { FieldError } from "@sidecut/ui/components/field";
+import { Tip } from "@sidecut/ui/components/tooltip";
+import { RiResetLeftLine, RiUploadLine } from "@remixicon/react";
 import {
   ANIMATION_NAMES,
   DEFAULT_ANIMATION_DURATION,
@@ -28,6 +24,7 @@ import {
   subscribeFonts,
 } from "@sidecut/platform-browser/text";
 import { CommitInput } from "./commit-input";
+import { ActionRow, Hint, InspectorSection, PropertyRow } from "./inspector-layout";
 import { useEditorSession } from "./editor-session";
 
 let fontVersion = 0;
@@ -96,17 +93,25 @@ export function TextInspector({ clip }: { clip: Clip }) {
       style: { [field]: value },
     });
   const own = (field: keyof TextStyle) => content.style[field] !== undefined;
-  const reset = (field: keyof TextStyle) =>
-    own(field) && (
+  const resetButton = (label: string, onClick: () => void, title?: string) => (
+    <Tip label={title ?? label}>
       <Button
-        size="xs"
+        size="icon-xs"
         variant="ghost"
         disabled={disabled}
-        onClick={() => style(field, null)}
-        title={`Use the ${preset ? `${preset.name} preset's` : "default"} ${field}`}
+        aria-label={label}
+        onClick={onClick}
       >
-        Reset
+        <RiResetLeftLine aria-hidden="true" />
       </Button>
+    </Tip>
+  );
+  const reset = (field: keyof TextStyle) =>
+    own(field) &&
+    resetButton(
+      `Reset ${field}`,
+      () => style(field, null),
+      `Use the ${preset ? `${preset.name} preset's` : "default"} ${field}`,
     );
   const missing = track
     ? missingFonts(
@@ -116,8 +121,7 @@ export function TextInspector({ clip }: { clip: Clip }) {
     : undefined;
   const id = (name: string) => `text-${clip.id}-${name}`;
   const select = (field: "alignment" | "uppercase" | "shadow", options: [string, string][]) => (
-    <Field orientation="horizontal">
-      <FieldLabel htmlFor={id(field)}>{field[0]!.toUpperCase() + field.slice(1)}</FieldLabel>
+    <PropertyRow label={field[0]!.toUpperCase() + field.slice(1)} htmlFor={id(field)}>
       <select
         id={id(field)}
         disabled={disabled}
@@ -134,15 +138,14 @@ export function TextInspector({ clip }: { clip: Clip }) {
           </option>
         ))}
       </select>
-    </Field>
+    </PropertyRow>
   );
   const number = (
     field: "size" | "weight" | "strokeWidth" | "lineSpacing",
     label: string,
     max: number,
   ) => (
-    <Field orientation="horizontal">
-      <FieldLabel htmlFor={id(field)}>{label}</FieldLabel>
+    <PropertyRow label={label} htmlFor={id(field)}>
       <CommitInput
         id={id(field)}
         value={resolved[field]}
@@ -152,13 +155,12 @@ export function TextInspector({ clip }: { clip: Clip }) {
         onCommit={(v) => style(field, v)}
       />
       {reset(field)}
-    </Field>
+    </PropertyRow>
   );
   const color = (field: "color" | "strokeColor" | "backgroundColor", label: string) => {
     const value = resolved[field];
     return (
-      <Field orientation="horizontal">
-        <FieldLabel htmlFor={id(field)}>{label}</FieldLabel>
+      <PropertyRow label={label} htmlFor={id(field)}>
         <input
           id={id(field)}
           type="color"
@@ -177,15 +179,13 @@ export function TextInspector({ clip }: { clip: Clip }) {
           </Button>
         )}
         {reset(field)}
-      </Field>
+      </PropertyRow>
     );
   };
   return (
-    <div className="editor-trim-form editor-text-inspector">
-      <h3>Title</h3>
-      <FieldGroup>
-        <Field>
-          <FieldLabel htmlFor={id("text")}>Text</FieldLabel>
+    <div className="editor-text-inspector">
+      <InspectorSection id="text.title" title="Title">
+        <PropertyRow label="Text" htmlFor={id("text")} stacked>
           <textarea
             key={`${clip.id}:${content.text}`}
             id={id("text")}
@@ -198,14 +198,11 @@ export function TextInspector({ clip }: { clip: Clip }) {
                 patch("Edit title text", { text: event.target.value });
             }}
           />
-          {content.words && (
-            <FieldDescription>
-              Caption text comes from its {content.words.length} timed words.
-            </FieldDescription>
-          )}
-        </Field>
-        <Field orientation="horizontal">
-          <FieldLabel htmlFor={id("preset")}>Preset</FieldLabel>
+        </PropertyRow>
+        {content.words && (
+          <Hint>Caption text comes from its {content.words.length} timed words.</Hint>
+        )}
+        <PropertyRow label="Preset" htmlFor={id("preset")}>
           <select
             id={id("preset")}
             disabled={disabled}
@@ -224,14 +221,16 @@ export function TextInspector({ clip }: { clip: Clip }) {
               <option value={content.preset}>{content.preset} (unknown)</option>
             )}
           </select>
-        </Field>
-        {preset && <FieldDescription>{preset.summary}</FieldDescription>}
-      </FieldGroup>
-      <h3>Animation</h3>
-      <FieldGroup>
+        </PropertyRow>
+        {preset && <Hint>{preset.summary}</Hint>}
+      </InspectorSection>
+      <InspectorSection id="text.animation" title="Animation">
         {(["animationIn", "animationOut"] as const).map((field) => (
-          <Field key={field} orientation="horizontal">
-            <FieldLabel htmlFor={id(field)}>{field === "animationIn" ? "In" : "Out"}</FieldLabel>
+          <PropertyRow
+            key={field}
+            label={field === "animationIn" ? "In" : "Out"}
+            htmlFor={id(field)}
+          >
             <select
               id={id(field)}
               disabled={disabled}
@@ -249,10 +248,9 @@ export function TextInspector({ clip }: { clip: Clip }) {
                 </option>
               ))}
             </select>
-          </Field>
+          </PropertyRow>
         ))}
-        <Field orientation="horizontal">
-          <FieldLabel htmlFor={id("animationDuration")}>Duration</FieldLabel>
+        <PropertyRow label="Duration" htmlFor={id("animationDuration")}>
           <CommitInput
             id={id("animationDuration")}
             value={
@@ -264,23 +262,15 @@ export function TextInspector({ clip }: { clip: Clip }) {
             disabled={disabled}
             onCommit={(v) => patch("Set title animation duration", { animationDuration: v })}
           />
-          {content.animationDuration !== undefined && (
-            <Button
-              size="xs"
-              variant="ghost"
-              disabled={disabled}
-              onClick={() => patch("Reset title animation duration", { animationDuration: null })}
-            >
-              Reset
-            </Button>
-          )}
-        </Field>
-        <FieldDescription>Each animation takes at most half the clip.</FieldDescription>
-      </FieldGroup>
-      <h3>Style</h3>
-      <FieldGroup>
-        <Field orientation="horizontal">
-          <FieldLabel htmlFor={id("font")}>Font</FieldLabel>
+          {content.animationDuration !== undefined &&
+            resetButton("Reset animation duration", () =>
+              patch("Reset title animation duration", { animationDuration: null }),
+            )}
+        </PropertyRow>
+        <Hint>Each animation takes at most half the clip.</Hint>
+      </InspectorSection>
+      <InspectorSection id="text.font" title="Font">
+        <PropertyRow label="Font" htmlFor={id("font")}>
           <CommitInput
             id={id("font")}
             type="text"
@@ -289,46 +279,44 @@ export function TextInspector({ clip }: { clip: Clip }) {
             onCommit={(v) => style("font", v)}
           />
           {reset("font")}
-        </Field>
+        </PropertyRow>
         {missing ? (
-          <FieldDescription role="status" className="editor-font-warning">
+          <Hint role="status" className="editor-font-warning">
             {missingFontWarning(missing, 1)}
-          </FieldDescription>
+          </Hint>
         ) : (
-          <FieldDescription>
+          <Hint>
             {resolved.font} is available.
             {importedFonts().length > 0 && ` Imported: ${importedFonts().join(", ")}.`}
-          </FieldDescription>
+          </Hint>
         )}
-        <Field orientation="horizontal">
+        <ActionRow>
           <Button size="xs" variant="outline" onClick={() => picker.current?.click()}>
+            <RiUploadLine aria-hidden="true" />
             Import font file
           </Button>
-          <input
-            ref={picker}
-            type="file"
-            accept=".ttf,.otf,.woff,.woff2"
-            className="sr-only"
-            tabIndex={-1}
-            aria-label="Font file"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.target.value = "";
-              if (!file) return;
-              setError(null);
-              importFont(file)
-                .then((family) => setStatus(`Imported ${family}. It stays on this device.`))
-                .catch((cause) => setError(cause instanceof Error ? cause.message : String(cause)));
-            }}
-          />
-        </Field>
-        {status && <p role="status">{status}</p>}
+        </ActionRow>
+        <input
+          ref={picker}
+          type="file"
+          accept=".ttf,.otf,.woff,.woff2"
+          className="sr-only"
+          tabIndex={-1}
+          aria-label="Font file"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (!file) return;
+            setError(null);
+            importFont(file)
+              .then((family) => setStatus(`Imported ${family}. It stays on this device.`))
+              .catch((cause) => setError(cause instanceof Error ? cause.message : String(cause)));
+          }}
+        />
+        {status && <Hint role="status">{status}</Hint>}
         {number("size", "Size (pt at 1080p)", 2000)}
         {number("weight", "Weight", 1000)}
-        {color("color", "Color")}
-        {color("strokeColor", "Outline")}
-        {number("strokeWidth", "Outline width", 200)}
-        {color("backgroundColor", "Box")}
+        {number("lineSpacing", "Line spacing (× size)", 10)}
         {select("alignment", [
           ["left", "Left"],
           ["center", "Center"],
@@ -338,12 +326,17 @@ export function TextInspector({ clip }: { clip: Clip }) {
           ["true", "On"],
           ["false", "Off"],
         ])}
+      </InspectorSection>
+      <InspectorSection id="text.appearance" title="Appearance">
+        {color("color", "Color")}
+        {color("strokeColor", "Outline")}
+        {number("strokeWidth", "Outline width", 200)}
+        {color("backgroundColor", "Box")}
         {select("shadow", [
           ["true", "On"],
           ["false", "Off"],
         ])}
-        {number("lineSpacing", "Line spacing (× size)", 10)}
-      </FieldGroup>
+      </InspectorSection>
       {error && <FieldError role="alert">{error}</FieldError>}
     </div>
   );

@@ -1,11 +1,26 @@
 import { useState, useEffect } from "react";
 import { Button } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
-import { Field, FieldLabel, FieldGroup } from "@sidecut/ui/components/field";
+import { FieldLabel } from "@sidecut/ui/components/field";
+import {
+  RiArrowRightLine,
+  RiDeleteBack2Line,
+  RiDeleteBin2Line,
+  RiEjectLine,
+  RiKeyboardLine,
+  RiLinksLine,
+  RiLinkUnlinkM,
+  RiMergeCellsHorizontal,
+  RiRulerLine,
+  RiScissorsCutLine,
+} from "@remixicon/react";
 import { useEditorSession, useEditorView } from "./editor-session";
 import { useEditActions } from "./edit-actions";
 import { TimeEditsDialog } from "./time-edits-dialog";
 import { SpeechToolsDialog } from "./speech-tools";
+import { ShortcutsDialog } from "./shortcuts-dialog";
+import { MOD, ToolTip } from "./tool-tip";
+import "./toolbar.css";
 
 export function EditToolbar({ run }: { run: (action: () => unknown) => void }) {
   const { session, editor } = useEditorSession();
@@ -23,76 +38,105 @@ export function EditToolbar({ run }: { run: (action: () => unknown) => void }) {
   }, [range]);
   return (
     <div className="editor-edit-toolbar">
-      <label className="editor-keymap">
-        Keys
-        <select
-          aria-label="Keyboard layout"
-          value={keymap}
-          onChange={(event) =>
-            editor.getState().setKeymap(event.target.value === "minimal" ? "minimal" : "premiere")
-          }
-        >
-          <option value="premiere">Premiere subset</option>
-          <option value="minimal">Editing only</option>
-        </select>
-      </label>
-      <Button
-        variant="ghost"
-        size="xs"
-        disabled={actions.disabled}
-        onClick={actions.split}
-        title="Split at playhead (Ctrl/Cmd+K or Ctrl/Cmd+B)"
-      >
-        Split
-      </Button>
-      <Button
-        variant="ghost"
-        size="xs"
-        disabled={actions.disabled || !selected.length}
-        onClick={() => actions.remove(false)}
-        title="Lift selection (Delete)"
-      >
-        Lift
-      </Button>
-      <Button
-        variant="ghost"
-        size="xs"
-        disabled={actions.disabled || !selected.length}
-        onClick={() => actions.remove(true)}
-        title="Ripple delete selection (Shift+Delete)"
-      >
-        Ripple delete
-      </Button>
-      <Button
-        variant="ghost"
-        size="xs"
-        disabled={actions.disabled || selected.length < 2}
-        onClick={actions.link}
-      >
-        Link
-      </Button>
-      <Button
-        variant="ghost"
-        size="xs"
-        disabled={actions.disabled || !selected.length}
-        onClick={actions.unlink}
-      >
-        Unlink
-      </Button>
-      <TimeEditsDialog />
-      <SpeechToolsDialog />
-      <Button
-        variant="ghost"
-        size="xs"
-        disabled={actions.disabled}
-        onClick={() =>
-          run(() =>
-            session.apply({ label: "Join through-edits", commands: [{ joinThroughEdits: {} }] }),
-          )
-        }
-      >
-        Join through-edits
-      </Button>
+      <div className="editor-toolbar-group">
+        <ToolTip label="Keyboard layout">
+          <label className="editor-keymap">
+            <RiKeyboardLine className="editor-keymap-icon" size={14} aria-hidden="true" />
+            <select
+              aria-label="Keyboard layout"
+              value={keymap}
+              onChange={(event) =>
+                editor
+                  .getState()
+                  .setKeymap(event.target.value === "minimal" ? "minimal" : "premiere")
+              }
+            >
+              <option value="premiere">Premiere subset</option>
+              <option value="minimal">Editing only</option>
+            </select>
+          </label>
+        </ToolTip>
+        <ShortcutsDialog />
+      </div>
+      <div className="editor-toolbar-group">
+        <ToolTip label="Split at playhead" shortcut={`${MOD} K`}>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Split"
+            disabled={actions.disabled}
+            onClick={actions.split}
+          >
+            <RiScissorsCutLine aria-hidden="true" />
+          </Button>
+        </ToolTip>
+        <ToolTip label="Lift selection" shortcut="Delete">
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Lift"
+            disabled={actions.disabled || !selected.length}
+            onClick={() => actions.remove(false)}
+          >
+            <RiEjectLine aria-hidden="true" />
+          </Button>
+        </ToolTip>
+        <ToolTip label="Ripple delete selection" shortcut="Shift Delete">
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Ripple delete"
+            disabled={actions.disabled || !selected.length}
+            onClick={() => actions.remove(true)}
+          >
+            <RiDeleteBack2Line aria-hidden="true" />
+          </Button>
+        </ToolTip>
+        <ToolTip label="Link selected clips">
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Link"
+            disabled={actions.disabled || selected.length < 2}
+            onClick={actions.link}
+          >
+            <RiLinksLine aria-hidden="true" />
+          </Button>
+        </ToolTip>
+        <ToolTip label="Unlink selected clips">
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Unlink"
+            disabled={actions.disabled || !selected.length}
+            onClick={actions.unlink}
+          >
+            <RiLinkUnlinkM aria-hidden="true" />
+          </Button>
+        </ToolTip>
+      </div>
+      <div className="editor-toolbar-group">
+        <TimeEditsDialog />
+        <SpeechToolsDialog />
+        <ToolTip label="Join through-edits">
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Join through-edits"
+            disabled={actions.disabled}
+            onClick={() =>
+              run(() =>
+                session.apply({
+                  label: "Join through-edits",
+                  commands: [{ joinThroughEdits: {} }],
+                }),
+              )
+            }
+          >
+            <RiMergeCellsHorizontal aria-hidden="true" />
+          </Button>
+        </ToolTip>
+      </div>
       <form
         className="editor-range-form"
         onSubmit={(event) => {
@@ -109,9 +153,12 @@ export function EditToolbar({ run }: { run: (action: () => unknown) => void }) {
           });
         }}
       >
-        <FieldGroup>
-          <Field orientation="horizontal">
-            <FieldLabel htmlFor="ripple-start">Range</FieldLabel>
+        <ToolTip label="Time range in seconds">
+          <div className="editor-range-fields" role="group" aria-label="Ripple range">
+            <RiRulerLine size={14} aria-hidden="true" />
+            <FieldLabel htmlFor="ripple-start" className="sr-only">
+              Range
+            </FieldLabel>
             <Input
               id="ripple-start"
               aria-label="Ripple range start seconds"
@@ -123,9 +170,10 @@ export function EditToolbar({ run }: { run: (action: () => unknown) => void }) {
               onChange={(e) => setStart(e.target.value)}
               disabled={actions.disabled}
             />
-          </Field>
-          <Field orientation="horizontal">
-            <FieldLabel htmlFor="ripple-end">to</FieldLabel>
+            <RiArrowRightLine size={12} aria-hidden="true" />
+            <FieldLabel htmlFor="ripple-end" className="sr-only">
+              to
+            </FieldLabel>
             <Input
               id="ripple-end"
               aria-label="Ripple range end seconds"
@@ -137,11 +185,19 @@ export function EditToolbar({ run }: { run: (action: () => unknown) => void }) {
               onChange={(e) => setFinish(e.target.value)}
               disabled={actions.disabled}
             />
-          </Field>
-        </FieldGroup>
-        <Button type="submit" variant="outline" size="xs" disabled={actions.disabled}>
-          Delete range
-        </Button>
+          </div>
+        </ToolTip>
+        <ToolTip label="Delete range">
+          <Button
+            type="submit"
+            variant="outline"
+            size="icon-xs"
+            aria-label="Delete range"
+            disabled={actions.disabled}
+          >
+            <RiDeleteBin2Line aria-hidden="true" />
+          </Button>
+        </ToolTip>
       </form>
     </div>
   );

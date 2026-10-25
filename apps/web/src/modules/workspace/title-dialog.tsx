@@ -11,12 +11,16 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@sidecut/ui/components/dialog";
 import { TITLE_PRESETS } from "@sidecut/core/text";
+import { RiHeading } from "@remixicon/react";
 import { useEditorSession } from "./editor-session";
+import { ToolTip } from "./tool-tip";
+import "./dialogs.css";
 
 export function TitleDialog() {
   const { session, snapshot, editor } = useEditorSession();
@@ -29,12 +33,31 @@ export function TitleDialog() {
   const disabled = snapshot.busy || snapshot.readOnly;
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button size="xs" variant="ghost" disabled={disabled} />}>
-        + Title
-      </DialogTrigger>
-      <DialogContent className="dark">
+      <ToolTip label="Insert title">
+        <DialogTrigger
+          render={
+            <Button
+              size="xs"
+              variant="ghost"
+              className="editor-tool-button"
+              aria-label="+ Title"
+              disabled={disabled}
+            />
+          }
+        >
+          <RiHeading data-icon="inline-start" aria-hidden="true" />
+          <span className="editor-tool-text" aria-hidden="true">
+            Title
+          </span>
+        </DialogTrigger>
+      </ToolTip>
+      <DialogContent className="dark editor-dialog editor-dialog-form">
         <DialogHeader>
           <DialogTitle>Insert title</DialogTitle>
+          <DialogDescription>
+            Starts at the playhead. Use a line break for two-line presets. Edit text, style and
+            animation in the inspector.
+          </DialogDescription>
         </DialogHeader>
         <form
           onSubmit={(event) => {
@@ -135,14 +158,10 @@ export function TitleDialog() {
                 disabled={disabled}
               />
             </Field>
-            <FieldDescription>
-              Starts at the playhead. Use a line break for two-line presets. Edit text, style and
-              animation in the inspector.
-            </FieldDescription>
+            {error && <FieldError role="alert">{error}</FieldError>}
             <Button type="submit" disabled={disabled}>
               Insert title
             </Button>
-            {error && <FieldError role="alert">{error}</FieldError>}
           </FieldGroup>
         </form>
       </DialogContent>

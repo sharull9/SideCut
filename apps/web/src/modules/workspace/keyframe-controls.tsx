@@ -6,14 +6,10 @@ import { Time } from "@sidecut/contracts/time";
 import { fixedParameters, resolveClip } from "@sidecut/core/keyframes";
 import { Button } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
-import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-  FieldDescription,
-  FieldError,
-} from "@sidecut/ui/components/field";
+import { FieldError } from "@sidecut/ui/components/field";
+import { RiArrowLeftSLine, RiArrowRightSLine } from "@remixicon/react";
 import { useEditorSession, useEditorView } from "./editor-session";
+import { ActionRow, Hint, InspectorSection, PropertyRow } from "./inspector-layout";
 
 export function KeyframeControls({ clips }: { clips: readonly Clip[] }) {
   const { session, snapshot, editor } = useEditorSession();
@@ -118,116 +114,113 @@ export function KeyframeControls({ clips }: { clips: readonly Clip[] }) {
     }
   };
   return (
-    <div className="editor-trim-form">
-      <h3>Keyframes</h3>
-      <FieldGroup>
-        {clips.length > 1 && (
-          <Field>
-            <FieldLabel htmlFor="keyframe-clip">Clip</FieldLabel>
-            <select id="keyframe-clip" value={clip.id} onChange={(e) => setClipID(e.target.value)}>
-              {clips.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name ?? c.id}
-                </option>
-              ))}
-            </select>
-          </Field>
-        )}
-        <Field>
-          <FieldLabel htmlFor="keyframe-parameter">Parameter</FieldLabel>
-          <select
-            id="keyframe-parameter"
-            value={parameter}
-            onChange={(e) => setParameter(e.target.value)}
-          >
-            {[...paths].map((p) => (
-              <option key={p} value={p}>
-                {p}
+    <InspectorSection id="effects.keyframes" title="Keyframes">
+      {clips.length > 1 && (
+        <PropertyRow label="Clip" htmlFor="keyframe-clip">
+          <select id="keyframe-clip" value={clip.id} onChange={(e) => setClipID(e.target.value)}>
+            {clips.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name ?? c.id}
               </option>
             ))}
           </select>
-        </Field>
-        <Field data-invalid={Boolean(error)}>
-          <FieldLabel htmlFor="keyframe-value">Value (JSON)</FieldLabel>
-          <Input
-            id="keyframe-value"
-            disabled={disabled}
-            value={value}
-            aria-invalid={Boolean(error)}
-            onChange={(e) => setValue(e.target.value)}
-          />
-          <FieldDescription>
-            Use a number, boolean, quoted string, point with x/y, or color with r/g/b/a. Supported
-            picture effects render animated values. Sound and other effect renderers are planned.
-          </FieldDescription>
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="keyframe-easing">Interpolation to next key</FieldLabel>
-          <select
-            id="keyframe-easing"
-            value={interpolation}
-            disabled={disabled}
-            onChange={(e) => setInterpolation(e.target.value)}
-          >
-            {["linear", "easeIn", "easeOut", "easeInOut", "hold"].map((k) => (
-              <option key={k} value={k}>
-                {k}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <p>
-          {list.length} keys. Playhead {time.toFixed(3)} s from clip start.
-          {!inClip && " Seek inside this clip to add a key."}
-        </p>
-        <div className="editor-clip-edit-actions">
-          <Button
-            size="xs"
-            variant="outline"
-            disabled={disabled || !inClip}
-            onClick={() => {
-              try {
-                const parsed: unknown = JSON.parse(value);
-                write([
-                  ...list.filter((k) => !sameTime(k.time)),
-                  { time, value: parsed, interpolation },
-                ]);
-              } catch (cause) {
-                setError(cause instanceof Error ? cause.message : String(cause));
-              }
-            }}
-          >
-            {exact ? "Update key at playhead" : "Add key at playhead"}
-          </Button>
-          <Button
-            size="xs"
-            variant="outline"
-            disabled={disabled || !exact}
-            onClick={() => write(list.filter((k) => !sameTime(k.time)))}
-          >
-            Remove key at playhead
-          </Button>
-          <Button
-            size="xs"
-            variant="ghost"
-            disabled={!list.some((k) => Number(k.time) >= 0 && Number(k.time) < time)}
-            onClick={() => navigate(false)}
-          >
-            Previous key
-          </Button>
-          <Button
-            size="xs"
-            variant="ghost"
-            disabled={
-              !list.some((k) => Number(k.time) > time && Number(k.time) <= clip.duration.seconds)
+        </PropertyRow>
+      )}
+      <PropertyRow label="Parameter" htmlFor="keyframe-parameter">
+        <select
+          id="keyframe-parameter"
+          value={parameter}
+          onChange={(e) => setParameter(e.target.value)}
+        >
+          {[...paths].map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+      </PropertyRow>
+      <PropertyRow label="Value (JSON)" htmlFor="keyframe-value">
+        <Input
+          id="keyframe-value"
+          disabled={disabled}
+          value={value}
+          aria-invalid={Boolean(error)}
+          onChange={(e) => setValue(e.target.value)}
+        />
+      </PropertyRow>
+      <Hint>
+        Use a number, boolean, quoted string, point with x/y, or color with r/g/b/a. Supported
+        picture effects render animated values. Sound and other effect renderers are planned.
+      </Hint>
+      <PropertyRow label="Interpolation to next key" htmlFor="keyframe-easing">
+        <select
+          id="keyframe-easing"
+          value={interpolation}
+          disabled={disabled}
+          onChange={(e) => setInterpolation(e.target.value)}
+        >
+          {["linear", "easeIn", "easeOut", "easeInOut", "hold"].map((k) => (
+            <option key={k} value={k}>
+              {k}
+            </option>
+          ))}
+        </select>
+      </PropertyRow>
+      <Hint>
+        {list.length} keys. Playhead {time.toFixed(3)} s from clip start.
+        {!inClip && " Seek inside this clip to add a key."}
+      </Hint>
+      <ActionRow>
+        <Button
+          size="xs"
+          variant="outline"
+          disabled={disabled || !inClip}
+          onClick={() => {
+            try {
+              const parsed: unknown = JSON.parse(value);
+              write([
+                ...list.filter((k) => !sameTime(k.time)),
+                { time, value: parsed, interpolation },
+              ]);
+            } catch (cause) {
+              setError(cause instanceof Error ? cause.message : String(cause));
             }
-            onClick={() => navigate(true)}
-          >
-            Next key
-          </Button>
-        </div>
-        {error && <FieldError role="alert">{error}</FieldError>}
-      </FieldGroup>
-    </div>
+          }}
+        >
+          {exact ? "Update key at playhead" : "Add key at playhead"}
+        </Button>
+        <Button
+          size="xs"
+          variant="outline"
+          disabled={disabled || !exact}
+          onClick={() => write(list.filter((k) => !sameTime(k.time)))}
+        >
+          Remove key at playhead
+        </Button>
+      </ActionRow>
+      <ActionRow ghost>
+        <Button
+          size="xs"
+          variant="ghost"
+          disabled={!list.some((k) => Number(k.time) >= 0 && Number(k.time) < time)}
+          onClick={() => navigate(false)}
+        >
+          <RiArrowLeftSLine aria-hidden="true" />
+          Previous key
+        </Button>
+        <Button
+          size="xs"
+          variant="ghost"
+          disabled={
+            !list.some((k) => Number(k.time) > time && Number(k.time) <= clip.duration.seconds)
+          }
+          onClick={() => navigate(true)}
+        >
+          Next key
+          <RiArrowRightSLine aria-hidden="true" />
+        </Button>
+      </ActionRow>
+      {error && <FieldError role="alert">{error}</FieldError>}
+    </InspectorSection>
   );
 }

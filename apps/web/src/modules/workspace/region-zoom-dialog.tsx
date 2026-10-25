@@ -20,6 +20,7 @@ import {
   FieldError,
 } from "@sidecut/ui/components/field";
 import { useEditorSession } from "./editor-session";
+import "./dialogs.css";
 
 export function RegionZoomDialog({ clip, disabled }: { clip: Clip; disabled: boolean }) {
   const { session, snapshot, editor } = useEditorSession();
@@ -99,7 +100,7 @@ export function RegionZoomDialog({ clip, disabled }: { clip: Clip; disabled: boo
       >
         Select source region
       </DialogTrigger>
-      <DialogContent className="dark editor-region-dialog">
+      <DialogContent className="dark editor-dialog editor-dialog-wide editor-region-dialog">
         <DialogHeader>
           <DialogTitle>Zoom to source region</DialogTitle>
           <DialogDescription>

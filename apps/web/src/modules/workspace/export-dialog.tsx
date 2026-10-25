@@ -18,6 +18,7 @@ import { fontAvailable } from "@sidecut/platform-browser/text";
 import { useFontVersion } from "./text-inspector";
 import { formatOf, formatProject } from "@sidecut/core/formats";
 import { useEditorSession } from "./editor-session";
+import "./dialogs.css";
 
 export function ExportDialog() {
   const { session, snapshot, editor } = useEditorSession();
@@ -48,7 +49,7 @@ export function ExportDialog() {
         Export
         {entries.some((e) => e.status === "running" || e.status === "queued") ? " · working" : ""}
       </DialogTrigger>
-      <DialogContent className="dark editor-export-dialog">
+      <DialogContent className="dark editor-dialog editor-dialog-wide editor-export-dialog">
         <DialogHeader>
           <DialogTitle>Export WebM</DialogTitle>
           <DialogDescription>
@@ -57,7 +58,7 @@ export function ExportDialog() {
           </DialogDescription>
         </DialogHeader>
         {plan && (
-          <p>
+          <p className="editor-dialog-summary">
             {plan.width} × {plan.height} · {Number(plan.fps.toFixed(3))} fps ·{" "}
             {plan.duration.toFixed(2)} s
           </p>

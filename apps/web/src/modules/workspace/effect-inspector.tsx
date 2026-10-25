@@ -10,24 +10,25 @@ import {
 import { effectsOf } from "@sidecut/core/effect-editing";
 import { Button } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
+import { FieldError } from "@sidecut/ui/components/field";
 import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-  FieldDescription,
-  FieldError,
-} from "@sidecut/ui/components/field";
+  RiAddLine,
+  RiArrowDownLine,
+  RiArrowUpLine,
+  RiDeleteBinLine,
+  RiResetLeftLine,
+} from "@remixicon/react";
+import { Tip } from "@sidecut/ui/components/tooltip";
 import { useEditorSession } from "./editor-session";
+import { ActionRow, Hint, InspectorSection, PropertyRow } from "./inspector-layout";
 
 export function EffectInspector({ clips }: { clips: readonly Clip[] }) {
   const [clipID, setClipID] = useState(clips[0]!.id);
   const clip = clips.find((c) => c.id === clipID) ?? clips[0]!;
   return (
-    <section className="editor-trim-form" aria-label="Effects">
-      <h3>Effects</h3>
+    <InspectorSection id="effects.stack" title="Effects" label="Effects">
       {clips.length > 1 && (
-        <Field>
-          <FieldLabel htmlFor="effect-clip">Clip</FieldLabel>
+        <PropertyRow label="Clip" htmlFor="effect-clip">
           <select id="effect-clip" value={clip.id} onChange={(e) => setClipID(e.target.value)}>
             {clips.map((c) => (
               <option key={c.id} value={c.id}>
@@ -35,10 +36,10 @@ export function EffectInspector({ clips }: { clips: readonly Clip[] }) {
               </option>
             ))}
           </select>
-        </Field>
+        </PropertyRow>
       )}
       <EffectStack key={clip.id} clip={clip} />
-    </section>
+    </InspectorSection>
   );
 }
 function EffectStack({ clip }: { clip: Clip }) {
@@ -64,16 +65,15 @@ function EffectStack({ clip }: { clip: Clip }) {
     }
   };
   return (
-    <FieldGroup>
-      <FieldDescription>
+    <>
+      <Hint>
         {clip.content.adjustment != null
           ? "Effects change every layer below this track, top to bottom. Animate numeric settings under Keyframes."
           : track.kind === "audio"
             ? "The first active pitch shift changes pitch. Dynamics run top to bottom, before gain animation and fades."
             : "Effects run top to bottom. Animate numeric settings under Keyframes."}
-      </FieldDescription>
-      <Field>
-        <FieldLabel htmlFor="effect-type">Add effect</FieldLabel>
+      </Hint>
+      <PropertyRow label="Add effect" htmlFor="effect-type">
         <select
           id="effect-type"
           value={type}
@@ -93,24 +93,27 @@ function EffectStack({ clip }: { clip: Clip }) {
               </option>
             ))}
         </select>
-      </Field>
-      <Button
-        size="xs"
-        variant="outline"
-        disabled={disabled}
-        onClick={() => apply([{ addEffect: { clipID: clip.id, effect: { type } } }])}
-      >
-        Add effect
-      </Button>
-      {!effects.length && <p>No effects on this clip.</p>}
+      </PropertyRow>
+      <ActionRow>
+        <Button
+          size="xs"
+          variant="outline"
+          disabled={disabled}
+          onClick={() => apply([{ addEffect: { clipID: clip.id, effect: { type } } }])}
+        >
+          <RiAddLine aria-hidden="true" />
+          Add effect
+        </Button>
+      </ActionRow>
+      {!effects.length && <Hint>No effects on this clip.</Hint>}
       {effects.map((effect, index) => (
-        <details key={effect.id}>
+        <details key={effect.id} className="editor-effect">
           <summary>
             {index + 1}. {effectDefinition(effect.type)?.name ?? effect.type}
             {effect.enabled === false ? " (disabled)" : ""}
           </summary>
-          <Field>
-            <FieldLabel>
+          <div className="editor-effect-body">
+            <label className="editor-check">
               <input
                 type="checkbox"
                 checked={effect.enabled !== false}
@@ -128,63 +131,70 @@ function EffectStack({ clip }: { clip: Clip }) {
                 }
               />{" "}
               Enabled
-            </FieldLabel>
-          </Field>
-          {!renderedEffects.has(effect.type) && (
-            <p>
-              This effect is saved. Disable it to preview or export until its renderer is available.
-            </p>
-          )}
-          <div className="editor-clip-edit-actions">
-            <Button
-              size="xs"
-              variant="ghost"
-              disabled={disabled || index === 0}
-              onClick={() =>
-                apply([{ moveEffect: { clipID: clip.id, effectID: effect.id, index: index - 1 } }])
-              }
-            >
-              Move up
-            </Button>
-            <Button
-              size="xs"
-              variant="ghost"
-              disabled={disabled || index === effects.length - 1}
-              onClick={() =>
-                apply([{ moveEffect: { clipID: clip.id, effectID: effect.id, index: index + 1 } }])
-              }
-            >
-              Move down
-            </Button>
-            <Button
-              size="xs"
-              variant="ghost"
+            </label>
+            {!renderedEffects.has(effect.type) && (
+              <Hint>
+                This effect is saved. Disable it to preview or export until its renderer is
+                available.
+              </Hint>
+            )}
+            <ActionRow>
+              {(
+                [
+                  [
+                    "Move up",
+                    RiArrowUpLine,
+                    index === 0,
+                    { moveEffect: { clipID: clip.id, effectID: effect.id, index: index - 1 } },
+                  ],
+                  [
+                    "Move down",
+                    RiArrowDownLine,
+                    index === effects.length - 1,
+                    { moveEffect: { clipID: clip.id, effectID: effect.id, index: index + 1 } },
+                  ],
+                  [
+                    "Remove effect",
+                    RiDeleteBinLine,
+                    false,
+                    { removeEffect: { clipID: clip.id, effectID: effect.id } },
+                  ],
+                  [
+                    "Reset effect",
+                    RiResetLeftLine,
+                    false,
+                    { removeEffect: { clipID: clip.id, effectID: effect.id } },
+                  ],
+                ] as const
+              ).map(([label, Icon, off, command]) => (
+                <Tip key={label} label={label}>
+                  <Button
+                    size="icon-xs"
+                    variant="ghost"
+                    aria-label={label}
+                    disabled={disabled || off}
+                    onClick={() => apply([command])}
+                  >
+                    <Icon aria-hidden="true" />
+                  </Button>
+                </Tip>
+              ))}
+            </ActionRow>
+            <EffectParameters
+              key={`${effect.id}:${snapshot.revision}`}
+              effect={effect}
               disabled={disabled}
-              onClick={() => apply([{ removeEffect: { clipID: clip.id, effectID: effect.id } }])}
-            >
-              Remove effect
-            </Button>
-            <Button
-              size="xs"
-              variant="ghost"
-              disabled={disabled}
-              onClick={() => apply([{ removeEffect: { clipID: clip.id, effectID: effect.id } }])}
-            >
-              Reset effect
-            </Button>
+              save={(params) =>
+                apply([
+                  { updateEffect: { clipID: clip.id, effectID: effect.id, patch: { params } } },
+                ])
+              }
+            />
           </div>
-          <EffectParameters
-            key={`${effect.id}:${snapshot.revision}`}
-            effect={effect}
-            disabled={disabled}
-            save={(params) =>
-              apply([{ updateEffect: { clipID: clip.id, effectID: effect.id, patch: { params } } }])
-            }
-          />
         </details>
       ))}
       {error && <FieldError role="alert">{error}</FieldError>}
-    </FieldGroup>
+    </>
   );
 }
 function EffectParameters({
@@ -206,7 +216,7 @@ function EffectParameters({
     return <pre className="editor-project-json">{JSON.stringify(effect.params, null, 2)}</pre>;
   return (
     <form
-      className="editor-trim-form"
+      className="editor-section-form"
       onSubmit={(e) => {
         e.preventDefault();
         const data = new FormData(e.currentTarget),
@@ -223,40 +233,39 @@ function EffectParameters({
         save(patch);
       }}
     >
-      <FieldGroup>
-        <FieldDescription>{definition.summary}</FieldDescription>
+      <>
+        <Hint>{definition.summary}</Hint>
         {effect.type === "lut" && (
-          <Field>
-            <FieldLabel htmlFor={`lut-${effect.id}`}>Import local .cube file</FieldLabel>
-            <Input
-              id={`lut-${effect.id}`}
-              type="file"
-              accept=".cube"
-              disabled={disabled}
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                setError(null);
-                try {
-                  const name = await session.importLUT(file);
-                  setPath(name);
-                  save({ path: name });
-                } catch (cause) {
-                  setError(cause instanceof Error ? cause.message : String(cause));
-                }
-              }}
-            />
-            <FieldDescription>
-              LUT files stay in this browser. Import them again on another device.
-            </FieldDescription>
-          </Field>
+          <>
+            <PropertyRow label="Import local .cube file" htmlFor={`lut-${effect.id}`} stacked>
+              <Input
+                id={`lut-${effect.id}`}
+                type="file"
+                accept=".cube"
+                disabled={disabled}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setError(null);
+                  try {
+                    const name = await session.importLUT(file);
+                    setPath(name);
+                    save({ path: name });
+                  } catch (cause) {
+                    setError(cause instanceof Error ? cause.message : String(cause));
+                  }
+                }}
+              />
+            </PropertyRow>
+            <Hint>LUT files stay in this browser. Import them again on another device.</Hint>
+          </>
         )}
         {effect.type === "colorWheels" && (
           <>
-            <FieldDescription>
+            <Hint>
               Drag a wheel to choose hue and strength, or use the numeric fields. Apply parameters
               saves the change.
-            </FieldDescription>
+            </Hint>
             <div className="editor-color-wheels">
               {["shadows", "midtones", "highlights"].map((name) => (
                 <div key={name}>
@@ -323,13 +332,23 @@ function EffectParameters({
             </div>
           </>
         )}
-        <div className="editor-picture-fields">
-          {definition.params.map((p) => (
-            <Field key={p.key}>
-              <FieldLabel htmlFor={`fx-${effect.id}-${p.key}`}>
-                {p.name}
-                {p.unit ? ` (${p.unit})` : ""}
-              </FieldLabel>
+        {definition.params.map((p) =>
+          p.kind === "color" && p.key !== "path" ? (
+            <EffectColor
+              key={p.key}
+              id={`fx-${effect.id}-${p.key}`}
+              label={`${p.name}${p.unit ? ` (${p.unit})` : ""}`}
+              value={draft[p.key] ?? p.defaultValue}
+              fallback={p.defaultValue}
+              disabled={disabled}
+              onChange={(value) => setDraft({ ...draft, [p.key]: value })}
+            />
+          ) : (
+            <PropertyRow
+              key={p.key}
+              label={`${p.name}${p.unit ? ` (${p.unit})` : ""}`}
+              htmlFor={`fx-${effect.id}-${p.key}`}
+            >
               {p.key === "path" ? (
                 <Input
                   id={`fx-${effect.id}-${p.key}`}
@@ -337,14 +356,6 @@ function EffectParameters({
                   value={path}
                   onChange={(e) => setPath(e.target.value)}
                   disabled={disabled}
-                />
-              ) : p.kind === "color" ? (
-                <EffectColor
-                  id={`fx-${effect.id}-${p.key}`}
-                  value={draft[p.key] ?? p.defaultValue}
-                  fallback={p.defaultValue}
-                  disabled={disabled}
-                  onChange={(value) => setDraft({ ...draft, [p.key]: value })}
                 />
               ) : (
                 <Input
@@ -359,26 +370,30 @@ function EffectParameters({
                   disabled={disabled}
                 />
               )}
-            </Field>
-          ))}
-        </div>
-        <Button size="xs" variant="outline" type="submit" disabled={disabled}>
-          Apply parameters
-        </Button>
+            </PropertyRow>
+          ),
+        )}
+        <ActionRow>
+          <Button size="xs" variant="outline" type="submit" disabled={disabled}>
+            Apply parameters
+          </Button>
+        </ActionRow>
         {error && <FieldError role="alert">{error}</FieldError>}
-      </FieldGroup>
+      </>
     </form>
   );
 }
 
 function EffectColor({
   id,
+  label,
   value,
   fallback,
   disabled,
   onChange,
 }: {
   id: string;
+  label: string;
   value: unknown;
   fallback: unknown;
   disabled: boolean;
@@ -403,25 +418,26 @@ function EffectColor({
       .join("");
   return (
     <>
-      <Input
-        id={id}
-        type="color"
-        value={hex}
-        disabled={disabled}
-        onChange={(e) =>
-          onChange({
-            ...rgba,
-            ...Object.fromEntries(
-              ["r", "g", "b"].map((key, i) => [
-                key,
-                parseInt(e.target.value.slice(i * 2 + 1, i * 2 + 3), 16) / 255,
-              ]),
-            ),
-          })
-        }
-      />
-      <Field>
-        <FieldLabel htmlFor={`${id}-opacity`}>Colour opacity (%)</FieldLabel>
+      <PropertyRow label={label} htmlFor={id}>
+        <Input
+          id={id}
+          type="color"
+          value={hex}
+          disabled={disabled}
+          onChange={(e) =>
+            onChange({
+              ...rgba,
+              ...Object.fromEntries(
+                ["r", "g", "b"].map((key, i) => [
+                  key,
+                  parseInt(e.target.value.slice(i * 2 + 1, i * 2 + 3), 16) / 255,
+                ]),
+              ),
+            })
+          }
+        />
+      </PropertyRow>
+      <PropertyRow label="Colour opacity (%)" htmlFor={`${id}-opacity`}>
         <Input
           id={`${id}-opacity`}
           type="number"
@@ -432,7 +448,7 @@ function EffectColor({
           disabled={disabled}
           onChange={(e) => onChange({ ...rgba, a: Number(e.target.value) / 100 })}
         />
-      </Field>
+      </PropertyRow>
     </>
   );
 }

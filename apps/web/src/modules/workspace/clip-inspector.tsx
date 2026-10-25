@@ -1,5 +1,6 @@
 import { TransitionInspector } from "./transition-controls";
 import { AudioControls } from "./audio-controls";
+import type { Clip } from "@sidecut/contracts/project";
 import { useEditorSession, useEditorView } from "./editor-session";
 import { ClipTrimForm } from "./clip-trim-form";
 import { ClipEditForm } from "./clip-edit-form";
@@ -8,10 +9,31 @@ import { PictureInspector } from "./picture-controls";
 import { EffectInspector } from "./effect-inspector";
 import { KeyframeControls } from "./keyframe-controls";
 import { ProjectSettings } from "./project-settings";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Tip } from "@sidecut/ui/components/tooltip";
 import { TextInspector } from "./text-inspector";
 import { CardInspector } from "./section-cards";
 import { cardOf } from "@sidecut/core/section-cards";
+import "./inspector.css";
+
+const KIND_LABELS = {
+  video: "Video",
+  audio: "Audio",
+  text: "Text",
+  graphic: "Graphic",
+  adjustment: "Adjustment",
+} as const;
+
+// Same colour families as the timeline clips.
+function clipKind(clip: Clip, audio: boolean): keyof typeof KIND_LABELS {
+  if (audio) return "audio";
+  const content = clip.content as Record<string, unknown>;
+  if ("text" in content) return "text";
+  if ("adjustment" in content) return "adjustment";
+  if ("graphic" in content || "solid" in content) return "graphic";
+  return "video";
+}
+
 const INSPECTOR_TABS = [
   ["card", "Card"],
   ["text", "Text"],
@@ -26,13 +48,19 @@ type InspectorTab = (typeof INSPECTOR_TABS)[number][0];
 export function ClipInspector() {
   const { snapshot } = useEditorSession();
   const [tab, setTab] = useState<InspectorTab | null>(null);
+  const tabList = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    tabList.current
+      ?.querySelector<HTMLElement>('[aria-selected="true"]')
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [tab]);
   const selected = useEditorView((state) => state.selected);
   const clips = [...snapshot.project.videoTracks, ...snapshot.project.audioTracks]
     .flatMap((track) => track.clips)
     .filter((clip) => selected.includes(clip.id));
   if (snapshot.unsupportedJSON)
     return (
-      <div className="editor-inspector-section">
+      <div className="editor-inspector-notice">
         <h3>Read-only project</h3>
         <p>
           This file uses unsupported project data. Download project preserves the original JSON.
@@ -74,12 +102,29 @@ export function ClipInspector() {
       (id !== "text" || (clips.length === 1 && first.content.text != null)),
   );
   const current = tabs.find(([id]) => id === tab)?.[0] ?? tabs[0]![0];
+  const title =
+    clips.length === 1 ? (first.name ?? "Selected clip") : `${clips.length} clips selected`;
+  const kind = clipKind(
+    first,
+    snapshot.project.audioTracks.some((t) => t.clips.some((c) => c.id === first.id)),
+  );
   return (
     <div className="editor-clip-inspector">
-      <header className="editor-inspector-section editor-clip-summary">
-        <h3>
-          {clips.length === 1 ? (first.name ?? "Selected clip") : `${clips.length} clips selected`}
-        </h3>
+      <header className="editor-clip-summary">
+        <div className="editor-clip-heading">
+          {clips.length === 1 ? (
+            <>
+              <Tip label={title}>
+                <h3>{title}</h3>
+              </Tip>
+              <span className="editor-kind-badge" data-kind={kind}>
+                {KIND_LABELS[kind]}
+              </span>
+            </>
+          ) : (
+            <h3>{title}</h3>
+          )}
+        </div>
         {clips.length === 1 ? (
           <dl>
             <div>
@@ -100,7 +145,7 @@ export function ClipInspector() {
             </div>
           </dl>
         ) : (
-          <p className="text-muted-foreground">
+          <p>
             {editable
               ? "Edits apply to the first clip; linked edges move by the same amount."
               : "Select one clip, or clips from the same link group, to edit them."}
@@ -110,16 +155,22 @@ export function ClipInspector() {
       {editable && (
         <>
           <div
+            ref={tabList}
             className="editor-inspector-tabs"
             role="tablist"
             aria-label="Clip settings"
             onKeyDown={(event) => {
-              if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+              if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+              event.preventDefault();
               const index = tabs.findIndex(([id]) => id === current);
               const next =
-                tabs[
-                  (index + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length
-                ]![0];
+                event.key === "Home"
+                  ? tabs[0]![0]
+                  : event.key === "End"
+                    ? tabs[tabs.length - 1]![0]
+                    : tabs[
+                        (index + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length
+                      ]![0];
               setTab(next);
               event.currentTarget.querySelector<HTMLElement>(`#inspector-tab-${next}`)?.focus();
             }}
@@ -141,7 +192,7 @@ export function ClipInspector() {
           </div>
           <div
             id="inspector-tab-panel"
-            className="editor-inspector-section editor-inspector-panel"
+            className="editor-inspector-panel"
             role="tabpanel"
             aria-labelledby={`inspector-tab-${current}`}
           >

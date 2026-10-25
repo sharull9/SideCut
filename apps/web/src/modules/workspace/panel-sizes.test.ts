@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { DEFAULT_PANELS, fitPanels, readPanelSizes } from "./panel-sizes";
+import { DEFAULT_PANELS, fitPanels, readPanelSizes, readSideTab } from "./panel-sizes";
 
 describe("editor panel sizing", () => {
   it("ignores corrupt/old preferences and clamps valid saved widths", () => {
@@ -48,5 +48,13 @@ describe("editor panel sizing", () => {
     );
     expect(fitted.media).toBe(32);
     expect(fitted.inspector).toBe(32);
+  });
+});
+
+describe("side panel tab preference", () => {
+  it("falls back to media for missing or unknown values", () => {
+    expect(readSideTab(null)).toBe("media");
+    expect(readSideTab("nope")).toBe("media");
+    expect(readSideTab("history")).toBe("history");
   });
 });

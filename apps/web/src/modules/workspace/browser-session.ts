@@ -37,6 +37,14 @@ export interface MediaAvailability {
   state: "available" | "missing" | "unsupported";
   detail: string;
 }
+export interface HistoryEntry {
+  id: string;
+  kind: "edit" | "undo" | "redo";
+  revision: number | null;
+  label: string;
+  author: string;
+  date?: string;
+}
 export interface BrowserSnapshot extends SessionSnapshot {
   reviewPendingCount?: number;
   warnings: readonly string[];
@@ -431,6 +439,40 @@ export class BrowserProjectSession {
   }
   projectFile(): ProjectFile {
     return this.coordinator.projectFile();
+  }
+  /** Changes made to this project, oldest first; falls back to undo steps when no journal exists. */
+  history(): { entries: readonly HistoryEntry[]; complete: boolean } {
+    const coordinator = this.coordinator;
+    const journal = coordinator.journalEntries();
+    if (journal && (journal.length > 0 || this.state.revision === 0))
+      return {
+        complete: true,
+        entries: journal.map((entry) => ({
+          id: entry.id,
+          kind: entry.kind,
+          revision: entry.result.revision,
+          label: entry.result.label,
+          author: entry.result.author,
+          ...(entry.date ? { date: entry.date } : {}),
+        })),
+      };
+    // Without a journal only the undo stack knows about earlier edits.
+    const labels =
+      coordinator instanceof HostCoordinator
+        ? this.state.undoLabel
+          ? [{ label: this.state.undoLabel, author: "user" }]
+          : []
+        : coordinator.history(50).undo.toReversed();
+    return {
+      complete: false,
+      entries: labels.map((entry, index) => ({
+        id: `undo:${index}`,
+        kind: "edit" as const,
+        revision: null,
+        label: entry.label,
+        author: entry.author,
+      })),
+    };
   }
 
   async resource(mediaID: string) {

@@ -1,19 +1,22 @@
 import { useState } from "react";
+import { RiFilmLine, RiResetLeftLine } from "@remixicon/react";
 import type { Clip } from "@sidecut/contracts/project";
 import { transformOf } from "@sidecut/core/picture-editing";
 import { Button } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
-import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-  FieldDescription,
-  FieldError,
-} from "@sidecut/ui/components/field";
+import { FieldError } from "@sidecut/ui/components/field";
 import { useEditorSession } from "./editor-session";
 import { RegionZoomDialog } from "./region-zoom-dialog";
 import { CommitInput } from "./commit-input";
 import { CutoutControls } from "./cutout-controls";
+import {
+  ActionRow,
+  HiddenLabel,
+  Hint,
+  InspectorSection,
+  PropertyPair,
+  PropertyRow,
+} from "./inspector-layout";
 
 type PictureKey =
   | "x"
@@ -94,38 +97,67 @@ export function PictureControls({ clip }: { clip: Clip }) {
     });
   };
   if (!track) return null;
+  // With a prefix the input shows only an axis letter; a hidden label keeps its full name.
+  const input = (key: PictureKey, prefix?: string) => {
+    const [, label, factor, unit, min, max] = PICTURE_FIELDS.find(([k]) => k === key)!;
+    return (
+      <>
+        {prefix && <HiddenLabel htmlFor={`picture-${key}`}>{label}</HiddenLabel>}
+        <CommitInput
+          id={`picture-${key}`}
+          value={values[key]}
+          factor={factor}
+          unit={unit}
+          prefix={prefix}
+          min={min}
+          max={max}
+          disabled={disabled}
+          onCommit={(value) => update(key, Number(value))}
+        />
+      </>
+    );
+  };
+  const single = (key: PictureKey) => {
+    const [, label] = PICTURE_FIELDS.find(([k]) => k === key)!;
+    return (
+      <PropertyRow label={label} htmlFor={`picture-${key}`}>
+        {input(key)}
+      </PropertyRow>
+    );
+  };
+  const pair = (title: string, a: [PictureKey, string], b: [PictureKey, string]) => (
+    <PropertyRow label={title}>
+      <PropertyPair>
+        {input(a[0], a[1])}
+        {input(b[0], b[1])}
+      </PropertyPair>
+    </PropertyRow>
+  );
   return (
-    <div className="editor-trim-form">
-      <h3>Picture</h3>
-      <FieldGroup className="editor-picture-fields">
-        {PICTURE_FIELDS.filter(([key]) => !adjustment || key === "opacity").map(
-          ([key, label, factor, unit, min, max]) => (
-            <Field key={key} className={key === "opacity" ? "editor-field-wide" : undefined}>
-              <FieldLabel htmlFor={`picture-${key}`}>{label}</FieldLabel>
-              <CommitInput
-                id={`picture-${key}`}
-                value={values[key]}
-                factor={factor}
-                unit={unit}
-                min={min}
-                max={max}
-                disabled={disabled}
-                onCommit={(value) => update(key, Number(value))}
-              />
-            </Field>
-          ),
+    <>
+      <InspectorSection id="picture.transform" title={adjustment ? "Blend" : "Transform"}>
+        {!adjustment && (
+          <>
+            {pair("Position", ["x", "X"], ["y", "Y"])}
+            {single("scale")}
+            {single("rotation")}
+          </>
         )}
-        <FieldDescription>
+        {single("opacity")}
+        <Hint>
           {adjustment
             ? "Blends the adjusted picture with the layers below."
             : "Changes apply when you press Enter or leave a field. Keyframes override these values."}
-        </FieldDescription>
-      </FieldGroup>
+        </Hint>
+      </InspectorSection>
       {!adjustment && (
         <>
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="picture-layout">Layout</FieldLabel>
+          <InspectorSection id="picture.crop" title="Crop">
+            {pair("Left / right", ["left", "L"], ["right", "R"])}
+            {pair("Top / bottom", ["top", "T"], ["bottom", "B"])}
+          </InspectorSection>
+          <InspectorSection id="picture.layout" title="Layout">
+            <PropertyRow label="Layout" htmlFor="picture-layout">
               <select
                 id="picture-layout"
                 value={preset}
@@ -148,11 +180,9 @@ export function PictureControls({ clip }: { clip: Clip }) {
                   </option>
                 ))}
               </select>
-              <FieldDescription>
-                Choosing a layout replaces position, scale, and crop.
-              </FieldDescription>
-            </Field>
-            <div className="editor-clip-edit-actions">
+            </PropertyRow>
+            <Hint>Choosing a layout replaces position, scale, and crop.</Hint>
+            <ActionRow>
               <Button
                 size="xs"
                 variant="outline"
@@ -163,22 +193,23 @@ export function PictureControls({ clip }: { clip: Clip }) {
                   })
                 }
               >
+                <RiResetLeftLine aria-hidden="true" />
                 Reset picture
               </Button>
               <RegionZoomDialog clip={clip} disabled={disabled} />
-            </div>
-          </FieldGroup>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              run("Add picture motion", {
-                addMotion: { clipIDs: [clip.id], style: motion, amount: Number(amount) },
-              });
-            }}
-          >
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="picture-motion">Motion preset</FieldLabel>
+            </ActionRow>
+          </InspectorSection>
+          <InspectorSection id="picture.motion" title="Motion">
+            <form
+              className="editor-section-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                run("Add picture motion", {
+                  addMotion: { clipIDs: [clip.id], style: motion, amount: Number(amount) },
+                });
+              }}
+            >
+              <PropertyRow label="Motion preset" htmlFor="picture-motion">
                 <select
                   id="picture-motion"
                   disabled={disabled}
@@ -195,9 +226,8 @@ export function PictureControls({ clip }: { clip: Clip }) {
                     </option>
                   ))}
                 </select>
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="motion-amount">Motion amount</FieldLabel>
+              </PropertyRow>
+              <PropertyRow label="Motion amount" htmlFor="motion-amount">
                 <Input
                   id="motion-amount"
                   type="number"
@@ -209,20 +239,23 @@ export function PictureControls({ clip }: { clip: Clip }) {
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                 />
-                <FieldDescription>
-                  Runs for the whole clip ({clip.duration.seconds.toFixed(2)} s) and replaces
-                  existing scale and position keyframes.
-                </FieldDescription>
-              </Field>
-              <Button type="submit" size="xs" variant="outline" disabled={disabled}>
-                Add motion
-              </Button>
-            </FieldGroup>
-          </form>
+              </PropertyRow>
+              <Hint>
+                Runs for the whole clip ({clip.duration.seconds.toFixed(2)} s) and replaces existing
+                scale and position keyframes.
+              </Hint>
+              <ActionRow>
+                <Button type="submit" size="xs" variant="outline" disabled={disabled}>
+                  <RiFilmLine aria-hidden="true" />
+                  Add motion
+                </Button>
+              </ActionRow>
+            </form>
+          </InspectorSection>
         </>
       )}
       {error && <FieldError role="alert">{error}</FieldError>}
-    </div>
+    </>
   );
 }
 
@@ -236,16 +269,19 @@ export function PictureInspector({ clips }: { clips: readonly Clip[] }) {
   return (
     <>
       {pictures.length > 1 && (
-        <Field className="editor-trim-form">
-          <FieldLabel htmlFor="picture-clip">Picture clip</FieldLabel>
-          <select id="picture-clip" value={clip.id} onChange={(e) => setID(e.target.value)}>
-            {pictures.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name ?? c.id}
-              </option>
-            ))}
-          </select>
-        </Field>
+        <div className="editor-section editor-section-plain">
+          <div className="editor-section-body">
+            <PropertyRow label="Picture clip" htmlFor="picture-clip">
+              <select id="picture-clip" value={clip.id} onChange={(e) => setID(e.target.value)}>
+                {pictures.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name ?? c.id}
+                  </option>
+                ))}
+              </select>
+            </PropertyRow>
+          </div>
+        </div>
       )}
       <PictureControls key={clip.id} clip={clip} />
       <CutoutControls key={`cutout-${clip.id}`} clip={clip} />

@@ -1,22 +1,20 @@
 import { useState } from "react";
 import { Button } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@sidecut/ui/components/field";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@sidecut/ui/components/field";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@sidecut/ui/components/dialog";
 import { BUILT_IN_TEMPLATES } from "@sidecut/core/templates";
+import { RiLayoutMasonryLine } from "@remixicon/react";
 import { useEditorSession } from "./editor-session";
+import { ToolTip } from "./tool-tip";
+import "./dialogs.css";
 
 export function TemplateDialog() {
   const { session, snapshot, editor } = useEditorSession();
@@ -29,12 +27,31 @@ export function TemplateDialog() {
   const disabled = snapshot.busy || snapshot.readOnly;
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button size="xs" variant="ghost" disabled={disabled} />}>
-        + Template
-      </DialogTrigger>
-      <DialogContent className="dark">
+      <ToolTip label="Insert template">
+        <DialogTrigger
+          render={
+            <Button
+              size="xs"
+              variant="ghost"
+              className="editor-tool-button"
+              aria-label="+ Template"
+              disabled={disabled}
+            />
+          }
+        >
+          <RiLayoutMasonryLine data-icon="inline-start" aria-hidden="true" />
+          <span className="editor-tool-text" aria-hidden="true">
+            Template
+          </span>
+        </DialogTrigger>
+      </ToolTip>
+      <DialogContent className="dark editor-dialog editor-dialog-form">
         <DialogHeader>
           <DialogTitle>Insert template</DialogTitle>
+          <DialogDescription>
+            Starts at the playhead. Clips go on tracks by name (made if missing), get new IDs, are
+            linked together and tagged with the template.
+          </DialogDescription>
         </DialogHeader>
         <form
           onSubmit={(event) => {
@@ -110,14 +127,10 @@ export function TemplateDialog() {
                 <option value="insert">Insert, pushing later clips</option>
               </select>
             </Field>
-            <FieldDescription>
-              Starts at the playhead. Clips go on tracks by name (made if missing), get new IDs, are
-              linked together and tagged with the template.
-            </FieldDescription>
+            {error && <FieldError role="alert">{error}</FieldError>}
             <Button type="submit" disabled={disabled}>
               Insert {template.name.toLowerCase()}
             </Button>
-            {error && <FieldError role="alert">{error}</FieldError>}
           </FieldGroup>
         </form>
       </DialogContent>

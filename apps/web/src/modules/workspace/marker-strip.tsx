@@ -12,7 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@sidecut/ui/components/dialog";
+import { RiAddLine, RiArrowLeftSLine, RiArrowRightSLine } from "@remixicon/react";
 import { useEditorSession, useEditorView } from "./editor-session";
+import { ToolTip } from "./tool-tip";
+import "./dialogs.css";
 
 const KIND_LABEL: Record<string, string> = {
   marker: "Marker",
@@ -86,35 +89,43 @@ export function MarkerStrips({
         >
           <div className="editor-marker-header">
             <span>{lane.label}</span>
-            <Button
-              size="xs"
-              variant="ghost"
-              disabled={disabled}
-              onClick={lane.add}
-              aria-label={
-                lane.id === "markers" ? "Add marker at playhead" : "Add comment at playhead"
-              }
+            <ToolTip
+              label={lane.id === "markers" ? "Add marker at playhead" : "Add comment at playhead"}
             >
-              +
-            </Button>
+              <Button
+                size="icon-xs"
+                variant="ghost"
+                disabled={disabled}
+                onClick={lane.add}
+                aria-label={
+                  lane.id === "markers" ? "Add marker at playhead" : "Add comment at playhead"
+                }
+              >
+                <RiAddLine aria-hidden="true" />
+              </Button>
+            </ToolTip>
             {lane.id === "markers" && (
               <>
-                <Button
-                  size="xs"
-                  variant="ghost"
-                  aria-label="Previous marker"
-                  onClick={() => navigate(-1)}
-                >
-                  ‹
-                </Button>
-                <Button
-                  size="xs"
-                  variant="ghost"
-                  aria-label="Next marker"
-                  onClick={() => navigate(1)}
-                >
-                  ›
-                </Button>
+                <ToolTip label="Previous marker">
+                  <Button
+                    size="icon-xs"
+                    variant="ghost"
+                    aria-label="Previous marker"
+                    onClick={() => navigate(-1)}
+                  >
+                    <RiArrowLeftSLine aria-hidden="true" />
+                  </Button>
+                </ToolTip>
+                <ToolTip label="Next marker">
+                  <Button
+                    size="icon-xs"
+                    variant="ghost"
+                    aria-label="Next marker"
+                    onClick={() => navigate(1)}
+                  >
+                    <RiArrowRightSLine aria-hidden="true" />
+                  </Button>
+                </ToolTip>
               </>
             )}
           </div>
@@ -184,7 +195,7 @@ function MarkerDialog({
   };
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="dark">
+      <DialogContent className="dark editor-dialog editor-dialog-form">
         <DialogHeader>
           <DialogTitle>
             {marker ? `Edit ${KIND_LABEL[markerKind(marker)]!.toLowerCase()}` : "Add comment"}
@@ -300,10 +311,8 @@ function MarkerDialog({
                 </Field>
               </>
             )}
-            <div className="editor-clip-edit-actions">
-              <Button type="submit" size="sm" disabled={disabled}>
-                {marker ? "Save" : "Add comment"}
-              </Button>
+            {error && <FieldError role="alert">{error}</FieldError>}
+            <div className="editor-dialog-actions">
               {marker && (
                 <Button
                   type="button"
@@ -324,8 +333,10 @@ function MarkerDialog({
                   {comment ? "Resolve" : "Delete"}
                 </Button>
               )}
+              <Button type="submit" size="sm" disabled={disabled}>
+                {marker ? "Save" : "Add comment"}
+              </Button>
             </div>
-            {error && <FieldError role="alert">{error}</FieldError>}
           </FieldGroup>
         </form>
       </DialogContent>

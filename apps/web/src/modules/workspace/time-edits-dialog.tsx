@@ -10,7 +10,10 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@sidecut/ui/components/dialog";
+import { RiTimeLine } from "@remixicon/react";
 import { useEditorSession, useEditorView } from "./editor-session";
+import { ToolTip } from "./tool-tip";
+import "./dialogs.css";
 
 export function TimeEditsDialog() {
   const { session, snapshot, editor } = useEditorSession();
@@ -50,10 +53,16 @@ export function TimeEditsDialog() {
         setOpen(value);
       }}
     >
-      <DialogTrigger render={<Button variant="outline" size="xs" disabled={disabled} />}>
-        Time edits
-      </DialogTrigger>
-      <DialogContent className="dark max-h-[85vh] overflow-y-auto">
+      <ToolTip label="Time edits">
+        <DialogTrigger
+          render={
+            <Button variant="ghost" size="icon-xs" aria-label="Time edits" disabled={disabled} />
+          }
+        >
+          <RiTimeLine aria-hidden="true" />
+        </DialogTrigger>
+      </ToolTip>
+      <DialogContent className="dark editor-dialog editor-dialog-form">
         <DialogHeader>
           <DialogTitle>Time edits</DialogTitle>
           <DialogDescription>
@@ -74,53 +83,57 @@ export function TimeEditsDialog() {
           }}
         >
           <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="insert-at">Insert at (s)</FieldLabel>
-              <Input
-                id="insert-at"
-                type="number"
-                min="0"
-                step="any"
-                required
-                disabled={disabled}
-                value={at}
-                onChange={(e) => setAt(e.target.value)}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="insert-duration">Duration to insert (s)</FieldLabel>
-              <Input
-                id="insert-duration"
-                type="number"
-                min="0"
-                step="any"
-                required
-                disabled={disabled}
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
-              />
-            </Field>
-            <Button type="submit" variant="outline" size="sm" disabled={disabled}>
-              Insert time
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={disabled || !track}
-              onClick={() =>
-                apply(() => {
-                  if (track)
-                    session.apply({
-                      label: "Close gap",
-                      expectedRevision: snapshot.revision,
-                      commands: [{ closeGap: { trackID: track.id, at: number(at) } }],
-                    });
-                })
-              }
-            >
-              Close gap on {track?.name ?? "selected track"}
-            </Button>
+            <div className="editor-dialog-grid">
+              <Field>
+                <FieldLabel htmlFor="insert-at">Insert at (s)</FieldLabel>
+                <Input
+                  id="insert-at"
+                  type="number"
+                  min="0"
+                  step="any"
+                  required
+                  disabled={disabled}
+                  value={at}
+                  onChange={(e) => setAt(e.target.value)}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="insert-duration">Duration to insert (s)</FieldLabel>
+                <Input
+                  id="insert-duration"
+                  type="number"
+                  min="0"
+                  step="any"
+                  required
+                  disabled={disabled}
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                />
+              </Field>
+            </div>
+            <div className="editor-dialog-actions">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={disabled || !track}
+                onClick={() =>
+                  apply(() => {
+                    if (track)
+                      session.apply({
+                        label: "Close gap",
+                        expectedRevision: snapshot.revision,
+                        commands: [{ closeGap: { trackID: track.id, at: number(at) } }],
+                      });
+                  })
+                }
+              >
+                Close gap on {track?.name ?? "selected track"}
+              </Button>
+              <Button type="submit" size="sm" disabled={disabled}>
+                Insert time
+              </Button>
+            </div>
           </FieldGroup>
         </form>
         <form
@@ -183,10 +196,10 @@ export function TimeEditsDialog() {
                 )}
               </FieldGroup>
             ))}
-            <div className="editor-clip-edit-actions">
+            <div className="editor-dialog-actions">
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 disabled={disabled}
                 onClick={() =>
@@ -202,7 +215,7 @@ export function TimeEditsDialog() {
               >
                 Add range
               </Button>
-              <Button type="submit" variant="outline" size="sm" disabled={disabled}>
+              <Button type="submit" size="sm" disabled={disabled}>
                 Cut listed ranges
               </Button>
             </div>

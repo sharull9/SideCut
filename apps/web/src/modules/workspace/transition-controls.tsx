@@ -1,5 +1,5 @@
 import { RiArrowLeftRightLine } from "@remixicon/react";
-import { useState, useRef } from "react";
+import { Fragment, useState, useRef, type ReactNode } from "react";
 import { transitionTypes } from "@sidecut/contracts/project";
 import type { Clip, Track } from "@sidecut/contracts/project";
 import { transitionWindow } from "@sidecut/core/transitions";
@@ -21,17 +21,44 @@ import {
 } from "@sidecut/ui/components/dialog";
 import { useEditorSession } from "./editor-session";
 import { defaultTransitionSound, TransitionSoundControls } from "./transition-sound-controls";
+import { ActionRow, Hint, InspectorSection, PropertyRow } from "./inspector-layout";
+import "./dialogs.css";
+
+// The dialog keeps stacked fields; the inspector uses compact property rows.
+function DialogRow({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  children: ReactNode;
+}) {
+  return (
+    <Field>
+      <FieldLabel htmlFor={htmlFor}>{label}</FieldLabel>
+      {children}
+    </Field>
+  );
+}
 
 type TransitionValue = Track["transitions"][number];
+const TRANSITION_HELP =
+  "Two-clip transitions center on the cut. Head and tail transitions stay inside the clip. Missing picture handles hold the source edge. Audio crossfades use equal power and keep unavailable source handles silent.";
 function TransitionForm({
   track,
   transition,
   clip,
+  compact,
 }: {
   track: Track;
   transition?: TransitionValue;
   clip?: Clip;
+  compact?: boolean;
 }) {
+  const Row = compact ? PropertyRow : DialogRow;
+  const Group = compact ? Fragment : FieldGroup;
+  const Actions = compact ? ActionRow : Fragment;
   const { session, snapshot } = useEditorSession();
   const [type, setType] = useState(String(transition?.type ?? "dissolve")),
     [direction, setDirection] = useState(String(transition?.direction ?? "left")),
@@ -56,7 +83,7 @@ function TransitionForm({
   const id = String(transition?.id ?? clip?.id);
   return (
     <form
-      className="editor-trim-form"
+      className={compact ? "editor-section-form" : "editor-trim-form"}
       onSubmit={(event) => {
         event.preventDefault();
         const fields = { type, direction, duration: Number(duration) };
@@ -89,10 +116,9 @@ function TransitionForm({
         }
       }}
     >
-      <FieldGroup>
+      <Group>
         {!transition && (
-          <Field>
-            <FieldLabel htmlFor={`transition-side-${id}`}>Clip edge</FieldLabel>
+          <Row label="Clip edge" htmlFor={`transition-side-${id}`}>
             <select
               id={`transition-side-${id}`}
               disabled={disabled}
@@ -103,10 +129,9 @@ function TransitionForm({
               <option value="tail">Tail</option>
               <option value="next">Cut to next clip</option>
             </select>
-          </Field>
+          </Row>
         )}
-        <Field>
-          <FieldLabel htmlFor={`transition-type-${id}`}>Transition type</FieldLabel>
+        <Row label="Transition type" htmlFor={`transition-type-${id}`}>
           <select
             id={`transition-type-${id}`}
             disabled={disabled}
@@ -119,9 +144,8 @@ function TransitionForm({
               </option>
             ))}
           </select>
-        </Field>
-        <Field>
-          <FieldLabel htmlFor={`transition-direction-${id}`}>Direction</FieldLabel>
+        </Row>
+        <Row label="Direction" htmlFor={`transition-direction-${id}`}>
           <select
             id={`transition-direction-${id}`}
             disabled={disabled}
@@ -134,9 +158,8 @@ function TransitionForm({
               </option>
             ))}
           </select>
-        </Field>
-        <Field data-invalid={Boolean(error)}>
-          <FieldLabel htmlFor={`transition-duration-${id}`}>Transition duration (s)</FieldLabel>
+        </Row>
+        <Row label="Transition duration (s)" htmlFor={`transition-duration-${id}`}>
           <Input
             id={`transition-duration-${id}`}
             type="number"
@@ -148,28 +171,30 @@ function TransitionForm({
             onChange={(e) => setDuration(e.target.value)}
             aria-invalid={Boolean(error)}
           />
-        </Field>
-        <FieldDescription>
-          Two-clip transitions center on the cut. Head and tail transitions stay inside the clip.
-          Missing picture handles hold the source edge. Audio crossfades use equal power and keep
-          unavailable source handles silent.
-        </FieldDescription>
-        <Button size="xs" type="submit" variant="outline" disabled={disabled}>
-          {transition ? "Apply transition" : "Add transition"}
-        </Button>
-        {transition && (
-          <Button
-            size="xs"
-            type="button"
-            variant="ghost"
-            disabled={disabled}
-            onClick={() => run({ removeTransition: { transitionID: transition.id } })}
-          >
-            Remove transition
-          </Button>
+        </Row>
+        {compact ? (
+          <Hint>{TRANSITION_HELP}</Hint>
+        ) : (
+          <FieldDescription>{TRANSITION_HELP}</FieldDescription>
         )}
+        <Actions>
+          <Button size="xs" type="submit" variant="outline" disabled={disabled}>
+            {transition ? "Apply transition" : "Add transition"}
+          </Button>
+          {transition && (
+            <Button
+              size="xs"
+              type="button"
+              variant={compact ? "outline" : "ghost"}
+              disabled={disabled}
+              onClick={() => run({ removeTransition: { transitionID: transition.id } })}
+            >
+              Remove transition
+            </Button>
+          )}
+        </Actions>
         {error && <FieldError role="alert">{error}</FieldError>}
-      </FieldGroup>
+      </Group>
     </form>
   );
 }
@@ -179,25 +204,38 @@ export function TransitionInspector({ clip }: { clip: Clip }) {
     t.clips.some((c) => c.id === clip.id),
   )!;
   return (
-    <section className="editor-trim-form" aria-label="Transitions">
-      <h3>Transitions</h3>
-      <TransitionForm key={`add:${clip.id}:${snapshot.revision}`} track={track} clip={clip} />
+    <>
+      <InspectorSection id="transitions.add" title="Transitions" label="Transitions">
+        <TransitionForm
+          key={`add:${clip.id}:${snapshot.revision}`}
+          track={track}
+          clip={clip}
+          compact
+        />
+      </InspectorSection>
       {track.transitions
         .filter((t) => t.fromClipID === clip.id || t.toClipID === clip.id)
         .map((t) => (
-          <details key={String(t.id)}>
+          <details key={String(t.id)} className="editor-effect editor-transition-item">
             <summary>
               {String(t.type)} · {String(t.duration)} s
             </summary>
-            <TransitionForm key={`${t.id}:${snapshot.revision}`} track={track} transition={t} />
-            <TransitionSoundControls
-              key={`sound:${t.id}:${snapshot.revision}`}
-              track={track}
-              transition={t}
-            />
+            <div className="editor-effect-body">
+              <TransitionForm
+                key={`${t.id}:${snapshot.revision}`}
+                track={track}
+                transition={t}
+                compact
+              />
+              <TransitionSoundControls
+                key={`sound:${t.id}:${snapshot.revision}`}
+                track={track}
+                transition={t}
+              />
+            </div>
           </details>
         ))}
-    </section>
+    </>
   );
 }
 export function TransitionBlock({
@@ -247,7 +285,7 @@ export function TransitionBlock({
         <DialogTrigger render={<Button size="xs" variant="outline" disabled={disabled} />}>
           {String(transition.type)}
         </DialogTrigger>
-        <DialogContent className="dark">
+        <DialogContent className="dark editor-dialog editor-dialog-form">
           <DialogHeader>
             <DialogTitle>Edit transition</DialogTitle>
           </DialogHeader>

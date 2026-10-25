@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useEditorSession } from "./editor-session";
 import type { Project } from "@sidecut/contracts/project";
 import { Time } from "@sidecut/contracts/time";
-import { shortcut, protectsEditing } from "./keyboard";
+import { shortcut, protectsEditing, ownsKey } from "./keyboard";
 import { copyClips, pasteClips, type ClipClipboard } from "./clipboard";
 import { projectDuration, stepFrame, atFrame } from "./timeline-model";
 
@@ -85,13 +85,7 @@ export function useEditActions(run: (action: () => unknown) => void) {
       if (protectsEditing(event.target)) return;
       const state = editor.getState(),
         action = shortcut(event, state.keymap);
-      if (
-        !action ||
-        (action === "play" &&
-          event.target instanceof HTMLElement &&
-          event.target.closest("button,a"))
-      )
-        return;
+      if (!action || ownsKey(event.target, action)) return;
       const project = session.getSnapshot().project;
       if (session.getSnapshot().readOnly || session.getSnapshot().busy) return;
       if (

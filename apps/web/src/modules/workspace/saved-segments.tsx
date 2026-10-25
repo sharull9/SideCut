@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { RiScissorsCutLine } from "@remixicon/react";
+import { MediaSection } from "./media-section";
 import { SegmentLibrary, type SegmentEntry } from "@sidecut/platform-browser/segments";
 import { Button } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
@@ -48,9 +50,12 @@ export function SavedSegments() {
   };
   const disabled = busy || snapshot.busy || snapshot.readOnly;
   return (
-    <details className="editor-local-library">
-      <summary>Saved segments</summary>
-      <div className="editor-trim-form">
+    <MediaSection
+      icon={<RiScissorsCutLine aria-hidden="true" />}
+      title="Saved segments"
+      count={entries.length}
+    >
+      <>
         <FieldDescription>
           Save selected clips and local files for reuse in another project. Linked clips join the
           selection. Existing segment names are preserved.
@@ -130,7 +135,7 @@ export function SavedSegments() {
         </ul>
         {notice && <p role="status">{notice}</p>}
         {error && <FieldError>{error}</FieldError>}
-      </div>
-    </details>
+      </>
+    </MediaSection>
   );
 }

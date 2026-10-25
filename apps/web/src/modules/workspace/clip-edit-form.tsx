@@ -2,14 +2,9 @@ import { useState } from "react";
 import type { Clip } from "@sidecut/contracts/project";
 import { Button } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
-import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-  FieldDescription,
-  FieldError,
-} from "@sidecut/ui/components/field";
+import { FieldError } from "@sidecut/ui/components/field";
 import { useEditorSession } from "./editor-session";
+import { ActionRow, Hint, InspectorSection, PropertyRow } from "./inspector-layout";
 
 export function ClipEditForm({ clip }: { clip: Clip }) {
   const { session, snapshot } = useEditorSession();
@@ -55,16 +50,15 @@ export function ClipEditForm({ clip }: { clip: Clip }) {
     }
   };
   return (
-    <form
-      className="editor-trim-form"
-      onSubmit={(e) => {
-        e.preventDefault();
-        apply("slip");
-      }}
-    >
-      <FieldGroup>
-        <Field data-invalid={Boolean(error)}>
-          <FieldLabel htmlFor="edit-amount">Edit amount (s)</FieldLabel>
+    <InspectorSection id="timing.edit" title="Slip, slide and roll">
+      <form
+        className="editor-section-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          apply("slip");
+        }}
+      >
+        <PropertyRow label="Edit amount (s)" htmlFor="edit-amount">
           <Input
             id="edit-amount"
             type="number"
@@ -76,13 +70,13 @@ export function ClipEditForm({ clip }: { clip: Clip }) {
             aria-invalid={Boolean(error)}
             aria-describedby="edit-amount-help"
           />
-          <FieldDescription id="edit-amount-help">
-            Signed amount in seconds. Slip changes source time; slide moves the clip and trims
-            touching neighbors. Roll moves its next cut.
-          </FieldDescription>
-          {error && <FieldError>{error}</FieldError>}
-        </Field>
-        <div className="editor-clip-edit-actions">
+        </PropertyRow>
+        <Hint id="edit-amount-help">
+          Signed amount in seconds. Slip changes source time; slide moves the clip and trims
+          touching neighbors. Roll moves its next cut.
+        </Hint>
+        {error && <FieldError>{error}</FieldError>}
+        <ActionRow>
           <Button type="submit" size="xs" variant="outline" disabled={disabled}>
             Slip source
           </Button>
@@ -122,12 +116,12 @@ export function ClipEditForm({ clip }: { clip: Clip }) {
           >
             Ripple end
           </Button>
-        </div>
-        <p>
+        </ActionRow>
+        <Hint>
           Ripple start keeps the clip's timeline start and shifts later clips. Linked partners edit
           together.
-        </p>
-      </FieldGroup>
-    </form>
+        </Hint>
+      </form>
+    </InspectorSection>
   );
 }

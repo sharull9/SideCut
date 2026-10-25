@@ -12,7 +12,9 @@ import { Input } from "@sidecut/ui/components/input";
 import { Field, FieldLabel, FieldDescription, FieldError } from "@sidecut/ui/components/field";
 import { useEditorSession } from "./editor-session";
 import { projectCredits, creditsText } from "@sidecut/core/asset-use";
+import { RiFolderImageLine } from "@remixicon/react";
 import { ProviderBrowser } from "./provider-browser";
+import { MediaSection } from "./media-section";
 
 export function LocalAssetLibrary() {
   const { session, snapshot } = useEditorSession();
@@ -158,9 +160,12 @@ export function LocalAssetLibrary() {
       );
     });
   return (
-    <details className="editor-local-library">
-      <summary>Local asset library</summary>
-      <div className="editor-trim-form">
+    <MediaSection
+      icon={<RiFolderImageLine aria-hidden="true" />}
+      title="Local asset library"
+      count={entries.length}
+    >
+      <>
         <Button
           size="sm"
           variant="outline"
@@ -400,7 +405,7 @@ export function LocalAssetLibrary() {
         </details>
         {notice && <p role="status">{notice}</p>}
         {error && <FieldError>{error}</FieldError>}
-      </div>
-    </details>
+      </>
+    </MediaSection>
   );
 }

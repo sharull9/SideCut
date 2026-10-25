@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { MediaItem } from "@sidecut/contracts/project";
+import { RiFileUploadLine, RiVoiceprintLine } from "@remixicon/react";
 import { Button } from "@sidecut/ui/components/button";
+import { Tip } from "@sidecut/ui/components/tooltip";
 import {
   Field,
   FieldDescription,
@@ -32,8 +34,8 @@ export function MediaAnalysisControls({ item }: { item: MediaItem }) {
       .catch((cause) => setError(cause instanceof Error ? cause.message : String(cause)));
   };
   return (
-    <details className="editor-source-placement">
-      <summary>Local analysis and preview</summary>
+    <div className="editor-source-placement">
+      <h4>Local analysis and preview</h4>
       <FieldGroup className="editor-trim-form">
         {item.kind === "video" && (
           <Field>
@@ -121,7 +123,7 @@ export function MediaAnalysisControls({ item }: { item: MediaItem }) {
         {state?.status && <p role="status">{state.status}</p>}
         {(error || state?.error) && <FieldError role="alert">{error || state?.error}</FieldError>}
       </FieldGroup>
-    </details>
+    </div>
   );
 }
 
@@ -135,18 +137,29 @@ export function TakeIdentification({
   const { session } = useEditorSession();
   const picker = useRef<HTMLInputElement>(null);
   return (
-    <div className="editor-take-actions">
-      <Button
-        size="xs"
-        variant="ghost"
-        disabled={disabled}
-        onClick={() => run(() => session.analysis.identify())}
-      >
-        Identify takes
-      </Button>
-      <Button size="xs" variant="ghost" disabled={disabled} onClick={() => picker.current?.click()}>
-        Import take timing
-      </Button>
+    <div className="editor-media-takes">
+      <Tip label="Group recordings that belong to the same take">
+        <Button
+          size="xs"
+          variant="outline"
+          disabled={disabled}
+          onClick={() => run(() => session.analysis.identify())}
+        >
+          <RiVoiceprintLine aria-hidden="true" />
+          Identify takes
+        </Button>
+      </Tip>
+      <Tip label="Import a .take.json file with known take timing">
+        <Button
+          size="xs"
+          variant="outline"
+          disabled={disabled}
+          onClick={() => picker.current?.click()}
+        >
+          <RiFileUploadLine aria-hidden="true" />
+          Import take timing
+        </Button>
+      </Tip>
       <input
         ref={picker}
         type="file"

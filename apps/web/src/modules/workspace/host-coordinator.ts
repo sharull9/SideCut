@@ -1,6 +1,6 @@
 import { decodeProjectFile } from "@sidecut/contracts/project";
 import type { NativeBridge, HostSnapshot, HostRequest } from "@sidecut/contracts/desktop";
-import type { CommitResult, SessionSnapshot } from "@sidecut/core/coordinator";
+import type { CommitResult, JournalEntry, SessionSnapshot } from "@sidecut/core/coordinator";
 
 export function nativeBridge(): NativeBridge | undefined {
   return typeof window === "undefined"
@@ -44,6 +44,19 @@ export class HostCoordinator {
     return this.wire.generation;
   }
   projectFile = () => decodeProjectFile(JSON.parse(this.wire.json));
+  private journal: { json: string; entries: readonly JournalEntry[] | null } | null = null;
+  /** The host's edit journal, or null when its snapshot carries none. */
+  journalEntries(): readonly JournalEntry[] | null {
+    if (this.journal?.json !== this.wire.json) {
+      const raw = (JSON.parse(this.wire.json) as { sidecutJournal?: { entries?: unknown } })
+        .sidecutJournal?.entries;
+      this.journal = {
+        json: this.wire.json,
+        entries: Array.isArray(raw) ? (raw as JournalEntry[]) : null,
+      };
+    }
+    return this.journal.entries;
+  }
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
     return () => {

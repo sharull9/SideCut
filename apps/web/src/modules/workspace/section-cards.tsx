@@ -30,7 +30,10 @@ import {
   type CardProps,
 } from "@sidecut/core/section-cards";
 import { CommitInput } from "./commit-input";
+import { RiPresentationLine } from "@remixicon/react";
 import { useEditorSession } from "./editor-session";
+import { ToolTip } from "./tool-tip";
+import "./dialogs.css";
 
 export function SectionCardsDialog() {
   const { session, snapshot } = useEditorSession();
@@ -84,10 +87,25 @@ export function SectionCardsDialog() {
         setError(null);
       }}
     >
-      <DialogTrigger render={<Button variant="outline" size="xs" disabled={disabled} />}>
-        Section cards
-      </DialogTrigger>
-      <DialogContent className="dark max-h-[85vh] overflow-y-auto">
+      <ToolTip label="Section cards">
+        <DialogTrigger
+          render={
+            <Button
+              size="xs"
+              variant="ghost"
+              className="editor-tool-button"
+              aria-label="Section cards"
+              disabled={disabled}
+            />
+          }
+        >
+          <RiPresentationLine data-icon="inline-start" aria-hidden="true" />
+          <span className="editor-tool-text" aria-hidden="true">
+            Section cards
+          </span>
+        </DialogTrigger>
+      </ToolTip>
+      <DialogContent className="dark editor-dialog editor-dialog-form">
         <DialogHeader>
           <DialogTitle>Section cards</DialogTitle>
           <DialogDescription>
@@ -173,7 +191,19 @@ export function SectionCardsDialog() {
             the shot after it. Sounds go on an SFX track at -15 dB, linked to their card.
           </FieldDescription>
           {issue && sections.length > 0 && <FieldError>{issue}</FieldError>}
-          <div className="editor-clip-edit-actions">
+          {done && <p role="status">{done}</p>}
+          {error && <FieldError role="alert">{error}</FieldError>}
+          <div className="editor-dialog-actions">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={
+                disabled || !project.videoTracks.some((t) => t.clips.some((c) => cardOf(c)))
+              }
+              onClick={() => apply("Fit section cards to text", { fitSectionCards: {} })}
+            >
+              Fit all cards to text
+            </Button>
             <Button
               size="sm"
               disabled={disabled || !sections.length}
@@ -191,19 +221,7 @@ export function SectionCardsDialog() {
             >
               Add cards
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={
-                disabled || !project.videoTracks.some((t) => t.clips.some((c) => cardOf(c)))
-              }
-              onClick={() => apply("Fit section cards to text", { fitSectionCards: {} })}
-            >
-              Fit all cards to text
-            </Button>
           </div>
-          {done && <p role="status">{done}</p>}
-          {error && <FieldError role="alert">{error}</FieldError>}
         </FieldGroup>
       </DialogContent>
     </Dialog>

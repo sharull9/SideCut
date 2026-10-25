@@ -73,3 +73,13 @@ export function protectsEditing(target: EventTarget | null) {
     )
   );
 }
+export function ownsKey(target: EventTarget | null, action: Shortcut) {
+  const element = target as Pick<Element, "closest"> | null;
+  if (typeof element?.closest !== "function") return false;
+  if (action === "play")
+    return Boolean(element.closest("button,a,summary,[role=tab],[role=slider]"));
+  return (
+    ["back", "forward", "previous", "next", "home", "end"].includes(action) &&
+    Boolean(element.closest('[role="tablist"],[role="slider"],[role="tab"]'))
+  );
+}

@@ -1,21 +1,19 @@
 import { useState } from "react";
 import { Button } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
-import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-  FieldDescription,
-  FieldError,
-} from "@sidecut/ui/components/field";
+import { Field, FieldGroup, FieldLabel, FieldError } from "@sidecut/ui/components/field";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@sidecut/ui/components/dialog";
+import { RiContrast2Line } from "@remixicon/react";
 import { useEditorSession } from "./editor-session";
+import { ToolTip } from "./tool-tip";
+import "./dialogs.css";
 export function AdjustmentDialog() {
   const { session, snapshot, editor } = useEditorSession();
   const [open, setOpen] = useState(false),
@@ -25,12 +23,31 @@ export function AdjustmentDialog() {
   const disabled = snapshot.busy || snapshot.readOnly;
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button size="xs" variant="ghost" disabled={disabled} />}>
-        + Adjustment
-      </DialogTrigger>
-      <DialogContent className="dark">
+      <ToolTip label="Insert adjustment clip">
+        <DialogTrigger
+          render={
+            <Button
+              size="xs"
+              variant="ghost"
+              className="editor-tool-button"
+              aria-label="+ Adjustment"
+              disabled={disabled}
+            />
+          }
+        >
+          <RiContrast2Line data-icon="inline-start" aria-hidden="true" />
+          <span className="editor-tool-text" aria-hidden="true">
+            Adjustment
+          </span>
+        </DialogTrigger>
+      </ToolTip>
+      <DialogContent className="dark editor-dialog editor-dialog-form">
         <DialogHeader>
           <DialogTitle>Insert adjustment clip</DialogTitle>
+          <DialogDescription>
+            Starts at the playhead. Its effects change the composited picture below its track. Add
+            effects in the inspector; opacity blends the adjustment.
+          </DialogDescription>
         </DialogHeader>
         <form
           onSubmit={(event) => {
@@ -100,14 +117,10 @@ export function AdjustmentDialog() {
                 disabled={disabled}
               />
             </Field>
-            <FieldDescription>
-              Starts at the playhead. Its effects change the composited picture below its track. Add
-              effects in the inspector; opacity blends the adjustment.
-            </FieldDescription>
+            {error && <FieldError role="alert">{error}</FieldError>}
             <Button type="submit" disabled={disabled}>
               Insert adjustment
             </Button>
-            {error && <FieldError role="alert">{error}</FieldError>}
           </FieldGroup>
         </form>
       </DialogContent>

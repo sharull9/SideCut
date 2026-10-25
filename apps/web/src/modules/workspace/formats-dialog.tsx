@@ -18,6 +18,7 @@ import {
 import { formatOf, isHiddenIn, PORTRAIT, type PortraitSlot } from "@sidecut/core/formats";
 import { planShort, type ShortPlan } from "@sidecut/core/short";
 import { useEditorSession, useEditorView } from "./editor-session";
+import "./dialogs.css";
 
 const PRESETS = [PORTRAIT, { id: "square", name: "Square (1:1)", width: 1080, height: 1080 }];
 
@@ -83,7 +84,7 @@ export function FormatsDialog() {
       }}
     >
       <DialogTrigger render={<Button size="xs" variant="ghost" />}>Formats</DialogTrigger>
-      <DialogContent className="dark max-h-[85vh] overflow-y-auto">
+      <DialogContent className="dark editor-dialog editor-dialog-form">
         <DialogHeader>
           <DialogTitle>Output formats</DialogTitle>
           <DialogDescription>

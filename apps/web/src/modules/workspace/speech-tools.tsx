@@ -1,4 +1,5 @@
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore, type KeyboardEvent } from "react";
+import { RiMicLine } from "@remixicon/react";
 import { Time } from "@sidecut/contracts/time";
 import { Button } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
@@ -29,6 +30,8 @@ import {
   type TightenRequest,
 } from "@sidecut/core/speech";
 import { useEditorSession } from "./editor-session";
+import { ToolTip } from "./tool-tip";
+import "./dialogs.css";
 
 const TABS = [
   ["search", "Search"],
@@ -68,6 +71,30 @@ export function SpeechToolsDialog() {
     [analysis, session],
   );
   const disabled = snapshot.readOnly || snapshot.busy;
+  // Roving focus: only the selected tab is in the tab order, arrows move between tabs.
+  const moveTab = (event: KeyboardEvent<HTMLDivElement>) => {
+    const index = TABS.findIndex(([id]) => id === tab),
+      last = TABS.length - 1;
+    const next =
+      event.key === "ArrowRight"
+        ? index === last
+          ? 0
+          : index + 1
+        : event.key === "ArrowLeft"
+          ? index === 0
+            ? last
+            : index - 1
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? last
+              : -1;
+    if (next < 0) return;
+    event.preventDefault();
+    const id = TABS[next]![0];
+    setTab(id);
+    event.currentTarget.querySelector<HTMLElement>(`#speech-tab-${id}`)?.focus();
+  };
   return (
     <Dialog
       open={open}
@@ -79,8 +106,12 @@ export function SpeechToolsDialog() {
         }
       }}
     >
-      <DialogTrigger render={<Button variant="outline" size="xs" />}>Speech</DialogTrigger>
-      <DialogContent className="dark max-h-[85vh] overflow-y-auto sm:max-w-xl">
+      <ToolTip label="Speech tools">
+        <DialogTrigger render={<Button variant="ghost" size="icon-xs" aria-label="Speech" />}>
+          <RiMicLine aria-hidden="true" />
+        </DialogTrigger>
+      </ToolTip>
+      <DialogContent className="dark editor-dialog editor-dialog-wide">
         <DialogHeader>
           <DialogTitle>Speech tools</DialogTitle>
           <DialogDescription>
@@ -92,6 +123,7 @@ export function SpeechToolsDialog() {
           className="editor-inspector-tabs editor-speech-tabs"
           role="tablist"
           aria-label="Speech tools"
+          onKeyDown={moveTab}
         >
           {TABS.map(([id, label]) => (
             <button

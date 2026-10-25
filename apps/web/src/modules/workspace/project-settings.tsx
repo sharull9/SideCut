@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Field, FieldLabel, FieldGroup, FieldError } from "@sidecut/ui/components/field";
+import { FieldError } from "@sidecut/ui/components/field";
 import { useEditorSession } from "./editor-session";
 import { CommitInput } from "./commit-input";
+import { HiddenLabel, Hint, InspectorSection, PropertyPair, PropertyRow } from "./inspector-layout";
 
 const FRAME_RATES = [
   [24000, 1001, "23.976"],
@@ -46,31 +47,9 @@ export function ProjectSettings() {
     apply("Update sequence properties", { updateSettings: { patch } });
 
   return (
-    <section className="editor-inspector-section" aria-labelledby="sequence-title">
-      <h3 id="sequence-title">Sequence</h3>
-      <FieldGroup>
-        {(
-          [
-            ["speechLoudness", "Speech level", "LUFS", -40, -10],
-            ["loudnessTarget", "Export loudness", "LUFS", -40, -5],
-            ["truePeakCeiling", "Export peak ceiling", "dBTP", -24, 0],
-          ] as const
-        ).map(([key, label, unit, min, max]) => (
-          <Field key={key}>
-            <FieldLabel htmlFor={`setting-${key}`}>{label}</FieldLabel>
-            <CommitInput
-              id={`setting-${key}`}
-              value={project.settings[key]}
-              unit={unit}
-              min={min}
-              max={max}
-              disabled={disabled}
-              onCommit={(value) => settings({ [key]: value })}
-            />
-          </Field>
-        ))}
-        <Field data-disabled={disabled}>
-          <FieldLabel htmlFor="sequence-name">Name</FieldLabel>
+    <div className="editor-sequence-settings">
+      <InspectorSection id="sequence.sequence" title="Sequence">
+        <PropertyRow label="Name" htmlFor="sequence-name">
           <CommitInput
             id="sequence-name"
             type="text"
@@ -78,35 +57,34 @@ export function ProjectSettings() {
             disabled={disabled}
             onCommit={(name) => apply("Rename sequence", { updateProject: { patch: { name } } })}
           />
-        </Field>
-        <div className="editor-settings-pair">
-          <Field data-disabled={disabled}>
-            <FieldLabel htmlFor="canvas-width">Width</FieldLabel>
+        </PropertyRow>
+        <PropertyRow label="Canvas">
+          <PropertyPair>
+            <HiddenLabel htmlFor="canvas-width">Width</HiddenLabel>
             <CommitInput
               id="canvas-width"
               value={project.settings.width}
               unit="px"
+              prefix="W"
               min={1}
               step={1}
               disabled={disabled}
               onCommit={(width) => settings({ width: Math.round(Number(width)) })}
             />
-          </Field>
-          <Field data-disabled={disabled}>
-            <FieldLabel htmlFor="canvas-height">Height</FieldLabel>
+            <HiddenLabel htmlFor="canvas-height">Height</HiddenLabel>
             <CommitInput
               id="canvas-height"
               value={project.settings.height}
               unit="px"
+              prefix="H"
               min={1}
               step={1}
               disabled={disabled}
               onCommit={(height) => settings({ height: Math.round(Number(height)) })}
             />
-          </Field>
-        </div>
-        <Field data-disabled={disabled}>
-          <FieldLabel htmlFor="frame-rate">Frame rate</FieldLabel>
+          </PropertyPair>
+        </PropertyRow>
+        <PropertyRow label="Frame rate" htmlFor="frame-rate">
           <select
             id="frame-rate"
             disabled={disabled}
@@ -122,13 +100,34 @@ export function ProjectSettings() {
               </option>
             ))}
           </select>
-        </Field>
-        {error && <FieldError role="alert">{error}</FieldError>}
-        <p className="text-muted-foreground">
+        </PropertyRow>
+        <Hint>
           {project.settings.sampleRate / 1000} kHz audio ·{" "}
           {project.settings.colorSpace === "rec709" ? "Rec.709" : project.settings.colorSpace}
-        </p>
-      </FieldGroup>
-    </section>
+        </Hint>
+      </InspectorSection>
+      <InspectorSection id="sequence.loudness" title="Loudness">
+        {(
+          [
+            ["speechLoudness", "Speech level", "LUFS", -40, -10],
+            ["loudnessTarget", "Export loudness", "LUFS", -40, -5],
+            ["truePeakCeiling", "Export peak ceiling", "dBTP", -24, 0],
+          ] as const
+        ).map(([key, label, unit, min, max]) => (
+          <PropertyRow key={key} label={label} htmlFor={`setting-${key}`}>
+            <CommitInput
+              id={`setting-${key}`}
+              value={project.settings[key]}
+              unit={unit}
+              min={min}
+              max={max}
+              disabled={disabled}
+              onCommit={(value) => settings({ [key]: value })}
+            />
+          </PropertyRow>
+        ))}
+      </InspectorSection>
+      {error && <FieldError role="alert">{error}</FieldError>}
+    </div>
   );
 }

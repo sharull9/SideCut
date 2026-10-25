@@ -3,15 +3,10 @@ import { useState } from "react";
 import type { Project, Track } from "@sidecut/contracts/project";
 import { transitionWindow } from "@sidecut/core/transitions";
 import { Button } from "@sidecut/ui/components/button";
-import {
-  Field,
-  FieldLabel,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-} from "@sidecut/ui/components/field";
+import { FieldError } from "@sidecut/ui/components/field";
 import { Input } from "@sidecut/ui/components/input";
 import { useEditorSession } from "./editor-session";
+import { ActionRow, Hint, InspectorSection, PropertyRow } from "./inspector-layout";
 interface SoundDefault {
   mediaID: string;
   gainDB: number;
@@ -94,57 +89,51 @@ export function TransitionSoundControls({
   const type = String(transition.type),
     builtIn = ["push", "slide", "cutSlide", "wipe"].includes(type);
   return (
-    <section className="editor-trim-form" aria-label="Transition sound">
-      <h3>Sound</h3>
-      <FieldGroup>
-        <Field>
-          <FieldLabel htmlFor={`sound-media-${transition.id}`}>Source</FieldLabel>
-          <select
-            id={`sound-media-${transition.id}`}
-            value={mediaID}
-            disabled={disabled}
-            onChange={(e) => setMediaID(e.target.value)}
-          >
-            <option value="">None</option>
-            {project.media
-              .filter((m) => m.hasAudio)
-              .map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.path}
-                </option>
-              ))}
-          </select>
-        </Field>
-        {media && (
-          <FieldDescription>
-            Source: {media.path}
-            {typeof media.attribution === "string" ? ` · ${media.attribution}` : ""}. Source
-            metadata is retained with this media item.
-          </FieldDescription>
-        )}
-        <Field>
-          <FieldLabel htmlFor={`sound-gain-${transition.id}`}>Sound gain (dB)</FieldLabel>
-          <Input
-            id={`sound-gain-${transition.id}`}
-            type="number"
-            value={gainDB}
-            disabled={disabled}
-            onChange={(e) => setGain(e.target.value)}
-          />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor={`sound-offset-${transition.id}`}>
-            Start from cut midpoint (s)
-          </FieldLabel>
-          <Input
-            id={`sound-offset-${transition.id}`}
-            type="number"
-            value={offset}
-            step="any"
-            disabled={disabled}
-            onChange={(e) => setOffset(e.target.value)}
-          />
-        </Field>
+    <InspectorSection id="transitions.sound" title="Sound" label="Transition sound">
+      <PropertyRow label="Source" htmlFor={`sound-media-${transition.id}`}>
+        <select
+          id={`sound-media-${transition.id}`}
+          value={mediaID}
+          disabled={disabled}
+          onChange={(e) => setMediaID(e.target.value)}
+        >
+          <option value="">None</option>
+          {project.media
+            .filter((m) => m.hasAudio)
+            .map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.path}
+              </option>
+            ))}
+        </select>
+      </PropertyRow>
+      {media && (
+        <Hint>
+          Source: {media.path}
+          {typeof media.attribution === "string" ? ` · ${media.attribution}` : ""}. Source metadata
+          is retained with this media item.
+        </Hint>
+      )}
+      <PropertyRow label="Sound gain (dB)" htmlFor={`sound-gain-${transition.id}`}>
+        <Input
+          id={`sound-gain-${transition.id}`}
+          type="number"
+          value={gainDB}
+          disabled={disabled}
+          onChange={(e) => setGain(e.target.value)}
+        />
+      </PropertyRow>
+      <PropertyRow label="Start from cut midpoint (s)" htmlFor={`sound-offset-${transition.id}`}>
+        <Input
+          id={`sound-offset-${transition.id}`}
+          type="number"
+          value={offset}
+          step="any"
+          disabled={disabled}
+          onChange={(e) => setOffset(e.target.value)}
+        />
+      </PropertyRow>
+      <ActionRow>
         <Button
           size="xs"
           variant="outline"
@@ -161,30 +150,31 @@ export function TransitionSoundControls({
         </Button>
         <Button
           size="xs"
-          variant="ghost"
+          variant="outline"
           disabled={disabled || !current}
           onClick={() => run({ soundClipID: null })}
         >
           Detach sound and keep clip
         </Button>
-        <Field>
-          <FieldLabel htmlFor={`sound-tie-${transition.id}`}>Existing audio clip</FieldLabel>
-          <select
-            id={`sound-tie-${transition.id}`}
-            disabled={disabled}
-            value={tie}
-            onChange={(e) => setTie(e.target.value)}
-          >
-            <option value="">Choose clip</option>
-            {project.audioTracks
-              .flatMap((t) => t.clips)
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name ?? c.id}
-                </option>
-              ))}
-          </select>
-        </Field>
+      </ActionRow>
+      <PropertyRow label="Existing audio clip" htmlFor={`sound-tie-${transition.id}`}>
+        <select
+          id={`sound-tie-${transition.id}`}
+          disabled={disabled}
+          value={tie}
+          onChange={(e) => setTie(e.target.value)}
+        >
+          <option value="">Choose clip</option>
+          {project.audioTracks
+            .flatMap((t) => t.clips)
+            .map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name ?? c.id}
+              </option>
+            ))}
+        </select>
+      </PropertyRow>
+      <ActionRow>
         <Button
           size="xs"
           variant="outline"
@@ -210,7 +200,7 @@ export function TransitionSoundControls({
         </Button>
         <Button
           size="xs"
-          variant="ghost"
+          variant="outline"
           disabled={disabled}
           onClick={() => {
             const value = defaultTransitionSound(project, type);
@@ -225,16 +215,16 @@ export function TransitionSoundControls({
         >
           Use type default
         </Button>
-        <FieldDescription>
-          {builtIn
-            ? "Built-in light swoosh: elevenlabs:sfx_2ybnc2tu, −23.3 dB, offset −0.39 s. Its licensed asset is not bundled. Choose a local source to replace it."
-            : "This type is silent by default."}{" "}
-          Remembered choices apply to new transitions and type changes. Sound clips remain editable
-          on SFX tracks.
-        </FieldDescription>
-        {notice && <p role="status">{notice}</p>}
-        {error && <FieldError role="alert">{error}</FieldError>}
-      </FieldGroup>
-    </section>
+      </ActionRow>
+      <Hint>
+        {builtIn
+          ? "Built-in light swoosh: elevenlabs:sfx_2ybnc2tu, −23.3 dB, offset −0.39 s. Its licensed asset is not bundled. Choose a local source to replace it."
+          : "This type is silent by default."}{" "}
+        Remembered choices apply to new transitions and type changes. Sound clips remain editable on
+        SFX tracks.
+      </Hint>
+      {notice && <Hint role="status">{notice}</Hint>}
+      {error && <FieldError role="alert">{error}</FieldError>}
+    </InspectorSection>
   );
 }

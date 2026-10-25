@@ -1,0 +1,333 @@
+/* Left column: Media / Comments / History. Tab switches are instant by design. */
+.editor-side-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--card);
+}
+.editor-side-tabs {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.editor-side-tabs button {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 8px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.editor-side-tabs button[aria-selected="true"] {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.editor-side-tabs button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .editor-side-tabs button:hover {
+    color: var(--foreground);
+  }
+  .editor-side-tabs button[aria-selected="false"]:hover {
+    background: color-mix(in oklch, var(--muted) 50%, transparent);
+  }
+}
+.editor-side-tabpanel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.editor-side-tabpanel > .editor-panel {
+  flex: 1;
+}
+
+/* Shared panel pieces */
+.editor-side-section .editor-panel-heading {
+  padding-inline: 12px;
+}
+.editor-side-scroll {
+  flex-direction: column;
+}
+.editor-side-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.editor-side-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-sm);
+  color: var(--muted-foreground);
+}
+.editor-side-search svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+.editor-side-search input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 12px;
+  outline: none;
+}
+.editor-side-search:focus-within {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+.editor-side-filter {
+  display: flex;
+  gap: 2px;
+}
+.editor-side-filter button {
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 500;
+}
+.editor-side-filter button[aria-pressed="true"] {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.editor-side-filter button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .editor-side-filter button:hover {
+    color: var(--foreground);
+  }
+}
+.editor-side-compose,
+.editor-side-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px 12px;
+}
+.editor-side-compose {
+  border-bottom: 1px solid var(--border);
+}
+.editor-side-edit {
+  padding: 8px 0;
+}
+.editor-side-actions {
+  display: flex;
+  gap: 4px;
+}
+.editor-side-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.editor-side-row {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 0 12px;
+  border-bottom: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
+  font-size: 12px;
+}
+.editor-side-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 0;
+  text-align: left;
+}
+.editor-side-main:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.editor-side-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.editor-side-time {
+  color: var(--timecode-foreground);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+}
+.editor-side-kind {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 10px;
+}
+.editor-side-kind[data-tone="review"] {
+  color: var(--accent-live);
+}
+.editor-side-text {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow-wrap: anywhere;
+  color: var(--foreground);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.editor-side-note {
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.editor-side-row[data-kind="todo"] .editor-side-kind {
+  color: oklch(0.7 0.18 25);
+}
+.editor-side-row[data-kind="comment"] .editor-side-kind {
+  color: oklch(0.75 0.13 160);
+}
+.editor-side-row[data-active="true"] {
+  background: color-mix(in oklch, var(--primary) 14%, transparent);
+  box-shadow: inset 2px 0 0 var(--primary);
+}
+.editor-side-row-actions {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  padding-top: 4px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .editor-side-row:hover {
+    background: color-mix(in oklch, var(--muted) 50%, transparent);
+  }
+  .editor-side-row-actions {
+    opacity: 0;
+  }
+  .editor-side-row:hover .editor-side-row-actions,
+  .editor-side-row:focus-within .editor-side-row-actions {
+    opacity: 1;
+  }
+}
+
+/* History */
+.editor-side-group h3 {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 6px 12px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 500;
+}
+.editor-history-row {
+  align-items: flex-start;
+  gap: 8px;
+  padding-block: 8px;
+}
+.editor-history-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+.editor-history-icon[data-agent="true"] {
+  color: var(--accent-live);
+}
+.editor-history-icon svg {
+  width: 12px;
+  height: 12px;
+}
+.editor-history-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.editor-history-row[data-kind="undo"] .editor-side-text,
+.editor-history-row[data-kind="redo"] .editor-side-text {
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+.editor-history-row[data-current="true"] {
+  background: color-mix(in oklch, var(--primary) 14%, transparent);
+  box-shadow: inset 2px 0 0 var(--primary);
+}
+.editor-history-row[data-review="true"]:not([data-current="true"]) {
+  box-shadow: inset 2px 0 0 var(--accent-live);
+}
+.editor-side-review {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--primary) 14%, var(--card));
+  font-size: 11px;
+}
+.editor-side-review svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--accent-live);
+}
+.editor-side-review span {
+  flex: 1;
+  min-width: 0;
+}
+.editor-side-note-line {
+  padding: 8px 12px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+
+/* Topbar: icon+label controls drop their labels (visually only) when space runs out. */
+@media (max-width: 1360px) {
+  .editor-topbar-actions .editor-topbar-collapse {
+    position: relative;
+    width: 28px;
+    gap: 0;
+    padding: 0;
+    justify-content: center;
+  }
+  .editor-topbar-collapse .editor-button-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}

@@ -5,15 +5,10 @@ import { speechMediaID } from "@sidecut/core/audio-editing";
 import { LocalMediaReader } from "@sidecut/platform-browser/preview";
 import { measureSource } from "@sidecut/platform-browser/audio-analysis";
 import { Button } from "@sidecut/ui/components/button";
-import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-  FieldDescription,
-  FieldError,
-} from "@sidecut/ui/components/field";
+import { FieldError } from "@sidecut/ui/components/field";
 import { useEditorSession } from "./editor-session";
 import { CommitInput } from "./commit-input";
+import { ActionRow, Hint, InspectorSection, PropertyRow } from "./inspector-layout";
 import { voiceIsolationAvailable } from "@sidecut/platform-browser/voice-isolation";
 
 export function AudioControls({ clip }: { clip: Clip }) {
@@ -106,11 +101,9 @@ export function AudioControls({ clip }: { clip: Clip }) {
   };
   const level = (value: number) => (Number.isFinite(value) ? value.toFixed(1) : "Silence");
   return (
-    <section className="editor-trim-form" aria-label="Audio levels">
-      <h3>Audio</h3>
-      <FieldGroup>
-        <Field>
-          <FieldLabel htmlFor="audio-muted">Playback</FieldLabel>
+    <>
+      <InspectorSection id="audio.levels" title="Levels" label="Audio levels">
+        <PropertyRow label="Playback" htmlFor="audio-muted">
           <select
             id="audio-muted"
             value={clip.audio?.muted ? "muted" : "audible"}
@@ -120,7 +113,7 @@ export function AudioControls({ clip }: { clip: Clip }) {
             <option value="audible">Audible</option>
             <option value="muted">Muted</option>
           </select>
-        </Field>
+        </PropertyRow>
         {(
           [
             ["gainDB", "Clip gain", "dB", -100, 30],
@@ -129,8 +122,7 @@ export function AudioControls({ clip }: { clip: Clip }) {
             ["voiceIsolation", "Voice isolation", "", 0, 1],
           ] as const
         ).map(([key, label, unit, min, max]) => (
-          <Field key={key}>
-            <FieldLabel htmlFor={`audio-${key}`}>{label}</FieldLabel>
+          <PropertyRow key={key} label={label} htmlFor={`audio-${key}`}>
             <CommitInput
               id={`audio-${key}`}
               value={Number(clip.audio?.[key] ?? 0)}
@@ -140,19 +132,20 @@ export function AudioControls({ clip }: { clip: Clip }) {
               disabled={disabled}
               onCommit={(value) => patch({ [key]: value })}
             />
-          </Field>
+          </PropertyRow>
         ))}
-        <FieldDescription>
+        <Hint>
           Gain animation replaces clip gain. Fades use an equal-power curve. Add pitch and dynamics
           under Effects.
-        </FieldDescription>
-        <FieldDescription>
+        </Hint>
+        <Hint>
           {voiceIsolationAvailable()
             ? "Voice isolation blends the original at 0 with local RNNoise suppression at 1. Music and other voices may remain."
             : "Voice isolation is unavailable here. Use 0 to keep original sound."}
-        </FieldDescription>
-        <Field>
-          <FieldLabel htmlFor="audio-normalization">Speech levelling</FieldLabel>
+        </Hint>
+      </InspectorSection>
+      <InspectorSection id="audio.loudness" title="Loudness">
+        <PropertyRow label="Speech levelling" htmlFor="audio-normalization">
           <select
             id="audio-normalization"
             value={typeof clip.audio?.normalizeTo === "number" ? "on" : "off"}
@@ -167,10 +160,9 @@ export function AudioControls({ clip }: { clip: Clip }) {
             <option value="off">Off</option>
             <option value="on">Level source</option>
           </select>
-        </Field>
+        </PropertyRow>
         {typeof clip.audio?.normalizeTo === "number" && (
-          <Field>
-            <FieldLabel htmlFor="audio-target">Source target</FieldLabel>
+          <PropertyRow label="Source target" htmlFor="audio-target">
             <CommitInput
               id="audio-target"
               value={clip.audio.normalizeTo}
@@ -180,24 +172,36 @@ export function AudioControls({ clip }: { clip: Clip }) {
               disabled={disabled}
               onCommit={(value) => patch({ normalizeTo: value })}
             />
-          </Field>
+          </PropertyRow>
         )}
-        <Button size="xs" variant="outline" disabled={working} onClick={() => void analyze(false)}>
-          Measure source
-        </Button>
-        <Button size="xs" variant="outline" disabled={disabled} onClick={() => void analyze(true)}>
-          Normalize all speech
-        </Button>
-        <FieldDescription>
+        <ActionRow>
+          <Button
+            size="xs"
+            variant="outline"
+            disabled={working}
+            onClick={() => void analyze(false)}
+          >
+            Measure source
+          </Button>
+          <Button
+            size="xs"
+            variant="outline"
+            disabled={disabled}
+            onClick={() => void analyze(true)}
+          >
+            Normalize all speech
+          </Button>
+          {working && (
+            <Button size="xs" variant="ghost" onClick={() => controller.current?.abort()}>
+              Cancel analysis
+            </Button>
+          )}
+        </ActionRow>
+        <Hint>
           Normalizes voice and camera sources across the project. Locked tracks stay unchanged. New
           protective effects are added only when measured peaks need them.
-        </FieldDescription>
-        {working && (
-          <Button size="xs" variant="outline" onClick={() => controller.current?.abort()}>
-            Cancel analysis
-          </Button>
-        )}
-        <div role="status" aria-live="polite">
+        </Hint>
+        <div className="editor-readout" role="status" aria-live="polite">
           {working
             ? "Measuring local audio…"
             : measured
@@ -205,7 +209,7 @@ export function AudioControls({ clip }: { clip: Clip }) {
               : "Source has not been measured in this view."}
         </div>
         {error && <FieldError>{error}</FieldError>}
-      </FieldGroup>
-    </section>
+      </InspectorSection>
+    </>
   );
 }

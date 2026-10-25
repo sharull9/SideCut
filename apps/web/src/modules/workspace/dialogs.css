@@ -1,0 +1,217 @@
+/* Dialog content renders in a portal outside .editor-shell, so it restates the editor's type and form styling. */
+.editor-dialog {
+  --dialog-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: min(420px, calc(100vw - 32px));
+  max-width: none;
+  max-height: 85vh;
+  padding: 0 0 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-radius: 12px;
+  font-family: var(--font-heading);
+  font-size: 12px;
+  line-height: 1.5;
+  color-scheme: dark;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.editor-dialog-form {
+  width: min(520px, calc(100vw - 32px));
+}
+.editor-dialog-wide {
+  width: min(640px, calc(100vw - 32px));
+}
+.editor-dialog:has([data-slot="dialog-footer"]) {
+  padding-bottom: 0;
+}
+.editor-dialog
+  > :not([data-slot="dialog-close"], [data-slot="dialog-header"], [data-slot="dialog-footer"]) {
+  flex: none;
+  /* Side margins plus a full-width child would overflow; let the flex column stretch it instead. */
+  width: auto;
+  min-width: 0;
+  margin: 12px 16px 0;
+}
+.editor-dialog [data-slot="alert"] {
+  font-size: 12px;
+}
+.editor-dialog [data-slot="alert-title"] {
+  font-size: 12px;
+  font-weight: 600;
+}
+.editor-dialog [data-slot="alert-description"] {
+  font-size: 12px;
+}
+.editor-dialog > [data-slot="dialog-header"] {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  flex: none;
+  gap: 4px;
+  padding: 16px 48px 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--popover);
+}
+.editor-dialog [data-slot="dialog-title"] {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.editor-dialog [data-slot="dialog-description"] {
+  max-width: 60ch;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+/* The close button stays pinned in the corner while the body scrolls. */
+.editor-dialog > [data-slot="dialog-close"] {
+  position: sticky;
+  top: 8px;
+  right: auto;
+  z-index: 2;
+  order: -1;
+  flex: none;
+  align-self: flex-end;
+  margin: 8px 8px -36px 0;
+}
+.editor-dialog > [data-slot="dialog-footer"] {
+  position: sticky;
+  bottom: 0;
+  flex: none;
+  flex-direction: row;
+  justify-content: flex-end;
+  margin: 16px 0 0;
+  padding: 12px 16px;
+  border-radius: 0;
+  background: color-mix(in oklch, var(--popover) 85%, var(--muted));
+}
+.editor-dialog > form + form {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.editor-dialog [data-slot="field-group"] {
+  gap: 12px;
+}
+.editor-dialog [data-slot="field"] {
+  gap: 4px;
+}
+.editor-dialog [data-slot="field-label"],
+.editor-dialog label {
+  font-size: 12px;
+  font-weight: 500;
+  color: color-mix(in oklch, var(--foreground) 85%, transparent);
+}
+.editor-dialog [data-slot="field-description"],
+.editor-dialog p[role="status"] {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+.editor-dialog [data-slot="field-error"] {
+  font-size: 12px;
+}
+.editor-dialog h4 {
+  font-size: 12px;
+  font-weight: 600;
+}
+.editor-dialog label:has(> select) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.editor-dialog-summary {
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+.editor-dialog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.editor-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.editor-dialog [data-slot="field-group"] > [data-slot="button"] {
+  align-self: flex-end;
+}
+
+.editor-dialog [data-slot="input"],
+.editor-dialog select,
+.editor-dialog textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--input);
+  border-radius: min(var(--radius-md), 10px);
+  background: color-mix(in oklch, var(--input) 30%, transparent);
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 12px;
+  transition-property: border-color, box-shadow, background-color;
+  transition-duration: 150ms;
+  transition-timing-function: var(--dialog-ease);
+}
+.editor-dialog [data-slot="input"],
+.editor-dialog select {
+  height: 28px;
+  padding: 0 8px;
+}
+.editor-dialog textarea {
+  padding: 6px 8px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.editor-dialog [data-slot="input"]::placeholder,
+.editor-dialog textarea::placeholder {
+  color: var(--muted-foreground);
+}
+.editor-dialog [data-slot="input"]:focus-visible,
+.editor-dialog select:focus-visible,
+.editor-dialog textarea:focus-visible {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 50%, transparent);
+  outline: none;
+}
+.editor-dialog [data-slot="input"]:disabled,
+.editor-dialog select:disabled,
+.editor-dialog textarea:disabled {
+  opacity: 0.5;
+}
+.editor-dialog option {
+  background: var(--popover);
+  color: var(--foreground);
+}
+.editor-dialog input[type="checkbox"],
+.editor-dialog input[type="radio"] {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  accent-color: var(--primary);
+}
+.editor-dialog input[type="checkbox"]:focus-visible,
+.editor-dialog input[type="radio"]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.editor-dialog input[type="color"] {
+  width: 32px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-sm);
+  background: transparent;
+}
+
+.editor-dialog .editor-speech-tabs {
+  margin-bottom: 0;
+}
+.editor-dialog .editor-speech-panel {
+  padding-top: 12px;
+}

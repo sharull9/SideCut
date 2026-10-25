@@ -184,8 +184,9 @@ export function Viewer() {
             <RiSkipBackLine aria-hidden="true" />
           </Button>
           <Button
-            variant="ghost"
+            variant="secondary"
             size="icon"
+            className="editor-play"
             aria-label={playing ? "Pause sequence" : "Play sequence"}
             disabled={projectDuration(project).flicks === 0n || snapshot.saveState === "loading"}
             onClick={() => editor.getState().setPlaying(!playing)}

@@ -1,4 +1,9 @@
 export const PANEL_STORAGE_KEY = "sidecut.panel-sizes.v1";
+export const SIDE_TAB_KEY = "sidecut.side-tab.v1";
+export const SIDE_TABS = ["media", "comments", "history"] as const;
+export type SideTab = (typeof SIDE_TABS)[number];
+export const readSideTab = (value: string | null): SideTab =>
+  SIDE_TABS.find((tab) => tab === value) ?? "media";
 export interface PanelSizes {
   media: number;
   inspector: number;

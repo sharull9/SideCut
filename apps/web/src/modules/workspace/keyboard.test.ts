@@ -1,5 +1,5 @@
 import { it, expect } from "vite-plus/test";
-import { shortcut } from "./keyboard";
+import { shortcut, ownsKey } from "./keyboard";
 import { copyClips, pasteClips } from "./clipboard";
 import { decodeProjectFile } from "@sidecut/contracts/project";
 import { ProjectCoordinator } from "@sidecut/core/coordinator";
@@ -20,6 +20,18 @@ it("routes platform modifiers and suppresses composing/prevented events", () => 
   expect(shortcut(key("Delete", { defaultPrevented: true }), "premiere")).toBe(null);
   expect(shortcut(key(" "), "minimal")).toBe(null);
   expect(shortcut(key("i"), "premiere")).toBe("markIn");
+});
+it("leaves keys to focused tabs, sliders, summaries and buttons", () => {
+  const el = (...roles: string[]) =>
+    ({ closest: (selector: string) => roles.find((r) => selector.includes(r)) ?? null }) as never;
+  const tab = el("[role=tab]", '[role="tab"]'),
+    summary = el("summary"),
+    body = el();
+  expect(ownsKey(tab, "forward")).toBe(true);
+  expect(ownsKey(summary, "play")).toBe(true);
+  expect(ownsKey(body, "play")).toBe(false);
+  expect(ownsKey(body, "forward")).toBe(false);
+  expect(ownsKey(null, "play")).toBe(false);
 });
 it("pastes with new IDs and link groups as one atomic undo step", () => {
   const file = decodeProjectFile({

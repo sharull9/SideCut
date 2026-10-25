@@ -142,5 +142,17 @@ export function rendererService(project: HostProjectService, isTrusted: (url: st
     ipcMain.removeHandler(bridgeChannels.serviceReady);
     ipcMain.removeHandler(bridgeChannels.serviceReply);
   };
-  return { run, screenshot, close, ready: () => Boolean(window()) };
+  return {
+    activate() {
+      const target = window();
+      if (!target) throw new QueryError("unavailable", "No ready editor window is attached.");
+      if (target.isMinimized()) target.restore();
+      target.show();
+      target.focus();
+    },
+    run,
+    screenshot,
+    close,
+    ready: () => Boolean(window()),
+  };
 }

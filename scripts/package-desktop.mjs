@@ -70,6 +70,8 @@ const notices = join(stage, "resources/licenses");
 const cli = join(stage, "resources/cli");
 await mkdir(cli, { recursive: true });
 await cp(join(root, "scripts/sidecut-cli.mjs"), join(cli, "sidecut-cli.mjs"));
+await cp(join(root, "scripts/cli-project-commands.mjs"), join(cli, "cli-project-commands.mjs"));
+await cp(join(root, "scripts/edit-batch.schema.json"), join(cli, "edit-batch.schema.json"));
 if (process.platform === "win32")
   await writeFile(
     join(cli, "sidecut.cmd"),

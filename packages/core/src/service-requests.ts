@@ -11,10 +11,29 @@ const range = { from: "time", to: "time" } as const;
 const image = { output: "string", format: "string" } as const;
 export const rendererMutations = new Set(["relink", "assets-use", "insert-segment"]);
 export const serviceDefinitions = {
-  new: { name: "string", expectedRevision: "integer" },
+  new: {
+    name: "string",
+    path: "string",
+    width: "integer",
+    height: "integer",
+    expectedRevision: "integer",
+  },
+  app: {},
   open: { path: "string", expectedRevision: "integer" },
-  "import-edl": { path: "string", expectedRevision: "integer" },
-  "import-filmora": { path: "string", expectedRevision: "integer", keepLevels: "boolean" },
+  "import-edl": {
+    path: "string",
+    recipe: "string",
+    name: "string",
+    output: "string",
+    expectedRevision: "integer",
+  },
+  "import-filmora": {
+    path: "string",
+    name: "string",
+    output: "string",
+    expectedRevision: "integer",
+    keepLevels: "boolean",
+  },
   validate: {},
   check: { ...range, changed: "boolean", quick: "boolean", cuts: "boolean", width: "integer" },
   comments: {},

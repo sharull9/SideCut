@@ -11,7 +11,7 @@ import {
   queryDefinitions,
 } from "@sidecut/core/project-queries";
 import { validateProject } from "@sidecut/core/validation";
-import type { HostProjectService } from "./project-service.ts";
+import { freshProject, type HostProjectService } from "./project-service.ts";
 import { scanFolder, mediaRole } from "./folder-scanner.ts";
 import type { NativeMedia } from "./native-media.ts";
 import {
@@ -42,9 +42,11 @@ import { serviceExportPlan } from "@sidecut/core/service-export";
 import { speechTracks } from "@sidecut/core/speech";
 import { resolveServiceMedia, isCameraTake } from "@sidecut/core/service-sync";
 import { folderArchive } from "./service-archive.ts";
+import { writeProjectCommandOutput } from "./project-command-output.ts";
 import { relinkPlan, fileFingerprint } from "./service-relink.ts";
 type RendererOperations = {
   ready?: () => boolean;
+  activate?: () => void;
   run: (operation: string, input: Record<string, unknown>, signal: AbortSignal) => Promise<unknown>;
   screenshot: () => Promise<Uint8Array>;
 };
@@ -588,6 +590,15 @@ export class ProjectAPI {
     }
     if (Object.hasOwn(serviceFields, operation)) {
       const request = serviceRequest(operation, input);
+      if (operation === "app") {
+        if (!this.renderer?.activate)
+          throw new QueryError(
+            "notImplemented",
+            "Application activation requires the native desktop host.",
+          );
+        this.renderer.activate();
+        return { opened: true, projectID: this.file().project.id };
+      }
       if (["new", "open", "import-edl", "import-filmora"].includes(operation)) {
         const before = this.project.snapshot();
         if (request.expectedRevision == null)
@@ -596,35 +607,95 @@ export class ProjectAPI {
             "Replacing the active project requires expectedRevision. The current project is saved before replacement.",
           );
         let next;
+        let report;
         if (operation === "new")
           next = decodeProjectFile({
             revision: 0,
-            project: { id: `prj_${randomUUID()}`, name: request.name ?? "Untitled sequence" },
+            project: {
+              ...freshProject().project,
+              name: request.name ?? "Untitled sequence",
+              settings: {
+                ...freshProject().project.settings,
+                width: request.width ?? 3840,
+                height: request.height ?? 2160,
+              },
+            },
           });
         else {
           if (typeof request.path !== "string")
             throw new QueryError("badRequest", "A source path is required.");
           const path = await this.source(request.path);
-          if (operation === "import-filmora")
-            next = (await readFilmoraSource(path, request.keepLevels === true, signal)).file;
-          else {
+          if (operation === "import-filmora") {
+            const imported = await readFilmoraSource(path, request.keepLevels === true, signal);
+            next = imported.file;
+            report = imported.report;
+          } else {
             if ((await stat(path)).size > 20 * 1024 * 1024)
               throw new QueryError("badRequest", "Project import exceeds 20 MiB.");
             const bytes = await readFile(path);
             if (operation === "open") next = decodeProjectFile(JSON.parse(bytes.toString("utf8")));
             else {
               const parsed = object(JSON.parse(bytes.toString("utf8")));
-              next = importEDL(parsed.edl, parsed.recipe).file;
+              const recipePath =
+                typeof request.recipe === "string" ? await this.source(request.recipe) : undefined;
+              if (recipePath && (await stat(recipePath)).size > 20 * 1024 * 1024)
+                throw new QueryError("badRequest", "Import recipe exceeds 20 MiB.");
+              const recipe = recipePath
+                ? JSON.parse(await readFile(recipePath, { encoding: "utf8", signal }))
+                : parsed.recipe;
+              const imported = importEDL(request.recipe ? parsed : parsed.edl, recipe);
+              next = imported.file;
+              report = imported.report;
             }
           }
         }
+        if (typeof request.name === "string") {
+          if (next.project.name !== request.name) {
+            const renamed = new ProjectCoordinator(next);
+            renamed.apply({
+              label: "Name imported project",
+              author: "agent",
+              commands: [{ updateProject: { patch: { name: request.name } } }],
+            });
+            next = renamed.projectFile();
+          }
+        }
+        const output = operation === "new" ? request.path : request.output;
+        await this.project.flush();
+        if (
+          JSON.parse(this.project.snapshot().json).revision !== request.expectedRevision ||
+          this.project.snapshot().generation !== before.generation
+        )
+          throw new EditError("stale-revision", "Project changed before replacement.");
         signal.throwIfAborted();
-        await this.project.replace(encodeProjectFile(next), false, {
-          generation: before.generation,
-          revision: Number(request.expectedRevision),
-        });
+        const written =
+          typeof output === "string"
+            ? await writeProjectCommandOutput(
+                this.project.store.path,
+                output,
+                encodeProjectFile(next),
+                signal,
+              )
+            : undefined;
+        try {
+          signal.throwIfAborted();
+          await this.project.replace(encodeProjectFile(next), false, {
+            generation: before.generation,
+            revision: Number(request.expectedRevision),
+          });
+        } catch (error) {
+          if (written) await unlink(written).catch(() => {});
+          throw error;
+        }
         this.mediaRoot = null;
         return {
+          ...(written ? { path: written } : {}),
+          ...(report ? { report } : {}),
+          width: next.project.settings.width,
+          height: next.project.settings.height,
+          tracks: [...next.project.videoTracks, ...next.project.audioTracks].map(
+            (track) => track.name,
+          ),
           revision: this.file().revision,
           projectID: this.file().project.id,
           name: this.file().project.name,

@@ -1,0 +1,23 @@
+{
+  "reference": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "provenance": "Synthetic request expectations transcribed from TandemCLI/CLI.swift, ImportCommand.swift and Help.swift. Not captured Swift responses. See TANDEM-LICENSE.",
+  "new": {
+    "size": [3840, 2160],
+    "portrait": [1080, 1920],
+    "sizeOverridesPortrait": true,
+    "extension": ".tandem",
+    "overwrite": false
+  },
+  "import": {
+    "commands": ["import edl", "import filmora"],
+    "filmoraKeepLevels": false,
+    "edlRecipeRequired": true
+  },
+  "schema": { "offline": true, "document": "edit batches" },
+  "sidecutExtensions": {
+    "app": "Focus running editor; launch explicitly configured installed executable when discovery is absent",
+    "replacement": "Guarded shared host replacement",
+    "outputs": "Exclusive snapshots within the managed project folder",
+    "schemaService": "--service retains authenticated operation discovery"
+  }
+}

@@ -2,6 +2,7 @@
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { prepareProjectCommand, launchApplication } from "./cli-project-commands.mjs";
 
 const help = `Usage: node scripts/sidecut-cli.mjs [project|assets|segments] COMMAND [options]
 
@@ -43,6 +44,24 @@ async function main(args) {
     process.stdout.write(help + "\n");
     return;
   }
+  if (args[0] === "schema" && !args.includes("--service")) {
+    const allowed = new Set(["--json"]);
+    for (let i = 1; i < args.length; i++) {
+      if (args[i] === "--endpoint-file") {
+        i++;
+        continue;
+      }
+      if (args[i].startsWith("--endpoint-file=")) continue;
+      if (!allowed.has(args[i])) throw new Error(`Unknown schema option ${args[i]}.`);
+    }
+    process.stdout.write(
+      await readFile(new URL("./edit-batch.schema.json", import.meta.url), "utf8"),
+    );
+    return;
+  }
+  args = args.filter((arg) => arg !== "--service");
+  const projectCommand = prepareProjectCommand(args);
+  args = projectCommand.args;
   const flags = new Map(),
     words = [];
   for (let i = 0; i < args.length; i++) {
@@ -76,7 +95,17 @@ async function main(args) {
   const endpointFile =
     flags.get("endpoint-file") ?? process.env.SIDECUT_API_FILE ?? discoveryPath();
   if (typeof endpointFile !== "string") throw new Error("--endpoint-file needs a path.");
-  const endpoint = JSON.parse(await readFile(endpointFile, "utf8"));
+  let endpoint;
+  try {
+    endpoint = JSON.parse(await readFile(endpointFile, "utf8"));
+  } catch (error) {
+    if (operation !== "app" || error.code !== "ENOENT") throw error;
+    const result = await launchApplication();
+    process.stdout.write(
+      (projectCommand.text ? projectCommand.text(result) : JSON.stringify(result)) + "\n",
+    );
+    return;
+  }
   if (
     !endpoint ||
     !Number.isInteger(endpoint.port) ||
@@ -141,17 +170,30 @@ async function main(args) {
     Object.defineProperty(input, key, { value, enumerable: true });
   }
   if (flags.has("follow") && operation !== "watch") throw new Error("--follow requires watch.");
+  if (
+    projectCommand.native &&
+    ["new", "import-edl", "import-filmora"].includes(operation) &&
+    input.expectedRevision == null
+  ) {
+    const status = await call("status", {});
+    if (!status) return;
+    input.expectedRevision = status.revision;
+  }
   do {
     const result = await call(operation, input);
     if (!result) return;
-    process.stdout.write(JSON.stringify(result) + "\n");
+    process.stdout.write(
+      (projectCommand.text ? projectCommand.text(result) : JSON.stringify(result)) + "\n",
+    );
     if (!flags.has("follow")) return;
     input = { ...input, revision: result.revision, generation: result.generation };
   } while (!controller.signal.aborted);
 }
 
 main(process.argv.slice(2)).catch((error) => {
-  process.exitCode = error?.name === "AbortError" ? 130 : error?.message === "fetch failed" ? 3 : 2;
+  process.exitCode =
+    error?.exitCode ??
+    (error?.name === "AbortError" ? 130 : error?.message === "fetch failed" ? 3 : 2);
   // Discovery files contain credentials. Never echo their contents or network headers.
   process.stderr.write(
     JSON.stringify({

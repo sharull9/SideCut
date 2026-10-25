@@ -4,7 +4,7 @@ import type { HostReply, HostSnapshot } from "@sidecut/contracts/desktop";
 import type { NativeProjectStore } from "./project-store.ts";
 import { clipChanges } from "@sidecut/core/service-edits";
 
-const fresh = () =>
+export const freshProject = () =>
   decodeProjectFile({
     revision: 0,
     project: {
@@ -26,7 +26,7 @@ const fresh = () =>
   });
 
 export class HostProjectService {
-  private coordinator = new ProjectCoordinator(fresh());
+  private coordinator = new ProjectCoordinator(freshProject());
   private sequence = 0;
   private generation = 0;
   private state: HostSnapshot["saveState"] = "saved";
@@ -113,7 +113,7 @@ export class HostProjectService {
   async start() {
     await this.store.acquire();
     try {
-      this.coordinator = new ProjectCoordinator(await this.store.load(fresh));
+      this.coordinator = new ProjectCoordinator(await this.store.load(freshProject));
       this.restoreReviewBaseline();
       await this.store.save(this.coordinator.projectFile());
       this.savedRevision = this.coordinator.getSnapshot().revision;
@@ -275,7 +275,7 @@ export class HostProjectService {
       if (json !== undefined && this.error) throw new Error(this.error);
       const file =
         json === undefined
-          ? await this.store.load(fresh, backup)
+          ? await this.store.load(freshProject, backup)
           : decodeProjectFile(JSON.parse(json));
       const coordinator = new ProjectCoordinator(file);
       if (json !== undefined || backup) await this.store.save(coordinator.projectFile());

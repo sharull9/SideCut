@@ -328,3 +328,18 @@ export type EditBatch = typeof EditBatchSchema.Type;
 export type EditCommand = typeof EditCommandSchema.Type;
 export const editCommandJsonSchema = () =>
   Schema.toJsonSchemaDocument(Schema.toType(EditCommandSchema));
+export const editBatchJsonSchema = () => {
+  const batch = Schema.toJsonSchemaDocument(Schema.toEncoded(EditBatchSchema));
+  const command = editCommandJsonSchema();
+  const properties = batch.schema.properties;
+  if (!properties || typeof properties !== "object" || Array.isArray(properties))
+    throw new Error("Edit batch schema needs object properties.");
+  return {
+    ...batch,
+    schema: {
+      ...batch.schema,
+      properties: { ...properties, commands: { type: "array", items: command.schema } },
+    },
+    definitions: { ...batch.definitions, ...command.definitions },
+  };
+};

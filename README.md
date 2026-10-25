@@ -357,3 +357,5 @@ consolidation, dry runs and optional browser caches. See
 [comments/jobs/archive verification and limits](docs/verification/jobs-archive.md).
 
 Resource and asset service adapters now support folder relink plans, complete effect catalogues, provider status, reference search defaults and cached fetches. See [verification and compatibility limits](docs/verification/resources-assets.md).
+
+Asset actions include timeline placement with atomic undo, current licence credits, generation recovery and the pinned 90-asset starter catalogue. See [asset-action verification and limits](docs/verification/asset-actions.md).

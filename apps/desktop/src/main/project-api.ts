@@ -892,6 +892,12 @@ export class ProjectAPI {
         operation.startsWith("assets-") ||
         ["segments", "save-segment", "insert-segment", "wait"].includes(operation)
       ) {
+        if (
+          operation === "assets-use" &&
+          request.expectedRevision != null &&
+          request.expectedRevision !== this.file().revision
+        )
+          throw new EditError("stale-revision", "Stale revision. Retry with the latest project.");
         if (!this.renderer)
           throw new QueryError(
             "unavailable",

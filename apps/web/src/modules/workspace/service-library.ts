@@ -1,7 +1,9 @@
 import type { BrowserProjectSession } from "./browser-session";
 import { AssetLibrary } from "@sidecut/platform-browser/asset-library";
-import { BrowserAssetProviders, assetLicence } from "@sidecut/platform-browser/asset-providers";
+import { BrowserAssetProviders } from "@sidecut/platform-browser/asset-providers";
 import { SegmentLibrary } from "@sidecut/platform-browser/segments";
+import { decodeAsset, licenceClasses } from "@sidecut/contracts/assets";
+import { libraryLicence, libraryAssetDetails, generationServiceRequest } from "./service-assets";
 import { starterAssets } from "@sidecut/platform-browser/starter";
 import { projectCredits, creditsText } from "@sidecut/core/asset-use";
 import { QueryError } from "@sidecut/core/project-queries";
@@ -15,6 +17,7 @@ export async function libraryOperation(
   signal: AbortSignal,
 ): Promise<unknown> {
   signal.throwIfAborted();
+  const initial = session.getSnapshot();
   if (operation === "archive") {
     const bytes = await session.archiveBytes({
       allowMissing: request.output == null,
@@ -54,11 +57,6 @@ export async function libraryOperation(
   if (operation === "wait") {
     const { waitService } = await import("./service-wait");
     return waitService(session, request, signal);
-  }
-  if (operation === "assets-credits") {
-    const credits = projectCredits(session.getSnapshot().project),
-      includeOptional = request.includeOptional === true;
-    return { text: creditsText(credits, includeOptional), credits, includeOptional };
   }
   if (["segments", "save-segment", "insert-segment"].includes(operation)) {
     if (operation === "save-segment") {
@@ -127,34 +125,50 @@ export async function libraryOperation(
           signal.throwIfAborted();
           await providers.fetch(asset, signal);
         }
+      const counts: Record<string, number> = {};
+      for (const asset of assets) counts[asset.kind] = (counts[asset.kind] ?? 0) + 1;
       return {
+        counts,
+        total: assets.length,
         assets: assets.length,
         downloaded: request.online === true,
-        warnings:
-          request.online === true
-            ? []
-            : ["Installed catalogue metadata. Downloads require online:true."],
+        warnings: [],
       };
+    }
+    if (operation === "assets-credits") {
+      const catalogue = [];
+      for (const entry of await library.entries()) {
+        signal.throwIfAborted();
+        const licence = await libraryLicence(entry);
+        catalogue.push(
+          decodeAsset({
+            ...entry.asset,
+            ...(licenceClasses.some((c) => c === licence.licenceClass)
+              ? { licenceClass: licence.licenceClass }
+              : {}),
+            ...(typeof licence.creditLine === "string" ? { creditLine: licence.creditLine } : {}),
+            ...(typeof licence.name === "string" ? { licenceName: licence.name } : {}),
+            remote: {
+              ...entry.asset.remote,
+              ...(typeof licence.holder === "string" ? { licenceHolder: licence.holder } : {}),
+              ...(typeof licence.notes === "string" ? { licenceNotes: licence.notes } : {}),
+            },
+          }),
+        );
+      }
+      const credits = projectCredits(session.getSnapshot().project, catalogue),
+        includeOptional = request.includeOptional === true;
+      return { text: creditsText(credits, includeOptional), credits, includeOptional };
     }
     if (operation === "assets-search") {
       const { searchServiceAssets } = await import("./service-assets");
       return searchServiceAssets(library, providers, request, signal);
     }
     if (operation === "assets-generate") {
+      const generation = generationServiceRequest(request);
       if (request.confirmedPaid !== true)
         throw new QueryError("badRequest", "Generation requires confirmedPaid:true.");
-      const result = await providers.generate(
-        {
-          prompt: request.prompt,
-          kind: request.kind,
-          duration: request.duration,
-          variations: request.variations,
-          loop: request.loop,
-          instrumental: request.vocals !== true,
-        },
-        true,
-        signal,
-      );
+      const result = await providers.generate(generation, true, signal);
       return { assets: result.entries.map((e) => e.asset), failures: result.failures };
     }
     if (typeof request.id !== "string")
@@ -162,7 +176,7 @@ export async function libraryOperation(
     let entry = await library.get(request.id);
     if (
       !entry &&
-      operation === "assets-fetch" &&
+      (operation === "assets-fetch" || operation === "assets-use") &&
       request.id.startsWith("fontsource:") &&
       request.online !== false
     ) {
@@ -183,7 +197,7 @@ export async function libraryOperation(
         "notFound",
         "Asset was not found in the catalogue. Search or install starter metadata first.",
       );
-    if (operation === "assets-fetch") {
+    if (operation === "assets-fetch" || operation === "assets-use") {
       if (!entry.normalised && !entry.original && request.online === false)
         throw new QueryError(
           "badRequest",
@@ -193,35 +207,23 @@ export async function libraryOperation(
     }
     signal.throwIfAborted();
     if (operation === "assets-use") {
-      if (["at", "duration", "mode", "anchor", "pop"].some((key) => request[key] != null))
-        throw new QueryError(
-          "notImplemented",
-          "Asset use currently adds project media/fonts/LUTs. Timeline placement options are pending.",
-        );
-      const used = await session.useLibraryAsset(entry);
-      return { revision: session.getSnapshot().revision, asset: entry.asset, ...used };
-    }
-    if (operation === "assets-fetch") {
-      let licence: unknown = assetLicence(entry.asset);
-      if (entry.licence) {
-        try {
-          licence = object(JSON.parse(await entry.licence.text()));
-        } catch {
-          /* Imported licences may be plain text; keep their file and report metadata. */
-        }
-      }
+      if (
+        JSON.stringify(session.getSnapshot().project) !== JSON.stringify(initial.project) ||
+        session.getSnapshot().revision !== initial.revision
+      )
+        throw new QueryError("unavailable", "Project changed while fetching the asset. Retry.");
+      const used = await session.useLibraryAsset(entry, request, signal);
       return {
+        revision: session.getSnapshot().revision,
         asset: entry.asset,
-        file: entry.normalised?.name,
-        licence,
+        ...used,
+        licence: await libraryLicence(entry),
       };
     }
-    return {
-      asset: entry.asset,
-      file: entry.normalised?.name,
-      original: entry.original?.name,
-      licence: assetLicence(entry.asset),
-    };
+    const details = await libraryAssetDetails(entry);
+    if (operation === "assets-fetch")
+      return { asset: details.asset, file: details.file, licence: details.licence };
+    return details;
   } finally {
     library.close();
   }

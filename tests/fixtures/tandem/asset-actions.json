@@ -1,0 +1,45 @@
+{
+  "revision": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "sources": [
+    "Sources/TandemAPI/AssetTypes.swift",
+    "Sources/TandemAPI/AssetService.swift",
+    "Sources/TandemAssets/Library/ProjectUse.swift",
+    "Sources/TandemAssets/Library/StarterContent.swift"
+  ],
+  "show": {
+    "fields": ["asset", "file", "original", "licence", "prompt", "model"],
+    "fetch": false,
+    "unknownID": "notFound"
+  },
+  "use": {
+    "mode": "place",
+    "stillDuration": 5,
+    "stickerAnchor": "bottom",
+    "pop": false,
+    "musicGainDB": -31,
+    "musicFadeOut": 2,
+    "sfxGainDB": -15,
+    "oneUndoStep": true,
+    "duplicateMedia": false
+  },
+  "credits": {
+    "includeOptional": false,
+    "deduplicateLines": true,
+    "currentCatalogueLicence": true
+  },
+  "generate": {
+    "variations": 1,
+    "minimumVariations": 1,
+    "maximumVariations": 4,
+    "loop": false,
+    "vocals": false,
+    "savedNormalizationFailureReturned": true
+  },
+  "starter": {
+    "counts": { "sticker": 43, "icon": 32, "logo": 15 },
+    "total": 90,
+    "downloads": false,
+    "idempotent": true
+  },
+  "notice": "Synthetic expectations from pinned source. TANDEM-LICENSE applies. Browser storage and paid-confirmation extensions are documented separately."
+}

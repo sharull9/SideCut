@@ -1,0 +1,187 @@
+{
+  "platform": "win32",
+  "show": {
+    "prompt": "Fixture prompt",
+    "model": "Fixture model",
+    "readOnly": true
+  },
+  "starter": {
+    "counts": {
+      "sticker": 43,
+      "icon": 32,
+      "logo": 15
+    },
+    "total": 90,
+    "idempotent": true,
+    "downloaded": false
+  },
+  "use": {
+    "revision": 1,
+    "oneUndoStep": true,
+    "reusedMedia": true,
+    "overwrite": true,
+    "insert": true,
+    "failedPlacementAtomic": true,
+    "anchorPop": true,
+    "music": {
+      "gainDB": -31,
+      "fadeOut": 2
+    },
+    "lut": "assets/lut/Look-g9hwu5r4.cube",
+    "font": ["Arial"]
+  },
+  "credits": {
+    "text": "Credits\nFixture artist",
+    "credits": {
+      "entries": [
+        {
+          "line": "Fixture artist",
+          "required": true,
+          "licenceClass": "creditNeeded",
+          "assetIDs": ["import:picture", "import:sticker"],
+          "assetNames": ["picture", "sticker"]
+        },
+        {
+          "line": "Courtesy musician",
+          "required": false,
+          "licenceClass": "noCredit",
+          "assetIDs": ["import:music"],
+          "assetNames": ["Music"]
+        }
+      ],
+      "warnings": [],
+      "assets": [
+        {
+          "id": "import:picture",
+          "name": "picture",
+          "provider": "import",
+          "licenceClass": "creditNeeded",
+          "licence": "Fixture licence"
+        },
+        {
+          "id": "import:sticker",
+          "name": "sticker",
+          "provider": "import",
+          "licenceClass": "creditNeeded",
+          "licence": "Fixture licence"
+        },
+        {
+          "id": "import:music",
+          "name": "Music",
+          "provider": "import",
+          "licenceClass": "noCredit",
+          "licence": "Unknown licence"
+        },
+        {
+          "id": "import:lut",
+          "name": "Look",
+          "provider": "import",
+          "licenceClass": "noCredit",
+          "licence": "Unknown licence"
+        },
+        {
+          "id": "import:font",
+          "name": "Fixture font",
+          "provider": "import",
+          "licenceClass": "noCredit",
+          "licence": "Unknown licence"
+        }
+      ]
+    },
+    "includeOptional": false
+  },
+  "optionalText": "Credits\nFixture artist\n\nThanks to\nCourtesy musician",
+  "generation": {
+    "first": {
+      "assets": [
+        {
+          "id": "elevenlabs:sfx_ca909886-4198-48ee-938e-b5484a15dc0b",
+          "provider": "elevenlabs",
+          "providerID": "sfx_ca909886-4198-48ee-938e-b5484a15dc0b",
+          "kind": "sfx",
+          "name": "Fixture click",
+          "tags": ["generated", "elevenlabs"],
+          "summary": "Fixture click",
+          "licenceClass": "aiGenerated",
+          "licenceName": "ElevenLabs Terms of Service (check plan)",
+          "remote": {
+            "prompt": "Fixture click",
+            "model": "eleven_text_to_sound_v2",
+            "outputFormat": "pcm_48000",
+            "variation": "1",
+            "requestedDuration": "0.5",
+            "loop": "0",
+            "mediaKind": "audio"
+          },
+          "pageURL": "https://elevenlabs.io",
+          "state": "normalised",
+          "hasAlpha": false,
+          "duration": 0.5,
+          "sha256": "92e19540f656c3af507bd038e72cfb6c1279bf1ddf21cf8c5002090691323a4b",
+          "files": {
+            "folder": "elevenlabs/sfx_ca909886-4198-48ee-938e-b5484a15dc0b",
+            "original": "original-original.wav",
+            "normalised": "original.wav",
+            "licence": "licence-licence.json"
+          }
+        }
+      ],
+      "failures": ["Take 2: ElevenLabs request failed (500). Check provider setup and retry."]
+    },
+    "second": {
+      "assets": [
+        {
+          "id": "elevenlabs:sfx_7ecfc173-770e-44c1-9c98-4382e2b053f9",
+          "provider": "elevenlabs",
+          "providerID": "sfx_7ecfc173-770e-44c1-9c98-4382e2b053f9",
+          "kind": "sfx",
+          "name": "Broken fixture",
+          "tags": ["generated", "elevenlabs"],
+          "summary": "Broken fixture",
+          "licenceClass": "aiGenerated",
+          "licenceName": "ElevenLabs Terms of Service (check plan)",
+          "remote": {
+            "prompt": "Broken fixture",
+            "model": "eleven_text_to_sound_v2",
+            "outputFormat": "mp3_44100_128",
+            "variation": "1",
+            "requestedDuration": "0.5",
+            "loop": "1"
+          },
+          "pageURL": "https://elevenlabs.io",
+          "state": "original",
+          "hasAlpha": false,
+          "duration": 0.5,
+          "files": {}
+        }
+      ],
+      "failures": [
+        "Take elevenlabs:sfx_7ecfc173-770e-44c1-9c98-4382e2b053f9 is saved but could not be normalized: Input has an unsupported or unrecognizable format."
+      ]
+    },
+    "bodies": [
+      {
+        "text": "Fixture click",
+        "model_id": "eleven_text_to_sound_v2",
+        "loop": false,
+        "duration_seconds": 0.5
+      },
+      {
+        "text": "Fixture click",
+        "model_id": "eleven_text_to_sound_v2",
+        "loop": false,
+        "duration_seconds": 0.5
+      },
+      {
+        "text": "Broken fixture",
+        "model_id": "eleven_text_to_sound_v2",
+        "loop": true,
+        "duration_seconds": 0.5
+      }
+    ],
+    "calls": 3,
+    "transport": "fixture only; no paid requests",
+    "failedOriginal": "original.mp3",
+    "projectUnchanged": true
+  }
+}

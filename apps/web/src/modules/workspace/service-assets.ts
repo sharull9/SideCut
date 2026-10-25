@@ -2,6 +2,56 @@ import { assetKinds, type Asset } from "@sidecut/contracts/assets";
 import type { AssetLibrary } from "@sidecut/platform-browser/asset-library";
 import type { BrowserAssetProviders } from "@sidecut/platform-browser/asset-providers";
 import { QueryError } from "@sidecut/core/project-queries";
+import { assetLicence } from "@sidecut/platform-browser/asset-providers";
+import type { LibraryEntry } from "@sidecut/platform-browser/asset-library";
+import { object } from "@sidecut/core/interchange";
+import { decodeGeneration } from "@sidecut/contracts/providers";
+
+export async function libraryLicence(entry: LibraryEntry): Promise<Record<string, unknown>> {
+  if (entry.licence) {
+    try {
+      return object(JSON.parse(await entry.licence.text()));
+    } catch {
+      /* Hand-imported licences can be plain text. */
+    }
+  }
+  return assetLicence(entry.asset);
+}
+export async function libraryAssetDetails(entry: LibraryEntry) {
+  return {
+    asset: entry.asset,
+    file: entry.normalised?.name,
+    original: entry.original?.name,
+    licence: await libraryLicence(entry),
+    prompt: entry.asset.remote.prompt,
+    model: entry.asset.remote.model,
+  };
+}
+export function generationServiceRequest(request: Record<string, unknown>) {
+  const name = String(request.kind ?? "").toLowerCase(),
+    kind = ["sound", "sounds", "effects"].includes(name)
+      ? "sfx"
+      : name === "songs"
+        ? "music"
+        : name;
+  if (!["sfx", "music"].includes(kind))
+    throw new QueryError("badRequest", "Generate makes sfx or music.");
+  try {
+    return decodeGeneration({
+      prompt: request.prompt,
+      kind,
+      duration: request.duration,
+      variations: request.variations,
+      loop: request.loop,
+      instrumental: request.vocals !== true,
+    });
+  } catch (error) {
+    throw new QueryError(
+      "badRequest",
+      error instanceof Error ? error.message : "Invalid generation request.",
+    );
+  }
+}
 
 export async function searchServiceAssets(
   library: Pick<AssetLibrary, "entries" | "mergeRemote">,

@@ -148,16 +148,18 @@ Acceptance per operation: compare request defaults, result shape, revision, warn
 - [x] 129.01: providers. All 12 provider metadata/status records pass tests and Electron HTTP checks without exposing credentials. Keyed/paid provider execution is outside this batch.
 - [x] 129.02: search. Reference defaults, clamped limits, aliases, kind/provider validation, result merging, per-provider failures and cancellation pass tests. Electron verifies local search and a live Iconify search.
 - [x] 129.03: fetch. Actual LUT normalization, licence preservation, live Iconify download/SVG normalization, cache reuse and unchanged project revision pass Electron checks. Native library-path differences are documented.
-- [ ] 129.04: show.
-- [ ] 129.05: use.
-- [ ] 129.06: credits.
-- [ ] 129.07: generate.
-- [ ] 129.08: install-starter.
+- [x] 129.04: show. Stored licence, available filenames, prompt/model, read-only behavior and unknown-ID failure pass tests and Electron HTTP checks.
+- [x] 129.05: use. Fetch/normalize, shared placement with duration/mode/anchor/pop, media reuse, labels/authors, one apply/undo, stale and atomic failure checks pass. Electron uses PNG, WAV, LUT and installed Arial resources within documented browser bounds.
+- [x] 129.06: credits. Current licence precedence, provenance/tag lookup, deduplicated required/courtesy text, removed-media exclusion and grouped warnings pass core and Electron checks.
+- [x] 129.07: generate. Reference validation/defaults, aliases, variation bounds, paid-confirmation guard and saved-original recovery pass tests. Electron fixture transport verifies PCM normalization and partial failures without paid requests.
+- [x] 129.08: install-starter. Pinned counts of 43 stickers, 32 icons and 15 logos, metadata-only defaults and idempotent installation pass tests and Electron checks.
 - [ ] 129.09: segments.
 - [ ] 129.10: save-segment.
 - [ ] 129.11: insert-segment.
 
 See [resource/asset evidence and limits](verification/resources-assets.md) for the five adapters above.
+
+See [asset-action evidence and limits](verification/asset-actions.md) for show, use, credits, generation and starter installation.
 
 ## Group 130: CLI
 

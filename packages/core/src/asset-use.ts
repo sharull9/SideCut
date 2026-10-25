@@ -1,6 +1,7 @@
 // TandemAssets/Library/ProjectUse.swift. Notice: tests/fixtures/tandem/TANDEM-LICENSE.
 import { decodeAsset, type Asset } from "@sidecut/contracts/assets";
-import type { Project } from "@sidecut/contracts/project";
+import type { Project, ProjectFile } from "@sidecut/contracts/project";
+import { QueryError } from "./project-queries";
 
 export const ASSET_USES = "sidecut.assetUses";
 export interface AssetUse {
@@ -19,8 +20,11 @@ export function assetUses(project: Project): AssetUse[] {
   });
 }
 export function recordAssetUse(project: Project, use: AssetUse) {
-  const uses = assetUses(project).filter((v) => v.asset.id !== use.asset.id);
-  return { ...project.metadata, [ASSET_USES]: JSON.stringify([...uses, use]) };
+  const uses = assetUses(project),
+    index = uses.findIndex((v) => v.asset.id === use.asset.id);
+  if (index < 0) uses.push(use);
+  else uses[index] = use;
+  return { ...project.metadata, [ASSET_USES]: JSON.stringify(uses) };
 }
 export const assetSuggestions = (kind: Asset["kind"]) => {
   if (kind === "music")
@@ -29,8 +33,99 @@ export const assetSuggestions = (kind: Asset["kind"]) => {
   if (kind === "sticker") return { role: "sticker", track: "Graphics" };
   if (["overlay", "icon", "logo"].includes(kind)) return { role: "graphic", track: "Graphics" };
   if (kind === "video" || kind === "image") return { role: "broll", track: "B-roll" };
+  if (kind === "title") return { role: "graphic", track: "Text" };
   return { role: "other", track: null };
 };
+export function assetUsePlan(
+  file: ProjectFile,
+  asset: Asset,
+  resource: { mediaID: string; path: string },
+  request: Record<string, unknown> = {},
+) {
+  if (request.mode != null && !["place", "overwrite", "insert"].includes(String(request.mode)))
+    throw new QueryError("badRequest", "Unknown asset placement mode.");
+  if (
+    request.anchor != null &&
+    ![
+      "bottom",
+      "bottomLeft",
+      "bottomRight",
+      "top",
+      "topLeft",
+      "topRight",
+      "centre",
+      "lowerThird",
+    ].includes(String(request.anchor))
+  )
+    throw new QueryError("badRequest", "Unknown sticker anchor.");
+  if (request.duration != null && !(Number(request.duration) > 0))
+    throw new QueryError("badRequest", "Asset duration must be positive.");
+  if (request.at != null && !(Number(request.at) >= 0))
+    throw new QueryError("badRequest", "Asset placement must start at or after zero.");
+  if (["title", "transition"].includes(asset.kind))
+    throw new QueryError(
+      "notImplemented",
+      "Title and transition library assets cannot be installed yet.",
+    );
+  const nonMedia = asset.kind === "font" || asset.kind === "lut",
+    known = file.project.media.find((m) => m.id === resource.mediaID || m.path === resource.path),
+    mediaID = nonMedia ? undefined : (known?.id ?? resource.mediaID),
+    path = known?.path ?? resource.path,
+    suggestions = assetSuggestions(asset.kind),
+    commands: unknown[] = [];
+  if (!nonMedia && !known) {
+    const kind =
+      asset.remote.mediaKind ??
+      (asset.kind === "sfx" || asset.kind === "music"
+        ? "audio"
+        : asset.kind === "video" ||
+            (["sticker", "overlay"].includes(asset.kind) && asset.duration != null)
+          ? "video"
+          : "image");
+    commands.push({
+      addMedia: {
+        item: {
+          id: mediaID,
+          path,
+          kind,
+          role: suggestions.role,
+          hasVideo:
+            kind === "image" ||
+            (asset.remote.hasVideo != null ? asset.remote.hasVideo === "1" : kind !== "audio"),
+          hasAudio:
+            asset.remote.hasAudio != null ? asset.remote.hasAudio === "1" : kind === "audio",
+          width: asset.width ?? null,
+          height: asset.height ?? null,
+          duration: kind === "image" ? null : (asset.duration ?? null),
+          hasAlpha: asset.hasAlpha ?? false,
+          asset,
+        },
+      },
+    });
+  }
+  if (!nonMedia && request.at != null)
+    commands.push({
+      placeMedia: {
+        mediaIDs: [mediaID],
+        at: request.at,
+        ...(request.duration != null ? { duration: request.duration } : {}),
+        ...(request.mode != null ? { mode: request.mode } : {}),
+        ...(request.anchor != null ? { anchor: request.anchor } : {}),
+        ...(request.pop != null ? { pop: request.pop } : {}),
+      },
+    });
+  const metadata = recordAssetUse(file.project, { asset, ...(mediaID ? { mediaID } : {}), path });
+  if (metadata[ASSET_USES] !== file.project.metadata[ASSET_USES])
+    commands.push({ updateProject: { patch: { metadata } } });
+  return {
+    commands,
+    mediaID,
+    path,
+    role: suggestions.role,
+    trackName: suggestions.track,
+    gainDB: suggestions.audio?.gainDB,
+  };
+}
 export function projectCredits(project: Project, catalogue: readonly Asset[] = []) {
   const known = new Map(catalogue.map((a) => [a.id, a]));
   const ids = new Set<string>();
@@ -44,7 +139,7 @@ export function projectCredits(project: Project, catalogue: readonly Asset[] = [
     );
   }
   for (const use of uses) {
-    known.set(use.asset.id, use.asset);
+    if (!known.has(use.asset.id)) known.set(use.asset.id, use.asset);
     if (!use.mediaID || project.media.some((m) => m.id === use.mediaID || m.path === use.path))
       ids.add(use.asset.id);
   }
@@ -52,7 +147,7 @@ export function projectCredits(project: Project, catalogue: readonly Asset[] = [
     if (media.asset) {
       try {
         const asset = decodeAsset(media.asset);
-        known.set(asset.id, asset);
+        if (!known.has(asset.id)) known.set(asset.id, asset);
         ids.add(asset.id);
       } catch {
         metadataWarnings.push(`Asset metadata for ${media.path} could not be read.`);
@@ -77,7 +172,9 @@ export function projectCredits(project: Project, catalogue: readonly Asset[] = [
       licenceClass: string;
       licence: string | null;
     }[] = [];
-  const subscriptions = new Map<string, number>();
+  const subscriptions = new Map<string, { count: number; notes: string | undefined }>(),
+    unknown: string[] = [],
+    missing: string[] = [];
   for (const id of ids) {
     const a = known.get(id),
       name = a?.name ?? id,
@@ -90,17 +187,16 @@ export function projectCredits(project: Project, catalogue: readonly Asset[] = [
       licenceClass,
       licence: typeof a?.licenceName === "string" ? a.licenceName : null,
     });
-    if (licenceClass === "unknown")
-      warnings.push(`No licence on record for "${name}". Check its terms or replace it.`);
-    if (licenceClass === "creditNeeded" && !line)
-      warnings.push(
-        `"${name}" needs a credit but has no credit line. Check the licence and write one.`,
-      );
-    if (licenceClass === "subscription")
-      subscriptions.set(
-        a?.provider ?? "subscription",
-        (subscriptions.get(a?.provider ?? "subscription") ?? 0) + 1,
-      );
+    if (licenceClass === "unknown") unknown.push(name);
+    if (licenceClass === "creditNeeded" && !line) missing.push(name);
+    if (licenceClass === "subscription") {
+      const source = a?.remote.licenceHolder ?? a?.licenceName ?? a?.provider ?? "a subscription",
+        old = subscriptions.get(source);
+      subscriptions.set(source, {
+        count: (old?.count ?? 0) + 1,
+        notes: old?.notes ?? a?.remote.licenceNotes,
+      });
+    }
     if (!line) continue;
     const required = licenceClass === "creditNeeded" || licenceClass === "unknown",
       old = entries.find((e) => e.line === line);
@@ -110,9 +206,24 @@ export function projectCredits(project: Project, catalogue: readonly Asset[] = [
       old.required ||= required;
     } else entries.push({ line, required, licenceClass, assetIDs: [id], assetNames: [name] });
   }
-  for (const [provider, count] of subscriptions)
+  const names = (values: string[]) =>
+    values.length < 2
+      ? `"${values[0]}"`
+      : values
+          .slice(0, -1)
+          .map((v) => `"${v}"`)
+          .join(", ") + ` and "${values.at(-1)}"`;
+  if (unknown.length)
     warnings.push(
-      `${count} asset(s) from ${provider}. Check that your active subscription covers this channel.`,
+      `No licence on record for ${names(unknown)}. Add a tandem-licence.json to their import folder, or replace them.`,
+    );
+  if (missing.length)
+    warnings.push(
+      `${names(missing)} ${missing.length === 1 ? "needs a credit but has" : "need a credit but have"} no credit line. Check the licence and write one.`,
+    );
+  for (const [source, entry] of subscriptions)
+    warnings.push(
+      `${entry.count} ${entry.count === 1 ? "asset" : "assets"} from ${source}. ${entry.notes ?? "Covered only while the subscription is active on a plan that allows this channel."}`,
     );
   return { entries, warnings, assets };
 }

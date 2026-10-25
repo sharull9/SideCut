@@ -24,7 +24,7 @@ export const providerBridge = () => {
 export class BrowserAssetProviders {
   private engine: AssetProviders;
   constructor(
-    private library: AssetLibrary,
+    private library: Pick<AssetLibrary, "entries" | "get" | "put">,
     env: ProviderEnvironment = browserProviderEnvironment(),
     private bridge = providerBridge(),
   ) {
@@ -174,30 +174,39 @@ export class BrowserAssetProviders {
   async generate(value: unknown, confirmedPaid: boolean, signal: AbortSignal) {
     const request = decodeGeneration(value);
     if (confirmedPaid !== true) throw new Error("Confirm the paid request before generation.");
+    signal.throwIfAborted();
+    const entries: LibraryEntry[] = [],
+      failures: string[] = [];
+    const save = async (takeValue: unknown) => {
+      const take = this.fetched(takeValue);
+      try {
+        entries.push(await this.storeFetched(take));
+      } catch (error) {
+        const saved = await this.library.get(take.asset.id);
+        if (saved?.original) entries.push(saved);
+        failures.push(
+          `Take ${take.asset.id} is saved but could not be normalized: ${error instanceof Error ? error.message : "normalization failed"}`,
+        );
+      }
+    };
     if (this.bridge) {
       const raw = (await this.call(
         { operation: "generate", provider: "elevenlabs", request, confirmedPaid: true },
         signal,
       )) as { takes: unknown[]; failures: string[] };
-      if (!Array.isArray(raw?.takes) || !Array.isArray(raw.failures))
+      if (
+        !Array.isArray(raw?.takes) ||
+        raw.takes.length > 4 ||
+        !Array.isArray(raw.failures) ||
+        !raw.failures.every((v) => typeof v === "string")
+      )
         throw new Error("Invalid generation response.");
-      const entries: LibraryEntry[] = [];
-      const failures = [...raw.failures];
-      for (const take of raw.takes)
-        try {
-          entries.push(await this.storeFetched(take));
-        } catch {
-          failures.push(
-            "A generated take could not be normalized. Its original remains in desktop generated storage.",
-          );
-        }
+      failures.push(...raw.failures);
+      for (const take of raw.takes) await save(take);
       return { entries, failures };
     }
-    const entries: LibraryEntry[] = [];
-    const result = await this.engine.generate("elevenlabs", request, true, signal, async (take) => {
-      entries.push(await this.storeFetched(take));
-    });
-    return { entries, failures: result.failures };
+    const result = await this.engine.generate("elevenlabs", request, true, signal, save);
+    return { entries, failures: [...result.failures, ...failures] };
   }
   async recoverGenerated(signal: AbortSignal) {
     const values = await this.call({ operation: "generated" }, signal);

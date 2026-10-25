@@ -6,6 +6,7 @@ import { formatProject } from "@sidecut/core/formats";
 import { parseCube } from "@sidecut/core/cube-lut";
 import { validateProject } from "@sidecut/core/validation";
 import { ProjectCoordinator } from "@sidecut/core/coordinator";
+import { QueryError } from "@sidecut/core/project-queries";
 import type { SessionSnapshot, CommitResult } from "@sidecut/core/coordinator";
 import {
   decodeProjectFile,
@@ -21,7 +22,7 @@ import { ExportQueue } from "@sidecut/platform-browser/export-queue";
 import { presetProject, type ExportPreset } from "@sidecut/core/export-presets";
 import { probeLocalFile, mediaIdentity } from "@sidecut/platform-browser/media";
 import { MediaAnalysis } from "./media-analysis";
-import { recordAssetUse, assetSuggestions, assetUses } from "@sidecut/core/asset-use";
+import { assetUsePlan, assetUses, recordAssetUse } from "@sidecut/core/asset-use";
 import { decodeAsset } from "@sidecut/contracts/assets";
 import { makeSegment, insertableSegment } from "@sidecut/core/segments";
 import { SegmentLibrary, type SegmentEntry } from "@sidecut/platform-browser/segments";
@@ -899,136 +900,124 @@ export class BrowserProjectSession {
     }
   }
 
-  async useLibraryAsset(entry: LibraryEntry) {
+  async useLibraryAsset(
+    entry: LibraryEntry,
+    request: Record<string, unknown> = {},
+    signal: AbortSignal = new AbortController().signal,
+  ) {
     this.assertWritable();
+    signal.throwIfAborted();
     if (!this.store || !entry.normalised)
-      throw new Error("Asset file is missing. Reimport it into the library.");
+      throw new Error("Asset file is missing. Fetch it into the library first.");
     const asset = decodeAsset(entry.asset),
-      startEpoch = this.epoch;
-    const record = (mediaID?: string, path?: string) => {
-      this.assertOpen(startEpoch);
-      this.apply({
-        label: "Record asset provenance",
-        expectedRevision: this.state.revision,
-        commands: [
-          {
-            updateProject: {
-              patch: {
-                metadata: recordAssetUse(this.state.project, {
-                  asset,
-                  ...(mediaID ? { mediaID } : {}),
-                  ...(path ? { path } : {}),
-                }),
-              },
-            },
-          },
-        ],
-      });
-    };
-    if (asset.kind === "font") {
-      const { importFont } = await import("@sidecut/platform-browser/text");
-      const font = await importFont(entry.normalised);
-      this.assertOpen(startEpoch);
-      await this.store.putResource(this.state.project.id, `asset-file:${asset.id}`, {
-        file: entry.normalised,
-        state: "available",
-        detail: "Installed font",
-      });
-      record(undefined, entry.normalised.name);
-      if (entry.licence)
-        await this.store.putResource(this.state.project.id, `asset-licence:${asset.id}`, {
-          file: entry.licence,
-          state: "available",
-          detail: "Asset licence",
-        });
-      return { font };
-    }
-    if (asset.kind === "lut") {
-      const lut = await this.importLUT(entry.normalised);
-      this.assertOpen(startEpoch);
-      await this.store.putResource(this.state.project.id, `asset-file:${asset.id}`, {
-        file: entry.normalised,
-        state: "available",
-        detail: "Installed LUT",
-      });
-      record(undefined, lut);
-      return { lut };
-    }
-    const epoch = this.epoch,
-      projectID = this.state.project.id;
-    const known = this.state.project.media.find(
-      (m) => (m.asset as { id?: string } | undefined)?.id === asset.id,
-    );
+      epoch = this.epoch,
+      file = this.projectFile(),
+      projectID = file.project.id;
+    if (request.expectedRevision != null && request.expectedRevision !== file.revision)
+      throw new Error("Stale revision. Retry with the latest project.");
     const digest = new Uint8Array(
-      await crypto.subtle.digest("SHA-256", new TextEncoder().encode(asset.id)),
-    );
-    this.assertOpen(epoch);
-    const alphabet = "abcdefghijkmnpqrstuvwxyz23456789",
-      baseID = `med_${[...digest.slice(0, 8)].map((b) => alphabet[b % alphabet.length]).join("")}`;
-    const occupied = new Set([
-      this.state.project.id,
-      ...this.state.project.media.map((m) => m.id),
-      ...this.state.project.markers.map((m) => m.id),
-      ...[...this.state.project.videoTracks, ...this.state.project.audioTracks].flatMap((t) => [
-        t.id,
-        ...t.clips.map((c) => c.id),
-        ...t.transitions.map((x) => String(x.id)),
-      ]),
-    ]);
+        await crypto.subtle.digest("SHA-256", new TextEncoder().encode(asset.id)),
+      ),
+      alphabet = "abcdefghijkmnpqrstuvwxyz23456789",
+      baseID = `med_${[...digest.slice(0, 8)].map((b) => alphabet[b % alphabet.length]).join("")}`,
+      basePath = `assets/${asset.kind}/${asset.name.replace(/[^a-zA-Z0-9._-]/g, "_")}-${baseID.slice(4)}.${entry.normalised.name.split(".").at(-1)}`,
+      known = file.project.media.find(
+        (m) => object(m.asset ?? {}).id === asset.id || m.path === basePath,
+      ),
+      occupied = new Set([
+        file.project.id,
+        ...file.project.media.map((m) => m.id),
+        ...file.project.markers.map((m) => m.id),
+        ...[...file.project.videoTracks, ...file.project.audioTracks].flatMap((t) => [
+          t.id,
+          ...t.clips.map((c) => c.id),
+          ...t.transitions.map((transition) => String(transition.id)),
+        ]),
+      ]);
     let mediaID = known?.id ?? baseID;
     if (!known) for (let n = 2; occupied.has(mediaID); n++) mediaID = `${baseID}_${n}`;
-    const existing = known ? await this.store.resource(projectID, mediaID) : null;
-    if (!existing)
-      await this.store.putResource(projectID, mediaID, {
-        file: entry.normalised,
-        state: "available",
-        detail: "Available from local asset library",
-      });
-    this.assertOpen(epoch);
-    this.assertWritable();
-    const path = `assets/${asset.kind}/${asset.name.replace(/[^a-zA-Z0-9._-]/g, "_")}-${mediaID.slice(4)}.${entry.normalised.name.split(".").at(-1)}`;
-    if (!known)
-      this.apply({
-        label: "Add library asset",
-        expectedRevision: this.state.revision,
-        commands: [
-          {
-            addMedia: {
-              item: {
-                id: mediaID,
-                path,
-                kind:
-                  asset.remote.mediaKind ??
-                  (asset.kind === "music" || asset.kind === "sfx"
-                    ? "audio"
-                    : asset.kind === "video"
-                      ? "video"
-                      : "image"),
-                role: assetSuggestions(asset.kind).role,
-                hasVideo: asset.kind !== "music" && asset.kind !== "sfx",
-                hasAudio: asset.kind === "music" || asset.kind === "sfx",
-                width: asset.width ?? null,
-                height: asset.height ?? null,
-                duration: asset.duration ?? null,
-                asset,
-              },
-            },
-          },
-          {
-            updateProject: {
-              patch: { metadata: recordAssetUse(this.state.project, { asset, mediaID, path }) },
-            },
-          },
-        ],
-      });
-    if (entry.licence)
-      await this.store.putResource(projectID, `asset-licence:${asset.id}`, {
-        file: entry.licence,
-        state: "available",
-        detail: "Asset licence",
-      });
+    const path =
+        known?.path ??
+        `assets/${asset.kind}/${asset.name.replace(/[^a-zA-Z0-9._-]/g, "_")}-${mediaID.slice(4)}.${entry.normalised.name.split(".").at(-1)}`,
+      plan = assetUsePlan(file, asset, { mediaID, path }, request),
+      batch = {
+        label:
+          request.label ??
+          (request.at != null
+            ? `Add ${asset.name} at ${request.at}`
+            : `Add ${asset.name} to media`),
+        author: request.author,
+        expectedRevision: file.revision,
+        commands: plan.commands,
+      };
+    if (plan.commands.length) {
+      try {
+        new ProjectCoordinator(file).apply(batch);
+      } catch (error) {
+        throw new QueryError(
+          "badRequest",
+          error instanceof Error ? error.message : "Invalid asset placement.",
+        );
+      }
+    }
+    const check = () => {
+      signal.throwIfAborted();
+      this.assertOpen(epoch);
+      this.assertWritable();
+      if (this.state.revision !== file.revision)
+        throw new Error("Project changed while preparing the asset. Retry.");
+    };
+    check();
+    let font: string | undefined, lut: string | undefined;
+    const fonts: string[] = [];
+    if (asset.kind === "font") {
+      const { importFont } = await import("@sidecut/platform-browser/text");
+      font = await importFont(entry.normalised);
+      fonts.push(font);
+      for (const extra of entry.extras ?? []) fonts.push(await importFont(extra));
+      check();
+    } else if (asset.kind === "lut") {
+      parseCube(await entry.normalised.text());
+      check();
+      lut = path;
+      await this.stageServiceResource(projectID, `lut:${path}`, entry.normalised, signal);
+      check();
+    }
+    const key = plan.mediaID ?? `asset-file:${asset.id}`;
+    if (!plan.mediaID || !(await this.store.resource(projectID, key))) {
+      check();
+      await this.stageServiceResource(projectID, key, entry.normalised, signal);
+      check();
+    }
+    for (const [index, extra] of (entry.extras ?? []).entries()) {
+      await this.stageServiceResource(projectID, `asset-extra:${asset.id}:${index}`, extra, signal);
+      check();
+    }
+    if (entry.licence) {
+      await this.stageServiceResource(
+        projectID,
+        `asset-licence:${asset.id}`,
+        entry.licence,
+        signal,
+      );
+      check();
+    }
+    const applied = plan.commands.length ? this.apply(batch) : undefined;
+    await this.queue?.flush();
     await this.refreshMedia();
-    return { mediaID };
+    return {
+      ...(font ? { font } : {}),
+      ...(lut ? { lut } : {}),
+      ...(plan.mediaID ? { mediaID: plan.mediaID } : {}),
+      files: [path, ...(entry.extras ?? []).map((f) => f.name)],
+      role: plan.role,
+      trackName: plan.trackName,
+      gainDB: plan.gainDB,
+      at: request.at,
+      applied,
+      fonts: [...new Set(fonts)],
+      ...(font ? { fontsReached: "app" } : {}),
+    };
   }
 
   async stageServiceResource(projectID: string, mediaID: string, file: File, signal: AbortSignal) {

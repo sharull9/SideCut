@@ -366,3 +366,5 @@ consolidation, dry runs and optional browser caches. See
 Resource and asset service adapters now support folder relink plans, complete effect catalogues, provider status, reference search defaults and cached fetches. See [verification and compatibility limits](docs/verification/resources-assets.md).
 
 Asset actions include timeline placement with atomic undo, current licence credits, generation recovery and the pinned 90-asset starter catalogue. See [asset-action verification and limits](docs/verification/asset-actions.md).
+
+CLI status, media, timeline, transcript and search now default to readable output; add `--json` for automation. Positional speech queries and `transcript ID --make` are supported. See [CLI query verification and limits](docs/verification/cli-queries.md).

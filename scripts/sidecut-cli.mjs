@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
 import { prepareProjectCommand, launchApplication } from "./cli-project-commands.mjs";
+import { prepareQueryCommand, queryHelp } from "./cli-query-commands.mjs";
 import {
   parseArguments,
   discoverEndpoint,
@@ -11,7 +12,8 @@ import {
 
 const help = `Usage: node scripts/sidecut-cli.mjs [project|assets|segments] COMMAND [options]
 
-Connects to the running desktop host; service output is JSON.
+Connects to the running desktop host; query output is readable by default.
+Use --json for machine-readable service results.
   --project PATH         File/folder, SIDECUT_PROJECT/TANDEM_PROJECT, or nearest parent
   -h, --help             Help (also: help segments)
   -v, --version          Version
@@ -39,15 +41,18 @@ project and require --expected-revision. Network asset requests are opt-in.
 Exit codes: 0 success, 2 invalid request, 3 unavailable, 4 stale revision,
 5 not found, 6 unsupported. No request is retried automatically.`;
 
+let readableQueryErrors = false;
 async function main(args) {
   let { flags, words } = parseArguments(args);
+  readableQueryErrors =
+    !flags.has("json") && queryHelp(words[0] === "project" ? words[1] : words[0]) != null;
   if (flags.has("version") && !words.length) {
     process.stdout.write("sidecut 0.0.1\n");
     return;
   }
   if (!words.length || words[0] === "help" || flags.has("help")) {
     const topic = words[0] === "help" ? words[1] : words[0];
-    const detail = commandHelp(topic);
+    const detail = queryHelp(topic) ?? commandHelp(topic);
     if (words[0] === "help" && topic && !detail && !help.includes(topic))
       throw new Error(`Unknown help topic: ${topic}.`);
     process.stdout.write((detail ?? help) + "\n");
@@ -71,6 +76,11 @@ async function main(args) {
   if (flags.has("service") && !words.includes("schema"))
     throw new Error("--service requires schema.");
   flags.delete("service");
+  const queryCommand = prepareQueryCommand({ flags, words });
+  if (queryCommand) {
+    flags = queryCommand.flags;
+    words = queryCommand.words;
+  }
   const projectCommand = prepareProjectCommand(args, { flags, words });
   if (projectCommand.flags) {
     flags = projectCommand.flags;
@@ -126,7 +136,11 @@ async function main(args) {
       process.exitCode =
         { unavailable: 3, staleRevision: 4, notFound: 5, notImplemented: 6 }[result.error?.code] ??
         2;
-      process.stderr.write(JSON.stringify(result) + "\n");
+      process.stderr.write(
+        (readableQueryErrors
+          ? `Error: ${result.error?.message ?? "Request failed."}`
+          : JSON.stringify(result)) + "\n",
+      );
       return null;
     }
     return result;
@@ -181,7 +195,7 @@ async function main(args) {
       value = Array.isArray(raw)
         ? raw.flatMap((v) => (v.startsWith("[") ? JSON.parse(v) : v.split(",")))
         : JSON.parse(String(raw));
-    else if (["integer", "number"].includes(type)) {
+    else if (["integer", "signedInteger", "number"].includes(type)) {
       value = Number(raw);
       if (raw === true || !Number.isFinite(value)) throw new Error(`--${flag} needs a number.`);
     } else if (type === "boolean") {
@@ -192,6 +206,29 @@ async function main(args) {
     Object.defineProperty(input, key, { value, enumerable: true });
   }
   if (flags.has("follow") && operation !== "watch") throw new Error("--follow requires watch.");
+  if (queryCommand) input = queryCommand.prepare(input);
+  if (queryCommand?.make) {
+    const made = await call("transcribe", {
+      media: [input.id],
+      wait: true,
+      ...(queryCommand.timeout != null ? { timeout: queryCommand.timeout } : {}),
+    });
+    if (!made) return;
+    if (
+      made.ok === false ||
+      made.files?.some((f) => ["failed", "cancelled"].includes(f.state)) ||
+      made.waited?.pending?.length
+    ) {
+      process.exitCode = 1;
+      process.stdout.write(
+        (flags.has("json")
+          ? JSON.stringify(made)
+          : `Transcription is not ready.\n${(made.files ?? []).map((f) => `${f.mediaID}: ${f.state}${f.message ? ` (${f.message})` : ""}`).join("\n")}`) +
+          "\n",
+      );
+      return;
+    }
+  }
   if (
     projectCommand.native &&
     ["new", "import-edl", "import-filmora"].includes(operation) &&
@@ -207,9 +244,11 @@ async function main(args) {
     process.stdout.write(
       (["segments", "save-segment", "insert-segment"].includes(operation) && !flags.has("json")
         ? segmentText(operation, result)
-        : projectCommand.text
-          ? projectCommand.text(result)
-          : JSON.stringify(result)) + "\n",
+        : queryCommand?.text
+          ? queryCommand.text(result)
+          : projectCommand.text
+            ? projectCommand.text(result)
+            : JSON.stringify(result)) + "\n",
     );
     if (!flags.has("follow")) return;
     input = { ...input, revision: result.revision, generation: result.generation };
@@ -221,17 +260,15 @@ main(process.argv.slice(2)).catch((error) => {
     error?.exitCode ??
     (error?.name === "AbortError" ? 130 : error?.message === "fetch failed" ? 3 : 2);
   // Discovery files contain credentials. Never echo their contents or network headers.
+  const message =
+    error?.name === "SyntaxError"
+      ? "Invalid JSON input or discovery file."
+      : error.code === "ENOENT"
+        ? "File not found. Start Sidecut or set --endpoint-file."
+        : error.message;
   process.stderr.write(
-    JSON.stringify({
-      error: {
-        code: "cliError",
-        message:
-          error?.name === "SyntaxError"
-            ? "Invalid JSON input or discovery file."
-            : error.code === "ENOENT"
-              ? "File not found. Start Sidecut or set --endpoint-file."
-              : error.message,
-      },
-    }) + "\n",
+    (readableQueryErrors
+      ? `Error: ${message}`
+      : JSON.stringify({ error: { code: "cliError", message } })) + "\n",
   );
 });

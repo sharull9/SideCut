@@ -1,0 +1,39 @@
+{
+  "platform": "win32",
+  "status": {
+    "revision": 0,
+    "revisionOnly": true,
+    "readable": true
+  },
+  "media": {
+    "cached": true,
+    "missing": true,
+    "refreshAdded": 1,
+    "refreshRevision": 1
+  },
+  "timeline": {
+    "words": true,
+    "summary": true,
+    "jsonProject": true
+  },
+  "transcript": {
+    "sourceWords": 4,
+    "clipWords": 2,
+    "clipStart": 1.2,
+    "rangeWords": 2,
+    "makeCached": true
+  },
+  "search": {
+    "phrase": "Hello world",
+    "hits": 1,
+    "unused": 1,
+    "missing": ["missing"],
+    "zeroLimit": true,
+    "negativeLimit": true
+  },
+  "readOnlyQueries": true,
+  "limits": [
+    "Cached speech; no model download",
+    "Windows development runtime; native macOS/Linux unverified"
+  ]
+}

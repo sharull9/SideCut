@@ -174,11 +174,13 @@ Acceptance per command: match flags/defaults, JSON and text output, exit code, a
 - [x] 130.05: Command schema output. Offline standard edit-batch schema, single-operation constraint and service-schema extension pass.
 - [x] 130.06: EDL import command. Native EDL/recipe invocation, reports, output snapshots, stale/invalid nonmutation and visible editor import pass.
 - [x] 130.07: Filmora import command. Native Filmora invocation, keep-levels, names, snapshots and replayable reload persistence pass.
-- [ ] 130.08: Project command status.
-- [ ] 130.09: Project command media.
-- [ ] 130.10: Project command timeline.
-- [ ] 130.11: Project command transcript.
-- [ ] 130.12: Project command search.
+- [x] 130.08: Project command status. Readable/JSON status, revision-only output, owner/jobs/review/warnings and read-only subprocess behavior pass.
+- [x] 130.09: Project command media. Readable metadata, missing-file/analysis output, refresh failure and actual WAV refresh through one host edit pass.
+- [x] 130.10: Project command timeline. Text/JSON defaults, ranges, words and summary pass CLI and Electron checks.
+- [x] 130.11: Project command transcript. Positional IDs, source/clip/timeline scope, ranges, cached make-before-query, failed-make exit and missing inputs pass.
+- [x] 130.12: Project command search. Joined phrases, readable/JSON active and unused hits, missing transcripts, signed/zero limits and failure output pass.
+      See [CLI query evidence and limits](verification/cli-queries.md) for status through search.
+
 - [ ] 130.13: Project command pauses.
 - [ ] 130.14: Project command tighten.
 - [ ] 130.15: Project command join.

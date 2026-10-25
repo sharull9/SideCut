@@ -1,0 +1,57 @@
+{
+  "revision": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "sources": [
+    "Sources/TandemCLI/CLI.swift",
+    "Sources/TandemAPI/ReadableText.swift",
+    "Sources/TandemAPI/TimeText.swift"
+  ],
+  "commands": ["status", "media", "timeline", "transcript", "search"],
+  "defaults": {
+    "json": false,
+    "timelineFormat": "text",
+    "transcriptScope": "timeline",
+    "searchPhrase": "space-joined positionals"
+  },
+  "status": { "revision": 7, "revisionOutput": "7" },
+  "transcript": {
+    "result": {
+      "scope": "media",
+      "id": "m",
+      "words": [
+        { "text": "Hello", "start": 0, "end": 0.2 },
+        { "text": "world", "start": 1, "end": 1.4 }
+      ],
+      "missing": []
+    },
+    "text": "Transcript of m (times are in the file)\n00:00.000  Hello\n           [pause 0.800s]\n00:01.000  world"
+  },
+  "search": {
+    "result": {
+      "phrase": "hello",
+      "hits": [
+        {
+          "start": 1,
+          "end": 2,
+          "before": "Before",
+          "text": "hello",
+          "after": "after",
+          "clipIDs": ["c"],
+          "partial": true
+        }
+      ],
+      "unused": [
+        {
+          "mediaID": "m",
+          "mediaStart": 3,
+          "mediaEnd": 4,
+          "before": "",
+          "text": "hello",
+          "after": "later"
+        }
+      ],
+      "missing": ["missing"]
+    },
+    "text": "\"hello\" on the timeline, 1 time:\n  00:01.000-00:02.000  ...Before [hello] after...  clips c  (cut runs through it)\nIn the source but not on the timeline:\n  m at 00:03.000-00:04.000 (file time)  ... [hello] later...\nNot searched, no transcript yet: missing."
+  },
+  "notice": "Synthetic pinned contract expectations; TANDEM-LICENSE applies. SideCut app names and transport extensions are documented separately."
+}

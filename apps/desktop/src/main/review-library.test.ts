@@ -166,7 +166,7 @@ describe("review, watch and CLI host adapters", () => {
       "0",
     );
     expect(edited.code, edited.err).toBe(0);
-    expect(JSON.parse((await cli("status")).out)).toMatchObject({
+    expect(JSON.parse((await cli("status", "--json")).out)).toMatchObject({
       name: "CLI edited",
       revision: 1,
     });

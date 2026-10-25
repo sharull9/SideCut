@@ -143,7 +143,7 @@ export const serviceDefinitions = {
   },
   transcript: { id: "string", ...range },
   transcribe: { media: "strings", wait: "boolean", timeout: "number", label: "string" },
-  search: { phrase: "string", limit: "integer" },
+  search: { phrase: "string", limit: "signedInteger" },
   pauses: { ...range, min: "time" },
   tighten: {
     ...edit,

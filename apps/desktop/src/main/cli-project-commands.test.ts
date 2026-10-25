@@ -165,6 +165,7 @@ it("prints an authoritative offline edit schema without discovery credentials", 
   expect(result.code, result.err).toBe(0);
   const schema = JSON.parse(result.out);
   expect(JSON.stringify(schema)).toContain("updateClip");
-  expect(schema).toHaveProperty("schema.properties.commands.items");
+  expect(schema).toHaveProperty("properties.commands.items");
+  expect(schema).toHaveProperty("$schema", "https://json-schema.org/draft/2020-12/schema");
   expect((await cli("schema", "--typo")).code).toBe(2);
 });

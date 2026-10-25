@@ -330,16 +330,14 @@ export const editCommandJsonSchema = () =>
   Schema.toJsonSchemaDocument(Schema.toType(EditCommandSchema));
 export const editBatchJsonSchema = () => {
   const batch = Schema.toJsonSchemaDocument(Schema.toEncoded(EditBatchSchema));
-  const command = editCommandJsonSchema();
+  const command = Schema.toJsonSchemaDocument(Schema.toEncoded(CommandBody));
   const properties = batch.schema.properties;
   if (!properties || typeof properties !== "object" || Array.isArray(properties))
     throw new Error("Edit batch schema needs object properties.");
   return {
-    ...batch,
-    schema: {
-      ...batch.schema,
-      properties: { ...properties, commands: { type: "array", items: command.schema } },
-    },
-    definitions: { ...batch.definitions, ...command.definitions },
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    ...batch.schema,
+    properties: { ...properties, commands: { type: "array", items: command.schema } },
+    $defs: { ...batch.definitions, ...command.definitions },
   };
 };

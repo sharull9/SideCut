@@ -29,6 +29,40 @@ it("parses pinned invocation, aliases, repeated values and the option terminator
   for (const args of [["-x"], ["--at"], ["--json=true"], ["--name", "a", "--name", "b"]])
     expect(() => parseArguments(args)).toThrow();
 });
+it("preserves schema fields, literal no-flags, negative times and duplicate validation", () => {
+  expect(Object.fromEntries(parseArguments(["--name", "-literal", "--json"]).flags)).toEqual({
+    name: "-literal",
+    json: true,
+  });
+  const parsed = parseArguments([
+    "--project",
+    "my edit.tandem",
+    "sync",
+    "--offset",
+    "-01:02.5",
+    "--no-wait",
+    "--no-sounds",
+    "--custom-field=--literal",
+    "--",
+    "--json",
+  ]);
+  expect(parsed.words).toEqual(["sync", "--json"]);
+  expect(Object.fromEntries(parsed.flags)).toEqual({
+    project: "my edit.tandem",
+    offset: "-01:02.5",
+    "no-wait": true,
+    "no-sounds": true,
+    "custom-field": "--literal",
+  });
+  for (const args of [
+    ["--name", "--json"],
+    ["--name", "--"],
+    ["-o", "one", "--output", "two"],
+    ["--expect", "1", "--expected-revision", "2"],
+    ["--no-wait=false"],
+  ])
+    expect(() => parseArguments(args)).toThrow();
+});
 it("finds explicit and environment projects, nearest parents and excludes render snapshots", async () => {
   const root = await directory(),
     nested = join(root, "a", "b"),
@@ -66,8 +100,19 @@ it("keeps profiles and project owners separate and never opens a closed project 
   await expect(discoverEndpoint(new Map([["project", project]]), {}, root)).rejects.toThrow(
     "Headless editing is unsupported",
   );
-  await writeFile(endpoint, JSON.stringify({ ...address, token: "secret" }));
-  await expect(discoverEndpoint(flags, {}, root)).rejects.toThrow("Invalid discovery file");
+  for (const invalid of [
+    null,
+    [],
+    { ...address, token: "secret" },
+    { ...address, port: 0 },
+    { ...address, port: 65536 },
+    { ...address, port: "12345" },
+    { ...address, pid: 1.5 },
+    { ...address, pid: 0 },
+  ]) {
+    await writeFile(endpoint, JSON.stringify(invalid));
+    await expect(discoverEndpoint(flags, {}, root)).rejects.toThrow("Invalid discovery file");
+  }
   await writeFile(endpoint, JSON.stringify({ ...address, pid: 2147483647 }));
   await expect(discoverEndpoint(flags, {}, root)).rejects.toThrow("no longer running");
 });

@@ -1,6 +1,14 @@
 import { readFile, readdir, realpath, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve, basename } from "node:path";
+import { Command, Option } from "commander";
+import { z } from "zod";
+
+const endpointSchema = z.looseObject({
+  port: z.number().int().min(1).max(65535),
+  token: z.string().regex(/^[a-f0-9]{64}$/),
+  pid: z.number().int().positive().nullish(),
+});
 
 const switches = new Set(
   "json refresh words summary apply dry-run help version once portrait online optional keep-levels with-cache replace insert no-sounds pop changed quick cuts all default copy revision wait no-wait make widen mike gains audio-only ids no-place follow service".split(
@@ -10,38 +18,55 @@ const switches = new Set(
 const repeatable = new Set(["search", "clips", "field", "value", "media", "tracks", "protect"]);
 const aliases = { h: "help", v: "version", o: "output", expect: "expected-revision" };
 export function parseArguments(args) {
-  const flags = new Map(),
-    words = [];
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (arg === "--") {
-      words.push(...args.slice(i + 1));
-      break;
-    }
-    if (!arg.startsWith("-") || /^-[\d.:]+$/.test(arg)) {
-      words.push(arg);
-      continue;
-    }
-    const equal = arg.indexOf("="),
-      short = !arg.startsWith("--");
-    let key = arg.slice(short ? 1 : 2, equal < 0 ? undefined : equal);
-    if (short && !Object.hasOwn(aliases, key)) throw new Error(`Unknown option ${arg}.`);
-    key = aliases[key] ?? key;
-    let value;
-    if (switches.has(key)) {
-      if (equal >= 0) throw new Error(`--${key} doesn't take a value.`);
-      value = true;
-    } else {
-      value = equal >= 0 ? arg.slice(equal + 1) : args[++i];
-      if (value === undefined || (equal < 0 && value.startsWith("--")))
-        throw new Error(`--${key} needs a value.`);
-    }
-    if (flags.has(key) && !switches.has(key) && !repeatable.has(key))
-      throw new Error(`Duplicate option --${key}.`);
-    if (repeatable.has(key)) flags.set(key, [...(flags.get(key) ?? []), value]);
-    else flags.set(key, value);
+  const flags = new Map();
+  const program = new Command()
+    .name("sidecut")
+    .helpOption(false)
+    .allowExcessArguments()
+    .configureOutput({ writeErr: () => {} })
+    .exitOverride((error) => {
+      error.exitCode = 2;
+      throw error;
+    });
+  // Fields come from the running host's schema and are validated before dispatch.
+  const names = new Set([...switches, ...Object.keys(aliases), ...Object.values(aliases)]);
+  for (let index = 0; index < args.length; index++) {
+    const arg = args[index];
+    if (arg === "--") break;
+    if (!arg.startsWith("-") || /^-[\d.:]+$/.test(arg)) continue;
+    const name = arg.replace(/^--?/, "").split("=")[0];
+    const key = aliases[name] ?? name;
+    if (!switches.has(key) && !arg.includes("=") && args[index + 1]?.startsWith("--"))
+      throw new Error(`--${key} needs a value.`);
+    if (arg.startsWith("--")) names.add(name);
+    if (!switches.has(key) && !arg.includes("=")) index++;
   }
-  return { flags, words };
+  const decode = (value) => (value.startsWith("\0") ? value.slice(1) : value);
+  for (const name of names) {
+    const key = aliases[name] ?? name;
+    const short = Object.keys(aliases).find(
+      (alias) => alias.length === 1 && aliases[alias] === name,
+    );
+    const option = new Option(
+      `${short ? `-${short}, ` : ""}--${name}${switches.has(key) ? "" : " <value>"}`,
+    );
+    // These are literal host flags, not Commander's default negated booleans.
+    option.negate = false;
+    program.addOption(option);
+    program.on(`option:${option.name()}`, (raw) => {
+      const value = switches.has(key) ? true : decode(raw);
+      if (flags.has(key) && !switches.has(key) && !repeatable.has(key))
+        throw new Error(`Duplicate option --${key}.`);
+      if (repeatable.has(key)) flags.set(key, [...(flags.get(key) ?? []), value]);
+      else flags.set(key, value);
+    });
+  }
+  // Keep negative numeric/time positionals and values from being treated as options.
+  program.parse(
+    args.map((arg) => (/^-[\d.:]+$/.test(arg) ? `\0${arg}` : arg)),
+    { from: "user" },
+  );
+  return { flags, words: program.args.map(decode) };
 }
 
 // ProjectLocator at the pinned revision: explicit path, environment, nearest parent;
@@ -120,16 +145,8 @@ export async function discoverEndpoint(flags, env = process.env, directory = pro
       );
     throw error;
   }
-  if (
-    !endpoint ||
-    !Number.isInteger(endpoint.port) ||
-    endpoint.port < 1 ||
-    endpoint.port > 65535 ||
-    typeof endpoint.token !== "string" ||
-    !/^[a-f0-9]{64}$/.test(endpoint.token) ||
-    (endpoint.pid != null && (!Number.isInteger(endpoint.pid) || endpoint.pid <= 0))
-  )
-    throw new Error("Invalid discovery file.");
+  // Keep credentials out of validation diagnostics.
+  if (!endpointSchema.safeParse(endpoint).success) throw new Error("Invalid discovery file.");
   if (endpoint.pid != null) {
     try {
       process.kill(endpoint.pid, 0);

@@ -73,6 +73,12 @@ await cp(join(root, "scripts/sidecut-cli.mjs"), join(cli, "sidecut-cli.mjs"));
 await cp(join(root, "scripts/cli-project-commands.mjs"), join(cli, "cli-project-commands.mjs"));
 await cp(join(root, "scripts/edit-batch.schema.json"), join(cli, "edit-batch.schema.json"));
 await cp(join(root, "scripts/cli-foundation.mjs"), join(cli, "cli-foundation.mjs"));
+await cp(join(root, "scripts/cli-query-commands.mjs"), join(cli, "cli-query-commands.mjs"));
+const workspaceRequire = createRequire(join(root, "package.json"));
+const commanderRoot = dirname(workspaceRequire.resolve("commander"));
+await cp(commanderRoot, join(cli, "node_modules/commander"), { recursive: true });
+const zodRoot = dirname(workspaceRequire.resolve("zod/package.json"));
+await cp(zodRoot, join(cli, "node_modules/zod"), { recursive: true });
 if (process.platform === "win32")
   await writeFile(
     join(cli, "sidecut.cmd"),
@@ -87,6 +93,8 @@ else {
   await chmod(join(cli, "sidecut"), 0o755);
 }
 await mkdir(notices, { recursive: true });
+await cp(join(commanderRoot, "LICENSE"), join(notices, "commander-LICENSE"));
+await cp(join(zodRoot, "LICENSE"), join(notices, "zod-LICENSE"));
 for (const [name, binary] of Object.entries(binaries)) {
   const destination = join(
     stage,

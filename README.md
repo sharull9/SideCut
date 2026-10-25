@@ -292,7 +292,9 @@ examples and remaining limits](docs/verification/phases-121-125.md).
 The service also has baseline review, sync/watch/wait, archive/relink/effects,
 asset-library and segment adapters. `node scripts/sidecut-cli.mjs --help` lists
 the CLI commands; select the running host with `--endpoint-file` or
-`SIDECUT_API_FILE`. The CLI uses the host's schema and shared edit history.
+`SIDECUT_API_FILE`. The CLI uses Commander.js for argument parsing and the host's
+schema and shared edit history. Zod validates discovery files, request objects, and
+numeric/boolean flags. Desktop packages include Commander, Zod, and the CLI helpers.
 Checks support model and rendered scans; provider network calls are opt-in.
 See [CLI usage, verification and compatibility limits](docs/verification/phases-126-130.md).
 

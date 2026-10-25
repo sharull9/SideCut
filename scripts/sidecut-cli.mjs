@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
+import { z } from "zod";
 import { prepareProjectCommand, launchApplication } from "./cli-project-commands.mjs";
 import { prepareQueryCommand, queryHelp } from "./cli-query-commands.mjs";
 import {
@@ -9,6 +10,12 @@ import {
   commandHelp,
   segmentText,
 } from "./cli-foundation.mjs";
+
+const requestSchema = z.record(z.string(), z.unknown());
+const numericFlagSchema = z.string().transform(Number).pipe(z.number());
+const booleanFlagSchema = z
+  .union([z.literal(true), z.enum(["true", "false"])])
+  .transform((value) => value !== "false");
 
 const help = `Usage: node scripts/sidecut-cli.mjs [project|assets|segments] COMMAND [options]
 
@@ -164,8 +171,9 @@ async function main(args) {
     : flags.has("request")
       ? JSON.parse(String(flags.get("request")))
       : {};
-  if (!input || typeof input !== "object" || Array.isArray(input))
-    throw new Error("Request must be a JSON object.");
+  const request = requestSchema.safeParse(input);
+  if (!request.success) throw new Error("Request must be a JSON object.");
+  input = request.data;
   for (const [flag, raw] of flags) {
     if (["endpoint-file", "input", "request", "follow", "json", "project"].includes(flag)) continue;
     const fieldFlag = flag === "field" ? "fields" : flag === "value" ? "values" : flag;
@@ -196,11 +204,13 @@ async function main(args) {
         ? raw.flatMap((v) => (v.startsWith("[") ? JSON.parse(v) : v.split(",")))
         : JSON.parse(String(raw));
     else if (["integer", "signedInteger", "number"].includes(type)) {
-      value = Number(raw);
-      if (raw === true || !Number.isFinite(value)) throw new Error(`--${flag} needs a number.`);
+      const parsed = numericFlagSchema.safeParse(raw);
+      if (!parsed.success) throw new Error(`--${flag} needs a number.`);
+      value = parsed.data;
     } else if (type === "boolean") {
-      if (![true, "true", "false"].includes(raw)) throw new Error(`--${flag} needs true or false.`);
-      value = raw !== "false";
+      const parsed = booleanFlagSchema.safeParse(raw);
+      if (!parsed.success) throw new Error(`--${flag} needs true or false.`);
+      value = parsed.data;
     } else if (typeof raw !== "string") throw new Error(`--${flag} needs a value.`);
     if (Object.hasOwn(input, key)) throw new Error(`Duplicate request field ${key}.`);
     Object.defineProperty(input, key, { value, enumerable: true });

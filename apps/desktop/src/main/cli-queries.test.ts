@@ -82,6 +82,7 @@ it("dispatches make before querying, prints revision-only output, and keeps fail
                 status: {},
                 transcript: { id: "string" },
                 search: { phrase: "string", limit: "signedInteger" },
+                validate: { count: "number", enabled: "boolean" },
               },
             }
           : operation === "status"
@@ -149,4 +150,22 @@ it("dispatches make before querying, prints revision-only output, and keeps fail
   seen.length = 0;
   expect((await cli("search", "Hello", "world", "--limit", "-1", "--json")).code).toBe(0);
   expect(seen.at(-1)?.body).toEqual({ phrase: "Hello world", limit: -1 });
+  for (const [args, message] of [
+    [["--request", "null"], "Request must be a JSON object."],
+    [["--request", "[]"], "Request must be a JSON object."],
+    [["--request", '"text"'], "Request must be a JSON object."],
+    [["--count", "NaN"], "--count needs a number."],
+    [["--count", "Infinity"], "--count needs a number."],
+    [["--enabled", "yes"], "--enabled needs true or false."],
+  ] satisfies [string[], string][]) {
+    seen.length = 0;
+    const result = await cli("validate", ...args);
+    expect(result.code).toBe(2);
+    expect(JSON.parse(result.err).error.message).toBe(message);
+    expect(seen.map((entry) => entry.operation)).toEqual(["schema"]);
+  }
+  expect((await cli("validate", "--count", "-1.5", "--enabled", "false")).code).toBe(0);
+  expect(seen.at(-1)?.body).toEqual({ count: -1.5, enabled: false });
+  expect((await cli("validate", "--request", '{"nested":{"value":1}}')).code).toBe(0);
+  expect(seen.at(-1)?.body).toEqual({ nested: { value: 1 } });
 });

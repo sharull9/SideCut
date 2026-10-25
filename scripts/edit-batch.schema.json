@@ -2268,7 +2268,9 @@
             "required": ["insertClip"],
             "additionalProperties": true
           }
-        ]
+        ],
+        "minProperties": 1,
+        "maxProperties": 1
       }
     },
     "expectedRevision": {

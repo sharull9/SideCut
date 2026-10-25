@@ -9,7 +9,10 @@ not responses captured from Swift.
 The default canvas is 3840×2160 with the editor's eight standard tracks. Paths
 gain `.tandem`; an existing directory uses `<directory>/<directory>.tandem`.
 Outputs use exclusive creation and must remain within the managed project
-folder. Existing files, reserved names, traversal, invalid sizes and stale
+folder. Without `--name`, the project uses the output basename without `.tandem`,
+or the directory name for a directory target. `--size` overrides `--portrait`.
+Native switches `--json`, `--portrait` and `--keep-levels` reject inline values.
+Existing files, reserved names, traversal, invalid sizes and stale
 revisions fail before project replacement. Positional invocations obtain the
 current revision and send it as the replacement guard; explicit `--expect`
 overrides it. Low-level service calls continue to require expectedRevision.
@@ -21,10 +24,14 @@ uses a detached hidden process. The executable must be an existing absolute
 path. Opening an arbitrary second project/window is explicitly unsupported;
 guarded `project open --path` remains available. No personal installed app was
 launched during unit acceptance; Electron acceptance checks actual focus.
+Launch success reports process creation, without waiting for editor readiness.
+Synchronous and asynchronous spawn failures return exit code 3. Malformed
+discovery files fail without launching a second process.
 
 `schema` works without a server and prints the generated edit-batch document,
 including every typed edit command. Its checked-in copy is tested against the
 contracts. `schema --service` retains the authenticated service schema extension.
+Each command object requires exactly one top-level operation key.
 Packaging includes both the command helper and schema snapshot.
 
 `import edl <edl.json> --recipe <recipe.json>` and
@@ -40,6 +47,13 @@ project defaults and portrait settings, directory naming, overwrite/traversal
 failures, stale revision, EDL and Filmora import, replayable renamed history,
 malformed-input nonmutation, app activation and offline schema. Full branch
 `vp run check` passed 448 tests in 94 files before integration.
+
+Continuation acceptance adds command/flag aliases, malformed native switches,
+path-derived names, custom size precedence, legacy EDL wrappers, service schema,
+import output cleanup after replacement failure, overwrite refusal, stale import
+guards and replayable Filmora rename history. Deterministic subprocess tests stub
+only application process creation and assert detached/hidden options, removal of
+`ELECTRON_RUN_AS_NODE`, immediate unref and launch failure exit codes.
 
 Bounds: these commands use the running host rather than a second headless
 project authority. New media discovery remains explicit (`media --refresh`).

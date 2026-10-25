@@ -20,19 +20,25 @@ export async function launchApplication() {
   }
   const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
-  await new Promise((resolve, reject) => {
-    const child = spawn(executable, [], {
-      env,
-      detached: true,
-      stdio: "ignore",
-      windowsHide: true,
+  try {
+    await new Promise((resolve, reject) => {
+      const child = spawn(executable, [], {
+        env,
+        detached: true,
+        stdio: "ignore",
+        windowsHide: true,
+      });
+      child.once("error", reject);
+      child.once("spawn", () => {
+        child.unref();
+        resolve();
+      });
     });
-    child.once("error", reject);
-    child.once("spawn", () => {
-      child.unref();
-      resolve();
-    });
-  });
+  } catch (cause) {
+    const error = new Error(`Could not launch SideCut: ${cause.message}`, { cause });
+    error.exitCode = 3;
+    throw error;
+  }
   return { opened: true, launched: true };
 }
 
@@ -51,6 +57,7 @@ export function prepareProjectCommand(args) {
     }
     const [key, ...parts] = arg.slice(2).split("=");
     if (flags.has(key)) throw new Error(`Duplicate option --${key}.`);
+    if (switches.has(key) && parts.length) throw new Error(`--${key} doesn't take a value.`);
     const value = parts.length ? parts.join("=") : switches.has(key) ? true : args[++i];
     if (value === undefined || (typeof value === "string" && value.startsWith("--")))
       throw new Error(`--${key} needs a value.`);

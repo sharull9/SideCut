@@ -1,5 +1,5 @@
 import { readFile, realpath, stat, unlink } from "node:fs/promises";
-import { dirname, resolve, relative, isAbsolute, extname } from "node:path";
+import { basename, dirname, resolve, relative, isAbsolute, extname } from "node:path";
 import { randomUUID } from "node:crypto";
 import { decodeProjectFile } from "@sidecut/contracts/project";
 import {
@@ -608,12 +608,19 @@ export class ProjectAPI {
           );
         let next;
         let report;
-        if (operation === "new")
+        if (operation === "new") {
+          let name = request.name;
+          if (name == null && typeof request.path === "string") {
+            const target = resolve(dirname(this.project.store.path), request.path);
+            name = (await stat(target).catch(() => null))?.isDirectory()
+              ? basename(target)
+              : basename(target, ".tandem");
+          }
           next = decodeProjectFile({
             revision: 0,
             project: {
               ...freshProject().project,
-              name: request.name ?? "Untitled sequence",
+              name: name ?? "Untitled sequence",
               settings: {
                 ...freshProject().project.settings,
                 width: request.width ?? 3840,
@@ -621,7 +628,7 @@ export class ProjectAPI {
               },
             },
           });
-        else {
+        } else {
           if (typeof request.path !== "string")
             throw new QueryError("badRequest", "A source path is required.");
           const path = await this.source(request.path);

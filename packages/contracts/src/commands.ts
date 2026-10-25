@@ -337,7 +337,13 @@ export const editBatchJsonSchema = () => {
   return {
     $schema: "https://json-schema.org/draft/2020-12/schema",
     ...batch.schema,
-    properties: { ...properties, commands: { type: "array", items: command.schema } },
+    properties: {
+      ...properties,
+      commands: {
+        type: "array",
+        items: { ...command.schema, minProperties: 1, maxProperties: 1 },
+      },
+    },
     $defs: { ...batch.definitions, ...command.definitions },
   };
 };

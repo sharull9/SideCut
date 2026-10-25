@@ -1,4 +1,4 @@
-import { afterEach, expect, it } from "vite-plus/test";
+import { afterEach, expect, it, vi } from "vite-plus/test";
 import { mkdtemp, readFile, writeFile, rm, mkdir, copyFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -7,15 +7,20 @@ import { NativeProjectStore } from "./project-store.ts";
 import { HostProjectService } from "./project-service.ts";
 import { ProjectAPI } from "./project-api.ts";
 import { LocalHTTPService } from "./http-service.ts";
+import { decodeProjectFile } from "@sidecut/contracts/project";
+import { replayJournal } from "@sidecut/core/coordinator";
 
 const cleanup: (() => Promise<unknown>)[] = [];
 afterEach(async () => {
   for (const close of cleanup.reverse().splice(0)) await close();
 });
 function cli(...args: string[]) {
+  return node([resolve("scripts/sidecut-cli.mjs"), ...args]);
+}
+function node(args: string[], env: NodeJS.ProcessEnv = {}) {
   return new Promise<{ code: number | null; out: string; err: string }>((resolveResult, reject) => {
-    const processChild = spawn(process.execPath, [resolve("scripts/sidecut-cli.mjs"), ...args], {
-      env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+    const processChild = spawn(process.execPath, args, {
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: "1", ...env },
       windowsHide: true,
     });
     let out = "",
@@ -86,6 +91,8 @@ it("creates native positional projects with settings, safe output, guards and re
   const readable = await run("new", "Landscape");
   expect(readable.code, readable.err).toBe(0);
   expect(readable.out).toContain("3840x2160");
+  expect(readable.out).toContain("Landscape.tandem");
+  expect(JSON.parse(host.snapshot().json).project.name).toBe("Landscape");
   expect((await run("new", "Bad", "--size", "0x10")).code).toBe(2);
 });
 
@@ -129,8 +136,19 @@ it("imports separate EDL/recipe and Filmora positional sources through the host"
     "--json",
   );
   expect(filmora.code, filmora.err).toBe(0);
-  expect(JSON.parse(filmora.out)).toMatchObject({ name: "Filmora CLI fixture" });
+  expect(JSON.parse(filmora.out)).toMatchObject({
+    name: "Filmora CLI fixture",
+    report: {
+      format: "filmora",
+      clips: expect.any(Number),
+      media: expect.any(Number),
+      warnings: expect.any(Array),
+    },
+  });
   expect(JSON.parse(await readFile(join(root, "filmora-result.tandem"), "utf8")).project.name).toBe(
+    "Filmora CLI fixture",
+  );
+  expect(replayJournal(decodeProjectFile(JSON.parse(host.snapshot().json))).project.name).toBe(
     "Filmora CLI fixture",
   );
   const before = host.snapshot().json;
@@ -147,6 +165,143 @@ it("imports separate EDL/recipe and Filmora positional sources through the host"
   await mkdir(join(root, "folder"));
   expect((await run("new", "folder", "--json")).code).toBe(0);
   expect(JSON.parse(await readFile(join(root, "folder/folder.tandem"), "utf8")).revision).toBe(0);
+  expect(JSON.parse(host.snapshot().json).project.name).toBe("folder");
+  await writeFile(
+    join(root, "wrapper.json"),
+    JSON.stringify({
+      edl: { segments: [{ start: 0, end: 1, layout: "cam" }] },
+      recipe: { name: "Legacy EDL", takes: [{ start: 0, camera: "camera.mov" }] },
+    }),
+  );
+  const wrapper = await run(
+    "project",
+    "import-edl",
+    "--path=wrapper.json",
+    `--expect=${JSON.parse(host.snapshot().json).revision}`,
+  );
+  expect(wrapper.code, wrapper.err).toBe(0);
+  expect(JSON.parse(wrapper.out)).toMatchObject({
+    name: "Legacy EDL",
+    report: { format: "edl", clips: 2, media: 1, warnings: [] },
+  });
+});
+
+it("rejects valued native switches before replacement and accepts command and flag aliases", async () => {
+  const { run, host } = await setup();
+  const before = host.snapshot().json;
+  for (const args of [
+    ["new", "Bad", "--portrait=false"],
+    ["app", "--json=false"],
+    ["import-filmora", "source.wfp", "--keep-levels=invalid"],
+    ["new", "Bad", "--expect", "0", "--expected-revision", "0"],
+    ["new", "Bad", "--path", "other"],
+    ["new", "Bad", "--size"],
+    ["new", "Bad", "--size", "1x2x3"],
+    ["new", "Bad", "--size=1x2", "--size=3x4"],
+    ["app", "--typo"],
+  ]) {
+    const result = await run(...args);
+    expect(result.code, JSON.stringify({ args, ...result })).toBe(2);
+    expect(result.out).toBe("");
+    expect(host.snapshot().json).toBe(before);
+  }
+  const result = await run(
+    "project",
+    "new",
+    "Custom.tandem",
+    "--portrait",
+    "--size=640X480",
+    "--expect=0",
+    "--json",
+  );
+  expect(result.code, result.err).toBe(0);
+  expect(JSON.parse(result.out)).toMatchObject({ name: "Custom", width: 640, height: 480 });
+  for (const flag of ["search", "rewrite"]) {
+    expect((await run("import", "filmora", "source.wfp", `--${flag}=unsupported`)).code).toBe(6);
+  }
+});
+
+it("cleans an exclusive import output when replacement fails and preserves existing output", async () => {
+  const { run, root, host } = await setup();
+  await copyFile(resolve("tests/fixtures/tandem/filmora-basic.wfp"), join(root, "filmora.wfp"));
+  const before = host.snapshot().json;
+  const replace = vi.spyOn(host, "replace").mockRejectedValueOnce(new Error("Replacement failed"));
+  try {
+    const failed = await run("import-filmora", "filmora.wfp", "--out", "failed", "--json");
+    expect(failed.code, failed.err).toBe(2);
+    expect(replace).toHaveBeenCalledOnce();
+    await expect(readFile(join(root, "failed.tandem"))).rejects.toMatchObject({ code: "ENOENT" });
+    expect(host.snapshot().json).toBe(before);
+  } finally {
+    replace.mockRestore();
+  }
+  await writeFile(join(root, "existing.tandem"), "keep me");
+  expect((await run("import-filmora", "filmora.wfp", "--out", "existing", "--json")).code).toBe(2);
+  expect(await readFile(join(root, "existing.tandem"), "utf8")).toBe("keep me");
+  expect(host.snapshot().json).toBe(before);
+  expect(
+    (await run("import-filmora", "filmora.wfp", "--expect=999", "--out=stale", "--json")).code,
+  ).toBe(4);
+  await expect(readFile(join(root, "stale.tandem"))).rejects.toMatchObject({ code: "ENOENT" });
+});
+
+it("launches only after absent discovery, detaches immediately and classifies spawn failures", async () => {
+  const root = await mkdtemp(join(tmpdir(), "sidecut-launch-"));
+  cleanup.push(() => rm(root, { recursive: true, force: true }));
+  const endpoint = join(root, "absent.json");
+  // Stub only process creation: discovery, executable validation and CLI error handling are real.
+  const script = `
+    import childProcess from 'node:child_process';
+    import { syncBuiltinESMExports } from 'node:module';
+    import { EventEmitter } from 'node:events';
+    import assert from 'node:assert/strict';
+    childProcess.spawn = (executable, args, options) => {
+      assert.equal(executable, process.execPath);
+      assert.deepEqual(args, []);
+      assert.equal(options.env.ELECTRON_RUN_AS_NODE, undefined);
+      assert.equal(options.env.SIDECUT_APP_EXECUTABLE, process.execPath);
+      assert.equal(options.detached, true);
+      assert.equal(options.windowsHide, true);
+      assert.equal(options.stdio, 'ignore');
+      const child = new EventEmitter();
+      child.unref = () => { process.stdout.write('unref\\n'); };
+      if (process.env.LAUNCH_MODE === 'throw') throw new Error('synchronous spawn failure');
+      queueMicrotask(() => process.env.LAUNCH_MODE === 'error'
+        ? child.emit('error', new Error('asynchronous spawn failure')) : child.emit('spawn'));
+      return child;
+    };
+    syncBuiltinESMExports();
+    process.argv = [process.execPath, 'cli', 'app', '--json', '--endpoint-file', process.env.TEST_ENDPOINT];
+    await import('./scripts/sidecut-cli.mjs');
+  `;
+  const launch = (mode: string, executable = process.execPath) =>
+    node(["--input-type=module", "--eval", script], {
+      TEST_ENDPOINT: endpoint,
+      SIDECUT_APP_EXECUTABLE: executable,
+      LAUNCH_MODE: mode,
+    });
+  const launched = await launch("success");
+  expect(launched.code, launched.err).toBe(0);
+  expect(launched.out).toBe('unref\n{"opened":true,"launched":true}\n');
+  for (const mode of ["throw", "error"]) {
+    const failed = await launch(mode);
+    expect(failed.code, failed.err).toBe(3);
+    expect(failed.out).toBe("");
+    expect(failed.err).toContain("spawn failure");
+  }
+  for (const executable of ["relative.exe", root, join(root, "missing.exe")]) {
+    const invalid = await launch("success", executable);
+    expect(invalid.code, invalid.err).toBe(3);
+    expect(invalid.out).toBe("");
+  }
+  await writeFile(endpoint, "not JSON");
+  const malformed = await launch("success");
+  expect(malformed.code).toBe(2);
+  expect(malformed.out).toBe("");
+  await writeFile(endpoint, JSON.stringify({ port: 0, token: "invalid" }));
+  const invalid = await launch("success");
+  expect(invalid.code).toBe(2);
+  expect(invalid.out).toBe("");
 });
 
 it("activates the application without changing the project, with explicit unsupported targets", async () => {
@@ -158,6 +313,9 @@ it("activates the application without changing the project, with explicit unsupp
   expect(activations()).toBe(1);
   expect(host.snapshot().json).toBe(before);
   expect((await run("app", "another.tandem")).code).toBe(6);
+  const schema = await run("schema", "--service", "--json");
+  expect(schema.code, schema.err).toBe(0);
+  expect(JSON.parse(schema.out)).toHaveProperty("operations.import-filmora");
 });
 
 it("prints an authoritative offline edit schema without discovery credentials", async () => {

@@ -5,6 +5,7 @@ import { editBatchJsonSchema } from "@sidecut/contracts/commands";
 
 it("ships the authoritative edit batch schema for offline CLI use", async () => {
   const schema = editBatchJsonSchema();
+  expect(schema.properties.commands.items).toMatchObject({ minProperties: 1, maxProperties: 1 });
   const path = resolve("scripts/edit-batch.schema.json");
   if (process.env["SIDECUT_UPDATE_CLI_SCHEMA"] === "1")
     await writeFile(path, JSON.stringify(schema, null, 2) + "\n");

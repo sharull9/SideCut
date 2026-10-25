@@ -153,25 +153,27 @@ Acceptance per operation: compare request defaults, result shape, revision, warn
 - [x] 129.06: credits. Current licence precedence, provenance/tag lookup, deduplicated required/courtesy text, removed-media exclusion and grouped warnings pass core and Electron checks.
 - [x] 129.07: generate. Reference validation/defaults, aliases, variation bounds, paid-confirmation guard and saved-original recovery pass tests. Electron fixture transport verifies PCM normalization and partial failures without paid requests.
 - [x] 129.08: install-starter. Pinned counts of 43 stickers, 32 icons and 15 logos, metadata-only defaults and idempotent installation pass tests and Electron checks.
-- [ ] 129.09: segments.
-- [ ] 129.10: save-segment.
-- [ ] 129.11: insert-segment.
+- [x] 129.09: segments. Summaries, field/resource/provenance lists, corrupt-entry isolation and JSON/readable listing pass fixtures and Electron.
+- [x] 129.10: save-segment. Exact selection, title fields, replacement and revision-free save pass; unknown selections fail without saving.
+- [x] 129.11: insert-segment. Values, missing/stale failures, one authoritative revision, visible inspector state and undo pass.
 
 See [resource/asset evidence and limits](verification/resources-assets.md) for the five adapters above.
 
 See [asset-action evidence and limits](verification/asset-actions.md) for show, use, credits, generation and starter installation.
 
+See [combined segment/CLI evidence and limits](verification/segments-cli.md) for subphases 129.09–129.11 and 130.01–130.07.
+
 ## Group 130: CLI
 
 Acceptance per command: match flags/defaults, JSON and text output, exit code, and failure behavior. Mutation commands must be visible immediately in the editor. Match the upstream CLI spelling rather than assuming every service name is its command spelling.
 
-- [ ] 130.01: Argument parser and help.
-- [ ] 130.02: Project discovery.
-- [ ] 130.03: New project.
-- [ ] 130.04: Open application.
-- [ ] 130.05: Command schema output.
-- [ ] 130.06: EDL import command.
-- [ ] 130.07: Filmora import command.
+- [x] 130.01: Argument parser and help. Shared aliases, repeated options, end-of-options and segment help pass parser/CLI checks.
+- [x] 130.02: Project discovery. Explicit/environment/nearest-parent selection, owner authentication, ambiguity and profile mismatch pass.
+- [x] 130.03: New project. Positional paths, default/portrait/custom sizing, standard tracks, exclusive snapshots and guarded replacement pass.
+- [x] 130.04: Open application. Running-window restore/focus passes Electron; configured executable launch and failures have deterministic process-boundary coverage.
+- [x] 130.05: Command schema output. Offline standard edit-batch schema, single-operation constraint and service-schema extension pass.
+- [x] 130.06: EDL import command. Native EDL/recipe invocation, reports, output snapshots, stale/invalid nonmutation and visible editor import pass.
+- [x] 130.07: Filmora import command. Native Filmora invocation, keep-levels, names, snapshots and replayable reload persistence pass.
 - [ ] 130.08: Project command status.
 - [ ] 130.09: Project command media.
 - [ ] 130.10: Project command timeline.

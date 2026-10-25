@@ -1,0 +1,49 @@
+{
+  "platform": "win32",
+  "date": "2026-10-25T06:17:12.851Z",
+  "phases": [
+    "129.09",
+    "129.10",
+    "129.11",
+    "130.01",
+    "130.02",
+    "130.03",
+    "130.04",
+    "130.05",
+    "130.06",
+    "130.07"
+  ],
+  "new": {
+    "canvas": [1080, 1920],
+    "tracks": 8,
+    "snapshot": true,
+    "editor": true
+  },
+  "app": {
+    "restored": true
+  },
+  "schema": {
+    "offlineCommands": true,
+    "serviceExtension": true
+  },
+  "segments": {
+    "savedWithoutRevision": true,
+    "fields": true,
+    "insertedInOneRevision": true,
+    "visible": true,
+    "undo": true,
+    "failuresNonmutating": true,
+    "readableOutput": true
+  },
+  "imports": {
+    "edlClips": 2,
+    "filmoraClips": 1,
+    "snapshots": true,
+    "persistedAfterReload": true
+  },
+  "limits": [
+    "Windows development runtime; installed launch and native macOS/Linux unverified",
+    "Running shared host authority; headless editing not implemented",
+    "No native reference-runtime response capture"
+  ]
+}

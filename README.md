@@ -293,8 +293,15 @@ The service also has baseline review, sync/watch/wait, archive/relink/effects,
 asset-library and segment adapters. `node scripts/sidecut-cli.mjs --help` lists
 the CLI commands; select the running host with `--endpoint-file` or
 `SIDECUT_API_FILE`. The CLI uses the host's schema and shared edit history.
-Checks currently require `quick:true`; provider network calls are opt-in.
+Checks support model and rendered scans; provider network calls are opt-in.
 See [CLI usage, verification and compatibility limits](docs/verification/phases-126-130.md).
+
+Saved segments support exact clip selection, title fields, replacement and one-step
+insertion with undo. CLI commands accept positional segment names, `--field` and
+`--value`, short aliases and guarded project discovery. `schema` prints the edit
+schema offline; `schema --service` prints service operations. Native `new`,
+`app`, `import edl` and `import filmora` commands use the same running host.
+See [segment/CLI acceptance and limits](docs/verification/segments-cli.md).
 
 MCP is available with `node scripts/sidecut-mcp.mjs --endpoint-file <discovery-file>`.
 It exposes 43 tools through the same host, with PNG results for frame inspection.

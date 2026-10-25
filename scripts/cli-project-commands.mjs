@@ -50,7 +50,7 @@ export function prepareProjectCommand(args, parsed) {
   const words = parsed ? inputWords.slice(offset + 1) : [],
     flags = new Map(parsed?.flags);
   const switches = new Set(["json", "portrait", "keep-levels"]);
-  for (let i = offset + 1; !parsed && i < args.length; i++) {
+  for (let i = parsed ? args.length : offset + 1; i < args.length; i++) {
     const arg = args[i];
     if (!arg.startsWith("--")) {
       words.push(arg);

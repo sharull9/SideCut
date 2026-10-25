@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vite-plus/test";
 import { BrowserProjectSession } from "./browser-session";
 import { libraryOperation } from "./service-library";
+import { rendererErrorDetails } from "./renderer-operations";
+import { EditError } from "@sidecut/core/coordinator";
+import { QueryError } from "@sidecut/core/project-queries";
 import { serviceRequest } from "@sidecut/core/service-requests";
 
 describe("service job waits", () => {
@@ -52,5 +55,20 @@ describe("service job waits", () => {
       done: true,
       pending: [],
     });
+  });
+});
+
+it("preserves typed segment mutation failures across the renderer transport", () => {
+  expect(rendererErrorDetails(new EditError("stale-revision", "Stale revision"))).toEqual({
+    code: "staleRevision",
+    message: "Stale revision",
+  });
+  expect(rendererErrorDetails(new EditError("invalid", "Track occupied"))).toEqual({
+    code: "badRequest",
+    message: "Track occupied",
+  });
+  expect(rendererErrorDetails(new QueryError("notFound", "No clip"))).toEqual({
+    code: "notFound",
+    message: "No clip",
   });
 });

@@ -1,12 +1,24 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { prepareProjectCommand, launchApplication } from "./cli-project-commands.mjs";
+import {
+  parseArguments,
+  discoverEndpoint,
+  verifyProjectOwner,
+  commandHelp,
+  segmentText,
+} from "./cli-foundation.mjs";
 
 const help = `Usage: node scripts/sidecut-cli.mjs [project|assets|segments] COMMAND [options]
 
-Connects to the running desktop host; all output is JSON.
+Connects to the running desktop host; service output is JSON.
+  --project PATH         File/folder, SIDECUT_PROJECT/TANDEM_PROJECT, or nearest parent
+  -h, --help             Help (also: help segments)
+  -v, --version          Version
+  -o PATH                Alias for --output; --expect aliases --expected-revision
+  --                     End options
+Project discovery excludes render snapshots and rejects ambiguous folders.
+Closed-project/headless editing is unsupported; choose a running profile.
   --endpoint-file PATH    Discovery file (or SIDECUT_API_FILE)
   --input PATH           Read request JSON from a file
   --request JSON         Request object as JSON
@@ -27,94 +39,79 @@ project and require --expected-revision. Network asset requests are opt-in.
 Exit codes: 0 success, 2 invalid request, 3 unavailable, 4 stale revision,
 5 not found, 6 unsupported. No request is retried automatically.`;
 
-function discoveryPath() {
-  const base =
-    process.platform === "win32"
-      ? process.env.APPDATA
-      : process.platform === "darwin"
-        ? join(homedir(), "Library", "Application Support")
-        : (process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"));
-  if (!base)
-    throw new Error("Set --endpoint-file or SIDECUT_API_FILE to the desktop discovery file.");
-  return join(base, "sidecut", "current.tandem.api.json");
-}
-
 async function main(args) {
-  if (!args.length || args.includes("--help")) {
-    process.stdout.write(help + "\n");
+  let { flags, words } = parseArguments(args);
+  if (flags.has("version") && !words.length) {
+    process.stdout.write("sidecut 0.0.1\n");
     return;
   }
-  if (args[0] === "schema" && !args.includes("--service")) {
-    const allowed = new Set(["--json"]);
-    for (let i = 1; i < args.length; i++) {
-      if (args[i] === "--endpoint-file") {
-        i++;
-        continue;
-      }
-      if (args[i].startsWith("--endpoint-file=")) continue;
-      if (!allowed.has(args[i])) throw new Error(`Unknown schema option ${args[i]}.`);
-    }
+  if (!words.length || words[0] === "help" || flags.has("help")) {
+    const topic = words[0] === "help" ? words[1] : words[0];
+    const detail = commandHelp(topic);
+    if (words[0] === "help" && topic && !detail && !help.includes(topic))
+      throw new Error(`Unknown help topic: ${topic}.`);
+    process.stdout.write((detail ?? help) + "\n");
+    if (!args.length) process.exitCode = 2;
+    return;
+  }
+  if (
+    (words[0] === "schema" || (words[0] === "project" && words[1] === "schema")) &&
+    !flags.has("service")
+  ) {
+    if (words.length !== (words[0] === "project" ? 2 : 1))
+      throw new Error("schema takes no arguments.");
+    for (const flag of flags.keys())
+      if (!["json", "endpoint-file"].includes(flag))
+        throw new Error(`Unknown schema option --${flag}.`);
     process.stdout.write(
       await readFile(new URL("./edit-batch.schema.json", import.meta.url), "utf8"),
     );
     return;
   }
-  args = args.filter((arg) => arg !== "--service");
-  const projectCommand = prepareProjectCommand(args);
-  args = projectCommand.args;
-  const flags = new Map(),
-    words = [];
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (!arg.startsWith("--")) {
-      words.push(arg);
-      continue;
-    }
-    const equal = arg.indexOf("="),
-      key = equal < 0 ? arg.slice(2) : arg.slice(2, equal);
-    if (flags.has(key)) throw new Error(`Duplicate option --${key}.`);
-    const value =
-      equal >= 0
-        ? arg.slice(equal + 1)
-        : args[i + 1] && !args[i + 1].startsWith("--")
-          ? args[++i]
-          : true;
-    flags.set(key, value);
+  if (flags.has("service") && !words.includes("schema"))
+    throw new Error("--service requires schema.");
+  flags.delete("service");
+  const projectCommand = prepareProjectCommand(args, { flags, words });
+  if (projectCommand.flags) {
+    flags = projectCommand.flags;
+    words = projectCommand.words;
   }
   let operation = words[0];
   if (operation === "project") operation = words[1];
   else if (operation === "assets") operation = `assets-${words[1]}`;
   else if (operation === "segments")
-    operation = { list: "segments", save: "save-segment", insert: "insert-segment" }[words[1]];
+    operation = { list: "segments", save: "save-segment", insert: "insert-segment" }[
+      words[1] ?? "list"
+    ];
+  if (
+    ["save-segment", "insert-segment"].includes(operation) &&
+    words[0] === "segments" &&
+    words[2] != null
+  ) {
+    if (flags.has("name")) throw new Error("Duplicate segment name.");
+    flags.set("name", words[2]);
+    words.splice(2, 1);
+  }
   if (
     !operation ||
     !/^[a-z]+(?:-[a-z]+)*$/.test(operation) ||
     words.length > (["project", "assets", "segments"].includes(words[0]) ? 2 : 1)
   )
     throw new Error("Specify one command. Use --help.");
-  const endpointFile =
-    flags.get("endpoint-file") ?? process.env.SIDECUT_API_FILE ?? discoveryPath();
-  if (typeof endpointFile !== "string") throw new Error("--endpoint-file needs a path.");
-  let endpoint;
+  if (operation === "save-segment" && flags.has("clips") && (flags.has("from") || flags.has("to")))
+    throw new Error("Give --clips or --from and --to, not both.");
+  let endpoint, project;
   try {
-    endpoint = JSON.parse(await readFile(endpointFile, "utf8"));
+    ({ endpoint, project } = await discoverEndpoint(flags));
   } catch (error) {
-    if (operation !== "app" || error.code !== "ENOENT") throw error;
+    if (operation !== "app" || (error.code !== "ENOENT" && error.cause?.code !== "ENOENT"))
+      throw error;
     const result = await launchApplication();
     process.stdout.write(
       (projectCommand.text ? projectCommand.text(result) : JSON.stringify(result)) + "\n",
     );
     return;
   }
-  if (
-    !endpoint ||
-    !Number.isInteger(endpoint.port) ||
-    endpoint.port < 1 ||
-    endpoint.port > 65535 ||
-    typeof endpoint.token !== "string" ||
-    !/^[a-f0-9]{64}$/.test(endpoint.token)
-  )
-    throw new Error("Invalid discovery file.");
   const controller = new AbortController();
   process.once("SIGINT", () => controller.abort());
   const call = async (name, input) => {
@@ -134,6 +131,11 @@ async function main(args) {
     }
     return result;
   };
+  if (project) {
+    const status = await call("status", {});
+    if (!status) return;
+    await verifyProjectOwner(project, status);
+  }
   const schema = await call("schema", {});
   if (!schema) return;
   if (operation === "schema") {
@@ -151,14 +153,34 @@ async function main(args) {
   if (!input || typeof input !== "object" || Array.isArray(input))
     throw new Error("Request must be a JSON object.");
   for (const [flag, raw] of flags) {
-    if (["endpoint-file", "input", "request", "follow", "json"].includes(flag)) continue;
+    if (["endpoint-file", "input", "request", "follow", "json", "project"].includes(flag)) continue;
+    const fieldFlag = flag === "field" ? "fields" : flag === "value" ? "values" : flag;
     const key = Object.keys(schema.operations[operation]).find(
-      (name) => name.toLowerCase() === flag.replaceAll("-", "").toLowerCase(),
+      (name) => name.toLowerCase() === fieldFlag.replaceAll("-", "").toLowerCase(),
     );
     if (!key) throw new Error(`Unknown option --${flag}.`);
     const type = schema.operations[operation][key];
     let value = raw;
-    if (["strings", "times", "array"].includes(type)) value = JSON.parse(String(raw));
+    if (flag === "field") value = raw;
+    else if (flag === "value") {
+      value = Object.fromEntries(
+        raw.map((pair) => {
+          const equal = pair.indexOf("=");
+          if (equal <= 0) throw new Error("--value takes key=text.");
+          return [pair.slice(0, equal), pair.slice(equal + 1)];
+        }),
+      );
+    } else if (type === "list")
+      value = (Array.isArray(raw) ? raw : [String(raw)]).flatMap((v) =>
+        v.startsWith("[") ? JSON.parse(v) : v.split(","),
+      );
+    else if (type === "stringMap") value = JSON.parse(String(raw));
+    else if (type === "segmentFields")
+      value = String(raw).startsWith("[") ? JSON.parse(String(raw)) : String(raw).split(",");
+    else if (["strings", "times", "array"].includes(type))
+      value = Array.isArray(raw)
+        ? raw.flatMap((v) => (v.startsWith("[") ? JSON.parse(v) : v.split(",")))
+        : JSON.parse(String(raw));
     else if (["integer", "number"].includes(type)) {
       value = Number(raw);
       if (raw === true || !Number.isFinite(value)) throw new Error(`--${flag} needs a number.`);
@@ -183,7 +205,11 @@ async function main(args) {
     const result = await call(operation, input);
     if (!result) return;
     process.stdout.write(
-      (projectCommand.text ? projectCommand.text(result) : JSON.stringify(result)) + "\n",
+      (["segments", "save-segment", "insert-segment"].includes(operation) && !flags.has("json")
+        ? segmentText(operation, result)
+        : projectCommand.text
+          ? projectCommand.text(result)
+          : JSON.stringify(result)) + "\n",
     );
     if (!flags.has("follow")) return;
     input = { ...input, revision: result.revision, generation: result.generation };

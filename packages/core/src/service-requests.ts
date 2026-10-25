@@ -104,8 +104,23 @@ export const serviceDefinitions = {
   },
   "assets-install-starter": { online: "boolean" },
   segments: {},
-  "save-segment": { name: "string", clipIDs: "strings", ...range },
-  "insert-segment": { name: "string", at: "time", mode: "string" },
+  "save-segment": {
+    name: "string",
+    clipIDs: "list",
+    clips: "list",
+    fields: "segmentFields",
+    replace: "boolean",
+    ...range,
+  },
+  "insert-segment": {
+    name: "string",
+    at: "time",
+    mode: "string",
+    values: "stringMap",
+    label: "string",
+    author: "string",
+    expectedRevision: "integer",
+  },
   apply: {
     commands: "array",
     label: "string",
@@ -202,29 +217,55 @@ export function requestJsonSchema(
   required: readonly string[] = [],
 ) {
   const field = (kind: string): object =>
-    kind === "boolean"
-      ? { type: "boolean" }
-      : kind === "signedInteger"
-        ? { type: "integer" }
-        : kind === "integer"
-          ? { type: "integer", minimum: 0 }
-          : kind === "number"
-            ? { type: "number" }
-            : kind === "list"
-              ? { anyOf: [{ type: "string" }, { type: "array", items: { type: "string" } }] }
-              : kind === "time" || kind === "reference"
-                ? { anyOf: [{ type: "number" }, { type: "string" }] }
-                : ["array", "strings", "times"].includes(kind)
-                  ? {
-                      type: "array",
-                      items:
-                        kind === "strings"
-                          ? { type: "string" }
-                          : kind === "times"
-                            ? { anyOf: [{ type: "number" }, { type: "string" }] }
-                            : { type: "object" },
-                    }
-                  : { type: "string" };
+    kind === "segmentFields"
+      ? {
+          anyOf: [
+            { type: "string" },
+            {
+              type: "array",
+              items: {
+                anyOf: [
+                  { type: "string" },
+                  {
+                    type: "object",
+                    properties: {
+                      clipID: { type: "string" },
+                      label: { type: "string" },
+                      key: { type: "string" },
+                    },
+                    required: ["clipID"],
+                    additionalProperties: false,
+                  },
+                ],
+              },
+            },
+          ],
+        }
+      : kind === "stringMap"
+        ? { type: "object", additionalProperties: { type: "string" } }
+        : kind === "boolean"
+          ? { type: "boolean" }
+          : kind === "signedInteger"
+            ? { type: "integer" }
+            : kind === "integer"
+              ? { type: "integer", minimum: 0 }
+              : kind === "number"
+                ? { type: "number" }
+                : kind === "list"
+                  ? { anyOf: [{ type: "string" }, { type: "array", items: { type: "string" } }] }
+                  : kind === "time" || kind === "reference"
+                    ? { anyOf: [{ type: "number" }, { type: "string" }] }
+                    : ["array", "strings", "times"].includes(kind)
+                      ? {
+                          type: "array",
+                          items:
+                            kind === "strings"
+                              ? { type: "string" }
+                              : kind === "times"
+                                ? { anyOf: [{ type: "number" }, { type: "string" }] }
+                                : { type: "object" },
+                        }
+                      : { type: "string" };
   return {
     type: "object" as const,
     properties: Object.fromEntries(Object.entries(fields).map(([key, kind]) => [key, field(kind)])),
@@ -268,6 +309,15 @@ export function serviceRequest(operation: string, input: unknown): Record<string
       result[key] = value;
     else if (kind === "number" && typeof value === "number" && Number.isFinite(value))
       result[key] = value;
+    else if (
+      kind === "stringMap" &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      Object.values(value).every((v) => typeof v === "string")
+    )
+      result[key] = value;
+    else if (kind === "segmentFields" && (typeof value === "string" || Array.isArray(value)))
+      result[key] = typeof value === "string" ? value.split(",") : value;
     else if (kind === "array" && Array.isArray(value)) result[key] = value;
     else if (
       kind === "strings" &&

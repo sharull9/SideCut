@@ -971,7 +971,7 @@ export class ProjectAPI {
         ["segments", "save-segment", "insert-segment", "wait"].includes(operation)
       ) {
         if (
-          operation === "assets-use" &&
+          ["assets-use", "insert-segment"].includes(operation) &&
           request.expectedRevision != null &&
           request.expectedRevision !== this.file().revision
         )

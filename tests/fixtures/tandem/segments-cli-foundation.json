@@ -1,0 +1,78 @@
+{
+  "reference": "mikecann/tandem@735a9b8e162c1f951044baa892d94993869f2e77",
+  "sources": [
+    "Sources/TandemAPI/SegmentCalls.swift",
+    "Sources/TandemAPI/Segments.swift",
+    "Sources/TandemCLI/Arguments.swift",
+    "Sources/TandemCLI/SegmentsCommand.swift",
+    "Sources/TandemAPI/ProjectClient.swift"
+  ],
+  "method": "Contract assertions transcribed from pinned source; Swift runtime not executed on Windows.",
+  "segments": {
+    "listKeys": ["folder", "exists", "segments", "problems"],
+    "summaryKeys": [
+      "id",
+      "name",
+      "folder",
+      "duration",
+      "clips",
+      "tracks",
+      "fields",
+      "files",
+      "missing",
+      "savedAt",
+      "savedFrom"
+    ],
+    "saveKeys": ["segment", "clipIDs", "copied", "notes"],
+    "insertKeys": ["segment", "at", "applied"],
+    "defaultMode": "place",
+    "saveRevisionDelta": 0,
+    "insertRevisionDelta": 1,
+    "exactSelection": ["a"],
+    "halfTransitionNote": "A transition to a clip that isn't in the segment is left out.",
+    "field": {
+      "key": "sectionTitle",
+      "label": "Section title",
+      "defaultValue": "Original"
+    }
+  },
+  "parser": [
+    {
+      "args": [
+        "segments",
+        "save",
+        "Intro",
+        "--clips",
+        "a,b",
+        "--field",
+        "a=Title",
+        "--field=b=Subtitle",
+        "--json"
+      ],
+      "words": ["segments", "save", "Intro"],
+      "flags": {
+        "clips": ["a,b"],
+        "field": ["a=Title", "b=Subtitle"],
+        "json": true
+      }
+    },
+    {
+      "args": ["-o", "result.json", "--expect=7", "status"],
+      "words": ["status"],
+      "flags": {
+        "output": "result.json",
+        "expected-revision": "7"
+      }
+    },
+    {
+      "args": ["sync", "-0.5", "--", "--literal"],
+      "words": ["sync", "-0.5", "--literal"],
+      "flags": {}
+    }
+  ],
+  "discovery": {
+    "renderSnapshots": ["review.mp4.tandem", "review.MOV.tandem", "review.m4v.tandem"],
+    "ambiguity": "Pick one with --project",
+    "headless": "unsupported"
+  }
+}

@@ -248,11 +248,14 @@ export async function verifySavedSegments() {
         },
       ],
     });
-    const segment = await session.saveSelectionAsSegment(["first"], `Verification ${nonce}`);
-    assert(segment.template.clips.length === 3, "Linked sound or picture left out");
+    const segment = await session.saveSelectionAsSegment(
+      ["first", "second", "sound"],
+      `Verification ${nonce}`,
+    );
+    assert(segment.template.clips.length === 3, "Selected sound or picture left out");
     let duplicate = false;
     try {
-      await session.saveSelectionAsSegment(["first"], segment.name);
+      await session.saveSelectionAsSegment(["first", "second", "sound"], segment.name);
     } catch {
       duplicate = true;
     }

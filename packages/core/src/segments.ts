@@ -4,6 +4,7 @@ import { Time } from "@sidecut/contracts/time";
 import type { Project, Clip, MediaItem } from "@sidecut/contracts/project";
 import { assetUses, type AssetUse } from "./asset-use";
 import { decodeAsset } from "@sidecut/contracts/assets";
+import { QueryError } from "./project-queries";
 import { textContent, resolveText } from "./text";
 export interface SavedSegment {
   version: 1;
@@ -11,6 +12,7 @@ export interface SavedSegment {
   name: string;
   savedFrom: string;
   savedAt: string;
+  storageID?: string;
   notes: string[];
   template: Template;
   assets: AssetUse[];
@@ -43,11 +45,18 @@ function rewriteLUTs<T>(value: T, paths: ReadonlyMap<string, string>): T {
   }
   return value;
 }
+export interface SegmentField {
+  clipID: string;
+  label?: string;
+  key?: string;
+}
+
 export function makeSegment(
   project: Project,
   ids: readonly string[],
   name: string,
   now = "",
+  fields: readonly SegmentField[] = [],
 ): SavedSegment {
   const clean = name
     .trim()
@@ -55,30 +64,23 @@ export function makeSegment(
     .replace(/^\.+/, "")
     .slice(0, 80)
     .trim();
-  if (!clean) throw new Error("A segment needs a name.");
+  if (!clean) throw new QueryError("badRequest", "A segment needs a name.");
   const tracks = [...project.videoTracks, ...project.audioTracks],
     all = tracks.flatMap((track) => track.clips.map((clip) => ({ track, clip }))),
     selected = new Set(ids);
   if (!ids.length || ids.some((id) => !all.some((v) => v.clip.id === id)))
-    throw new Error("Select existing clips to save a segment.");
-  const links = new Set(
-    all
+    throw new QueryError(
+      ids.length ? "notFound" : "badRequest",
+      "Select existing clips to save a segment.",
+    );
+  const order = [...project.videoTracks].reverse().concat(project.audioTracks);
+  const picked = all
       .filter((v) => selected.has(v.clip.id))
-      .map((v) => v.clip.linkGroup)
-      .filter(Boolean),
-  );
-  for (const { clip } of all)
-    if (clip.linkGroup && links.has(clip.linkGroup)) selected.add(clip.id);
-  for (const track of tracks)
-    for (const t of track.transitions)
-      if (
-        (selected.has(String(t.fromClipID)) || selected.has(String(t.toClipID))) &&
-        (t.fromClipID == null || selected.has(String(t.fromClipID))) &&
-        (t.toClipID == null || selected.has(String(t.toClipID))) &&
-        t.soundClipID != null
-      )
-        selected.add(String(t.soundClipID));
-  const picked = all.filter((v) => selected.has(v.clip.id)),
+      .sort(
+        (a, b) =>
+          order.indexOf(a.track) - order.indexOf(b.track) ||
+          a.clip.start.seconds - b.clip.start.seconds,
+      ),
     start = Math.min(...picked.map((v) => v.clip.start.seconds)),
     end = Math.max(...picked.map((v) => v.clip.start.seconds + v.clip.duration.seconds));
   const resources: SavedSegment["resources"] = [],
@@ -89,12 +91,12 @@ export function makeSegment(
     const id = jsonObject(clip.content.media).mediaID;
     if (typeof id === "string" && !media.has(id)) {
       const item = project.media.find((m) => m.id === id);
-      if (!item) throw new Error("Segment media is missing from the project.");
+      if (!item) throw new QueryError("notFound", "Segment media is missing from the project.");
       const path = `media/${media.size}-${item.path
         .split(/[\\/]/)
         .at(-1)!
         .replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-      media.set(id, { ...item, path });
+      media.set(id, { ...item, id: "", takeID: null, takeOffset: null, path });
       resources.push({ key: id, path });
     }
   }
@@ -170,6 +172,37 @@ export function makeSegment(
       media: item ? rewriteLUTs(item, lutMap) : null,
     };
   });
+  const templateFields: Template["fields"] = [],
+    keys = new Set<string>();
+  for (const [number, choice] of fields.entries()) {
+    const item = clips.find((c) => c.clip.id === choice.clipID);
+    if (!item)
+      throw new QueryError("notFound", `Clip ${choice.clipID} isn't one of the clips being saved.`);
+    const text = textContent(item.clip);
+    if (!text) throw new QueryError("badRequest", `Clip ${choice.clipID} isn't a title.`);
+    const label = choice.label ?? item.clip.name ?? `Text ${number + 1}`;
+    const words = (choice.key ?? label).match(/[\p{L}\p{N}]+/gu) ?? [];
+    const base =
+      words
+        .map((w, i) => (i ? w[0]!.toUpperCase() + w.slice(1).toLowerCase() : w.toLowerCase()))
+        .join("") || "text";
+    let key = base;
+    for (let n = 2; keys.has(key); n++) key = `${base}${n}`;
+    keys.add(key);
+    templateFields.push({ key, label, defaultValue: text.text });
+    item.clip = { ...item.clip, content: { text: { ...text, text: `{{${key}}}` } } };
+  }
+  for (const item of clips) {
+    const text = textContent(item.clip);
+    for (const match of text?.text.matchAll(/{{(.*?)}}/g) ?? []) {
+      const key = match[1]!.trim();
+      if (key && !keys.has(key)) {
+        keys.add(key);
+        templateFields.push({ key, label: key, defaultValue: "" });
+      }
+    }
+  }
+  let halfSaved = 0;
   const places = new Map(picked.map((v, i) => [v.clip.id, i])),
     transitions: Template["transitions"] = [];
   for (const track of tracks)
@@ -178,7 +211,7 @@ export function makeSegment(
         to = t.toClipID == null ? null : places.get(String(t.toClipID));
       if (from == null && to == null) continue;
       if ((t.fromClipID != null && from == null) || (t.toClipID != null && to == null)) {
-        notes.push("A transition to a clip outside the segment was left out.");
+        halfSaved++;
         continue;
       }
       transitions.push({
@@ -190,18 +223,22 @@ export function makeSegment(
         duration: Number(t.duration),
       });
     }
+  if (halfSaved)
+    notes.push(
+      `${halfSaved === 1 ? "A transition" : `${halfSaved} transitions`} to a clip that isn't in the segment ${halfSaved === 1 ? "is" : "are"} left out.`,
+    );
   return {
     version: 1,
     id: clean,
-    name: clean,
+    name: name.trim(),
     savedFrom: project.name,
     savedAt: now,
     notes,
     template: {
       id: `segment:${clean}`,
-      name: clean,
+      name: name.trim(),
       duration: Time.fromSeconds(end - start),
-      fields: [],
+      fields: templateFields,
       clips,
       transitions,
     },
@@ -241,6 +278,7 @@ export function decodeSegment(value: unknown): SavedSegment {
     name: v.name,
     savedFrom: String(v.savedFrom ?? ""),
     savedAt: String(v.savedAt ?? ""),
+    ...(typeof v.storageID === "string" ? { storageID: v.storageID } : {}),
     notes: Array.isArray(v.notes) ? v.notes.map(String) : [],
     template,
     resources,
@@ -254,8 +292,11 @@ export function decodeSegment(value: unknown): SavedSegment {
     }),
   };
 }
+export function segmentPrefix(segment: SavedSegment) {
+  return `segments/${encodeURIComponent(segment.id)}/${encodeURIComponent(segment.storageID ?? (segment.savedAt || "legacy"))}/`;
+}
 export function insertableSegment(segment: SavedSegment) {
-  const prefix = `segments/${encodeURIComponent(segment.id)}/`,
+  const prefix = segmentPrefix(segment),
     paths = new Map(segment.resources.map((r) => [r.path, `${prefix}${r.path}`]));
   const template = rewriteLUTs(segment.template, paths);
   return JSON.parse(
@@ -268,4 +309,22 @@ export function insertableSegment(segment: SavedSegment) {
       })),
     }),
   ) as Record<string, unknown>;
+}
+
+export function segmentSummary(segment: SavedSegment, available: readonly string[]) {
+  const folder = `indexeddb:sidecut-segments/${encodeURIComponent(segment.id)}`;
+  const files = segment.template.clips.flatMap((c) => (c.mediaPath ? [c.mediaPath] : []));
+  return {
+    id: segment.id,
+    name: segment.name,
+    folder,
+    duration: segment.template.duration.seconds,
+    clips: segment.template.clips.length,
+    tracks: [...new Set(segment.template.clips.map((c) => c.track))],
+    fields: segment.template.fields,
+    files: [...new Set(files)],
+    missing: [...new Set(files)].filter((f) => !available.includes(f)),
+    savedAt: segment.savedAt,
+    savedFrom: segment.savedFrom,
+  };
 }

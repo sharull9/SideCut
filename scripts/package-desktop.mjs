@@ -72,6 +72,7 @@ await mkdir(cli, { recursive: true });
 await cp(join(root, "scripts/sidecut-cli.mjs"), join(cli, "sidecut-cli.mjs"));
 await cp(join(root, "scripts/cli-project-commands.mjs"), join(cli, "cli-project-commands.mjs"));
 await cp(join(root, "scripts/edit-batch.schema.json"), join(cli, "edit-batch.schema.json"));
+await cp(join(root, "scripts/cli-foundation.mjs"), join(cli, "cli-foundation.mjs"));
 if (process.platform === "win32")
   await writeFile(
     join(cli, "sidecut.cmd"),

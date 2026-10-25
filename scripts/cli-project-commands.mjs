@@ -42,14 +42,15 @@ export async function launchApplication() {
   return { opened: true, launched: true };
 }
 
-export function prepareProjectCommand(args) {
-  const offset = args[0] === "project" ? 1 : 0;
-  let command = args[offset];
+export function prepareProjectCommand(args, parsed) {
+  const inputWords = parsed?.words ?? args;
+  const offset = inputWords[0] === "project" ? 1 : 0;
+  let command = inputWords[offset];
   if (!["new", "app", "import", "import-edl", "import-filmora"].includes(command)) return { args };
-  const words = [],
-    flags = new Map();
+  const words = parsed ? inputWords.slice(offset + 1) : [],
+    flags = new Map(parsed?.flags);
   const switches = new Set(["json", "portrait", "keep-levels"]);
-  for (let i = offset + 1; i < args.length; i++) {
+  for (let i = offset + 1; !parsed && i < args.length; i++) {
     const arg = args[i];
     if (!arg.startsWith("--")) {
       words.push(arg);
@@ -118,6 +119,8 @@ export function prepareProjectCommand(args) {
     flags.delete(from);
   }
   return {
+    flags,
+    words: [command],
     native,
     args: [
       command,

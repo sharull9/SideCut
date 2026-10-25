@@ -24,7 +24,12 @@ import { probeLocalFile, mediaIdentity } from "@sidecut/platform-browser/media";
 import { MediaAnalysis } from "./media-analysis";
 import { assetUsePlan, assetUses, recordAssetUse } from "@sidecut/core/asset-use";
 import { decodeAsset } from "@sidecut/contracts/assets";
-import { makeSegment, insertableSegment } from "@sidecut/core/segments";
+import {
+  makeSegment,
+  insertableSegment,
+  segmentPrefix,
+  type SegmentField,
+} from "@sidecut/core/segments";
 import { SegmentLibrary, type SegmentEntry } from "@sidecut/platform-browser/segments";
 import type { LibraryEntry } from "@sidecut/platform-browser/asset-library";
 
@@ -1035,22 +1040,29 @@ export class BrowserProjectSession {
     this.assertOpen(epoch);
   }
 
-  async saveSelectionAsSegment(ids: readonly string[], name: string) {
+  async saveSelectionAsSegment(
+    ids: readonly string[],
+    name: string,
+    options: { fields?: readonly SegmentField[]; replace?: boolean; signal?: AbortSignal } = {},
+  ) {
     this.assertWritable();
     if (!this.store) throw new Error("Browser storage is closed.");
     const epoch = this.epoch,
       { project, revision } = this.state,
-      segment = makeSegment(project, ids, name, new Date().toISOString()),
+      segment = makeSegment(project, ids, name, new Date().toISOString(), options.fields),
       resources: SegmentEntry["resources"] = {};
+    segment.storageID = crypto.randomUUID();
     this.update({ busy: true });
     let library: SegmentLibrary | undefined;
     try {
       for (const item of segment.resources) {
+        options.signal?.throwIfAborted();
         const source = await this.store.resource(project.id, item.key);
         this.assertOpen(epoch);
         if (source?.state !== "available" && item.optional) continue;
         if (source?.state !== "available")
-          throw new Error(
+          throw new QueryError(
+            "notFound",
             `Cannot save segment: ${item.key} is missing. Import or relink it first.`,
           );
         resources[item.path] = source;
@@ -1059,7 +1071,11 @@ export class BrowserProjectSession {
         throw new Error("Project changed while saving the segment. Try again.");
       segment.resources = segment.resources.filter((r) => resources[r.path]);
       library = await SegmentLibrary.open();
-      await library.save({ segment, resources });
+      this.assertOpen(epoch);
+      options.signal?.throwIfAborted();
+      if (this.state.revision !== revision)
+        throw new Error("Project changed while saving the segment. Try again.");
+      await library.save({ segment, resources }, options.replace);
       return segment;
     } finally {
       library?.close();
@@ -1070,31 +1086,53 @@ export class BrowserProjectSession {
     entry: SegmentEntry,
     at: number,
     mode: "place" | "overwrite" | "insert" = "place",
+    options: {
+      values?: Record<string, string> | undefined;
+      label?: string | undefined;
+      author?: string | undefined;
+      expectedRevision?: number | undefined;
+      signal?: AbortSignal;
+    } = {},
   ) {
     this.assertWritable();
     if (!this.store) throw new Error("Browser storage is closed.");
     const epoch = this.epoch,
       { project, revision } = this.state,
       template = insertableSegment(entry.segment),
-      prefix = `segments/${encodeURIComponent(entry.segment.id)}/`;
-    const command = { insertTemplate: { template, at, mode } },
+      prefix = segmentPrefix(entry.segment);
+    const command = {
+        insertTemplate: {
+          template,
+          at,
+          mode,
+          ...(options.values ? { values: options.values } : {}),
+        },
+      },
       batch = {
-        label: `Insert ${entry.segment.name}`,
-        expectedRevision: revision,
+        label: options.label ?? `Add segment ${entry.segment.name}`,
+        ...(options.author == null ? {} : { author: options.author }),
+        expectedRevision: options.expectedRevision ?? revision,
         idempotencyKey: crypto.randomUUID(),
         commands: [command],
       };
+    const known = new Set(entry.segment.template.fields.map((f) => f.key));
+    for (const key of Object.keys(options.values ?? {}))
+      if (!known.has(key))
+        throw new QueryError("badRequest", `${entry.segment.name} has no field "${key}".`);
+    options.signal?.throwIfAborted();
     const preview = new ProjectCoordinator({ revision, project });
     preview.apply(batch);
     const planned = preview.getSnapshot().project;
     for (const item of entry.segment.resources)
       if (entry.resources[item.path]?.state !== "available")
-        throw new Error(
+        throw new QueryError(
+          "notFound",
           `Saved segment is missing ${item.path}. Save it again from its source project.`,
         );
     this.update({ busy: true });
     try {
       for (const item of entry.segment.resources) {
+        options.signal?.throwIfAborted();
         this.assertOpen(epoch);
         const media = planned.media.find((m) => m.path === `${prefix}${item.path}`),
           key = media?.id ?? (item.key.startsWith("lut:") ? `lut:${prefix}${item.path}` : item.key),
@@ -1129,6 +1167,7 @@ export class BrowserProjectSession {
           },
         );
       }
+      options.signal?.throwIfAborted();
       const result = this.coordinator.apply({
         ...batch,
         commands: [command, { updateProject: { patch: { metadata } } }],

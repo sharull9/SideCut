@@ -2,6 +2,7 @@ import type { BrowserProjectSession } from "./browser-session";
 import { serviceRequest, rendererMutations } from "@sidecut/core/service-requests";
 import { speechQuery, helperPlan } from "@sidecut/core/service-speech";
 import { transcribeService } from "./service-transcribe";
+import { EditError } from "@sidecut/core/coordinator";
 import { QueryError } from "@sidecut/core/project-queries";
 
 export async function rendererOperation(
@@ -117,6 +118,20 @@ export async function rendererOperation(
     throw new QueryError("badRequest", error instanceof Error ? error.message : String(error));
   }
 }
+export function rendererErrorDetails(error: unknown) {
+  return {
+    code:
+      error instanceof QueryError
+        ? error.code
+        : error instanceof EditError
+          ? error.code === "stale-revision"
+            ? "staleRevision"
+            : "badRequest"
+          : "unavailable",
+    message: error instanceof Error ? error.message : String(error),
+  };
+}
+
 export function connectRendererOperations(session: BrowserProjectSession) {
   const native = session.native;
   if (!native?.serviceSubscribe || !native.serviceReply) return () => {};
@@ -151,14 +166,7 @@ export function connectRendererOperations(session: BrowserProjectSession) {
       await native.serviceReply!(request.id, JSON.parse(JSON.stringify(result)));
     })()
       .catch((error) =>
-        native.serviceReply!(
-          request.id,
-          null,
-          JSON.stringify({
-            code: error instanceof QueryError ? error.code : "unavailable",
-            message: error instanceof Error ? error.message : String(error),
-          }),
-        ),
+        native.serviceReply!(request.id, null, JSON.stringify(rendererErrorDetails(error))),
       )
       .finally(() => jobs.delete(request.id))
       .catch(() => {});

@@ -13,13 +13,13 @@ const cleanup: (() => Promise<unknown>)[] = [];
 afterEach(async () => {
   for (const close of cleanup.reverse().splice(0)) await close();
 });
-async function setup() {
+async function setup(renderer?: ConstructorParameters<typeof ProjectAPI>[2]) {
   const root = await mkdtemp(join(tmpdir(), "sidecut-review-"));
   cleanup.push(() => rm(root, { recursive: true, force: true }));
   const host = new HostProjectService(new NativeProjectStore(join(root, "current.tandem")));
   await host.start();
   cleanup.push(() => host.close());
-  const api = new ProjectAPI(host);
+  const api = new ProjectAPI(host, undefined, renderer);
   const server = new LocalHTTPService(api),
     address = await server.start();
   cleanup.push(() => server.close());
@@ -308,5 +308,131 @@ describe("review, watch and CLI host adapters", () => {
       gainDB: -1,
       normalizeTo: -24,
     });
+  });
+  it("accepts pinned positional segment commands, repeated fields/values and readable output", async () => {
+    const calls: { operation: string; input: Record<string, unknown> }[] = [];
+    const segment = {
+      id: "Intro",
+      name: "Intro",
+      folder: "indexeddb:sidecut-segments/Intro",
+      clips: 1,
+      duration: 2,
+      tracks: ["Text"],
+      fields: [{ key: "title", label: "Title", defaultValue: "Original" }],
+      files: [],
+      missing: [],
+      savedAt: "",
+      savedFrom: "Source",
+    };
+    const { cli, root, host } = await setup({
+      ready: () => false,
+      screenshot: async () => new Uint8Array(),
+      run: async (operation, input) => {
+        calls.push({ operation, input });
+        if (operation === "save-segment")
+          return { segment, clipIDs: ["a", "b"], copied: [], notes: [] };
+        if (operation === "segments")
+          return {
+            exists: true,
+            folder: "indexeddb:sidecut-segments",
+            segments: [segment],
+            problems: [],
+          };
+        return {
+          segment,
+          at: input.at,
+          applied: { revision: 1, label: "Add Intro", warnings: [], createdIDs: [] },
+        };
+      },
+    });
+    const save = await cli(
+      "segments",
+      "save",
+      "Intro",
+      "--clips",
+      "a,b",
+      "--field",
+      "a=Title",
+      "--field",
+      "b=Subtitle",
+      "--json",
+    );
+    expect(save.code).toBe(0);
+    expect(JSON.parse(save.out)).toMatchObject({ segment: { id: "Intro" }, notes: [] });
+    expect(calls.at(-1)).toEqual({
+      operation: "save-segment",
+      input: { name: "Intro", clips: ["a", "b"], fields: ["a=Title", "b=Subtitle"] },
+    });
+    const legacySave = await cli(
+      "segments",
+      "save",
+      "--name",
+      "Intro",
+      "--clip-ids",
+      '["a"]',
+      "--json",
+    );
+    expect(legacySave.code).toBe(0);
+    expect(calls.at(-1)?.input).toEqual({ name: "Intro", clipIDs: ["a"] });
+    const insert = await cli(
+      "segments",
+      "insert",
+      "Intro",
+      "--at",
+      "0:04",
+      "--value",
+      "title=New",
+      "--value",
+      "subtitle=Second",
+      "--json",
+    );
+    expect(insert.code).toBe(0);
+    expect(calls.at(-1)).toEqual({
+      operation: "insert-segment",
+      input: {
+        name: "Intro",
+        at: 4,
+        values: { title: "New", subtitle: "Second" },
+        author: "agent",
+      },
+    });
+    const readable = await cli("segments");
+    expect(readable.code).toBe(0);
+    expect(readable.out).toContain("Segments in");
+    const source = join(root, "request.json");
+    await writeFile(source, JSON.stringify({ name: "Intro", at: 8 }));
+    const fromFile = await cli("insert-segment", "--input", source, "--json");
+    expect(fromFile.code).toBe(0);
+    expect(calls.at(-1)?.input).toEqual({ name: "Intro", at: 8, author: "agent" });
+    const stale = await cli(
+      "segments",
+      "insert",
+      "Intro",
+      "--at",
+      "8",
+      "--expect",
+      "999",
+      "--json",
+    );
+    expect(stale.code).toBe(4);
+    expect(JSON.parse(stale.err)).toMatchObject({ error: { code: "staleRevision" } });
+    const selected = await cli("segments", "list", "--project", host.store.path, "--json");
+    expect(selected.code).toBe(0);
+    const other = join(root, "other.tandem");
+    await writeFile(other, "{}");
+    const count = calls.length;
+    const wrong = await cli(
+      "segments",
+      "insert",
+      "Intro",
+      "--at",
+      "9",
+      "--project",
+      other,
+      "--json",
+    );
+    expect(wrong.code).toBe(2);
+    expect(wrong.err).toContain("different project");
+    expect(calls).toHaveLength(count);
   });
 });

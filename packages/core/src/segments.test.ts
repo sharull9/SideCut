@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vite-plus/test";
 import { decodeProjectFile, encodeProjectFile } from "@sidecut/contracts/project";
-import { makeSegment, decodeSegment, insertableSegment } from "./segments";
+import { makeSegment, decodeSegment, insertableSegment, segmentSummary } from "./segments";
 import { ProjectCoordinator } from "./coordinator";
 import { projectCredits } from "./asset-use";
+import contract from "../../../tests/fixtures/tandem/segments-cli-foundation.json";
 const source = () =>
   decodeProjectFile({
     revision: 0,
@@ -51,9 +52,9 @@ const source = () =>
     },
   }).project;
 describe("saved segments", () => {
-  it("carries linked clips, media, transitions and credits into another project with fresh IDs", () => {
+  it("carries selected clips, media, transitions and credits into another project with fresh IDs", () => {
     const segment = decodeSegment(
-      JSON.parse(JSON.stringify(makeSegment(source(), ["a"], "Intro", "2026-10-24"))),
+      JSON.parse(JSON.stringify(makeSegment(source(), ["a", "b"], "Intro", "2026-10-24"))),
     );
     expect(segment.template.clips).toHaveLength(2);
     expect(segment.resources).toContainEqual({ key: "m", path: "media/0-logo.png" });
@@ -89,7 +90,7 @@ describe("saved segments", () => {
     expect(target.getSnapshot().project.media).toEqual([]);
   });
   it("rejects overlapping inserts atomically and validates stored resource paths", () => {
-    const s = makeSegment(source(), ["a"], "Intro"),
+    const s = makeSegment(source(), ["a", "b"], "Intro"),
       c = new ProjectCoordinator(decodeProjectFile({ revision: 0, project: {} })),
       batch = {
         commands: [{ insertTemplate: { template: insertableSegment(s), at: 0, mode: "place" } }],
@@ -106,4 +107,67 @@ describe("saved segments", () => {
       }),
     ).toThrow("relative");
   });
+});
+
+it("pins exact selection, mixed unknown IDs, omitted transitions and read-only summaries", () => {
+  const p = source(),
+    before = JSON.stringify(p);
+  const s = makeSegment(p, contract.segments.exactSelection, "  Intro / A  ");
+  expect(s.template.clips.map((c) => c.clip.id)).toEqual(["a"]);
+  expect(s.template.clips[0]!.clip.linkGroup).toBeUndefined();
+  expect(s.notes).toEqual([contract.segments.halfTransitionNote]);
+  expect(s.template.transitions).toEqual([]);
+  expect(s.name).toBe("Intro / A");
+  expect(s.id).toBe("Intro - A");
+  expect(Object.keys(segmentSummary(s, [])).sort()).toEqual(
+    [...contract.segments.summaryKeys].sort(),
+  );
+  expect(segmentSummary(s, []).missing).toEqual(["media/0-logo.png"]);
+  expect(() => makeSegment(p, ["a", "unknown"], "Invalid")).toThrow();
+  expect(JSON.stringify(p)).toBe(before);
+});
+it("pins title fields, defaults, overrides, fresh media IDs and replacement resource isolation", () => {
+  const p = decodeProjectFile({
+    revision: 0,
+    project: {
+      videoTracks: [
+        {
+          id: "t",
+          kind: "video",
+          name: "Text",
+          clips: [{ id: "title", start: 2, duration: 1, content: { text: { text: "Original" } } }],
+        },
+      ],
+    },
+  }).project;
+  const s = makeSegment(p, ["title"], "Title", "first", [
+    { clipID: "title", label: "Section title" },
+  ]);
+  expect(s.template.fields).toEqual([contract.segments.field]);
+  const target = new ProjectCoordinator(decodeProjectFile({ revision: 0, project: {} }));
+  const result = target.apply({
+    commands: [
+      {
+        insertTemplate: {
+          template: insertableSegment(s),
+          at: 0,
+          values: { sectionTitle: "Override" },
+        },
+      },
+    ],
+  });
+  expect(result.revision).toBe(contract.segments.insertRevisionDelta);
+  expect(target.getSnapshot().project.videoTracks[0]!.clips[0]!.content.text).toMatchObject({
+    text: "Override",
+  });
+  target.undo();
+  expect(target.getSnapshot().project.videoTracks).toEqual([]);
+  expect(() => makeSegment(p, ["title"], "Invalid", "", [{ clipID: "missing" }])).toThrow();
+  expect(() => makeSegment(source(), ["a"], "Invalid", "", [{ clipID: "a" }])).toThrow("title");
+  const first = makeSegment(source(), ["a"], "Same", "first"),
+    second = makeSegment(source(), ["a"], "Same", "second");
+  expect(JSON.stringify(insertableSegment(first))).not.toBe(
+    JSON.stringify(insertableSegment(second)),
+  );
+  expect(first.template.clips[0]!.media!.id).toBe("");
 });

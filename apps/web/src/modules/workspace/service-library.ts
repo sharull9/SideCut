@@ -8,6 +8,7 @@ import { starterAssets } from "@sidecut/platform-browser/starter";
 import { projectCredits, creditsText } from "@sidecut/core/asset-use";
 import { QueryError } from "@sidecut/core/project-queries";
 import { readZip } from "@sidecut/core/archive";
+import { segmentSummary, type SegmentField } from "@sidecut/core/segments";
 import { object } from "@sidecut/core/interchange";
 
 export async function libraryOperation(
@@ -66,49 +67,111 @@ export async function libraryOperation(
         ...session.getSnapshot().project.videoTracks,
         ...session.getSnapshot().project.audioTracks,
       ].flatMap((t) => t.clips);
-      const ids =
-        (request.clipIDs as string[] | undefined) ??
-        clips
-          .filter(
-            (c) =>
-              c.start.seconds >= Number(request.from ?? 0) &&
-              c.start.seconds + c.duration.seconds <= Number(request.to ?? Infinity),
+      const explicit = [
+        ...((request.clipIDs as string[] | undefined) ?? []),
+        ...((request.clips as string[] | undefined) ?? []),
+      ];
+      if (!explicit.length && request.from == null && request.to == null)
+        throw new QueryError("badRequest", "Say which clips to save: clipIDs, or from and to.");
+      const ids = explicit.length
+        ? explicit
+        : clips
+            .filter(
+              (c) =>
+                c.start.seconds >= Number(request.from ?? 0) &&
+                c.start.seconds + c.duration.seconds <= Number(request.to ?? Infinity),
+            )
+            .map((c) => c.id);
+      if (!ids.length) throw new QueryError("notFound", "No clip lies wholly between from and to.");
+      const fields: SegmentField[] = (Array.isArray(request.fields) ? request.fields : []).map(
+        (raw: unknown) => {
+          if (typeof raw === "string") {
+            const [clipID, label] = raw.split(/=(.*)/s);
+            if (!clipID?.trim()) throw new QueryError("badRequest", "A field needs a clip ID.");
+            return { clipID: clipID.trim(), ...(label?.trim() ? { label: label.trim() } : {}) };
+          }
+          const field = object(raw);
+          if (
+            typeof field.clipID !== "string" ||
+            !field.clipID ||
+            (field.label != null && typeof field.label !== "string") ||
+            (field.key != null && typeof field.key !== "string")
           )
-          .map((c) => c.id);
-      if (!ids.length)
-        throw new QueryError("badRequest", "Select at least one clip for the segment.");
+            throw new QueryError("badRequest", "Invalid segment field.");
+          return {
+            clipID: field.clipID,
+            ...(typeof field.label === "string" ? { label: field.label } : {}),
+            ...(typeof field.key === "string" ? { key: field.key } : {}),
+          };
+        },
+      );
+      const saved = await session.saveSelectionAsSegment(ids, request.name, {
+        fields,
+        replace: request.replace === true,
+        signal,
+      });
       return {
-        segment: await session.saveSelectionAsSegment(ids, request.name),
+        segment: segmentSummary(
+          saved,
+          saved.resources.map((r) => r.path),
+        ),
         clipIDs: ids,
-        notes: [],
+        copied: saved.resources.map((r) => r.path),
+        notes: saved.notes,
       };
     }
     const library = await SegmentLibrary.open();
     try {
-      const entries = await library.list();
+      const { entries, problems } = await library.inspect();
       signal.throwIfAborted();
       if (operation === "segments")
         return {
           folder: "indexeddb:sidecut-segments",
           exists: true,
-          segments: entries.map((e) => e.segment),
-          problems: [],
+          segments: entries.map((e) =>
+            segmentSummary(
+              e.segment,
+              Object.keys(e.resources).filter((p) => e.resources[p]?.state === "available"),
+            ),
+          ),
+          problems,
         };
-      const entry = entries.find(
-        (e) => e.segment.name === request.name || e.segment.id === request.name,
-      );
+      const wanted = String(request.name).trim();
+      const byID = entries.find((e) => e.segment.id === wanted);
+      const exact = entries.filter((e) => e.segment.name === wanted);
+      const matching = exact.length
+        ? exact
+        : entries.filter((e) => e.segment.name.toLowerCase() === wanted.toLowerCase());
+      if (!byID && matching.length > 1)
+        throw new QueryError(
+          "badRequest",
+          "Several segments have that name. Name one by its folder ID.",
+        );
+      const entry = byID ?? matching[0];
       if (!entry) throw new QueryError("notFound", "Saved segment was not found.");
       if (
         request.at == null ||
         !["place", "overwrite", "insert"].includes(String(request.mode ?? "place"))
       )
         throw new QueryError("badRequest", "Segment insert needs at and a valid mode.");
-      await session.insertSavedSegment(
+      const applied = await session.insertSavedSegment(
         entry,
         Number(request.at),
         request.mode as "place" | "overwrite" | "insert" | undefined,
+        {
+          values: request.values as Record<string, string> | undefined,
+          label: request.label as string | undefined,
+          author: request.author as string | undefined,
+          expectedRevision: request.expectedRevision as number | undefined,
+          signal,
+        },
       );
-      return { revision: session.getSnapshot().revision, segment: entry.segment.id };
+      return {
+        revision: applied.revision,
+        segment: segmentSummary(entry.segment, Object.keys(entry.resources)),
+        at: Number(request.at),
+        applied,
+      };
     } finally {
       library.close();
     }

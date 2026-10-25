@@ -3,6 +3,7 @@ import type { IpcMainInvokeEvent } from "electron";
 import { randomUUID } from "node:crypto";
 import type { HostProjectService } from "./project-service.ts";
 import { bridgeChannels } from "../shared/bridge.ts";
+import { EditError } from "@sidecut/core/coordinator";
 import { QueryError } from "@sidecut/core/project-queries";
 import { rendererMutations } from "@sidecut/core/service-requests";
 export function rendererService(project: HostProjectService, isTrusted: (url: string) => boolean) {
@@ -77,14 +78,19 @@ export function rendererService(project: HostProjectService, isTrusted: (url: st
             /* Older renderers return plain text. */
           }
           reject(
-            new QueryError(
-              detail.code === "badRequest" ||
-                detail.code === "notFound" ||
-                detail.code === "notImplemented"
-                ? detail.code
-                : "unavailable",
-              typeof detail.message === "string" ? detail.message : error,
-            ),
+            detail.code === "staleRevision"
+              ? new EditError(
+                  "stale-revision",
+                  typeof detail.message === "string" ? detail.message : "Stale project revision.",
+                )
+              : new QueryError(
+                  detail.code === "badRequest" ||
+                    detail.code === "notFound" ||
+                    detail.code === "notImplemented"
+                    ? detail.code
+                    : "unavailable",
+                  typeof detail.message === "string" ? detail.message : error,
+                ),
           );
         } else if (
           current.generation !== snapshot.generation ||

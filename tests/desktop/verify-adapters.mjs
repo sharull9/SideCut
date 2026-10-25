@@ -46,7 +46,7 @@ async function verify() {
     const cli = async (...args) => {
       const result = await promisify(execFile)(
         process.execPath,
-        [join(root, "scripts/sidecut-cli.mjs"), ...args, "--endpoint-file", endpointFile],
+        [join(root, "scripts/sidecut-cli.mjs"), ...args, "--json", "--endpoint-file", endpointFile],
         { env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" }, windowsHide: true },
       );
       return JSON.parse(result.stdout);

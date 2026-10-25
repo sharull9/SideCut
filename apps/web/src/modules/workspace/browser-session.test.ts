@@ -6,12 +6,53 @@ import { acquireProjectWriter } from "@sidecut/platform-browser/writer-lock";
 import { probeLocalFile } from "@sidecut/platform-browser/media";
 import type * as MediaModule from "@sidecut/platform-browser/media";
 import { BrowserProjectSession } from "./browser-session";
+import { libraryOperation } from "./service-library";
+import { serviceRequest } from "@sidecut/core/service-requests";
+import type { StorageRequest } from "@sidecut/contracts/storage";
+import type * as LegacyStorageModule from "../../../../../packages/platform-browser/src/legacy-storage";
 import { createArchive } from "@sidecut/core/archive";
 
 vi.mock("@sidecut/platform-browser/writer-lock", () => ({ acquireProjectWriter: vi.fn() }));
 vi.mock("@sidecut/platform-browser/media", async (importOriginal) => ({
   ...(await importOriginal<typeof MediaModule>()),
   probeLocalFile: vi.fn(),
+}));
+
+const segmentStorage = vi.hoisted(() => {
+  const rows = new Map<string, string>(),
+    files = new Map<string, Uint8Array<ArrayBuffer>>();
+  return {
+    rows,
+    files,
+    async request(input: StorageRequest) {
+      if (input.type === "read")
+        return [...rows]
+          .filter(([k]) => input.key == null || k === input.key)
+          .map(([key, value]) => ({ key, value }));
+      for (const check of input.checks)
+        if ((rows.get(check.key) ?? null) !== check.value)
+          throw new Error("Concurrent storage change");
+      for (const write of input.writes) {
+        if (write.value == null) rows.delete(write.key);
+        else rows.set(write.key, write.value);
+      }
+      return [];
+    },
+    async putFile(bytes: Uint8Array) {
+      const key = crypto.randomUUID();
+      files.set(key, bytes.slice());
+      return key;
+    },
+    async getFile(key: string) {
+      const bytes = files.get(key);
+      if (!bytes) throw new Error("Missing test file");
+      return bytes;
+    },
+  };
+});
+vi.mock("../../../../../packages/platform-browser/src/legacy-storage", async (importOriginal) => ({
+  ...(await importOriginal<typeof LegacyStorageModule>()),
+  migrateLibrary: async () => segmentStorage,
 }));
 
 describe("persistent browser session", () => {
@@ -49,6 +90,8 @@ describe("persistent browser session", () => {
     saved = null;
     failSave = false;
     resources.clear();
+    segmentStorage.rows.clear();
+    segmentStorage.files.clear();
     release.mockClear();
     vi.spyOn(BrowserProjectStore, "open").mockResolvedValue(
       store as unknown as BrowserProjectStore,
@@ -321,5 +364,189 @@ describe("persistent browser session", () => {
     await reopened.start();
     expect(reopened.apply(batch)).toEqual(result);
     expect(reopened.getSnapshot().revision).toBe(1);
+  });
+  it("runs segment service contracts through the real session/library with one atomic undoable insertion", async () => {
+    const value = session(),
+      signal = new AbortController().signal;
+    await value.start();
+    await value.openProject(
+      new File(
+        [
+          JSON.stringify({
+            revision: 0,
+            project: {
+              id: "segment-service",
+              videoTracks: [
+                {
+                  id: "text",
+                  kind: "video",
+                  name: "Text",
+                  clips: [
+                    {
+                      id: "title",
+                      linkGroup: "pair",
+                      start: 0,
+                      duration: 2,
+                      content: { text: { text: "Original" } },
+                    },
+                    {
+                      id: "partner",
+                      linkGroup: "pair",
+                      start: 2,
+                      duration: 1,
+                      content: { text: { text: "Partner" } },
+                    },
+                  ],
+                },
+              ],
+            },
+          }),
+        ],
+        "source.tandem",
+      ),
+    );
+    const run = (operation: string, request: unknown = {}) =>
+      libraryOperation(value, operation, serviceRequest(operation, request), signal);
+    const before = encodeProjectFile(value.projectFile());
+    await expect(run("save-segment", { name: "Missing" })).rejects.toThrow("Say which clips");
+    await expect(
+      run("save-segment", { name: "Mixed", clipIDs: ["title", "unknown"] }),
+    ).rejects.toThrow();
+    await expect(run("save-segment", { name: "Range", from: 10, to: 11 })).rejects.toThrow(
+      "No clip",
+    );
+    expect(encodeProjectFile(value.projectFile())).toBe(before);
+    const savedSegment = await run("save-segment", {
+      name: "Title",
+      clips: "title",
+      fields: ["title=Section title"],
+    });
+    expect(savedSegment).toMatchObject({
+      segment: {
+        clips: 1,
+        duration: 2,
+        fields: [{ key: "sectionTitle", defaultValue: "Original" }],
+      },
+      clipIDs: ["title"],
+      copied: [],
+      notes: [],
+    });
+    expect(encodeProjectFile(value.projectFile())).toBe(before);
+    await expect(run("save-segment", { name: "Title", clipIDs: ["title"] })).rejects.toThrow(
+      "already exists",
+    );
+    segmentStorage.rows.set("broken", "invalid JSON");
+    expect(await run("segments")).toMatchObject({
+      exists: true,
+      segments: [{ id: "Title", clips: 1 }],
+      problems: ["broken: Invalid stored segment."],
+    });
+    await expect(run("insert-segment", { name: "missing", at: 4 })).rejects.toThrow("not found");
+    await expect(
+      run("insert-segment", { name: "Title", at: 4, values: { unknown: "No" } }),
+    ).rejects.toThrow("no field");
+    await expect(
+      run("insert-segment", { name: "Title", at: 4, expectedRevision: 100 }),
+    ).rejects.toThrow();
+    expect(encodeProjectFile(value.projectFile())).toBe(before);
+    const inserted = await run("insert-segment", {
+      name: "title",
+      at: "0:04",
+      values: { sectionTitle: "Inserted" },
+      label: "Add title",
+      author: "agent",
+      expectedRevision: 0,
+    });
+    expect(inserted).toMatchObject({
+      at: 4,
+      segment: { id: "Title" },
+      applied: { revision: 1, label: "Add title", author: "agent", warnings: [] },
+    });
+    expect(value.getSnapshot().project.videoTracks[0]!.clips.at(-1)!.content.text).toMatchObject({
+      text: "Inserted",
+    });
+    const after = encodeProjectFile(value.projectFile());
+    await expect(run("insert-segment", { name: "Title", at: 4 })).rejects.toThrow("already has");
+    expect(encodeProjectFile(value.projectFile())).toBe(after);
+    value.undo();
+    expect(value.getSnapshot().project.videoTracks[0]!.clips).toHaveLength(2);
+    value.redo();
+    expect(value.getSnapshot().project.videoTracks[0]!.clips).toHaveLength(3);
+    const revision = value.getSnapshot().revision;
+    await run("save-segment", { name: "Title", clipIDs: ["partner"], replace: true });
+    expect(value.getSnapshot().revision).toBe(revision);
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      libraryOperation(value, "insert-segment", { name: "Title", at: 8 }, controller.signal),
+    ).rejects.toThrow();
+    expect(value.getSnapshot().revision).toBe(revision);
+  });
+  it("copies segment files under the committed media IDs and isolates replacement resources", async () => {
+    const value = session(),
+      signal = new AbortController().signal;
+    await value.start();
+    await value.openProject(
+      new File(
+        [
+          JSON.stringify({
+            revision: 0,
+            project: {
+              id: "segment-files",
+              media: [{ id: "source", kind: "image", path: "source.png" }],
+              videoTracks: [
+                {
+                  id: "image",
+                  kind: "video",
+                  name: "Image",
+                  clips: [
+                    {
+                      id: "image-clip",
+                      start: 0,
+                      duration: 1,
+                      content: { media: { mediaID: "source" } },
+                    },
+                  ],
+                },
+              ],
+            },
+          }),
+        ],
+        "source.tandem",
+      ),
+    );
+    const file = (body: string) => ({
+      file: new File([body], "source.png", { type: "image/png" }),
+      state: "available",
+      detail: "Synthetic bytes",
+    });
+    resources.set("source", file("original"));
+    const run = (operation: string, request: unknown) =>
+      libraryOperation(value, operation, serviceRequest(operation, request), signal);
+    await run("save-segment", { name: "Picture", clipIDs: ["image-clip"] });
+    await run("insert-segment", { name: "Picture", at: 3 });
+    const first = value.getSnapshot().project.media.find((m) => m.id !== "source")!;
+    expect(first.id).not.toBe("source");
+    expect(await (await value.resource(first.id))!.file.text()).toBe("original");
+    resources.set("source", file("replacement"));
+    await run("save-segment", { name: "Picture", clipIDs: ["image-clip"], replace: true });
+    await run("insert-segment", { name: "Picture", at: 5 });
+    const second = value
+      .getSnapshot()
+      .project.media.find((m) => m.id !== "source" && m.id !== first.id)!;
+    expect(second.path).not.toBe(first.path);
+    expect(await (await value.resource(second.id))!.file.text()).toBe("replacement");
+    expect(await (await value.resource(first.id))!.file.text()).toBe("original");
+    const before = encodeProjectFile(value.projectFile());
+    resources.delete("source");
+    await expect(
+      run("save-segment", { name: "Missing media", clipIDs: ["image-clip"] }),
+    ).rejects.toThrow("missing");
+    expect(encodeProjectFile(value.projectFile())).toBe(before);
+    value.undo();
+    expect(value.getSnapshot().project.media).toHaveLength(2);
+    value.redo();
+    expect(value.getSnapshot().project.media).toHaveLength(3);
+    expect(await (await value.resource(second.id))!.file.text()).toBe("replacement");
   });
 });

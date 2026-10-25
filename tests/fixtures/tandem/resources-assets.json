@@ -1,0 +1,42 @@
+{
+  "revision": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "sources": [
+    "Sources/TandemAPI/Relink.swift",
+    "Sources/TandemAPI/ServiceTypes.swift",
+    "Sources/TandemAPI/AssetTypes.swift",
+    "Sources/TandemAPI/AssetService.swift",
+    "Sources/TandemAssets/Library/AssetLibrary.swift"
+  ],
+  "relink": {
+    "dryRun": false,
+    "search": [],
+    "fields": ["revision", "dryRun", "searched", "relinked", "missing"],
+    "unknownFolder": "notFound",
+    "duplicateWithoutFingerprint": "ambiguous"
+  },
+  "effects": {
+    "fields": ["effects", "transitions", "layouts", "animatable"],
+    "unknownType": "notFound",
+    "transitions": 8,
+    "layouts": 5
+  },
+  "providers": { "fields": ["providers"], "projectMutation": false },
+  "search": {
+    "text": "",
+    "online": false,
+    "limit": 20,
+    "minimumLimit": 1,
+    "maximumLimit": 200,
+    "unknownProvider": "notFound",
+    "invalidKind": "badRequest",
+    "onlineFailure": "per-provider error",
+    "catalogueIncludesNewResults": true
+  },
+  "fetch": {
+    "fields": ["asset", "file", "licence"],
+    "unknownID": "notFound",
+    "projectMutation": false,
+    "normalisedCacheSkipsDownload": true
+  },
+  "notice": "Synthetic contract expectations from the pinned source. TANDEM-LICENSE applies. Windows/browser bounds are documented separately."
+}

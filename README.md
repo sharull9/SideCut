@@ -355,3 +355,5 @@ and save camera picture-delay defaults. Watch replays recent changes; waits can
 schedule analysis and observe API exports. Archive supports folder copies,
 consolidation, dry runs and optional browser caches. See
 [comments/jobs/archive verification and limits](docs/verification/jobs-archive.md).
+
+Resource and asset service adapters now support folder relink plans, complete effect catalogues, provider status, reference search defaults and cached fetches. See [verification and compatibility limits](docs/verification/resources-assets.md).

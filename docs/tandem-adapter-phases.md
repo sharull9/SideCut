@@ -138,16 +138,16 @@ these checked adapters and the following archive subphase.
 Acceptance per operation: compare request defaults, result shape, revision, warnings, and a failure with a pinned contract fixture. Mutations also need atomicity and undo coverage; streams need close/cancellation coverage.
 
 - [x] 128.01: archive. Folder dry runs, standalone copies, registered resources/caches, missing-media reports, safe publication, consolidation through one edit and undo pass core/host and Electron checks. Native folder collection differences are recorded in the follow-up report.
-- [ ] 128.02: relink.
-- [ ] 128.03: effects.
+- [x] 128.02: relink. Recursive name/fingerprint matching, ambiguity, dry runs, cancellation, staging failures and one shared apply/undo pass host tests. Electron restores a PNG and verifies stale/missing-folder failures within the documented scan/resource bounds.
+- [x] 128.03: effects. Filtered effect definitions, transition durations, named layouts and animation paths match the pinned catalogue; unknown types and read-only HTTP behavior pass.
 
 ## Group 129: Assets and segments
 
 Acceptance per operation: compare request defaults, result shape, revision, warnings, and a failure with a pinned contract fixture. Mutations also need atomicity and undo coverage; streams need close/cancellation coverage.
 
-- [ ] 129.01: providers.
-- [ ] 129.02: search.
-- [ ] 129.03: fetch.
+- [x] 129.01: providers. All 12 provider metadata/status records pass tests and Electron HTTP checks without exposing credentials. Keyed/paid provider execution is outside this batch.
+- [x] 129.02: search. Reference defaults, clamped limits, aliases, kind/provider validation, result merging, per-provider failures and cancellation pass tests. Electron verifies local search and a live Iconify search.
+- [x] 129.03: fetch. Actual LUT normalization, licence preservation, live Iconify download/SVG normalization, cache reuse and unchanged project revision pass Electron checks. Native library-path differences are documented.
 - [ ] 129.04: show.
 - [ ] 129.05: use.
 - [ ] 129.06: credits.
@@ -156,6 +156,8 @@ Acceptance per operation: compare request defaults, result shape, revision, warn
 - [ ] 129.09: segments.
 - [ ] 129.10: save-segment.
 - [ ] 129.11: insert-segment.
+
+See [resource/asset evidence and limits](verification/resources-assets.md) for the five adapters above.
 
 ## Group 130: CLI
 

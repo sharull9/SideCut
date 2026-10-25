@@ -40,15 +40,25 @@ export const serviceDefinitions = {
     label: "string",
     author: "string",
   },
-  relink: { mediaID: "string", path: "string" },
+  relink: {
+    mediaID: "string",
+    path: "string",
+    search: "strings",
+    dryRun: "boolean",
+    label: "string",
+    author: "string",
+    expectedRevision: "integer",
+  },
   "assets-providers": {},
   "assets-search": {
     text: "string",
-    kinds: "strings",
-    providers: "strings",
+    kinds: "list",
+    kind: "list",
+    providers: "list",
+    provider: "list",
     online: "boolean",
-    limit: "integer",
-    maxDuration: "number",
+    limit: "signedInteger",
+    maxDuration: "time",
   },
   "assets-fetch": { id: "string", online: "boolean" },
   "assets-show": { id: "string" },
@@ -171,23 +181,27 @@ export function requestJsonSchema(
   const field = (kind: string): object =>
     kind === "boolean"
       ? { type: "boolean" }
-      : kind === "integer"
-        ? { type: "integer", minimum: 0 }
-        : kind === "number"
-          ? { type: "number" }
-          : kind === "time" || kind === "reference"
-            ? { anyOf: [{ type: "number" }, { type: "string" }] }
-            : ["array", "strings", "times"].includes(kind)
-              ? {
-                  type: "array",
-                  items:
-                    kind === "strings"
-                      ? { type: "string" }
-                      : kind === "times"
-                        ? { anyOf: [{ type: "number" }, { type: "string" }] }
-                        : { type: "object" },
-                }
-              : { type: "string" };
+      : kind === "signedInteger"
+        ? { type: "integer" }
+        : kind === "integer"
+          ? { type: "integer", minimum: 0 }
+          : kind === "number"
+            ? { type: "number" }
+            : kind === "list"
+              ? { anyOf: [{ type: "string" }, { type: "array", items: { type: "string" } }] }
+              : kind === "time" || kind === "reference"
+                ? { anyOf: [{ type: "number" }, { type: "string" }] }
+                : ["array", "strings", "times"].includes(kind)
+                  ? {
+                      type: "array",
+                      items:
+                        kind === "strings"
+                          ? { type: "string" }
+                          : kind === "times"
+                            ? { anyOf: [{ type: "number" }, { type: "string" }] }
+                            : { type: "object" },
+                    }
+                  : { type: "string" };
   return {
     type: "object" as const,
     properties: Object.fromEntries(Object.entries(fields).map(([key, kind]) => [key, field(kind)])),
@@ -204,7 +218,17 @@ export function serviceRequest(operation: string, input: unknown): Record<string
     const kind = Object.hasOwn(fields, key) ? fields[key] : undefined;
     if (!kind) throw new QueryError("badRequest", `Unknown ${operation} field: ${key}.`);
     if (value == null) continue;
-    if (kind === "time")
+    if (
+      kind === "list" &&
+      (typeof value === "string" ||
+        (Array.isArray(value) &&
+          value.length <= 10000 &&
+          value.every((v) => typeof v === "string")))
+    )
+      result[key] = (typeof value === "string" ? value.split(",") : value)
+        .map((v) => v.trim())
+        .filter(Boolean);
+    else if (kind === "time")
       result[key] = parseQueryTime(value, operation === "sync" && key === "delay");
     else if (
       kind === "reference" &&
@@ -213,10 +237,10 @@ export function serviceRequest(operation: string, input: unknown): Record<string
     )
       result[key] = String(value);
     else if (
-      kind === "integer" &&
+      (kind === "integer" || kind === "signedInteger") &&
       typeof value === "number" &&
       Number.isSafeInteger(value) &&
-      value >= 0
+      (kind === "signedInteger" || value >= 0)
     )
       result[key] = value;
     else if (kind === "number" && typeof value === "number" && Number.isFinite(value))

@@ -34,7 +34,7 @@ import { encodeProjectFile } from "@sidecut/contracts/project";
 import { safeArchivePath } from "@sidecut/core/archive";
 import { checkRanges } from "@sidecut/core/quality-check";
 import { reviewQuery } from "@sidecut/core/service-review";
-import { effectRegistry, renderedEffects } from "@sidecut/core/effects";
+import { effectsCatalog } from "@sidecut/core/effects";
 import { importEDL, object } from "@sidecut/core/interchange";
 import { readFilmoraSource } from "./filmora-import.ts";
 import { analysisKinds, decodeQueryState } from "@sidecut/core/query-state";
@@ -42,6 +42,7 @@ import { serviceExportPlan } from "@sidecut/core/service-export";
 import { speechTracks } from "@sidecut/core/speech";
 import { resolveServiceMedia, isCameraTake } from "@sidecut/core/service-sync";
 import { folderArchive } from "./service-archive.ts";
+import { relinkPlan, fileFingerprint } from "./service-relink.ts";
 type RendererOperations = {
   ready?: () => boolean;
   run: (operation: string, input: Record<string, unknown>, signal: AbortSignal) => Promise<unknown>;
@@ -652,15 +653,7 @@ export class ProjectAPI {
       if (["validate", "check", "comments"].includes(operation))
         return reviewQuery(this.file(), operation, request);
       if (operation === "effects") {
-        const effects = effectRegistry.filter(
-          (e) =>
-            request.type == null || e.type.toLowerCase() === String(request.type).toLowerCase(),
-        );
-        if (!effects.length) throw new QueryError("notFound", "Unknown effect type.");
-        return {
-          effects: effects.map((e) => ({ ...e, rendered: renderedEffects.has(e.type) })),
-          warnings: ["Effects without a renderer are retained but cannot be rendered."],
-        };
+        return effectsCatalog(typeof request.type === "string" ? request.type : undefined);
       }
       if (operation === "watch") {
         const result = await this.watch(request, signal);
@@ -815,6 +808,69 @@ export class ProjectAPI {
         };
       }
       if (operation === "relink") {
+        if (request.path == null && request.mediaID == null) {
+          const before = this.project.snapshot(),
+            file = this.file();
+          if (request.expectedRevision != null && request.expectedRevision !== file.revision)
+            throw new EditError("stale-revision", "Project revision changed.");
+          const plan = await relinkPlan(
+            file,
+            this.mediaRoot ?? dirname(this.project.store.path),
+            request,
+            signal,
+          );
+          if (request.dryRun === true || !plan.found.length) return plan.result;
+          if (!this.renderer)
+            throw new QueryError(
+              "unavailable",
+              "A ready editor is required to stage relinked resources.",
+            );
+          for (const match of plan.found) {
+            signal.throwIfAborted();
+            const bytes = await readFile(match.absolute);
+            if (
+              bytes.length > 64 * 1024 * 1024 ||
+              (await fileFingerprint(match.absolute, signal)) !== match.fingerprint
+            )
+              throw new QueryError("unavailable", "Relink source changed during the scan. Retry.");
+            const current = this.project.snapshot();
+            if (current.generation !== before.generation || this.file().revision !== file.revision)
+              throw new EditError("stale-revision", "Project changed during relink. Retry.");
+            await this.renderer.run(
+              "relink-stage",
+              {
+                projectID: file.project.id,
+                mediaID: match.mediaID,
+                name: match.to.split(/[\\/]/).at(-1),
+                bytes: Array.from(bytes),
+              },
+              signal,
+            );
+          }
+          signal.throwIfAborted();
+          const applied = this.apply(
+            {
+              commands: plan.commands,
+              label: request.label ?? `Relink ${plan.found.length} missing files`,
+              author: request.author,
+              expectedRevision: file.revision,
+            },
+            file,
+            before.generation,
+          );
+          return { ...plan.result, revision: this.file().revision, applied };
+        }
+        if (
+          request.search != null ||
+          request.dryRun != null ||
+          request.label != null ||
+          request.author != null ||
+          request.expectedRevision != null
+        )
+          throw new QueryError(
+            "badRequest",
+            "Use folder relink options separately from legacy mediaID/path replacement.",
+          );
         if (!this.renderer)
           throw new QueryError("unavailable", "A ready editor is required for relink.");
         if (typeof request.path !== "string" || typeof request.mediaID !== "string")

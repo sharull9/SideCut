@@ -37,7 +37,7 @@ export async function rendererOperation(
     const { checkService } = await import("./service-check");
     return checkService(session, serviceRequest("check", input.request), input.ranges, signal);
   }
-  if (operation === "relink") {
+  if (operation === "relink" || operation === "relink-stage") {
     if (
       !input ||
       typeof input !== "object" ||
@@ -52,6 +52,17 @@ export async function rendererOperation(
     )
       throw new QueryError("badRequest", "Invalid relink resource.");
     signal.throwIfAborted();
+    if (operation === "relink-stage") {
+      if (!("projectID" in input) || typeof input.projectID !== "string")
+        throw new QueryError("badRequest", "Invalid relink project.");
+      await session.stageServiceResource(
+        input.projectID,
+        input.mediaID,
+        new File([new Uint8Array(input.bytes)], input.name),
+        signal,
+      );
+      return { staged: input.mediaID };
+    }
     await session.relinkMedia(input.mediaID, new File([new Uint8Array(input.bytes)], input.name));
     return {
       revision: session.getSnapshot().revision,

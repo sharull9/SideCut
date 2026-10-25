@@ -118,7 +118,7 @@ export async function libraryOperation(
   const library = await AssetLibrary.open();
   try {
     const providers = new BrowserAssetProviders(library);
-    if (operation === "assets-providers") return { providers: await providers.list() };
+    if (operation === "assets-providers") return { providers: await providers.list(signal) };
     if (operation === "assets-install-starter") {
       const assets = starterAssets();
       await library.mergeRemote(assets);
@@ -137,43 +137,8 @@ export async function libraryOperation(
       };
     }
     if (operation === "assets-search") {
-      const text = String(request.text ?? ""),
-        limit = Number(request.limit ?? 30);
-      if (limit < 1 || limit > 150)
-        throw new QueryError("badRequest", "Asset search limit must be 1-150.");
-      const kinds = request.kinds as string[] | undefined,
-        selected = request.providers as string[] | undefined;
-      const matches = (await library.entries(text))
-        .map((e) => e.asset)
-        .filter(
-          (a) =>
-            (!kinds?.length || kinds.includes(a.kind)) &&
-            (!selected?.length || selected.includes(a.provider)) &&
-            (request.maxDuration == null ||
-              a.duration == null ||
-              a.duration <= Number(request.maxDuration)),
-        );
-      const online = [];
-      if (request.online === true) {
-        if (!selected?.length)
-          throw new QueryError("badRequest", "Choose providers explicitly for an online search.");
-        for (const id of selected) {
-          signal.throwIfAborted();
-          const assets = await providers.search(
-            id,
-            { text, kinds, perPage: limit, maxDuration: request.maxDuration },
-            signal,
-          );
-          await library.mergeRemote(assets);
-          online.push({ provider: id, assets });
-        }
-      }
-      return {
-        text,
-        local: matches.slice(0, limit),
-        total: matches.length,
-        ...(request.online === true ? { online } : {}),
-      };
+      const { searchServiceAssets } = await import("./service-assets");
+      return searchServiceAssets(library, providers, request, signal);
     }
     if (operation === "assets-generate") {
       if (request.confirmedPaid !== true)
@@ -195,14 +160,35 @@ export async function libraryOperation(
     if (typeof request.id !== "string")
       throw new QueryError("badRequest", "An asset id is required.");
     let entry = await library.get(request.id);
+    if (
+      !entry &&
+      operation === "assets-fetch" &&
+      request.id.startsWith("fontsource:") &&
+      request.online !== false
+    ) {
+      const found = await providers.search(
+        "fontsource",
+        {
+          text: request.id.slice("fontsource:".length).replaceAll("-", " "),
+          kinds: ["font"],
+          perPage: 50,
+        },
+        signal,
+      );
+      await library.mergeRemote(found);
+      entry = await library.get(request.id);
+    }
     if (!entry)
       throw new QueryError(
         "notFound",
         "Asset was not found in the catalogue. Search or install starter metadata first.",
       );
     if (operation === "assets-fetch") {
-      if (!entry.normalised && !entry.original && request.online !== true)
-        throw new QueryError("badRequest", "Downloading an asset requires online:true.");
+      if (!entry.normalised && !entry.original && request.online === false)
+        throw new QueryError(
+          "badRequest",
+          "This asset is not cached and online:false prevents its download.",
+        );
       entry = await providers.fetch(entry.asset, signal);
     }
     signal.throwIfAborted();
@@ -214,6 +200,21 @@ export async function libraryOperation(
         );
       const used = await session.useLibraryAsset(entry);
       return { revision: session.getSnapshot().revision, asset: entry.asset, ...used };
+    }
+    if (operation === "assets-fetch") {
+      let licence: unknown = assetLicence(entry.asset);
+      if (entry.licence) {
+        try {
+          licence = object(JSON.parse(await entry.licence.text()));
+        } catch {
+          /* Imported licences may be plain text; keep their file and report metadata. */
+        }
+      }
+      return {
+        asset: entry.asset,
+        file: entry.normalised?.name,
+        licence,
+      };
     }
     return {
       asset: entry.asset,

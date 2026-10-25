@@ -1,0 +1,195 @@
+{
+  "platform": "win32",
+  "relink": {
+    "dryRun": {
+      "revision": 0,
+      "dryRun": true,
+      "searched": [
+        "C:\\Users\\Arafa\\AppData\\Local\\Temp\\sidecut-resources-gUtU3p",
+        "C:\\Users\\Arafa\\AppData\\Local\\Temp\\sidecut-relink-sources-E3JgGo"
+      ],
+      "relinked": [
+        {
+          "mediaID": "image",
+          "from": "lost/image.png",
+          "to": "C:\\Users\\Arafa\\AppData\\Local\\Temp\\sidecut-relink-sources-E3JgGo\\nested\\image.png"
+        }
+      ],
+      "missing": [
+        {
+          "mediaID": "missing",
+          "path": "lost/absent.wav",
+          "clips": 0,
+          "ambiguous": false
+        }
+      ]
+    },
+    "relinked": [
+      {
+        "mediaID": "image",
+        "from": "lost/image.png",
+        "to": "C:\\Users\\Arafa\\AppData\\Local\\Temp\\sidecut-relink-sources-E3JgGo\\nested\\image.png"
+      }
+    ],
+    "revision": 1,
+    "undo": true,
+    "decoded": {
+      "width": 1,
+      "height": 1
+    }
+  },
+  "effects": {
+    "effects": 15,
+    "transitions": [
+      {
+        "type": "dissolve",
+        "defaultDuration": 0.5
+      },
+      {
+        "type": "fadeToBlack",
+        "defaultDuration": 1.1
+      },
+      {
+        "type": "fadeFromBlack",
+        "defaultDuration": 1.1
+      },
+      {
+        "type": "push",
+        "defaultDuration": 0.7
+      },
+      {
+        "type": "slide",
+        "defaultDuration": 0.7
+      },
+      {
+        "type": "cutSlide",
+        "defaultDuration": 0.57
+      },
+      {
+        "type": "wipe",
+        "defaultDuration": 0.6
+      },
+      {
+        "type": "zoom",
+        "defaultDuration": 0.5
+      }
+    ],
+    "layouts": [
+      {
+        "preset": "full",
+        "name": "Full"
+      },
+      {
+        "preset": "pipRight",
+        "name": "PiP right"
+      },
+      {
+        "preset": "pipLeft",
+        "name": "PiP left"
+      },
+      {
+        "preset": "split",
+        "name": "Split"
+      },
+      {
+        "preset": "fill",
+        "name": "Fill"
+      }
+    ],
+    "animatable": [
+      "video.transform.position",
+      "video.transform.scale",
+      "video.transform.rotation",
+      "video.opacity",
+      "video.crop.left",
+      "video.crop.top",
+      "video.crop.right",
+      "video.crop.bottom",
+      "audio.gainDB",
+      "video.effects.<effectID>.<param>",
+      "audio.effects.<effectID>.<param>"
+    ]
+  },
+  "providers": [
+    {
+      "id": "shared",
+      "status": "ready"
+    },
+    {
+      "id": "import",
+      "status": "ready"
+    },
+    {
+      "id": "pixabay",
+      "status": "needsKey"
+    },
+    {
+      "id": "pexels",
+      "status": "needsKey"
+    },
+    {
+      "id": "freesound",
+      "status": "disabled"
+    },
+    {
+      "id": "iconify",
+      "status": "ready"
+    },
+    {
+      "id": "svgl",
+      "status": "ready"
+    },
+    {
+      "id": "noto",
+      "status": "ready"
+    },
+    {
+      "id": "fontsource",
+      "status": "ready"
+    },
+    {
+      "id": "elevenlabs",
+      "status": "needsKey"
+    },
+    {
+      "id": "epidemic",
+      "status": "stub"
+    },
+    {
+      "id": "lordicon",
+      "status": "stub"
+    }
+  ],
+  "search": {
+    "defaultLimit": 20,
+    "total": 25,
+    "onlineLocal": 25,
+    "providerFailure": "Configure Pixabay in desktop provider settings."
+  },
+  "fetch": {
+    "file": "runtime.cube",
+    "licence": {
+      "name": "Fixture permission",
+      "licenceClass": "noCredit",
+      "holder": "Test fixture"
+    },
+    "cacheHit": true,
+    "plainTextLicencePreserved": true,
+    "projectUnchanged": true
+  },
+  "publicProvider": {
+    "verified": true,
+    "id": "iconify:ic:baseline-check",
+    "file": "15f34768147c1239990897698a889df0e0089119f5c664a11e2bf99371688f19.png",
+    "licence": {
+      "name": "Apache 2.0",
+      "licenceClass": "noCredit",
+      "spdx": "Apache-2.0",
+      "url": "https://github.com/material-icons/material-icons/blob/master/LICENSE",
+      "holder": "Material Design Authors",
+      "creditLine": null,
+      "sourceURL": "https://icon-sets.iconify.design/ic/baseline-check/",
+      "snapshottedAt": "2026-10-25T05:49:09.357Z"
+    }
+  }
+}

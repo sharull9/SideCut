@@ -65,9 +65,10 @@ export class BrowserAssetProviders {
       signal.removeEventListener("abort", abort);
     }
   }
-  async list(): Promise<ProviderInfo[]> {
+  async list(signal: AbortSignal = new AbortController().signal): Promise<ProviderInfo[]> {
+    signal.throwIfAborted();
     if (!this.bridge) return this.engine.list();
-    const raw = await this.call({ operation: "list" }, new AbortController().signal);
+    const raw = await this.call({ operation: "list" }, signal);
     if (!Array.isArray(raw)) throw new Error("Invalid provider status response.");
     return raw.map((v) => {
       if (
@@ -111,12 +112,14 @@ export class BrowserAssetProviders {
         throw new Error("Invalid provider file response.");
     return { asset, files: raw.files };
   }
-  async storeFetched(value: unknown) {
+  async storeFetched(value: unknown, existingLicence?: File) {
     const fetched = this.fetched(value),
       files = fetched.files.map((f) => new File([f.bytes], f.name, { type: f.type })),
-      licence = new File([JSON.stringify(assetLicence(fetched.asset), null, 2)], "licence.json", {
-        type: "application/json",
-      });
+      licence =
+        existingLicence ??
+        new File([JSON.stringify(assetLicence(fetched.asset), null, 2)], "licence.json", {
+          type: "application/json",
+        });
     let failure: unknown;
     for (const file of files) {
       try {
@@ -142,7 +145,9 @@ export class BrowserAssetProviders {
     throw failure ?? new Error("Provider files could not be normalized.");
   }
   async fetch(asset: Asset, signal: AbortSignal) {
+    signal.throwIfAborted();
     const known = await this.library.get(asset.id);
+    signal.throwIfAborted();
     if (known?.normalised) return known;
     let raw: unknown;
     if (known?.original) {
@@ -164,7 +169,7 @@ export class BrowserAssetProviders {
     signal.throwIfAborted();
     const fetched = this.fetched(raw);
     if (fetched.asset.id !== asset.id) throw new Error("Fetched asset identity changed.");
-    return this.storeFetched(fetched);
+    return this.storeFetched(fetched, known?.licence);
   }
   async generate(value: unknown, confirmedPaid: boolean, signal: AbortSignal) {
     const request = decodeGeneration(value);

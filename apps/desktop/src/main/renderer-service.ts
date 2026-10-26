@@ -6,11 +6,22 @@ import { bridgeChannels } from "../shared/bridge.ts";
 import { EditError } from "@sidecut/core/coordinator";
 import { QueryError } from "@sidecut/core/project-queries";
 import { rendererMutations } from "@sidecut/core/service-requests";
-export function rendererService(project: HostProjectService, isTrusted: (url: string) => boolean) {
+import { projectDuration } from "@sidecut/core/render-plan";
+import { decodeProjectFile } from "@sidecut/contracts/project";
+export function rendererService(
+  project: HostProjectService,
+  isTrusted: (url: string) => boolean,
+  onJobs: (jobs: unknown[]) => void = () => {},
+) {
   const ready = new Set<number>(),
     pending = new Map<
       string,
-      { sender: number; operation: string; finish: (result: unknown, error?: string) => void }
+      {
+        sender: number;
+        operation: string;
+        finish: (result: unknown, error?: string) => void;
+        progress?: (value: number) => void;
+      }
     >();
   const check = (event: IpcMainInvokeEvent) => {
     if (event.senderFrame !== event.sender.mainFrame || !isTrusted(event.senderFrame?.url ?? ""))
@@ -23,6 +34,25 @@ export function rendererService(project: HostProjectService, isTrusted: (url: st
         !w.webContents.isDestroyed() &&
         isTrusted(w.webContents.getURL()),
     );
+  ipcMain.handle(bridgeChannels.serviceProgress, (event, id: unknown, progress: unknown) => {
+    check(event);
+    if (
+      typeof id !== "string" ||
+      typeof progress !== "number" ||
+      !Number.isFinite(progress) ||
+      progress < 0 ||
+      progress > 1
+    )
+      throw new Error("Invalid service progress.");
+    const request = pending.get(id);
+    if (request?.sender === event.sender.id) request.progress?.(progress);
+  });
+  ipcMain.handle(bridgeChannels.serviceJobs, (event, jobs: unknown) => {
+    check(event);
+    if (!Array.isArray(jobs) || jobs.length > 500 || JSON.stringify(jobs).length > 512 * 1024)
+      throw new Error("Invalid job update.");
+    onJobs(jobs);
+  });
   ipcMain.handle(bridgeChannels.serviceReady, (event, value: unknown) => {
     check(event);
     if (typeof value !== "boolean") throw new Error("Invalid renderer readiness.");
@@ -46,6 +76,7 @@ export function rendererService(project: HostProjectService, isTrusted: (url: st
     operation: string,
     input: Record<string, unknown>,
     signal: AbortSignal,
+    progress?: (value: number) => void,
   ): Promise<unknown> => {
     const target = window();
     if (!target)
@@ -113,18 +144,31 @@ export function rendererService(project: HostProjectService, isTrusted: (url: st
         finish(null, "Renderer operation cancelled.");
       };
       const closed = () => finish(null, "Editor window closed.");
+      const exportSeconds = ["clip", "export"].includes(operation)
+        ? Math.max(
+            0,
+            Number(
+              input.end ?? input.to ?? projectDuration(decodeProjectFile(file).project).seconds,
+            ) - Number(input.start ?? input.from ?? 0),
+          )
+        : 0;
       const timer = setTimeout(
         cancel,
         Math.min(
-          ["transcribe", "wait"].includes(operation) ? 86401000 : 610000,
+          ["transcribe", "wait", "clip", "export"].includes(operation) ? 86401000 : 610000,
           Math.max(
             1000,
-            Number(input.timeout ?? 600) * 1000 +
+            Math.max(Number(input.timeout ?? 600), exportSeconds * 20) * 1000 +
               (["wait", "transcribe"].includes(operation) ? 1000 : 0),
           ),
         ),
       );
-      pending.set(id, { sender: target.webContents.id, operation, finish });
+      pending.set(id, {
+        sender: target.webContents.id,
+        operation,
+        finish,
+        ...(progress ? { progress } : {}),
+      });
       target.webContents.once("destroyed", closed);
       signal.addEventListener("abort", cancel, { once: true });
       target.webContents.send(bridgeChannels.serviceRequest, {
@@ -147,6 +191,8 @@ export function rendererService(project: HostProjectService, isTrusted: (url: st
     for (const request of pending.values()) request.finish(null, "Desktop service is closing.");
     ipcMain.removeHandler(bridgeChannels.serviceReady);
     ipcMain.removeHandler(bridgeChannels.serviceReply);
+    ipcMain.removeHandler(bridgeChannels.serviceProgress);
+    ipcMain.removeHandler(bridgeChannels.serviceJobs);
   };
   return {
     activate() {

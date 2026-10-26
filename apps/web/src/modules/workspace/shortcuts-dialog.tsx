@@ -8,8 +8,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@sidecut/ui/components/dialog";
-import { useEditorView } from "./editor-session";
-import { protectsEditing } from "./keyboard";
+import { useEditorView, useEditorSession } from "./editor-session";
+import { protectsEditing, parseKeymap } from "./keyboard";
+import { Input } from "@sidecut/ui/components/input";
+import { FieldLabel } from "@sidecut/ui/components/field";
 
 type Row = { label: string; keys: string[][]; premiereOnly?: boolean };
 
@@ -121,7 +123,10 @@ function isApple() {
 }
 
 export function ShortcutsDialog() {
+  const { editor } = useEditorSession();
   const keymap = useEditorView((s) => s.keymap);
+  const overrides = useEditorView((s) => s.keymapOverrides);
+  const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const apple = isApple();
   useEffect(() => {
@@ -155,7 +160,44 @@ export function ShortcutsDialog() {
               : "Editing only keymap is active. Dimmed shortcuts need the Premiere subset keymap."}
           </DialogDescription>
         </DialogHeader>
+        <FieldLabel htmlFor="custom-keymap">Import keyboard overrides (JSON)</FieldLabel>
+        <Input
+          id="custom-keymap"
+          type="file"
+          accept=".json,application/json"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (!file) return;
+            setError(null);
+            void (async () => {
+              if (file.size > 64 * 1024)
+                throw new Error("Keymap files must be smaller than 64 KiB.");
+              editor.setState({ keymapOverrides: parseKeymap(JSON.parse(await file.text())) });
+            })().catch((cause) => setError(cause instanceof Error ? cause.message : String(cause)));
+          }}
+        />
+        <p className="editor-hint">
+          Bindings override the selected layout. Set a binding to null to disable it.
+        </p>
+        {Object.keys(overrides).length > 0 && (
+          <Button variant="outline" onClick={() => editor.setState({ keymapOverrides: {} })}>
+            Reset {Object.keys(overrides).length} custom bindings
+          </Button>
+        )}
+        {error && <p role="alert">{error}</p>}
         <div className="editor-shortcuts">
+          <section>
+            <h3>Transport and tools</h3>
+            <p>
+              J / K / L: reverse, stop, forward (repeat for faster shuttle). V: select · C: blade ·
+              B: ripple trim · N: roll · Y: slip · U: slide.
+            </p>
+            <p>
+              Alt I / O / X: clear in, out, both · ;: lift range · ': extract range · Alt F: freeze
+              · Alt K: toggle keyframes · Shift J / K: previous / next keyframe · 1–4: layouts.
+            </p>
+          </section>
           {GROUPS.map((group) => (
             <section key={group.title}>
               <h3>{group.title}</h3>

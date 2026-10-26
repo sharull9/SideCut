@@ -19,6 +19,7 @@ import { resolvedParams } from "@sidecut/core/effects";
 import { verifyGainLanes } from "./service-gains";
 import { serviceExportPlan, serviceFormat } from "@sidecut/core/service-export";
 import { inspectionTimes } from "@sidecut/core/service-requests";
+import { releaseExport } from "@sidecut/platform-browser/export-output";
 const png = (canvas: HTMLCanvasElement) =>
   new Promise<Blob>((resolve, reject) =>
     canvas.toBlob(
@@ -38,6 +39,7 @@ export async function renderService(
   operation: string,
   request: Record<string, unknown>,
   signal: AbortSignal,
+  progress: (value: number) => void = () => {},
 ) {
   const source = session.getSnapshot().project;
   const exportSettings = ["clip", "export"].includes(operation)
@@ -260,8 +262,11 @@ export async function renderService(
           Math.ceil((end - start) / step) > 1000
         )
           throw new QueryError("badRequest", "Invalid loudness window range or step.");
-        if (end - start > 300)
-          throw new QueryError("badRequest", "Loudness ranges are limited to five minutes.");
+        if ((Math.ceil((end - start + 3) * 48000) + 2) * 2 * 4 > 256 * 1024 * 1024)
+          throw new QueryError(
+            "badRequest",
+            "Loudness curve exceeds the 256 MiB analysis budget. Use a smaller curve range.",
+          );
         const readStart = Math.max(0, start - 1.5),
           readEnd = Math.min(duration, end + 1.5);
         const buffers = [
@@ -403,8 +408,16 @@ export async function renderService(
 
     for (const warning of settings.warnings) warnings.add(warning);
     if (request.audioOnly === true) {
-      if (start < 0 || end <= start || end > duration || end - start > 300)
-        throw new QueryError("badRequest", "Invalid audio export range.");
+      if (
+        start < 0 ||
+        end <= start ||
+        end > duration ||
+        Math.round((end - start) * 48000) * 4 + 44 > 256 * 1024 * 1024
+      )
+        throw new QueryError(
+          "badRequest",
+          "Invalid audio range or PCM output exceeds the 256 MiB transfer budget.",
+        );
       const sampleRate = 48000,
         frames = Math.round((end - start) * sampleRate),
         buffer = new ArrayBuffer(44 + frames * 4),
@@ -458,7 +471,7 @@ export async function renderService(
     const { renderWebM } = await import("@sidecut/platform-browser/export"),
       began = performance.now();
     let finalLevels: ReturnType<LoudnessMeter["result"]> | undefined;
-    const blob = await renderWebM(project, resource, signal, () => {}, {
+    const blob = await renderWebM(project, resource, signal, progress, {
       start,
       end,
       master: request.tracks == null,
@@ -469,8 +482,19 @@ export async function renderService(
       },
     });
     const plan = exportPlan(project, true, { start, end });
+    let data: string;
+    try {
+      if (blob.size > 256 * 1024 * 1024)
+        throw new QueryError(
+          "badRequest",
+          "Export exceeds the 256 MiB service transfer budget. Export from the editor to retain a file-backed download.",
+        );
+      data = await base64(blob);
+    } finally {
+      await releaseExport(blob);
+    }
     return {
-      data: await base64(blob),
+      data,
       bytes: blob.size,
       preset,
       integratedLUFS:

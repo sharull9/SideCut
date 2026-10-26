@@ -8,6 +8,8 @@ import type { BrowserProjectSession } from "./browser-session";
 import { pairTakes, decodeTakeSidecar } from "@sidecut/core/take-pairing";
 import { derivedCache } from "@sidecut/platform-browser/derived-cache";
 import { alignTranscript } from "@sidecut/core/speech";
+import { readPreference } from "@sidecut/platform-browser/preferences";
+import type { MattingBackend } from "@sidecut/platform-browser/matting-models";
 
 export interface MediaAnalysisState {
   samples?: SourceSamples | undefined;
@@ -145,7 +147,7 @@ export class MediaAnalysis {
       (samples) => ({ samples }),
     );
   }
-  cutout(id: string) {
+  cutout(id: string, backend?: MattingBackend) {
     return this.run(
       id,
       "Analyse cutout",
@@ -153,7 +155,14 @@ export class MediaAnalysis {
         if (item.kind !== "video" && item.kind !== "image")
           throw new Error("Cutout needs video or an image.");
         const { analyseCutout } = await import("@sidecut/platform-browser/cutout");
-        return analyseCutout(file, item.kind, item.duration?.seconds ?? 1, signal, progress);
+        return analyseCutout(
+          file,
+          item.kind,
+          item.duration?.seconds ?? 1,
+          signal,
+          progress,
+          backend,
+        );
       },
       (matte) => ({ matte }),
     );
@@ -179,7 +188,10 @@ export class MediaAnalysis {
         import("@sidecut/platform-browser/proxy"),
         import("@sidecut/platform-browser/transcription"),
       ]);
-      const [proxy, transcript] = await Promise.all([cachedProxy(file), cachedTranscript(file)]);
+      const [proxy, transcript] = await Promise.all([
+        cachedProxy(file),
+        cachedTranscript(file, readPreference("sidecut.transcription.language") ?? "en"),
+      ]);
       if (generation === this.generation)
         this.publish(id, {
           proxy: this.state[id]?.proxy ?? proxy,
@@ -195,7 +207,11 @@ export class MediaAnalysis {
     if (enabled && !this.state[id]?.proxy) throw new Error("Generate a proxy first.");
     this.publish(id, { proxyEnabled: enabled });
   }
-  transcribe(id: string, externalSignal?: AbortSignal) {
+  transcribe(
+    id: string,
+    externalSignal?: AbortSignal,
+    language = readPreference("sidecut.transcription.language") ?? "en",
+  ) {
     return this.run(
       id,
       "Local transcription",
@@ -203,7 +219,7 @@ export class MediaAnalysis {
         const { readMono } = await import("@sidecut/platform-browser/source-analysis");
         const { transcribeLocal, cachedTranscript } =
           await import("@sidecut/platform-browser/transcription");
-        const existing = await cachedTranscript(file);
+        const existing = await cachedTranscript(file, language);
         signal.throwIfAborted();
         if (existing) return existing;
         const samples = await readMono(file, item, 16000, signal, (v) => progress(v * 0.1));
@@ -216,6 +232,7 @@ export class MediaAnalysis {
           (status) => {
             if (generation === this.generation && !signal.aborted) this.publish(id, { status });
           },
+          language,
         );
       },
       (transcript) => ({ transcript }),
@@ -250,15 +267,8 @@ export class MediaAnalysis {
       async (signal, progress, { item, file }) => {
         const reference = await this.source(referenceID);
         if (referenceID === id) throw new Error("Choose a different reference source.");
-        if (
-          (item.duration?.seconds ?? Infinity) > 60 ||
-          (reference.item.duration?.seconds ?? Infinity) > 60
-        )
-          throw new Error(
-            "Browser sound sync supports recordings up to 60 seconds. Correct longer takes manually.",
-          );
         const { audioIdentity } = await import("@sidecut/platform-browser/audio-analysis");
-        const key = `sync:1:${await audioIdentity(reference.file)}:${await audioIdentity(file)}`;
+        const key = `sync:2:${await audioIdentity(reference.file)}:${await audioIdentity(file)}`;
         const cached = await derivedCache<SoundMatch>(key);
         if (cached) {
           signal.throwIfAborted();

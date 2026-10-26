@@ -1,6 +1,6 @@
 import { BrowserWindow, app, dialog, ipcMain, net, protocol, session, shell } from "electron";
-import { stat, writeFile, unlink } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { stat, writeFile, unlink, mkdir } from "node:fs/promises";
+import { dirname, join, isAbsolute } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   bridgeChannels,
@@ -23,6 +23,14 @@ import { rendererService } from "./renderer-service.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const smoke = app.commandLine.hasSwitch("smoke-test");
+const headlessProject = app.commandLine.getSwitchValue("headless-project");
+const sharedStorage = app.commandLine.getSwitchValue("headless-storage-root");
+if (headlessProject) {
+  const profile = app.commandLine.getSwitchValue("headless-profile");
+  if (!isAbsolute(headlessProject) || !isAbsolute(profile) || !isAbsolute(sharedStorage))
+    throw new Error("Headless hosting requires absolute project, profile and storage paths.");
+  app.setPath("userData", profile);
+}
 let exitCode = 0;
 if (smoke) {
   const profile = app.commandLine.getSwitchValue("smoke-profile");
@@ -95,7 +103,7 @@ const createWindow = () => {
     },
   });
   window.once("ready-to-show", () => {
-    if (!smoke) window.show();
+    if (!smoke && !headlessProject) window.show();
   });
 
   const { webContents } = window;
@@ -115,170 +123,229 @@ app.on("web-contents-created", (_event, contents) => {
   contents.on("will-attach-webview", (event) => event.preventDefault());
 });
 
-void app.whenReady().then(() => {
-  const storage = new NativeStorage(app.getPath("userData"));
-  for (const [channel, handler] of [
-    [bridgeChannels.storageRequest, (value: unknown) => storage.request(value)],
-    [bridgeChannels.storagePutFile, (value: unknown) => storage.putFile(value)],
-    [bridgeChannels.storageGetFile, (value: unknown) => storage.getFile(value)],
-  ] as const)
-    ipcMain.handle(channel, (event, value: unknown) => {
+void app
+  .whenReady()
+  .then(async () => {
+    await mkdir(sharedStorage || app.getPath("userData"), { recursive: true });
+    const storage = new NativeStorage(sharedStorage || app.getPath("userData"));
+    for (const [channel, handler] of [
+      [bridgeChannels.storageRequest, (value: unknown) => storage.request(value)],
+      [bridgeChannels.storagePutFile, (value: unknown) => storage.putFile(value)],
+      [bridgeChannels.storageGetFile, (value: unknown) => storage.getFile(value)],
+      [bridgeChannels.storageRemoveFile, (value: unknown) => storage.removeFile(value)],
+    ] as const)
+      ipcMain.handle(channel, (event, value: unknown) => {
+        if (
+          !event.senderFrame ||
+          event.senderFrame !== event.sender.mainFrame ||
+          !isTrusted(event.senderFrame.url)
+        )
+          throw new Error("Untrusted storage sender.");
+        return handler(value);
+      });
+    app.once("will-quit", () => storage.close());
+    const providers = new DesktopAssetProviders(
+        join(sharedStorage || app.getPath("userData"), "assets"),
+      ),
+      requests = new Map<string, AbortController>();
+    ipcMain.handle(bridgeChannels.providerCall, async (event, id: unknown, request: unknown) => {
+      if (
+        !event.senderFrame ||
+        !isTrusted(event.senderFrame.url) ||
+        typeof id !== "string" ||
+        !/^[a-z0-9-]{1,100}$/i.test(id)
+      )
+        throw new Error("Invalid provider sender or request ID.");
+      const prefix = `${event.sender.id}:`,
+        key = `${prefix}${id}`;
+      if (requests.has(key) || [...requests.keys()].filter((k) => k.startsWith(prefix)).length >= 4)
+        throw new Error("Provider request is duplicate or the concurrency limit was reached.");
+      const controller = new AbortController();
+      requests.set(key, controller);
+      const stop = () => controller.abort();
+      event.sender.once("destroyed", stop);
+      try {
+        return await providers.call(request, controller.signal);
+      } finally {
+        requests.delete(key);
+        event.sender.removeListener("destroyed", stop);
+      }
+    });
+    ipcMain.handle(bridgeChannels.providerCancel, (event, id: unknown) => {
+      if (!event.senderFrame || !isTrusted(event.senderFrame.url) || typeof id !== "string")
+        throw new Error("Untrusted provider sender.");
+      requests.get(`${event.sender.id}:${id}`)?.abort();
+    });
+    ipcMain.handle(
+      bridgeChannels.providerCredential,
+      async (event, provider: unknown, action: unknown, secret: unknown) => {
+        if (!event.senderFrame || !isTrusted(event.senderFrame.url) || typeof provider !== "string")
+          throw new Error("Untrusted credential sender.");
+        if (action === "set") await providers.credentials.set(provider, secret);
+        else if (action === "clear") await providers.credentials.clear(provider);
+        else throw new Error("Invalid credential action.");
+      },
+    );
+    session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) =>
+      callback(false),
+    );
+    session.defaultSession.setPermissionCheckHandler(() => false);
+
+    ipcMain.handle(bridgeChannels.appInfo, (event): DesktopAppInfo => {
       if (
         !event.senderFrame ||
         event.senderFrame !== event.sender.mainFrame ||
         !isTrusted(event.senderFrame.url)
       )
-        throw new Error("Untrusted storage sender.");
-      return handler(value);
-    });
-  app.once("will-quit", () => storage.close());
-  const providers = new DesktopAssetProviders(join(app.getPath("userData"), "assets")),
-    requests = new Map<string, AbortController>();
-  ipcMain.handle(bridgeChannels.providerCall, async (event, id: unknown, request: unknown) => {
-    if (
-      !event.senderFrame ||
-      !isTrusted(event.senderFrame.url) ||
-      typeof id !== "string" ||
-      !/^[a-z0-9-]{1,100}$/i.test(id)
-    )
-      throw new Error("Invalid provider sender or request ID.");
-    const prefix = `${event.sender.id}:`,
-      key = `${prefix}${id}`;
-    if (requests.has(key) || [...requests.keys()].filter((k) => k.startsWith(prefix)).length >= 4)
-      throw new Error("Provider request is duplicate or the concurrency limit was reached.");
-    const controller = new AbortController();
-    requests.set(key, controller);
-    const stop = () => controller.abort();
-    event.sender.once("destroyed", stop);
-    try {
-      return await providers.call(request, controller.signal);
-    } finally {
-      requests.delete(key);
-      event.sender.removeListener("destroyed", stop);
-    }
-  });
-  ipcMain.handle(bridgeChannels.providerCancel, (event, id: unknown) => {
-    if (!event.senderFrame || !isTrusted(event.senderFrame.url) || typeof id !== "string")
-      throw new Error("Untrusted provider sender.");
-    requests.get(`${event.sender.id}:${id}`)?.abort();
-  });
-  ipcMain.handle(
-    bridgeChannels.providerCredential,
-    async (event, provider: unknown, action: unknown, secret: unknown) => {
-      if (!event.senderFrame || !isTrusted(event.senderFrame.url) || typeof provider !== "string")
-        throw new Error("Untrusted credential sender.");
-      if (action === "set") await providers.credentials.set(provider, secret);
-      else if (action === "clear") await providers.credentials.clear(provider);
-      else throw new Error("Invalid credential action.");
-    },
-  );
-  session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) =>
-    callback(false),
-  );
-  session.defaultSession.setPermissionCheckHandler(() => false);
-
-  ipcMain.handle(bridgeChannels.appInfo, (event): DesktopAppInfo => {
-    if (
-      !event.senderFrame ||
-      event.senderFrame !== event.sender.mainFrame ||
-      !isTrusted(event.senderFrame.url)
-    )
-      throw new Error("Untrusted sender.");
-    return {
-      name: app.getName(),
-      version: app.getVersion(),
-      platform: process.platform,
-      versions: { electron: process.versions.electron, chrome: process.versions.chrome },
-    };
-  });
-
-  serveRenderer();
-  const project = new HostProjectService(
-    new NativeProjectStore(join(app.getPath("userData"), "current.tandem")),
-  );
-  void project
-    .start()
-    .then(async () => {
-      const binaries = mediaBinaries(
-        process.env,
-        app.isPackaged ? process.resourcesPath : undefined,
-      );
-      const renderer = rendererService(project, isTrusted);
-      const api = new ProjectAPI(
-        project,
-        new NativeMedia(binaries.ffmpeg, binaries.ffprobe),
-        renderer,
-      );
-      const http = new LocalHTTPService(api);
-      const address = await http.start().catch(async (error) => {
-        await project.close();
-        throw error;
-      });
-      const discovery = join(app.getPath("userData"), "current.tandem.api.json");
-      api.setOwnerPort(address.port);
-      try {
-        await writeFile(discovery, JSON.stringify(address), { mode: 0o600 });
-      } catch (error) {
-        await http.close();
-        await project.close();
-        throw error;
-      }
-      const closeNative = registerNativeIPC(project, isTrusted, api);
-      const close = async () => {
-        await http.close();
-        renderer.close();
-        await unlink(discovery).catch(() => {});
-        await closeNative();
+        throw new Error("Untrusted sender.");
+      return {
+        name: app.getName(),
+        version: app.getVersion(),
+        platform: process.platform,
+        versions: { electron: process.versions.electron, chrome: process.versions.chrome },
       };
-      let quitting = false;
-      app.on("before-quit", (event) => {
-        if (quitting) return;
-        event.preventDefault();
-        quitting = true;
-        void close().then(
-          () => {
-            if (smoke) app.exit(exitCode);
-            else app.quit();
-          },
-          (error) => {
-            console.error("Could not close the native project service:", error);
-            app.exit(1);
-          },
-        );
-      });
-      const window = createWindow();
-      if (smoke)
-        void import("./packaged-smoke.ts")
-          .then(({ verifyPackaged }) => verifyPackaged(window, providers.credentials))
-          .then((result) =>
-            writeFile(
-              app.commandLine.getSwitchValue("smoke-output"),
-              JSON.stringify(result, null, 2) + "\n",
-            ),
-          )
-          .catch((error) => {
-            exitCode = 1;
-            console.error("Packaged verification failed:", error);
-          })
-          .finally(() => app.quit());
-    })
-    .catch((error) => {
-      console.error("Could not start the host project service:", error);
-      if (smoke) {
-        app.exit(1);
-        return;
-      }
-      dialog.showErrorBox(
-        "Could not open SideCut",
-        error instanceof Error ? error.message : String(error),
-      );
-      app.quit();
     });
 
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    serveRenderer();
+    const project = new HostProjectService(
+      new NativeProjectStore(
+        headlessProject || join(app.getPath("userData"), "current.tandem"),
+        headlessProject
+          ? { portable: true, databasePath: join(app.getPath("userData"), "project.sqlite") }
+          : {},
+      ),
+    );
+    void project
+      .start()
+      .then(async () => {
+        if (project.snapshot().saveState === "error")
+          throw new Error(project.snapshot().error ?? "Project could not open.");
+        const binaries = mediaBinaries(
+          process.env,
+          app.isPackaged ? process.resourcesPath : undefined,
+        );
+        let backgroundJobs = false,
+          notifyIdle = () => {};
+        const renderer = rendererService(project, isTrusted, (jobs) => {
+          backgroundJobs = jobs.some(
+            (job) =>
+              job &&
+              typeof job === "object" &&
+              "state" in job &&
+              (job.state === "running" || job.state === "queued"),
+          );
+          api.events.publish({ kind: "jobs", jobs });
+          notifyIdle();
+        });
+        const api = new ProjectAPI(
+          project,
+          new NativeMedia(binaries.ffmpeg, binaries.ffprobe),
+          renderer,
+        );
+        let parentGone = false;
+        const http = new LocalHTTPService(api, {
+          headless: Boolean(headlessProject),
+          onIdle: () => notifyIdle(),
+          onOwnerRelease: () => {
+            parentGone = true;
+          },
+          busy: () => backgroundJobs,
+        });
+        notifyIdle = () => {
+          if (parentGone && !http.leaseCount && !backgroundJobs) app.quit();
+        };
+        const address = await http.start().catch(async (error) => {
+          await project.close();
+          throw error;
+        });
+        const discovery = headlessProject
+          ? `${headlessProject}.api.json`
+          : join(app.getPath("userData"), "current.tandem.api.json");
+        api.setOwnerPort(address.port);
+        try {
+          await writeFile(discovery, JSON.stringify(address), { mode: 0o600 });
+        } catch (error) {
+          await http.close();
+          await project.close();
+          throw error;
+        }
+        const closeNative = registerNativeIPC(project, isTrusted, api);
+        const close = async () => {
+          await http.close();
+          renderer.close();
+          await unlink(discovery).catch(() => {});
+          await closeNative();
+        };
+        let quitting = false;
+        app.on("before-quit", (event) => {
+          if (quitting) return;
+          event.preventDefault();
+          quitting = true;
+          void close().then(
+            () => {
+              if (smoke) app.exit(exitCode);
+              else app.quit();
+            },
+            (error) => {
+              console.error("Could not close the native project service:", error);
+              app.exit(1);
+            },
+          );
+        });
+        const window = createWindow();
+        if (headlessProject) {
+          const parent = Number(app.commandLine.getSwitchValue("headless-parent"));
+          if (!Number.isSafeInteger(parent) || parent <= 0)
+            throw new Error("Invalid headless parent process.");
+          // Electron on Windows closes stdin independently of the launcher; use leases and parent liveness.
+          const parentTimer = setInterval(() => {
+            try {
+              process.kill(parent, 0);
+            } catch (error) {
+              if (error && typeof error === "object" && "code" in error && error.code === "ESRCH")
+                parentGone = true;
+            }
+            notifyIdle();
+          }, 2000);
+          app.once("will-quit", () => clearInterval(parentTimer));
+          process.once("SIGTERM", () => app.quit());
+        }
+        if (smoke)
+          void import("./packaged-smoke.ts")
+            .then(({ verifyPackaged }) => verifyPackaged(window, providers.credentials))
+            .then((result) =>
+              writeFile(
+                app.commandLine.getSwitchValue("smoke-output"),
+                JSON.stringify(result, null, 2) + "\n",
+              ),
+            )
+            .catch((error) => {
+              exitCode = 1;
+              console.error("Packaged verification failed:", error);
+            })
+            .finally(() => app.quit());
+      })
+      .catch((error) => {
+        console.error("Could not start the host project service:", error);
+        if (smoke || headlessProject) {
+          app.exit(1);
+          return;
+        }
+        dialog.showErrorBox(
+          "Could not open SideCut",
+          error instanceof Error ? error.message : String(error),
+        );
+        app.quit();
+      });
+
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
+  })
+  .catch((error) => {
+    console.error("Could not initialize SideCut:", error);
+    app.exit(1);
   });
-});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

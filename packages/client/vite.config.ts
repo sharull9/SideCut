@@ -8,8 +8,8 @@ export default defineConfig({
     clean: true,
     dts: false,
     deps: {
-      alwaysBundle: [/^@sidecut\/(?:contracts|core)(?:\/|$)/],
-      onlyBundle: [/^(commander|zod)$/],
+      alwaysBundle: [/^@sidecut\/(?:contracts|core)(?:\/|$)/, /^effect(?:\/|$)/],
+      onlyBundle: [/^(commander|zod|effect)$/],
     },
   },
 });

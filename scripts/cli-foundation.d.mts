@@ -17,7 +17,7 @@ export function discoverEndpoint(
   env?: Record<string, string | undefined>,
   directory?: string,
 ): Promise<{
-  endpoint: { port: number; token: string; pid?: number };
+  endpoint: { port: number; token: string; pid?: number; headless?: boolean };
   project: string | undefined;
 }>;
 export function verifyProjectOwner(

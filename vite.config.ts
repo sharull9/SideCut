@@ -42,6 +42,8 @@ export default defineConfig({
   },
   fmt: { ...fmt, ignorePatterns: ignored },
   test: {
+    // CLI integration tests spawn Node processes; bound concurrency on desktop and CI.
+    maxWorkers: 4,
     include: ["apps/*/src/**/*.test.{ts,tsx}", "packages/*/src/**/*.test.{ts,tsx}"],
     environment: "node",
   },

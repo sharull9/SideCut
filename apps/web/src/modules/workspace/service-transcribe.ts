@@ -36,7 +36,11 @@ export async function transcribeService(
     settled = new Set<string>();
   const jobs = items.map((item) =>
     analysis
-      .transcribe(item.id, request.wait === true ? signal : undefined)
+      .transcribe(
+        item.id,
+        request.wait === true ? signal : undefined,
+        typeof request.language === "string" ? request.language : undefined,
+      )
       .catch((error: unknown) => {
         failures.set(item.id, error instanceof Error ? error.message : String(error));
       })

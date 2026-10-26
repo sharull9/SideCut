@@ -15,6 +15,7 @@ import {
   pitchAndSpeed,
   gain,
   clamp,
+  StreamingLimiter,
 } from "@sidecut/core/audio-processing";
 import { effectsOf } from "@sidecut/core/effect-editing";
 import { Time } from "@sidecut/contracts/time";
@@ -30,6 +31,7 @@ interface MixOptions {
   measure?: (id: string) => Promise<MeasuredSound>;
   start?: number;
   master?: boolean;
+  streamMaster?: boolean;
   prepared?: ReadonlyMap<string, Float32Array[]>;
 }
 const needsProcessing = (clip: Clip) =>
@@ -44,6 +46,11 @@ const needsProcessing = (clip: Clip) =>
           : key === "effects" && Array.isArray(value) && value.some((fx) => fx.enabled !== false),
     ),
   );
+const streamsEnvelope = (clip: Clip) =>
+  clip.duration.seconds > 300 &&
+  clip.speed === 1 &&
+  Number(clip.audio?.voiceIsolation ?? 0) === 0 &&
+  effectsOf(clip, "audio").every((effect) => !effect.enabled);
 const checkpoint = (signal?: AbortSignal) => async () => {
   signal?.throwIfAborted();
   await yieldTask();
@@ -58,9 +65,9 @@ async function processedClip(
   options: MixOptions,
   range = { start: clip.start.seconds, end: clip.start.seconds + clip.duration.seconds },
 ) {
-  if (clip.duration.seconds > 300 || clip.duration.seconds * clip.speed > 600)
+  if ((range.end - range.start) * rate * 2 * 4 * Math.max(1, clip.speed) > 128 * 1024 * 1024)
     throw new Error(
-      "Processed browser audio supports clips up to five minutes and source spans up to ten minutes.",
+      "Processed clip exceeds the 128 MiB PCM budget. Use a smaller range or render effects separately.",
     );
   const offset = range.start - clip.start.seconds,
     renderClip = {
@@ -147,11 +154,14 @@ export async function prepareTimelineAudio(
   options: MixOptions = {},
 ) {
   const segments = audioSegments(project).filter(
-    (s) => needsProcessing(s.clip) && s.end > (options.start ?? 0),
+    (s) => needsProcessing(s.clip) && !streamsEnvelope(s.clip) && s.end > (options.start ?? 0),
   );
-  if (segments.reduce((sum, s) => sum + s.clip.duration.seconds, 0) > 600)
+  if (
+    segments.reduce((sum, s) => sum + (s.renderEnd - s.renderStart) * 48000 * 2 * 4, 0) >
+    256 * 1024 * 1024
+  )
     throw new Error(
-      "Processed preview supports up to ten minutes of combined audio clips. Shorten the sequence or disable some audio tracks.",
+      "Prepared effects exceed the 256 MiB PCM budget. Play a smaller range or disable some audio effects.",
     );
   const result = new Map<string, Float32Array[]>();
   for (const segment of segments) {
@@ -193,9 +203,6 @@ export async function masterAudio(
     return meter.result();
   };
   const first = await measure(channels);
-  const initial = Number.isFinite(first.integratedLUFS)
-    ? clamp(target - first.integratedLUFS, -40, 30)
-    : 0;
   const render = async (db: number) => {
     const output = channels.map((channel) =>
       Float32Array.from(channel, (sample) => sample * gain(db)),
@@ -203,13 +210,29 @@ export async function masterAudio(
     await limit(output, rate, ceiling, 80, checkpoint(signal));
     return output;
   };
+  const db = await masteringGain(
+    first,
+    target,
+    ceiling,
+    async (level) => (await measure(await render(level))).integratedLUFS,
+  );
+  return render(db);
+}
+async function masteringGain(
+  first: MeasuredSound,
+  target: number,
+  ceiling: number,
+  measure: (level: number) => Promise<number>,
+) {
+  const initial = Number.isFinite(first.integratedLUFS)
+    ? clamp(target - first.integratedLUFS, -40, 30)
+    : 0;
   let db = initial;
   if (first.truePeakDBTP + initial > ceiling) {
     const points: { db: number; lufs: number }[] = [];
     for (const extra of [0, 0.75, 1.5, 2.5]) {
-      const level = Math.min(initial + extra, 30),
-        output = await render(level);
-      points.push({ db: level, lufs: (await measure(output)).integratedLUFS });
+      const level = Math.min(initial + extra, 30);
+      points.push({ db: level, lufs: await measure(level) });
     }
     const below = points.filter((p) => p.lufs <= target).at(-1),
       above = points.find((p) => p.lufs >= target);
@@ -228,7 +251,7 @@ export async function masterAudio(
     }
     db = clamp(db, -40, 30);
   }
-  return render(db);
+  return db;
 }
 // A bounded stereo block mixer; separate clip iterators retain their own source offsets.
 export async function* mixTimelineAudio(
@@ -241,8 +264,60 @@ export async function* mixTimelineAudio(
   options: MixOptions = {},
 ) {
   if (options.master) {
-    if (duration - (options.start ?? 0) > 300)
-      throw new Error("Browser mastering supports ranges up to five minutes.");
+    if (options.streamMaster || duration - (options.start ?? 0) > 300) {
+      const raw = () =>
+        mixTimelineAudio(project, reader, signal, sampleRate, blockFrames, duration, {
+          ...options,
+          master: false,
+        });
+      const pass = async function* (db: number) {
+        const limiter = new StreamingLimiter(sampleRate, 2, project.settings.truePeakCeiling, 80);
+        let position = 0;
+        const encode = (values: Float32Array[]) => {
+          const frames = values[0]!.length,
+            data = new Float32Array(frames * 2);
+          for (let c = 0; c < 2; c++) data.set(values[c]!, c * frames);
+          const block = {
+            data,
+            frames,
+            numberOfChannels: 2,
+            sampleRate,
+            timestamp: position / sampleRate,
+          };
+          position += frames;
+          return block;
+        };
+        for await (const block of raw()) {
+          signal.throwIfAborted();
+          const channels = [
+            block.data.subarray(0, block.frames),
+            block.data.subarray(block.frames),
+          ].map((channel) => Float32Array.from(channel, (value) => value * gain(db)));
+          const output = limiter.push(channels);
+          if (output[0]!.length) yield encode(output);
+        }
+        signal.throwIfAborted();
+        const tail = limiter.finish();
+        if (tail[0]!.length) yield encode(tail);
+      };
+      const measure = async (blocks: ReturnType<typeof raw> | ReturnType<typeof pass>) => {
+        const meter = new LoudnessMeter(sampleRate, 2);
+        for await (const block of blocks) {
+          signal.throwIfAborted();
+          meter.process([block.data.subarray(0, block.frames), block.data.subarray(block.frames)]);
+        }
+        return meter.result();
+      };
+      const first = await measure(raw());
+      const level = await masteringGain(
+        first,
+        project.settings.loudnessTarget,
+        project.settings.truePeakCeiling,
+        async (db) => (await measure(pass(db))).integratedLUFS,
+      );
+      yield* pass(level);
+      return;
+    }
     const mixed = [
       new Float32Array(Math.ceil((duration - (options.start ?? 0)) * sampleRate)),
       new Float32Array(Math.ceil((duration - (options.start ?? 0)) * sampleRate)),
@@ -286,6 +361,7 @@ export async function* mixTimelineAudio(
     current: null as DecodedAudio | null,
     done: false,
     processed: options.prepared?.get(segment.clip.id) ?? (null as Float32Array[] | null),
+    envelope: null as ((time: number) => number) | null,
     microIn:
       !project.audioTracks
         .find((t) => t.id === segment.trackID)!
@@ -337,7 +413,7 @@ export async function* mixTimelineAudio(
         }
         if (source.done || segment.start >= stop) continue;
         const clip = segment.clip;
-        const processing = needsProcessing(clip);
+        const processing = needsProcessing(clip) && !streamsEnvelope(clip);
         if (processing) {
           source.processed ??= await processedClip(
             clip,
@@ -356,6 +432,15 @@ export async function* mixTimelineAudio(
               data[c * count + i]! += (source.processed[c]![index] ?? 0) * microGain(time);
           }
           continue;
+        }
+        if (!source.envelope) {
+          const measured =
+            typeof clip.audio?.normalizeTo === "number"
+              ? ((await options.measure?.(segment.mediaID))?.integratedLUFS ?? -Infinity)
+              : -Infinity;
+          if (typeof clip.audio?.normalizeTo === "number" && !options.measure)
+            throw new Error("Measure source loudness before normalizing speech.");
+          source.envelope = audioEnvelope(clip, measured);
         }
         source.iterator ??= (await reader(segment.mediaID)).audio(
           Math.max(
@@ -396,7 +481,8 @@ export async function* mixTimelineAudio(
             data[channel * count + index]! +=
               (values[i]! * (1 - fraction) +
                 values[Math.min(i + 1, values.length - 1)]! * fraction) *
-              microGain((first + index) / sampleRate);
+              microGain((first + index) / sampleRate) *
+              source.envelope((first + index) / sampleRate - clip.start.seconds);
           }
         }
       }

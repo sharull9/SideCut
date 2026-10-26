@@ -7,12 +7,33 @@ import {
   normalizeGain,
   compress,
   limit,
+  StreamingLimiter,
   pitchAndSpeed,
 } from "./audio-processing";
 import { LoudnessMeter } from "./loudness";
 import { ProjectCoordinator, replayJournal } from "./coordinator";
 import { seamlessAudio } from "./audio-plan";
 const rate = 48000;
+it("streamed true-peak limiting matches the bulk limiter across block boundaries and preserves every sample", async () => {
+  const input = Float32Array.from(
+    { length: 10003 },
+    (_, i) => (i % 173 < 8 ? 2 : 0.1) * Math.sin(i * 1.7),
+  );
+  const bulk = input.slice();
+  await limit([bulk], rate, -3);
+  const limiter = new StreamingLimiter(rate, 1, -3);
+  const chunks: Float32Array[] = [];
+  for (let i = 0; i < input.length; i += 317)
+    chunks.push(limiter.push([input.subarray(i, i + 317)])[0]!);
+  chunks.push(limiter.finish()[0]!);
+  const streamed = new Float32Array(chunks.reduce((sum, chunk) => sum + chunk.length, 0));
+  let position = 0;
+  for (const chunk of chunks) {
+    streamed.set(chunk, position);
+    position += chunk.length;
+  }
+  expect(streamed).toEqual(bulk);
+});
 const tone = (seconds = 1, amplitude = 0.1, frequency = 1000) =>
   Float32Array.from(
     { length: seconds * rate },

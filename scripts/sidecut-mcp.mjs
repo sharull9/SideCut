@@ -6,9 +6,10 @@ import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprot
 import { discoverHost, hostCall } from "./host-client.mjs";
 import { findProject, verifyProjectOwner } from "./cli-foundation.mjs";
 import { definitions, prepareTool, toolResult, clientAuthor } from "./mcp-adapters.mjs";
+import { acquireProjectHost } from "./headless-host.mjs";
 
 const instructions =
-  "SideCut edits running desktop projects. Read status/timeline before editing. Use expectedRevision on mutations, label edits, and use apply idempotencyKey for retries. Helpers preview unless apply:true. Resolve comments with removeMarker. Read effects capability flags. Provider downloads/paid generation require explicit opt-in. Do not retry other mutations after a lost reply. Tools return readable text by default; json:true returns raw data. project selects an existing running owner; closed-project/headless editing is unsupported. Read warnings and the documented Tandem adapter limits.";
+  "SideCut edits local projects through one authoritative owner, starting a hidden desktop host for closed projects. Read status/timeline before editing. Use expectedRevision on mutations, label edits, and apply idempotencyKey for retries. Helpers preview unless apply:true. Resolve comments with removeMarker. Provider downloads/paid generation require explicit opt-in. Do not retry other mutations after a lost reply. Tools return readable text by default; json:true returns raw data. Read warnings and documented adapter limits.";
 
 async function main() {
   const options = new Map();
@@ -26,6 +27,11 @@ async function main() {
     { name: "sidecut", version: "0.1.0" },
     { capabilities: { tools: {} }, instructions },
   );
+  const hosts = new Map();
+  server.onclose = () => {
+    for (const host of hosts.values()) void host.close();
+    hosts.clear();
+  };
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: definitions.map(({ name, title, description, inputSchema, annotations }) => ({
       name,
@@ -67,9 +73,26 @@ async function main() {
         if (owner)
           await verifyProjectOwner(owner, await hostCall(host, "status", {}, extra.signal));
       } catch (error) {
-        if (!owner || extra.signal.aborted) throw error;
-        host = await discoverHost(`${owner}.api.json`);
-        await verifyProjectOwner(owner, await hostCall(host, "status", {}, extra.signal));
+        if (extra.signal.aborted || (!owner && tool.usesProject)) throw error;
+        if (owner) {
+          try {
+            host = await discoverHost(`${owner}.api.json`);
+            await verifyProjectOwner(owner, await hostCall(host, "status", {}, extra.signal));
+          } catch (ownerError) {
+            if (ownerError.code !== "ENOENT") throw ownerError;
+            host = undefined;
+          }
+        }
+        const key = owner ?? "library";
+        let acquired = hosts.get(key);
+        if ((!host || host.headless) && !acquired) {
+          acquired = await acquireProjectHost(owner ? new Map([["project", owner]]) : new Map(), {
+            library: !tool.usesProject,
+            signal: extra.signal,
+          });
+          hosts.set(key, acquired);
+        }
+        host ??= acquired.endpoint;
       }
       const author = options.get("--author") ?? clientAuthor(server.getClientVersion()?.name);
       return toolResult(

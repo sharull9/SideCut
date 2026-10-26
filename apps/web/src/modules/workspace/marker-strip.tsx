@@ -16,6 +16,7 @@ import { RiAddLine, RiArrowLeftSLine, RiArrowRightSLine } from "@remixicon/react
 import { useEditorSession, useEditorView } from "./editor-session";
 import { ToolTip } from "./tool-tip";
 import "./dialogs.css";
+import { useEditorCommand } from "./use-editor-command";
 
 const KIND_LABEL: Record<string, string> = {
   marker: "Marker",
@@ -40,6 +41,7 @@ export function MarkerStrips({
   const { snapshot, editor } = useEditorSession();
   const playhead = useEditorView((s) => s.playhead);
   const [editing, setEditing] = useState<Marker | "new-comment" | null>(null);
+  useEditorCommand("comment", () => setEditing("new-comment"));
   const disabled = snapshot.readOnly || snapshot.busy;
   const markers = [...snapshot.project.markers].sort((a, b) => a.time - b.time);
   const navigate = (direction: 1 | -1) => {

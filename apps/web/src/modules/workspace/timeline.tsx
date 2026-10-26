@@ -137,21 +137,24 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
   const playhead = useEditorView((state) => state.playhead);
   const zoom = useEditorView((state) => state.zoom);
   const selected = useEditorView((state) => state.selected);
+  const showTranscript = useEditorView((state) => state.showTranscript);
   const scroll = useRef<HTMLDivElement>(null);
   const { track: trackAutoScroll, stop: stopAutoScroll } = useDragAutoScroll();
   const [trackHeights, setTrackHeights] = useState<Record<string, number>>({});
   const drag = useRef<{
     trackID: string;
     start: number;
+    startY: number;
     shift: boolean;
     selected: readonly string[];
-    range: { from: number; to: number } | null;
+    inPoint: number | null;
+    outPoint: number | null;
     pointer: number;
     lane: HTMLDivElement;
     moved: boolean;
   } | null>(null);
   const ignoreClick = useRef(false);
-  const [box, setBox] = useState<{ trackID: string; from: number; to: number } | null>(null);
+  const [box, setBox] = useState<{ trackIDs: string[]; from: number; to: number } | null>(null);
   const [viewport, setViewport] = useState(960);
   const finishMarquee = useCallback(
     (cancel = false) => {
@@ -162,7 +165,9 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
       ignoreClick.current = active.moved || cancel;
       if (cancel) {
         editor.getState().selectMany(active.selected);
-        editor.getState().setRange(active.range);
+        editor.getState().setRange(null);
+        editor.getState().setIn(active.inPoint);
+        editor.getState().setOut(active.outPoint);
       }
       if (active.lane.hasPointerCapture(active.pointer))
         active.lane.releasePointerCapture(active.pointer);
@@ -185,30 +190,43 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
       window.removeEventListener("blur", blur);
     };
   }, [editor, finishMarquee]);
-  const updateMarquee = (lane: HTMLDivElement, clientX: number) => {
+  const updateMarquee = (lane: HTMLDivElement, clientX: number, clientY: number) => {
     const active = drag.current;
     if (!active) return;
     const time = Math.max(0, (clientX - lane.getBoundingClientRect().left) / zoom);
-    if (Math.abs(time - active.start) * zoom < 5 && !active.moved) return;
+    if (Math.hypot((time - active.start) * zoom, clientY - active.startY) < 5 && !active.moved)
+      return;
     active.moved = true;
     const from = Math.min(time, active.start),
       to = Math.max(time, active.start);
-    setBox({ trackID: active.trackID, from, to });
+    const top = Math.min(clientY, active.startY),
+      bottom = Math.max(clientY, active.startY);
+    const trackIDs = [
+      ...(scroll.current?.querySelectorAll<HTMLElement>(".editor-track-lane") ?? []),
+    ]
+      .filter((element) => {
+        const bounds = element.getBoundingClientRect();
+        return bounds.top <= bottom && bounds.bottom >= top;
+      })
+      .flatMap((element) => (element.dataset.trackId ? [element.dataset.trackId] : []));
+    setBox({ trackIDs, from, to });
     if (active.shift)
       editor
         .getState()
         .setRange({ from: atFrame(from, project).seconds, to: atFrame(to, project).seconds });
     else
       editor.getState().selectMany(
-        selectionWithLinks(
-          project,
+        (editor.getState().linkedSelection
+          ? (ids: string[]) => selectionWithLinks(project, ids)
+          : (ids: string[]) => ids)(
           tracks
-            .find((track) => track.id === active.trackID)
-            ?.clips.filter(
+            .filter((track) => trackIDs.includes(track.id))
+            .flatMap((track) => track.clips)
+            .filter(
               (clip) =>
                 clip.start.seconds < to && clip.start.seconds + clip.duration.seconds > from,
             )
-            .map((clip) => clip.id) ?? [],
+            .map((clip) => clip.id),
         ),
       );
   };
@@ -580,7 +598,7 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                   className="editor-track-lane"
                   role="group"
                   id={`track-lane-${track.id}`}
-                  data-has-words={Boolean(wordsByTrack.get(track.id)?.length)}
+                  data-has-words={showTranscript && Boolean(wordsByTrack.get(track.id)?.length)}
                   style={{ backgroundSize: `${tickStep * zoom}px 100%` }}
                   data-track-id={track.id}
                   aria-label={`${track.name} clips`}
@@ -589,13 +607,15 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                     event.currentTarget.setPointerCapture(event.pointerId);
                     drag.current = {
                       trackID: track.id,
+                      startY: event.clientY,
                       start: Math.max(
                         0,
                         (event.clientX - event.currentTarget.getBoundingClientRect().left) / zoom,
                       ),
                       shift: event.shiftKey,
                       selected: editor.getState().selected,
-                      range: editor.getState().range,
+                      inPoint: editor.getState().inPoint,
+                      outPoint: editor.getState().outPoint,
                       pointer: event.pointerId,
                       lane: event.currentTarget,
                       moved: false,
@@ -605,9 +625,12 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                     const active = drag.current;
                     if (!active || active.trackID !== track.id) return;
                     const lane = event.currentTarget,
-                      clientX = event.clientX;
-                    updateMarquee(lane, clientX);
-                    trackAutoScroll(scroll.current, clientX, () => updateMarquee(lane, clientX));
+                      clientX = event.clientX,
+                      clientY = event.clientY;
+                    updateMarquee(lane, clientX, clientY);
+                    trackAutoScroll(scroll.current, clientX, () =>
+                      updateMarquee(lane, clientX, clientY),
+                    );
                   }}
                   onPointerUp={() => finishMarquee()}
                   onPointerCancel={() => finishMarquee(true)}
@@ -667,7 +690,7 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                       actions={actions}
                     />
                   ))}
-                  {box?.trackID === track.id && (
+                  {box?.trackIDs.includes(track.id) && (
                     <div
                       className="editor-marquee"
                       aria-hidden="true"
@@ -685,6 +708,7 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                   ))}
                   <div
                     className="editor-transcript-lane"
+                    hidden={!showTranscript}
                     role="group"
                     aria-label={`${track.name} transcript words`}
                   >

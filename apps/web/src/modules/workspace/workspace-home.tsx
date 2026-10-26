@@ -30,7 +30,9 @@ import { Viewer } from "./viewer";
 import { ClipInspector } from "./clip-inspector";
 import { SidePanel } from "./side-panel";
 import { useEditorSession, useEditorView } from "./editor-session";
-import { KEYMAP_STORAGE_KEY } from "./editor-view";
+import { KEYMAP_STORAGE_KEY, KEYMAP_OVERRIDES_STORAGE_KEY } from "./editor-view";
+import { parseKeymap, shortcut, hasKeymapOverride } from "./keyboard";
+import { useEditorCommand } from "./use-editor-command";
 import { PanelDivider } from "./panel-divider";
 import { protectsEditing, workspaceShortcut } from "./keyboard";
 import {
@@ -77,11 +79,23 @@ function PanelRail({
 export function WorkspaceHome() {
   const { session, snapshot, editor } = useEditorSession();
   const keymap = useEditorView((state) => state.keymap);
+  const keymapOverrides = useEditorView((state) => state.keymapOverrides);
   const projectPicker = useRef<HTMLInputElement>(null);
   const filmoraPicker = useRef<HTMLInputElement>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const locked = snapshot.readOnly || snapshot.busy;
+  useEditorCommand("openProject", () => {
+    if (!snapshot.busy) projectPicker.current?.click();
+  });
+  useEditorCommand("export", () => setExportOpen(true));
+  useEditorCommand("save", () => {
+    if (!locked) run(() => session.retrySave());
+  });
+  useEditorCommand("saveVersion", () => run(() => session.downloadProject(true)));
+  useEditorCommand("newProject", () => {
+    if (!locked) run(() => session.createProject());
+  });
   function run(action: () => unknown) {
     setActionError(null);
     void Promise.resolve()
@@ -91,6 +105,12 @@ export function WorkspaceHome() {
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       if (protectsEditing(event.target)) return;
+      const view = editor.getState();
+      if (
+        hasKeymapOverride(event, view.keymapOverrides) ||
+        shortcut(event, view.keymap, view.keymapOverrides)
+      )
+        return;
       const action = workspaceShortcut(event);
       if (!action) return;
       event.preventDefault();
@@ -133,6 +153,8 @@ export function WorkspaceHome() {
         editor
           .getState()
           .setKeymap(readPreference(KEYMAP_STORAGE_KEY) === "minimal" ? "minimal" : "premiere");
+        const overrides = readPreference(KEYMAP_OVERRIDES_STORAGE_KEY);
+        if (overrides) editor.setState({ keymapOverrides: parseKeymap(JSON.parse(overrides)) });
         setPreferencesReady(true);
       })
       .catch(() => {
@@ -168,6 +190,13 @@ export function WorkspaceHome() {
       .then(() => setKeymapError(false))
       .catch(() => setKeymapError(true));
   }, [keymap, preferencesReady]);
+  useEffect(() => {
+    if (!preferencesReady) return;
+    void writePreference(
+      KEYMAP_OVERRIDES_STORAGE_KEY,
+      JSON.stringify({ bindings: keymapOverrides }),
+    ).catch(() => setKeymapError(true));
+  }, [keymapOverrides, preferencesReady]);
 
   function updatePanel<K extends keyof PanelSizes>(panel: K, value: PanelSizes[K]) {
     setSizes((current) => ({ ...current, [panel]: value }));

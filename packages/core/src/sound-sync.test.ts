@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vite-plus/test";
-import { alignSound } from "./sound-sync";
+import { alignSound, alignLongSound } from "./sound-sync";
 function noise(length: number, seed = 42) {
   return Float32Array.from({ length }, () => {
     seed = (1664525 * seed + 1013904223) >>> 0;
@@ -7,6 +7,16 @@ function noise(length: number, seed = 42) {
   });
 }
 describe("GCC-PHAT alignment", () => {
+  it("refines long recordings over distributed stretches and measures stable clock drift", () => {
+    const reference = noise(8000 * 65),
+      delay = 1973;
+    const file = new Float32Array(reference.length + delay);
+    file.set(reference, delay);
+    const result = alignLongSound(reference, file);
+    expect(result.offset).toBeCloseTo(delay / 8000, 4);
+    expect(Math.abs(result.drift ?? Infinity)).toBeLessThan(0.001);
+    expect(result.overlapEnd).toBeCloseTo(65, 2);
+  });
   it("recovers positive and negative source offsets despite gain and polarity differences", () => {
     const reference = noise(8000 * 6),
       delay = 1973;

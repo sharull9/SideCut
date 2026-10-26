@@ -1,0 +1,22 @@
+{
+  "platform": "win32",
+  "production": true,
+  "standaloneSdkRunner": {
+    "typescriptFile": true,
+    "inline": true,
+    "stdin": true
+  },
+  "sharedOwner": true,
+  "portableEditUndoReopen": true,
+  "frame": {
+    "width": 320,
+    "height": 180
+  },
+  "export": {
+    "bytes": 1462,
+    "progressEvents": 33
+  },
+  "standaloneLibrary": {
+    "available": true
+  }
+}

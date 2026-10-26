@@ -6,6 +6,10 @@ import { shortcut, protectsEditing, ownsKey } from "./keyboard";
 import { copyClips, pasteClips, type ClipClipboard } from "./clipboard";
 import { projectDuration, stepFrame, atFrame } from "./timeline-model";
 import { playheadTrim } from "./playhead-trim";
+import { toggleClipKeyframes } from "./keyframe-shortcut";
+import { rangeEdit } from "./range-edits";
+import { diffEdits } from "@sidecut/core/service-edits";
+import { defaultTransitionSound } from "./transition-sound-controls";
 
 export function selectionWithLinks(project: Project, ids: readonly string[]): string[] {
   const clips = [...project.videoTracks, ...project.audioTracks].flatMap((t) => t.clips);
@@ -121,7 +125,7 @@ export function useEditActions(run: (action: () => unknown) => void, fitTimeline
     const handler = (event: KeyboardEvent) => {
       if (protectsEditing(event.target)) return;
       const state = editor.getState(),
-        action = shortcut(event, state.keymap);
+        action = shortcut(event, state.keymap, state.keymapOverrides);
       if (!action || ownsKey(event.target, action)) return;
       const current = session.getSnapshot(),
         project = current.project;
@@ -143,6 +147,18 @@ export function useEditActions(run: (action: () => unknown) => void, fitTimeline
           "addAudioTrack",
           "rippleTrimStart",
           "rippleTrimEnd",
+          "liftInOut",
+          "extractInOut",
+          "freezeFrame",
+          "toggleKeyframe",
+          "layoutFull",
+          "layoutPipRight",
+          "layoutPipLeft",
+          "layoutSplit",
+          "nudgeLeftFive",
+          "nudgeRightFive",
+          "addTransition",
+          "markAgentChangesReviewed",
         ].includes(action)
       )
         return;
@@ -163,11 +179,207 @@ export function useEditActions(run: (action: () => unknown) => void, fitTimeline
           "rippleTrimStart",
           "rippleTrimEnd",
           "toggleSnapping",
+          "addComment",
+          "addSectionCards",
+          "addTransition",
+          "freezeFrame",
+          "toggleKeyframe",
+          "markAgentChangesReviewed",
+          "newProject",
+          "saveVersion",
         ].includes(action)
       )
         return;
       event.preventDefault();
-      if (action === "split") split();
+      if (
+        action === "save" ||
+        action === "saveVersion" ||
+        action === "export" ||
+        action === "newProject" ||
+        action === "openProject"
+      )
+        editor.setState({ requestedDialog: action });
+      else if (action === "addComment" || action === "addSectionCards")
+        editor.setState({ requestedDialog: action === "addComment" ? "comment" : "cards" });
+      else if (action === "markAgentChangesReviewed") run(() => session.markReviewed());
+      else if (action === "toggleProxy") {
+        const useProxies = !state.useProxies;
+        editor.setState({ useProxies });
+        for (const [id, value] of Object.entries(session.analysis.getSnapshot()))
+          if (value.proxy) session.analysis.useProxy(id, useProxies);
+      } else if (action === "previousAgentChange" || action === "nextAgentChange")
+        run(() => {
+          const entries = (diffEdits(session.projectFile(), 0) ?? [])
+            .filter((entry) => !["user", "human"].includes(entry.author) && entry.start != null)
+            .sort((a, b) => a.start! - b.start!);
+          const entry =
+            action === "previousAgentChange"
+              ? entries.filter((value) => value.start! < state.playhead.seconds - 1e-7).at(-1)
+              : entries.find((value) => value.start! > state.playhead.seconds + 1e-7);
+          if (entry?.start != null) {
+            state.seek(Time.fromSeconds(entry.start));
+            state.selectMany(entry.changes.map((change) => change.id));
+          }
+        });
+      else if (action === "addTransition")
+        run(() => {
+          const tracks = [...project.videoTracks, ...project.audioTracks];
+          const track = tracks.find((value) =>
+            value.clips.some((clip) => state.selected.includes(clip.id)),
+          );
+          const clip = track?.clips.find((value) => state.selected.includes(value.id));
+          if (!track || !clip) throw new Error("Select a clip before adding a transition.");
+          const next = track.clips.find(
+            (value) => value.start.flicks === clip.start.flicks + clip.duration.flicks,
+          );
+          const type = next ? "dissolve" : "fadeToBlack";
+          const sound = defaultTransitionSound(project, type);
+          return session.apply({
+            label: "Add transition",
+            commands: [
+              {
+                addTransition: {
+                  trackID: track.id,
+                  transition: {
+                    type,
+                    fromClipID: clip.id,
+                    toClipID: next?.id ?? null,
+                    duration: Math.min(
+                      0.4,
+                      clip.duration.seconds / 2,
+                      next ? next.duration.seconds / 2 : Infinity,
+                    ),
+                  },
+                  ...(sound == null ? {} : { sound }),
+                },
+              },
+            ],
+          });
+        });
+      else if (
+        action === "shuttleReverse" ||
+        action === "shuttleForward" ||
+        action === "shuttleStop"
+      )
+        state.shuttle(action === "shuttleStop" ? 0 : action === "shuttleReverse" ? -1 : 1);
+      else if (action === "clearInOut") state.setRange(null);
+      else if (action === "clearIn") state.setIn(null);
+      else if (action === "clearOut") state.setOut(null);
+      else if (action === "liftInOut" || action === "extractInOut")
+        run(async () => {
+          if (!state.range || state.range.to <= state.range.from)
+            throw new Error("Set in and out points first (I and O).");
+          const range = { start: state.range.from, duration: state.range.to - state.range.from };
+          const batch = rangeEdit(
+            project,
+            state.range.from,
+            state.range.to,
+            action === "extractInOut",
+          );
+          if (!batch) return;
+          await session.apply(batch);
+          if (action === "extractInOut") {
+            state.setRange(null);
+            state.seek(Time.fromSeconds(range.start));
+          }
+        });
+      else if (action === "freezeFrame")
+        run(() => {
+          const clips = project.videoTracks
+            .flatMap((track) => track.clips)
+            .filter(
+              (clip) =>
+                state.selected.includes(clip.id) &&
+                clip.start.seconds <= state.playhead.seconds &&
+                clip.start.seconds + clip.duration.seconds > state.playhead.seconds,
+            );
+          return session.apply({
+            label: "Freeze frame",
+            commands: clips.map((clip) => ({
+              holdFrame: {
+                clipID: clip.id,
+                range: {
+                  start: state.playhead.seconds,
+                  duration: clip.start.seconds + clip.duration.seconds - state.playhead.seconds,
+                },
+              },
+            })),
+          });
+        });
+      else if (action === "previousKeyframe" || action === "nextKeyframe") {
+        const times = [...project.videoTracks, ...project.audioTracks]
+          .flatMap((track) => track.clips)
+          .filter((clip) => state.selected.includes(clip.id))
+          .flatMap((clip) =>
+            Object.values(clip.keyframes).flatMap((frames) =>
+              frames.map((frame) => clip.start.seconds + Number(frame.time)),
+            ),
+          )
+          .sort((a, b) => a - b);
+        const next =
+          action === "previousKeyframe"
+            ? times.filter((time) => time < state.playhead.seconds - 1e-7).at(-1)
+            : times.find((time) => time > state.playhead.seconds + 1e-7);
+        if (next != null) state.seek(Time.fromSeconds(next));
+      } else if (action === "toggleKeyframe")
+        run(() =>
+          session.apply(toggleClipKeyframes(project, state.selected, state.playhead.seconds)),
+        );
+      else if (
+        action === "layoutFull" ||
+        action === "layoutPipRight" ||
+        action === "layoutPipLeft" ||
+        action === "layoutSplit"
+      )
+        run(() =>
+          session.apply({
+            label: "Apply layout",
+            commands: [
+              {
+                applyLayout: {
+                  clipIDs: state.selected,
+                  preset:
+                    action === "layoutFull"
+                      ? "full"
+                      : action === "layoutPipRight"
+                        ? "pipRight"
+                        : action === "layoutPipLeft"
+                          ? "pipLeft"
+                          : "split",
+                },
+              },
+            ],
+          }),
+        );
+      else if (action === "toggleLinkedSelection")
+        editor.setState({ linkedSelection: !state.linkedSelection });
+      else if (action === "toggleRipple") editor.setState({ rippleTrims: !state.rippleTrims });
+      else if (action === "toggleTranscriptLane")
+        editor.setState({ showTranscript: !state.showTranscript });
+      else if (action === "toggleSafeMargins") editor.setState({ safeMargins: !state.safeMargins });
+      else if (
+        action === "toolSelect" ||
+        action === "toolBlade" ||
+        action === "toolRippleTrim" ||
+        action === "toolRoll" ||
+        action === "toolSlip" ||
+        action === "toolSlide"
+      )
+        editor.setState({
+          tool:
+            action === "toolSelect"
+              ? "select"
+              : action === "toolBlade"
+                ? "blade"
+                : action === "toolRippleTrim"
+                  ? "ripple"
+                  : action === "toolRoll"
+                    ? "roll"
+                    : action === "toolSlip"
+                      ? "slip"
+                      : "slide",
+        });
+      else if (action === "split") split();
       else if (action === "remove" || action === "rippleRemove") remove(action === "rippleRemove");
       else if (action === "undo" || action === "redo") run(() => session[action]());
       else if (action === "copy") copy();
@@ -214,11 +426,17 @@ export function useEditActions(run: (action: () => unknown) => void, fitTimeline
         state.setRange(null);
       } else if (action === "toggleSnapping") state.setSnapping(!state.snapping);
       else if (action === "play") state.setPlaying(!state.playing);
-      else if (action === "back" || action === "forward")
+      else if (
+        action === "back" ||
+        action === "forward" ||
+        action === "backFive" ||
+        action === "forwardFive"
+      )
         state.seek(
           stepFrame(
             state.playhead,
-            (action === "back" ? -1 : 1) * (event.shiftKey ? 5 : 1),
+            (action === "back" || action === "backFive" ? -1 : 1) *
+              (event.shiftKey || action.endsWith("Five") ? 5 : 1),
             project,
           ),
         );
@@ -242,7 +460,12 @@ export function useEditActions(run: (action: () => unknown) => void, fitTimeline
             ? edges.filter((t) => t < state.playhead.seconds - 1e-7).at(-1)
             : edges.find((t) => t > state.playhead.seconds + 1e-7);
         if (next != null) state.seek(atFrame(next, project));
-      } else if (action === "nudgeLeft" || action === "nudgeRight")
+      } else if (
+        action === "nudgeLeft" ||
+        action === "nudgeRight" ||
+        action === "nudgeLeftFive" ||
+        action === "nudgeRightFive"
+      )
         run(() => {
           if (state.selected.length)
             return session.apply({
@@ -252,8 +475,8 @@ export function useEditActions(run: (action: () => unknown) => void, fitTimeline
                   moveClips: {
                     clipIDs: state.selected,
                     delta:
-                      ((action === "nudgeLeft" ? -1 : 1) *
-                        (event.shiftKey ? 5 : 1) *
+                      ((action === "nudgeLeft" || action === "nudgeLeftFive" ? -1 : 1) *
+                        (event.shiftKey || action.endsWith("Five") ? 5 : 1) *
                         project.settings.frameRate.denominator) /
                       project.settings.frameRate.numerator,
                   },
@@ -261,16 +484,8 @@ export function useEditActions(run: (action: () => unknown) => void, fitTimeline
               ],
             });
         });
-      else if (action === "markIn")
-        state.setRange({
-          from: state.playhead.seconds,
-          to: Math.max(state.playhead.seconds, state.range?.to ?? state.playhead.seconds),
-        });
-      else if (action === "markOut")
-        state.setRange({
-          from: Math.min(state.range?.from ?? 0, state.playhead.seconds),
-          to: state.playhead.seconds,
-        });
+      else if (action === "markIn") state.setIn(state.playhead.seconds);
+      else if (action === "markOut") state.setOut(state.playhead.seconds);
       else if (action === "markClip") {
         const clip = [...project.videoTracks.toReversed(), ...project.audioTracks]
           .filter((track) => track.targeted)

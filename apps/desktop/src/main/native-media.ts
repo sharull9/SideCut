@@ -28,7 +28,7 @@ export class NativeMedia {
     if (
       !Number.isFinite(start) ||
       start < 0 ||
-      (duration !== undefined && (!Number.isFinite(duration) || duration <= 0 || duration > 300))
+      (duration !== undefined && (!Number.isFinite(duration) || duration <= 0))
     )
       throw new Error("Invalid native media range.");
     if (
@@ -75,8 +75,8 @@ export class NativeMedia {
         ) as { format?: { duration?: string } };
         total = Number(info.format?.duration) - start;
       }
-      if (operation !== "probe" && (!Number.isFinite(total) || !total || total <= 0 || total > 300))
-        throw new Error("Native decode/export requires a known duration of up to five minutes.");
+      if (operation !== "probe" && (!Number.isFinite(total) || !total || total <= 0))
+        throw new Error("Native decode/export requires a known positive duration.");
       progress(0);
       const range = [
         "-ss",
@@ -143,6 +143,7 @@ export class NativeMedia {
           if (match && total && total > 0)
             progress(Math.min(0.99, Number(match[1]) / 1_000_000 / total));
         },
+        Math.min(86400000, Math.max(300000, (total ?? 0) * 20000)),
       );
       signal.throwIfAborted();
       progress(1);
@@ -163,6 +164,7 @@ export class NativeMedia {
     args: string[],
     signal: AbortSignal,
     line: (value: string) => void,
+    timeoutMS = 300000,
   ): Promise<string> {
     signal.throwIfAborted();
     return new Promise((resolve, reject) => {
@@ -179,9 +181,9 @@ export class NativeMedia {
       };
       signal.addEventListener("abort", stop, { once: true });
       const timeout = setTimeout(() => {
-        failure = new Error("Native media job exceeded five minutes.");
+        failure = new Error("Native media job exceeded its processing deadline.");
         stop();
-      }, 300_000);
+      }, timeoutMS);
       child.stdout.on("data", (data: Buffer) => {
         const chunk = data.toString();
         stdout += chunk;

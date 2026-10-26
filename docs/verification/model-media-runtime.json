@@ -1,0 +1,35 @@
+{
+  "platform": "win32",
+  "matting": {
+    "backend": "rvm",
+    "width": 600,
+    "height": 450,
+    "frames": 1,
+    "diskFrames": true,
+    "background": 138939,
+    "foreground": 107191,
+    "soft": 23870
+  },
+  "exports": [
+    {
+      "duration": 301,
+      "fps": 1,
+      "actualDuration": 301,
+      "frameCount": 301,
+      "bytes": 20415,
+      "fileBacked": true,
+      "type": "video/webm",
+      "proxyFrames": 301,
+      "matteFrames": 301
+    },
+    {
+      "duration": 1,
+      "fps": 120,
+      "actualDuration": 1,
+      "frameCount": 120,
+      "bytes": 3591,
+      "fileBacked": false,
+      "type": "video/webm"
+    }
+  ]
+}

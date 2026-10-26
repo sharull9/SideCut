@@ -1,4 +1,5 @@
 import { yieldTask } from "./yield-task";
+import { exportOutput } from "./export-output";
 import { mixTimelineAudio } from "./audio";
 import { measureSource } from "./audio-analysis";
 import { createLUTLoader } from "./lut";
@@ -40,7 +41,6 @@ export async function renderWebM(
   const {
     Output,
     WebMOutputFormat,
-    BufferTarget,
     CanvasSource,
     AudioSampleSource,
     AudioSample,
@@ -62,8 +62,10 @@ export async function renderWebM(
   canvas.height = plan.height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas export is unavailable.");
-  const target = new BufferTarget(),
-    output = new Output({ format: new WebMOutputFormat(), target });
+  const destination = await exportOutput(
+    plan.duration > 300 || (bitrate * plan.duration) / 8 > 64 * 1024 * 1024,
+  );
+  const output = new Output({ format: new WebMOutputFormat(), target: destination.target });
   const video = new CanvasSource(canvas, { codec: "vp8", bitrate });
   output.addVideoTrack(video, { frameRate: plan.fps });
   const audio = plan.hasAudio ? new AudioSampleSource({ codec: "opus", bitrate: 128_000 }) : null;
@@ -206,16 +208,19 @@ export async function renderWebM(
     signal.throwIfAborted();
     await output.finalize();
     signal.throwIfAborted();
-    if (!target.buffer) throw new Error("Export did not produce a file.");
+    const blob = await destination.finish();
     finished = true;
     onProgress(1);
-    return new Blob([target.buffer], { type: "video/webm" });
+    return blob;
   } catch (error) {
     if (externalSignal.aborted) throw new DOMException("Export cancelled.", "AbortError");
     throw error;
   } finally {
     signal.removeEventListener("abort", cancel);
-    if (!finished) await output.cancel().catch(() => {});
+    if (!finished) {
+      await output.cancel().catch(() => {});
+      await destination.cancel();
+    }
     for (const pending of readers.values())
       void pending.then(
         (value) => value.close(),

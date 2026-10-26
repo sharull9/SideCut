@@ -317,6 +317,16 @@ async function verify() {
       escapeRestoresRange: true,
     };
     await focus(".editor-timeline-scroll");
+    await key("l", ["control", "shift"]);
+    await drag(lanePoint, laneEnd);
+    assert.deepEqual(await selected(), ["first", "second"]);
+    const audioLane = await rect("[data-track-id=a]");
+    await drag(lanePoint, { x: laneEnd.x, y: audioLane.bottom - 3 });
+    assert.deepEqual(await selected(), ["first", "second", "sound"]);
+    await key("l", ["control", "shift"]);
+    evidence.marquee.crossTrackWithoutLinks = true;
+    evidence.marquee.linkedSelectionToggle = true;
+    await focus(".editor-timeline-scroll");
     await key("Escape");
     await key("Home");
     const body = await rect("[data-clip-id=second] .editor-clip-body");
@@ -767,11 +777,64 @@ async function verify() {
       minimalStillProtectsNavigation: true,
       restoredPremiere: true,
     };
+    await click('[aria-label="Keyboard shortcuts"]');
+    const custom = JSON.parse(
+      await readFile(join(root, "tests/fixtures/tandem/premiere-keymap.json"), "utf8"),
+    );
+    custom.bindings.f9 = "toolBlade";
+    custom.bindings.j = null;
+    await evaluate(
+      `(()=>{const input=document.querySelector('#custom-keymap'),transfer=new DataTransfer();transfer.items.add(new File([${JSON.stringify(JSON.stringify(custom))}],'native-keymap.json',{type:'application/json'}));input.files=transfer.files;input.dispatchEvent(new Event('change',{bubbles:true}));})()`,
+    );
+    await wait(() =>
+      evaluate(
+        "[...document.querySelectorAll('button')].some(button=>/Reset .* custom bindings/.test(button.textContent))",
+      ),
+    );
+    await key("Escape");
+    await focus(".editor-timeline-scroll");
+    await key("F9");
+    assert.equal(
+      await evaluate("document.querySelector('[aria-label=\"Timeline tool\"]').value"),
+      "blade",
+    );
+    await key("v");
+    window.webContents.reload();
+    await wait(() =>
+      evaluate("Boolean(document.querySelector('.editor-workspace'))").catch(() => false),
+    );
+    await click('[aria-label="Keyboard shortcuts"]');
+    await wait(() =>
+      evaluate(
+        "[...document.querySelectorAll('button')].some(button=>/Reset .* custom bindings/.test(button.textContent))",
+      ),
+    );
+    await key("Escape");
+    await focus(".editor-timeline-scroll");
+    await key("F9");
+    await wait(() =>
+      evaluate("document.querySelector('[aria-label=\"Timeline tool\"]')?.value === 'blade'"),
+    );
+    await click('[aria-label="Keyboard shortcuts"]');
+    await evaluate(
+      "[...document.querySelectorAll('button')].find(button=>/Reset .* custom bindings/.test(button.textContent)).click()",
+    );
+    await key("Escape");
+    await focus(".editor-timeline-scroll");
+    await key("v");
+    evidence.customKeymap = {
+      nativeFileImport: true,
+      toolDispatch: true,
+      persistsOnReload: true,
+      reset: true,
+    };
+    await writeFile(
+      join(root, "docs/verification/editor-parity.png"),
+      (await window.webContents.capturePage()).toPNG(),
+    );
     evidence.limits = [
       "Windows Electron keyboard/pointer workflow",
-      "Premiere subset and editing-only map; native user keymap files remain unsupported",
       "Clipboard stays in one project; transitions require saved segments",
-      "Marquee selects one track plus linked partners",
       "Managed browser interaction subset; native macOS/Linux gestures unverified",
     ];
     await writeFile(

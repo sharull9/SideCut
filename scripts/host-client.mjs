@@ -57,3 +57,50 @@ export async function hostCall(host, operation, input = {}, signal, author = "mc
   }
   return result;
 }
+
+/** Read the native SSE event stream. Disconnecting cancels this subscription only. */
+export async function* watchHost(host, { signal, lastEventID } = {}) {
+  const response = await fetch(`http://127.0.0.1:${host.port}/v1/watch`, {
+    headers: {
+      authorization: `Bearer ${host.token}`,
+      accept: "text/event-stream",
+      ...(lastEventID === undefined ? {} : { "last-event-id": String(lastEventID) }),
+    },
+    signal,
+  });
+  if (
+    !response.ok ||
+    !response.headers.get("content-type")?.startsWith("text/event-stream") ||
+    !response.body
+  )
+    throw new Error(`Event stream could not open (${response.status}).`);
+  const reader = response.body.getReader(),
+    decoder = new TextDecoder();
+  let pending = "";
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) return;
+      pending += decoder.decode(value, { stream: true }).replaceAll("\r\n", "\n");
+      if (pending.length > 1024 * 1024) throw new Error("Event stream frame exceeds 1 MiB.");
+      let boundary;
+      while ((boundary = pending.indexOf("\n\n")) >= 0) {
+        const frame = pending.slice(0, boundary);
+        pending = pending.slice(boundary + 2);
+        const data = frame
+          .split("\n")
+          .filter((line) => line.startsWith("data:"))
+          .map((line) => line.slice(5).trimStart())
+          .join("\n");
+        if (!data) continue;
+        const event = JSON.parse(data);
+        if (!event || typeof event !== "object" || Array.isArray(event))
+          throw new Error("Invalid event stream data.");
+        yield event;
+      }
+    }
+  } finally {
+    await reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
+}

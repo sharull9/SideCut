@@ -42,6 +42,17 @@ export function registerNativeIPC(
     check(event);
     await project.flush();
   });
+  ipcMain.handle(bridgeChannels.projectResource, async (event, id: unknown) => {
+    check(event);
+    if (!api) throw new Error("Project service is unavailable.");
+    try {
+      return await api.readProjectResource(id);
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT")
+        return null;
+      throw error;
+    }
+  });
   ipcMain.handle(bridgeChannels.projectImport, async (event, json: unknown) => {
     check(event);
     if (typeof json !== "string" || json.length > 20 * 1024 * 1024)

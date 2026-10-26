@@ -2,6 +2,7 @@ import type { MediaItem } from "@sidecut/contracts/project";
 import { audioIdentity } from "./audio-analysis";
 import { derivedCache } from "./derived-cache";
 import { LocalMediaReader } from "./preview";
+import { yieldTask } from "./yield-task";
 
 export interface SourceSamples {
   duration: number;
@@ -38,8 +39,13 @@ export async function sourceSamples(
     return cached;
   }
   const duration = item.kind === "image" ? 0 : item.duration?.seconds;
-  if (duration === undefined || duration > 600)
-    throw new Error("Timeline analysis supports sources up to ten minutes with a known duration.");
+  if (
+    duration === undefined ||
+    !Number.isFinite(duration) ||
+    duration < 0 ||
+    Math.ceil(duration * PEAK_RATE) * 4 > 64 * 1024 * 1024
+  )
+    throw new Error("Timeline analysis needs a known duration within the 64 MiB waveform budget.");
   const reader = await LocalMediaReader.open(file, item.kind, 160);
   const result: SourceSamples = {
     duration,
@@ -60,7 +66,7 @@ export async function sourceSamples(
           chunk.timestamp,
         );
         progress(0.7 * Math.min(1, (chunk.timestamp + chunk.duration) / duration));
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        await yieldTask();
       }
     if (item.hasVideo) {
       const count = Math.max(1, Math.min(60, Math.ceil(duration / 2)));
@@ -102,9 +108,17 @@ export async function readMono(
   progress: (v: number) => void,
 ): Promise<Float32Array> {
   const duration = item.duration?.seconds;
-  if (!item.hasAudio || !duration || duration > 600)
+  if (
+    !item.hasAudio ||
+    !duration ||
+    !Number.isFinite(duration) ||
+    duration <= 0 ||
+    !Number.isFinite(rate) ||
+    rate <= 0 ||
+    Math.ceil(duration * rate) * 4 > 128 * 1024 * 1024
+  )
     throw new Error(
-      "Local sound analysis needs audio with a known duration of ten minutes or less.",
+      "Local sound analysis needs a known positive duration within the 128 MiB sample budget.",
     );
   const result = new Float32Array(Math.ceil(duration * rate));
   const reader = await LocalMediaReader.open(file, item.kind);
@@ -128,7 +142,7 @@ export async function readMono(
         if (high > low) result[i] = sum / ((high - low) * channels.length);
       }
       progress(Math.min(0.99, last / result.length));
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await yieldTask();
     }
     signal.throwIfAborted();
     return result;

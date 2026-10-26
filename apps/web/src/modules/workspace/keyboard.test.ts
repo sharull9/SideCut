@@ -1,5 +1,56 @@
 import { it, expect } from "vite-plus/test";
-import { shortcut, ownsKey, workspaceShortcut } from "./keyboard";
+import { shortcut, ownsKey, workspaceShortcut, parseKeymap } from "./keyboard";
+import { createEditorView } from "./editor-view";
+import premiere from "../../../../../tests/fixtures/tandem/premiere-keymap.json";
+it("accepts every binding in the pinned native Premiere map", () => {
+  const bindings = parseKeymap(premiere);
+  expect(Object.keys(bindings)).toHaveLength(Object.keys(premiere.bindings).length - 1);
+  expect(bindings.delete).toBe("remove");
+  expect(
+    shortcut(
+      {
+        key: ">",
+        ctrlKey: false,
+        metaKey: false,
+        altKey: false,
+        shiftKey: true,
+        isComposing: false,
+        defaultPrevented: false,
+      },
+      "premiere",
+      bindings,
+    ),
+  ).toBe("nudgeRightFive");
+  expect(() =>
+    parseKeymap({ bindings: { delete: "lift", forwarddelete: "rippleDelete" } }),
+  ).toThrow(/Conflicting/);
+});
+
+it("loads validated keymap overrides and dispatches transport and range commands", () => {
+  const event = {
+    key: "j",
+    ctrlKey: false,
+    metaKey: false,
+    altKey: false,
+    shiftKey: false,
+    isComposing: false,
+    defaultPrevented: false,
+  };
+  expect(shortcut(event, "premiere")).toBe("shuttleReverse");
+  expect(shortcut({ ...event, key: "i", altKey: true }, "premiere")).toBe("clearIn");
+  const overrides = parseKeymap({ bindings: { "option+j": "bladeAtPlayhead", j: null } });
+  expect(shortcut(event, "premiere", overrides)).toBeNull();
+  expect(shortcut({ ...event, altKey: true }, "minimal", overrides)).toBe("split");
+  expect(() => parseKeymap({ bindings: { j: "madeUp" } })).toThrow(/Unsupported/);
+  const view = createEditorView();
+  view.getState().shuttle(-1);
+  view.getState().shuttle(-1);
+  expect(view.getState()).toMatchObject({ playing: true, playbackRate: -2 });
+  view.getState().shuttle(1);
+  expect(view.getState().playbackRate).toBe(1);
+  view.getState().shuttle(0);
+  expect(view.getState().playing).toBe(false);
+});
 import { copyClips, pasteClips } from "./clipboard";
 import { decodeProjectFile } from "@sidecut/contracts/project";
 import { ProjectCoordinator } from "@sidecut/core/coordinator";

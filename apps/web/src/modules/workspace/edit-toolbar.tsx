@@ -35,6 +35,7 @@ export function EditToolbar({
     range = useEditorView((s) => s.range);
   const selected = useEditorView((s) => s.selected);
   const snapping = useEditorView((state) => state.snapping);
+  const tool = useEditorView((state) => state.tool);
   const [start, setStart] = useState("0"),
     [finish, setFinish] = useState("1");
   useEffect(() => {
@@ -64,6 +65,32 @@ export function EditToolbar({
           </label>
         </ToolTip>
         <ShortcutsDialog />
+        <label className="editor-keymap">
+          Tool
+          <select
+            aria-label="Timeline tool"
+            value={tool}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (
+                value === "select" ||
+                value === "blade" ||
+                value === "ripple" ||
+                value === "roll" ||
+                value === "slip" ||
+                value === "slide"
+              )
+                editor.setState({ tool: value });
+            }}
+          >
+            <option value="select">Select (V)</option>
+            <option value="blade">Blade (C)</option>
+            <option value="ripple">Ripple trim (B)</option>
+            <option value="roll">Roll (N)</option>
+            <option value="slip">Slip (Y)</option>
+            <option value="slide">Slide (U)</option>
+          </select>
+        </label>
         <ToolTip label="Toggle snapping" shortcut="S">
           <Button
             size="icon-xs"

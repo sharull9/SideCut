@@ -11,6 +11,8 @@ import {
   FieldLabel,
 } from "@sidecut/ui/components/field";
 import { useEditorSession } from "./editor-session";
+import { readPreference, writePreference } from "@sidecut/platform-browser/preferences";
+import { TRANSCRIPTION_LANGUAGES } from "@sidecut/platform-browser/transcription-config";
 
 export function MediaAnalysisControls({ item }: { item: MediaItem }) {
   const { session, snapshot } = useEditorSession();
@@ -20,6 +22,9 @@ export function MediaAnalysisControls({ item }: { item: MediaItem }) {
     session.analysis.getSnapshot,
   );
   const [referenceID, setReferenceID] = useState("");
+  const [language, setLanguage] = useState(
+    readPreference("sidecut.transcription.language") ?? "en",
+  );
   const [error, setError] = useState<string | null>(null);
   const state = analysis[item.id];
   const available = snapshot.mediaAvailability[item.id]?.state === "available";
@@ -48,8 +53,8 @@ export function MediaAnalysisControls({ item }: { item: MediaItem }) {
               Generate preview proxy
             </Button>
             <FieldDescription>
-              640 px PNG frames preserve source timestamps and transparency. Up to 60 seconds, 3,600
-              frames and 128 MiB. Audio and final export use the original.
+              640 px PNG frames preserve timestamps and transparency. Frames are stored on this
+              device and loaded as needed. Audio and final export use the original.
             </FieldDescription>
             <FieldLabel htmlFor={`proxy-${item.id}`}>Use generated proxy in viewer</FieldLabel>
             <input
@@ -91,30 +96,49 @@ export function MediaAnalysisControls({ item }: { item: MediaItem }) {
                 Align take by sound
               </Button>
               <FieldDescription>
-                Measures shared sound in recordings up to 60 seconds and saves take offsets. Review
-                confidence, then place the take. Correct offsets under Role and take placement.
+                Measures shared sound and clock drift across recordings, then saves take offsets.
+                Review confidence, then place the take. Correct offsets under Role and take
+                placement.
               </FieldDescription>
             </Field>
             <Field>
+              <FieldLabel htmlFor={`transcript-language-${item.id}`}>
+                Transcription language
+              </FieldLabel>
+              <select
+                id={`transcript-language-${item.id}`}
+                value={language}
+                disabled={disabled}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setLanguage(next);
+                  run(() => writePreference("sidecut.transcription.language", next));
+                }}
+              >
+                {TRANSCRIPTION_LANGUAGES.map((code) => (
+                  <option key={code} value={code}>
+                    {new Intl.DisplayNames(["en"], { type: "language" }).of(code) ?? code} ({code})
+                  </option>
+                ))}
+              </select>
               <Button
                 size="xs"
                 variant="outline"
                 disabled={disabled}
-                onClick={() => run(() => session.analysis.transcribe(item.id))}
+                onClick={() => run(() => session.analysis.transcribe(item.id, undefined, language))}
               >
                 {state?.transcript
                   ? "Load cached local transcript"
                   : "Download model and transcribe locally"}
               </Button>
               <FieldDescription>
-                English Whisper Tiny runs on this device. First use downloads the public model from
-                Hugging Face and its CDN. Audio stays here. Up to ten minutes per source. Cancel in
-                Background jobs.
+                Multilingual Whisper Tiny runs on this device. First use downloads the public model
+                from Hugging Face and its CDN. Audio stays here. Cancel in Background jobs.
               </FieldDescription>
               {state?.transcript && (
                 <p>
-                  {state.transcript.words.length} words · English · click words on the timeline to
-                  seek.
+                  {state.transcript.words.length} words · {state.transcript.language} · click words
+                  on the timeline to seek.
                 </p>
               )}
             </Field>

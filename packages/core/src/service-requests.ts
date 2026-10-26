@@ -145,6 +145,7 @@ export const serviceDefinitions = {
   transcript: { id: "string", ...range },
   transcribe: {
     media: "strings",
+    language: "string",
     wait: "boolean",
     timeout: "number",
     label: "string",

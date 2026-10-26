@@ -15,6 +15,8 @@ import {
 import { CommitInput } from "./commit-input";
 import { useEditorSession } from "./editor-session";
 import { pictureTime } from "@sidecut/core/render-plan";
+import { readPreference, writePreference } from "@sidecut/platform-browser/preferences";
+import type { MattingBackend } from "@sidecut/platform-browser/matting-models";
 
 const MASK_PAIRS = [
   [
@@ -41,6 +43,9 @@ export function CutoutControls({ clip }: { clip: Clip }) {
     session.analysis.getSnapshot,
   );
   const [error, setError] = useState<string | null>(null);
+  const [backend, setBackend] = useState<MattingBackend>(
+    readPreference("sidecut.matte.backend") === "rvm" ? "rvm" : "mediapipe",
+  );
   const mediaID = (clip.content.media as { mediaID?: string } | undefined)?.mediaID;
   if (!mediaID) return null;
   let settings: Cutout;
@@ -135,12 +140,27 @@ export function CutoutControls({ clip }: { clip: Clip }) {
             />
           </PropertyRow>
         ))}
+        <PropertyRow label="Matting model" htmlFor="matting-backend">
+          <select
+            id="matting-backend"
+            value={backend}
+            disabled={disabled}
+            onChange={(event) => {
+              const value = event.target.value === "rvm" ? "rvm" : "mediapipe";
+              setBackend(value);
+              run(() => writePreference("sidecut.matte.backend", value));
+            }}
+          >
+            <option value="mediapipe">MediaPipe · person and accessory masks</option>
+            <option value="rvm">RVM · recurrent video matting</option>
+          </select>
+        </PropertyRow>
         <ActionRow>
           <Button
             size="xs"
             variant="outline"
             disabled={disabled}
-            onClick={() => run(() => session.analysis.cutout(mediaID))}
+            onClick={() => run(() => session.analysis.cutout(mediaID, backend))}
           >
             <RiScanLine aria-hidden="true" />
             Analyse cutout
@@ -162,9 +182,10 @@ export function CutoutControls({ clip }: { clip: Clip }) {
               "Matte not analysed in this session. Saved mattes load when rendered.")}
         </Hint>
         <Hint>
-          Downloads a local segmentation model on first use. Media stays on this device. Sources up
-          to 60 seconds; use repair masks for missed accessories. Download saves the current source
-          frame with transparency, up to 1280 px wide.
+          Downloads the selected model on first use. Media stays on this device. RVM carries
+          temporal state between video frames and keeps foreground props. Use repair masks for
+          missed accessories. Download saves the current source frame with transparency, up to 1280
+          px wide.
         </Hint>
       </InspectorSection>
       <InspectorSection id="picture.repair" title="Repair masks">

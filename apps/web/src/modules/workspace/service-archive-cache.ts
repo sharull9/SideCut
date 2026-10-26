@@ -4,6 +4,10 @@ import { MATTE_VERSION } from "@sidecut/platform-browser/cutout";
 import { encodeStored, decodeStored } from "@sidecut/platform-browser/storage-codec";
 import type { ArchiveResource } from "@sidecut/core/archive";
 import { TRANSCRIPT_VERSION } from "@sidecut/platform-browser/transcription";
+import { portableFrameReferences } from "@sidecut/platform-browser/frame-store";
+import { RVM_MODEL } from "@sidecut/platform-browser/matting-models";
+import { transcriptVersion } from "@sidecut/platform-browser/transcription-config";
+import { readPreference } from "@sidecut/platform-browser/preferences";
 
 export async function archiveCaches(stored: { resource: { file: File } }[]) {
   const resources: ArchiveResource[] = [],
@@ -21,11 +25,16 @@ export async function archiveCaches(stored: { resource: { file: File } }[]) {
       `samples:1:${identity}`,
       `proxy:png:1:640:${identity}`,
       `${MATTE_VERSION}:${identity}`,
+      `${RVM_MODEL.version}:${identity}`,
       `${TRANSCRIPT_VERSION}:${identity}`,
+      `${transcriptVersion(readPreference("sidecut.transcription.language") ?? "en")}:${identity}`,
     ]) {
       const value = await derivedCache(key);
       if (value !== undefined && !rows.some((row) => row.key === key))
-        rows.push({ key, value: await encodeStored(value, storage) });
+        rows.push({
+          key,
+          value: await encodeStored(await portableFrameReferences(value), storage),
+        });
     }
   }
   resources.push({
@@ -48,7 +57,7 @@ export async function restoreArchiveCaches(resources: readonly ArchiveResource[]
       typeof row !== "object" ||
       typeof row.key !== "string" ||
       typeof row.value !== "string" ||
-      !/^(samples:1:|proxy:png:1:640:|matte:|transcript:2:)/.test(row.key)
+      !/^(samples:1:|proxy:png:1:640:|matte:|transcript:[23]:)/.test(row.key)
     )
       throw new Error("Invalid archive cache entry.");
     const value = await decodeStored(row.value, {

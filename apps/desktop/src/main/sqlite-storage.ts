@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { SQLiteRepository } from "@sidecut/core/sqlite";
@@ -24,6 +24,15 @@ export function openSQLite(path: string) {
 }
 
 export class NativeStorage {
+  async removeFile(id: unknown) {
+    if (typeof id !== "string" || !/^[a-f0-9-]{36}$/.test(id))
+      throw new Error("Invalid storage file ID.");
+    await unlink(join(this.directory, "storage-files", id)).catch(
+      (error: NodeJS.ErrnoException) => {
+        if (error.code !== "ENOENT") throw error;
+      },
+    );
+  }
   private readonly connection: ReturnType<typeof openSQLite>;
   constructor(private readonly directory: string) {
     this.connection = openSQLite(join(directory, "sidecut.sqlite"));

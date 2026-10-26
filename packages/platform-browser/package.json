@@ -6,11 +6,13 @@
   "exports": {
     "./storage-codec": "./src/storage-codec.ts",
     "./export-queue": "./src/export-queue.ts",
+    "./export-output": "./src/export-output.ts",
     "./asset-providers": "./src/asset-providers.ts",
     "./segments": "./src/segments.ts",
     "./providers": "./src/providers.ts",
     "./starter": "./src/starter.ts",
     "./cutout": "./src/cutout.ts",
+    "./matting-models": "./src/matting-models.ts",
     "./asset-library": "./src/asset-library.ts",
     "./storage": "./src/storage.ts",
     "./writer-lock": "./src/writer-lock.ts",
@@ -25,10 +27,12 @@
     "./picture": "./src/picture.ts",
     "./export": "./src/export.ts",
     "./derived-cache": "./src/derived-cache.ts",
+    "./frame-store": "./src/frame-store.ts",
     "./source-analysis": "./src/source-analysis.ts",
     "./proxy": "./src/proxy.ts",
     "./sound-sync": "./src/sound-sync.ts",
     "./transcription": "./src/transcription.ts",
+    "./transcription-config": "./src/transcription-config.ts",
     "./text": "./src/text.ts",
     "./preferences": "./src/preferences.ts"
   },
@@ -49,7 +53,8 @@
     "@sqlite.org/sqlite-wasm": "3.54.1-build1",
     "effect": "catalog:",
     "lottie-web": "5.13.0",
-    "mediabunny": "catalog:"
+    "mediabunny": "catalog:",
+    "onnxruntime-web": "1.31.0-dev.20260914-8d85527a0"
   },
   "devDependencies": {
     "@sidecut/config": "workspace:*",

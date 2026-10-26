@@ -158,10 +158,9 @@ export function exportPlan(
     throw new Error("Invalid export range.");
   const duration = end - start;
   if (duration <= 0) throw new Error("Place a source before exporting.");
-  if (duration > 300) throw new Error("The browser exporter supports ranges up to five minutes.");
   const fps = project.settings.frameRate.numerator / project.settings.frameRate.denominator;
-  if (fps < 1 || fps > 60)
-    throw new Error("Browser export currently supports frame rates from 1 to 60 fps.");
+  if (!Number.isFinite(fps) || fps <= 0)
+    throw new Error("Export needs a positive finite frame rate.");
   const boundaries = [
     start,
     ...[...project.videoTracks, ...project.audioTracks].flatMap((t) =>
@@ -187,6 +186,8 @@ export function exportPlan(
   if (fullResolution && (Math.max(w, h) > 8192 || w * h > 16777216))
     throw new Error("Export frame is too large.");
   const frameCount = Math.ceil(duration * fps - 1e-7);
+  if (!Number.isSafeInteger(frameCount))
+    throw new Error("Export frame count exceeds safe integer precision.");
   return {
     duration: frameCount / fps,
     frameCount,

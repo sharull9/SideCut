@@ -9,15 +9,18 @@ import { prepareResourceCommand } from "./cli-resource-commands.mjs";
 import { prepareAnalysisCommand } from "./cli-analysis-commands.mjs";
 import { prepareLibraryCommand } from "./cli-library-commands.mjs";
 import { installCompatibilityLauncher } from "./cli-compatibility.mjs";
+import { acquireProjectHost } from "./headless-host.mjs";
+import { watchHost } from "./host-client.mjs";
 import {
   parseArguments,
-  discoverEndpoint,
   verifyProjectOwner,
+  findProject,
   commandHelp,
   segmentText,
 } from "./cli-foundation.mjs";
 
 const requestSchema = z.record(z.string(), z.unknown());
+let closeHost = async () => {};
 const numericFlagSchema = z.string().transform(Number).pipe(z.number());
 const booleanFlagSchema = z
   .union([z.literal(true), z.enum(["true", "false"])])
@@ -33,7 +36,7 @@ Use --json for machine-readable service results.
   -o PATH                Alias for --output; --expect aliases --expected-revision
   --                     End options
 Project discovery excludes render snapshots and rejects ambiguous folders.
-Closed-project/headless editing is unsupported; choose a running profile.
+Closed projects can use a hidden desktop host. An installed or built SideCut is required.
   --endpoint-file PATH    Discovery file (or SIDECUT_API_FILE)
   --input PATH           Read request JSON from a file
   --request JSON         Request object as JSON
@@ -46,6 +49,7 @@ diff, restore, transcript, transcribe, search, pauses, tighten, join, captions,
 short, cards, validate, check, comments, sync, watch, wait, effects, archive,
 relink, frame, frames, screenshot, clip, export, loudness, new, open,
 import-edl, import-filmora.
+Automation: serve --project PATH; run PROJECT script.ts | -e CODE | - (stdin).
 Assets: providers, search, fetch, show, use, credits, generate, install-starter.
 Segments: list, save, insert.
 
@@ -56,11 +60,52 @@ Exit codes: 0 success, 2 invalid request, 3 unavailable, 4 stale revision,
 
 let readableQueryErrors = false;
 async function main(args) {
+  if (args[0] === "run") {
+    const { runScript } = await import("./sidecut-run.mjs");
+    return runScript(args.slice(1));
+  }
   let { flags, words } = parseArguments(args);
   readableQueryErrors =
     !flags.has("json") && queryHelp(words[0] === "project" ? words[1] : words[0]) != null;
   if (flags.has("version") && !words.length) {
     process.stdout.write("sidecut 0.0.1\n");
+    return;
+  }
+  if (words[0] === "serve" && !flags.has("help")) {
+    if (words.length > 1) {
+      if (words.length !== 2 || flags.has("project"))
+        throw new Error("serve takes one project path.");
+      flags.set("project", words[1]);
+    }
+    for (const flag of flags.keys())
+      if (!["project", "endpoint-file", "json"].includes(flag))
+        throw new Error(`Unknown serve option --${flag}.`);
+    if (!(await findProject(flags.get("project")))) throw new Error("Choose a project to serve.");
+    const host = await acquireProjectHost(flags);
+    try {
+      process.stdout.write(
+        (flags.has("json")
+          ? JSON.stringify({
+              project: host.project,
+              port: host.endpoint.port,
+              pid: host.endpoint.pid,
+            })
+          : `Serving ${host.project} on 127.0.0.1:${host.endpoint.port}. Stop with Ctrl-C.`) + "\n",
+      );
+      await new Promise((done) => {
+        const timer = setInterval(() => {}, 1000);
+        const stop = () => {
+          clearInterval(timer);
+          process.removeListener("SIGINT", stop);
+          process.removeListener("SIGTERM", stop);
+          done();
+        };
+        process.once("SIGINT", stop);
+        process.once("SIGTERM", stop);
+      });
+    } finally {
+      await host.close();
+    }
     return;
   }
   if (!words.length || words[0] === "help" || flags.has("help")) {
@@ -152,7 +197,11 @@ async function main(args) {
     throw new Error("Give --clips or --from and --to, not both.");
   let endpoint, project;
   try {
-    ({ endpoint, project } = await discoverEndpoint(flags));
+    const host = await acquireProjectHost(flags, {
+      library: operation.startsWith("assets-") || operation === "segments",
+    });
+    ({ endpoint, project } = host);
+    closeHost = host.close;
   } catch (error) {
     if (operation !== "app" || (error.code !== "ENOENT" && error.cause?.code !== "ENOENT"))
       throw error;
@@ -293,6 +342,29 @@ async function main(args) {
     if (!status) return;
     input.expectedRevision = status.revision;
   }
+  if (operation === "watch" && flags.has("follow")) {
+    try {
+      for await (const event of watchHost(endpoint, { signal: controller.signal })) {
+        if (typeof event.kind !== "string") continue;
+        const at = event.date ? new Date(event.date).toTimeString().slice(0, 8) : "--:--:--";
+        let text;
+        if (event.kind === "jobs") {
+          const jobs = (event.jobs ?? []).filter((job) =>
+            ["running", "queued"].includes(job.state),
+          );
+          text = `${at}  jobs: ${jobs.length ? jobs.map((job) => `${job.kind ?? job.label ?? "analysis"} ${job.mediaID ?? job.id} ${job.state}`).join(", ") : "idle"}`;
+        } else if (event.kind === "export") {
+          const job = event.export;
+          text = `${at}  export ${String(job.output).split(/[\\/]/).at(-1)} ${job.state} ${Math.trunc(job.progress * 100)}%`;
+        } else
+          text = `${at}  r${event.revision ?? 0}  ${event.kind}  ${event.label ?? ""}  (${event.author ?? "?"})`;
+        process.stdout.write((flags.has("json") ? JSON.stringify(event) : text) + "\n");
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) throw error;
+    }
+    return;
+  }
   do {
     const result = await call(operation, input);
     if (!result) return;
@@ -313,20 +385,22 @@ async function main(args) {
   } while (!controller.signal.aborted);
 }
 
-main(process.argv.slice(2)).catch((error) => {
-  process.exitCode =
-    error?.exitCode ??
-    (error?.name === "AbortError" ? 130 : error?.message === "fetch failed" ? 3 : 2);
-  // Discovery files contain credentials. Never echo their contents or network headers.
-  const message =
-    error?.name === "SyntaxError"
-      ? "Invalid JSON input or discovery file."
-      : error.code === "ENOENT"
-        ? "File not found. Start Sidecut or set --endpoint-file."
-        : error.message;
-  process.stderr.write(
-    (readableQueryErrors
-      ? `Error: ${message}`
-      : JSON.stringify({ error: { code: "cliError", message } })) + "\n",
-  );
-});
+main(process.argv.slice(2))
+  .finally(() => closeHost())
+  .catch((error) => {
+    process.exitCode =
+      error?.exitCode ??
+      (error?.name === "AbortError" ? 130 : error?.message === "fetch failed" ? 3 : 2);
+    // Discovery files contain credentials. Never echo their contents or network headers.
+    const message =
+      error?.name === "SyntaxError"
+        ? "Invalid JSON input or discovery file."
+        : error.code === "ENOENT"
+          ? "File not found. Start Sidecut or set --endpoint-file."
+          : error.message;
+    process.stderr.write(
+      (readableQueryErrors
+        ? `Error: ${message}`
+        : JSON.stringify({ error: { code: "cliError", message } })) + "\n",
+    );
+  });

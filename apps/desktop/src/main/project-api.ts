@@ -44,14 +44,33 @@ import { resolveServiceMedia, isCameraTake } from "@sidecut/core/service-sync";
 import { folderArchive } from "./service-archive.ts";
 import { writeProjectCommandOutput } from "./project-command-output.ts";
 import { relinkPlan, fileFingerprint } from "./service-relink.ts";
+import { ServiceEvents } from "./service-events.ts";
 type RendererOperations = {
   ready?: () => boolean;
   activate?: () => void;
-  run: (operation: string, input: Record<string, unknown>, signal: AbortSignal) => Promise<unknown>;
+  run: (
+    operation: string,
+    input: Record<string, unknown>,
+    signal: AbortSignal,
+    progress?: (value: number) => void,
+  ) => Promise<unknown>;
   screenshot: () => Promise<Uint8Array>;
 };
 
 export class ProjectAPI {
+  readonly events = new ServiceEvents();
+  ready() {
+    return this.renderer?.ready?.() ?? true;
+  }
+  async readProjectResource(id: unknown) {
+    if (typeof id !== "string") throw new QueryError("badRequest", "Invalid media ID.");
+    const media = this.file().project.media.find((item) => item.id === id);
+    if (!media) throw new QueryError("notFound", "Unknown media ID.");
+    const path = await this.source(media.path);
+    if (!(await stat(path)).isFile() || (await stat(path)).size > 256 * 1024 * 1024)
+      throw new QueryError("badRequest", "Native source must be a file up to 256 MiB.");
+    return { bytes: new Uint8Array(await readFile(path)), name: basename(path) };
+  }
   private exports = new Map<
     string,
     { kind: string; path: string; state: string; progress: number; message?: string }
@@ -321,6 +340,7 @@ export class ProjectAPI {
     operation: string,
     request: Record<string, unknown>,
     signal: AbortSignal,
+    progress: (value: number) => void = () => {},
   ) {
     signal.throwIfAborted();
     const file = this.file(),
@@ -492,7 +512,9 @@ export class ProjectAPI {
             ? "m4a"
             : "mp4",
       );
-    const result = (await this.renderer.run(operation, request, signal)) as Record<string, unknown>;
+    const result = (await this.renderer.run(operation, request, signal, (value) =>
+      progress(value * 0.7),
+    )) as Record<string, unknown>;
     signal.throwIfAborted();
     if (operation === "transcribe") return { ...result, ...(applied ? { applied } : {}) };
     if (operation === "loudness" || ["transcript", "search", "pauses"].includes(operation))
@@ -534,7 +556,7 @@ export class ProjectAPI {
                 : "mp4",
           bytes,
           signal,
-          () => {},
+          (value) => progress(0.7 + value * 0.3),
           0,
           Number(metadata.duration),
           extension === ".mp4" ? serviceExportPlan(file.project, request, operation) : undefined,
@@ -1025,9 +1047,25 @@ export class ProjectAPI {
             progress: 0,
           };
         this.exports.set(id, job);
+        const publish = () =>
+          this.events.publish({
+            kind: "export",
+            revision: this.file().revision,
+            export: {
+              ...this.exports.get(id),
+              id,
+              output: job.path,
+              preset: request.preset ?? "review",
+            },
+          });
+        publish();
         try {
-          const result = await this.rendererOperation(operation, request, signal);
+          const result = await this.rendererOperation(operation, request, signal, (progress) => {
+            this.exports.set(id, { ...job, progress });
+            publish();
+          });
           this.exports.set(id, { ...job, state: "done", progress: 1 });
+          publish();
           return result;
         } catch (error) {
           this.exports.set(id, {
@@ -1035,6 +1073,7 @@ export class ProjectAPI {
             state: "failed",
             message: error instanceof Error ? error.message : String(error),
           });
+          publish();
           throw error;
         } finally {
           for (const [key, value] of this.exports)

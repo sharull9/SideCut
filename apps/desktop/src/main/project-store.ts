@@ -1,9 +1,9 @@
-import { open, readFile, unlink, mkdir } from "node:fs/promises";
+import { open, readFile, unlink, mkdir, rename } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { decodeProjectFile, encodeProjectFile } from "@sidecut/contracts/project";
 import type { ProjectFile } from "@sidecut/contracts/project";
-import { replayJournal } from "@sidecut/core/coordinator";
+import { replayJournal, ProjectCoordinator } from "@sidecut/core/coordinator";
 import { openSQLite } from "./sqlite-storage.ts";
 
 const read = async (path: string) =>
@@ -19,8 +19,13 @@ export class NativeProjectStore {
   private locked = false;
   private connection: ReturnType<typeof openSQLite> | null = null;
   readonly databasePath: string;
-  constructor(readonly path: string) {
-    this.databasePath = join(dirname(path), "sidecut.sqlite");
+  private portableOriginal: string | null = null;
+  private portableBaseline: string | undefined;
+  constructor(
+    readonly path: string,
+    private readonly options: { databasePath?: string; portable?: boolean } = {},
+  ) {
+    this.databasePath = options.databasePath ?? join(dirname(path), "sidecut.sqlite");
   }
 
   private get repository() {
@@ -106,7 +111,34 @@ export class NativeProjectStore {
     if (backup && !json) throw new Error("No project backup is available.");
     const file = json === null ? create() : validate(json);
     this.expected = current;
+    if (this.options.portable) {
+      this.portableOriginal = await read(this.path);
+      this.portableBaseline = encodeProjectFile(new ProjectCoordinator(file).projectFile());
+    }
     return file;
+  }
+
+  private async publishPortable(json: string) {
+    if (!this.options.portable || json === this.portableBaseline) return;
+    if ((await read(this.path)) !== this.portableOriginal)
+      throw new Error("Project file changed outside SideCut. No file was replaced.");
+    const temporary = `${this.path}.${randomUUID()}.tmp`;
+    const file = await open(temporary, "wx", 0o600);
+    try {
+      await file.writeFile(json, "utf8");
+      await file.sync();
+    } finally {
+      await file.close();
+    }
+    try {
+      if ((await read(this.path)) !== this.portableOriginal)
+        throw new Error("Project file changed outside SideCut. No file was replaced.");
+      await rename(temporary, this.path);
+      this.portableOriginal = json;
+      this.portableBaseline = json;
+    } finally {
+      await unlink(temporary).catch(() => {});
+    }
   }
 
   async save(file: ProjectFile) {
@@ -117,7 +149,10 @@ export class NativeProjectStore {
       throw new Error(
         "Project changed outside SideCut. Reload the disk version or recover the backup.",
       );
-    if (current === json) return;
+    if (current === json) {
+      await this.publishPortable(json);
+      return;
+    }
     let valid = false;
     if (current !== null) {
       try {
@@ -136,6 +171,7 @@ export class NativeProjectStore {
       ],
     });
     this.expected = json;
+    await this.publishPortable(json);
   }
 
   reviewedRevision(projectID: string) {

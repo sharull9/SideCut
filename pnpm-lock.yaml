@@ -371,6 +371,9 @@ importers:
       mediabunny:
         specifier: 'catalog:'
         version: 1.62.0
+      onnxruntime-web:
+        specifier: 1.31.0-dev.20260914-8d85527a0
+        version: 1.31.0-dev.20260914-8d85527a0
     devDependencies:
       '@sidecut/config':
         specifier: workspace:*

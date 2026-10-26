@@ -91,7 +91,9 @@ export function ClipBlock({
   }, [clear]);
   const disabled = snapshot.readOnly || snapshot.busy || track.locked;
   const choose = (additive = false) => {
-    const ids = selectionWithLinks(snapshot.project, [clip.id]);
+    const ids = editor.getState().linkedSelection
+      ? selectionWithLinks(snapshot.project, [clip.id])
+      : [clip.id];
     const current = editor.getState().selected;
     const all = ids.every((id) => current.includes(id));
     editor.setState({
@@ -107,6 +109,26 @@ export function ClipBlock({
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.focus();
+    const view = editor.getState();
+    if (!edge && view.tool === "blade") {
+      run(() =>
+        session.apply({
+          label: "Blade clip",
+          commands: [
+            {
+              blade: {
+                clipIDs: [clip.id],
+                includeLinked: view.linkedSelection,
+                at:
+                  clip.start.seconds +
+                  (event.clientX - event.currentTarget.getBoundingClientRect().left) / zoom,
+              },
+            },
+          ],
+        }),
+      );
+      return;
+    }
     selectedByPointer.current = !editor.getState().selected.includes(clip.id);
     if (selectedByPointer.current) choose(event.shiftKey || event.ctrlKey || event.metaKey);
     editor.getState().setPlaying(false);
@@ -114,16 +136,24 @@ export function ClipBlock({
     capture.current = event.currentTarget;
     const value: Gesture = {
       operation: edge
-        ? event.altKey
-          ? "roll"
-          : event.shiftKey
-            ? "ripple"
-            : "trim"
-        : event.altKey
-          ? event.shiftKey
+        ? view.tool === "ripple" || view.rippleTrims
+          ? "ripple"
+          : view.tool === "roll"
+            ? "roll"
+            : event.altKey
+              ? "roll"
+              : event.shiftKey
+                ? "ripple"
+                : "trim"
+        : view.tool === "slip"
+          ? "slip"
+          : view.tool === "slide"
             ? "slide"
-            : "slip"
-          : "move",
+            : event.altKey
+              ? event.shiftKey
+                ? "slide"
+                : "slip"
+              : "move",
       x: event.clientX,
       delta: 0,
       edge,

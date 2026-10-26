@@ -81,6 +81,26 @@ function folder(tracks: unknown[], extra: Record<string, unknown> = {}) {
 const imported = (clips: unknown[], keepLevels = false) =>
   importFilmora(folder([track(clips)]), { keepLevels });
 
+it("retains reversed clips and imports standalone freezes as held frames", () => {
+  const reverse = imported([clip({ speed: { reverse: true, offset: 1, offsetEnd: 3 } })]);
+  expect(reverse.file.project.videoTracks.flatMap((t) => t.clips)).toHaveLength(1);
+  expect(reverse.report.warnings.join(" ")).toMatch(/Reversed clips play forwards/);
+  const frozen = imported([
+    clip({
+      speed: {
+        offset: 1,
+        offsetEnd: 1.01,
+        speedParam: JSON.stringify({ _freeze: [1] }),
+      },
+    }),
+  ]);
+  expect(frozen.file.project.videoTracks.flatMap((t) => t.clips)[0]).toMatchObject({
+    freezeFrame: true,
+    speed: 1,
+  });
+  expect(frozen.report.warnings.join(" ")).not.toMatch(/clip omitted/);
+});
+
 describe("Filmora 118.03: folders and markers", () => {
   it.each(["", "ProjectFolder/", "项目.wfp.dir/ProjectFolder/"])(
     "reads the folder layout %s and timeline markers",

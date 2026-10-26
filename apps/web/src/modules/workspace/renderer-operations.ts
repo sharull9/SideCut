@@ -10,6 +10,7 @@ export async function rendererOperation(
   operation: string,
   input: unknown,
   signal: AbortSignal,
+  progress: (value: number) => void = () => {},
 ) {
   if (operation === "short-copy-resources") {
     if (
@@ -97,7 +98,7 @@ export async function rendererOperation(
   }
   if (["frame", "frames", "clip", "export", "loudness"].includes(operation)) {
     const { renderService } = await import("./service-render");
-    return renderService(session, operation, request, signal);
+    return renderService(session, operation, request, signal, progress);
   }
   await session.analysis.prepareSpeech();
   signal.throwIfAborted();
@@ -146,6 +147,17 @@ export function connectRendererOperations(session: BrowserProjectSession) {
   const native = session.native;
   if (!native?.serviceSubscribe || !native.serviceReply) return () => {};
   const jobs = new Map<string, AbortController>();
+  const stopJobs = session.jobs.subscribe(() => {
+    void native
+      .serviceJobs?.(
+        session.jobs.getSnapshot().map((job) => ({
+          ...job,
+          state: job.status,
+          message: job.error,
+        })),
+      )
+      .catch(() => {});
+  });
   const stop = native.serviceSubscribe((request) => {
     if (request.type === "cancel") {
       jobs.get(request.id)?.abort();
@@ -162,6 +174,9 @@ export function connectRendererOperations(session: BrowserProjectSession) {
         request.operation,
         request.input,
         controller.signal,
+        (progress) => {
+          void native.serviceProgress?.(request.id, progress).catch(() => {});
+        },
       );
       controller.signal.throwIfAborted();
       if (
@@ -183,6 +198,7 @@ export function connectRendererOperations(session: BrowserProjectSession) {
   });
   return () => {
     stop();
+    stopJobs();
     for (const controller of jobs.values()) controller.abort();
     jobs.clear();
   };

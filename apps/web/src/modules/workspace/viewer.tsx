@@ -17,6 +17,7 @@ export function Viewer() {
   const [error, setError] = useState<string | null>(null);
   const [meter, setMeter] = useState<{ peakDB: number; rmsDB: number } | null>(null);
   const format = useEditorView((state) => state.format);
+  const safeMargins = useEditorView((state) => state.safeMargins);
   const project = formatProject(snapshot.project, format);
   useEffect(() => {
     if (!canvas.current) return;
@@ -84,13 +85,13 @@ export function Viewer() {
           next.playing &&
           next.playhead.flicks < projectDuration(session.getSnapshot().project).flicks
         )
-          void preview.play(next.playhead.seconds);
+          void preview.play(next.playhead.seconds, next.playbackRate);
         else {
           preview.seek(next.playhead.seconds);
           if (next.playing) editor.getState().setPlaying(false);
         }
-      } else if (next.playing !== previous.playing) {
-        if (next.playing) void preview.play(next.playhead.seconds);
+      } else if (next.playing !== previous.playing || next.playbackRate !== previous.playbackRate) {
+        if (next.playing) void preview.play(next.playhead.seconds, next.playbackRate);
         else preview.pause();
       }
     });
@@ -156,6 +157,40 @@ export function Viewer() {
           }}
         >
           <canvas ref={canvas} aria-label="Sequence picture preview" data-testid="source-preview" />
+          {safeMargins && (
+            <svg
+              aria-label="Safe margins"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                pointerEvents: "none",
+              }}
+            >
+              <rect
+                x="5"
+                y="5"
+                width="90"
+                height="90"
+                fill="none"
+                stroke="white"
+                strokeWidth="0.3"
+              />
+              <rect
+                x="10"
+                y="10"
+                width="80"
+                height="80"
+                fill="none"
+                stroke="white"
+                strokeWidth="0.3"
+                strokeDasharray="1 1"
+              />
+            </svg>
+          )}
           {error && (
             <p role="alert" className="editor-preview-error">
               {error}

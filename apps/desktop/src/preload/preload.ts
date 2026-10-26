@@ -5,6 +5,7 @@ const bridge: DesktopBridge = {
   storageRequest: (request) => ipcRenderer.invoke(bridgeChannels.storageRequest, request),
   storagePutFile: (bytes) => ipcRenderer.invoke(bridgeChannels.storagePutFile, bytes),
   storageGetFile: (id) => ipcRenderer.invoke(bridgeChannels.storageGetFile, id),
+  storageRemoveFile: (id) => ipcRenderer.invoke(bridgeChannels.storageRemoveFile, id),
   serviceSubscribe: (listener) => {
     const handler = (_event: Electron.IpcRendererEvent, request: Parameters<typeof listener>[0]) =>
       listener(request);
@@ -17,6 +18,10 @@ const bridge: DesktopBridge = {
   },
   serviceReply: (id, result, error) =>
     ipcRenderer.invoke(bridgeChannels.serviceReply, id, result, error),
+  serviceProgress: (id, progress) =>
+    ipcRenderer.invoke(bridgeChannels.serviceProgress, id, progress),
+  serviceJobs: (jobs) => ipcRenderer.invoke(bridgeChannels.serviceJobs, jobs),
+  projectResource: (id) => ipcRenderer.invoke(bridgeChannels.projectResource, id),
   // Only in-memory edits use sync IPC to preserve the editor's command result API.
   // Disk I/O and media jobs always use asynchronous channels.
   projectRequest: (json) => {

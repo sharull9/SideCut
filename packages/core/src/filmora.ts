@@ -56,6 +56,7 @@ type PlannedClip = {
   duration: number;
   sourceStart: number;
   speed: number;
+  freezeFrame?: boolean;
   role: string;
   mapID: string | null;
   take: string | null;
@@ -219,27 +220,28 @@ export function importFilmora(
           ? []
           : list(parameter.keyframeSets).map((v) => number(object(v)["_value"]));
       if (values.length > 1 && Math.abs(values.at(-1)! - 1) < 0.001) values.pop();
-      if (
-        speedNode?.reverse ||
-        (parameter?.["_freeze"] != null && list(parameter["_freeze"]).length)
-      ) {
-        b.warnings.push(
-          `Unsupported Filmora reverse/freeze clip ${String(c.thisUId ?? sequence)}; clip omitted.`,
-        );
-        continue;
-      }
       let sourceStart = image ? 0 : number(speedNode?.offset, filmoraTicks(c.inPoint ?? 0));
+      const hasFreeze = parameter?.["_freeze"] != null && list(parameter["_freeze"]).length > 0;
+      const freezeFrame =
+        !image &&
+        hasFreeze &&
+        number(speedNode?.offsetEnd, sourceStart) - sourceStart < number(rate[1]) / number(rate[0]);
+      if (hasFreeze && !freezeFrame)
+        b.warnings.push("A freeze frame inside a clip plays as normal motion.");
+      if (speedNode?.reverse)
+        b.warnings.push("Reversed clips play forwards; reverse playback is unsupported.");
       const ramp = new Set(values.map((v) => Math.round(v * 1000))).size > 1;
-      const speed = image
-        ? 1
-        : speedNode
-          ? ramp
-            ? (number(speedNode.offsetEnd) - sourceStart) /
-              filmoraTicks(number(c.tlEnd) + 1 - number(c.tlBegin))
-            : (values[0] ?? 1)
-          : number(c.speed, 1);
+      const speed =
+        image || freezeFrame
+          ? 1
+          : speedNode
+            ? ramp
+              ? (number(speedNode.offsetEnd) - sourceStart) /
+                filmoraTicks(number(c.tlEnd) + 1 - number(c.tlBegin))
+              : (values[0] ?? 1)
+            : number(c.speed, 1);
       const trimmedSource = filmoraTicks(placement.begin - number(c.tlBegin)) * speed;
-      if (!image) sourceStart += trimmedSource;
+      if (!image && !freezeFrame) sourceStart += trimmedSource;
       if (ramp)
         b.warnings.push(
           `Filmora speed ramp approximated with average speed on ${String(c.thisUId ?? sequence)}.`,
@@ -296,6 +298,7 @@ export function importFilmora(
         duration: end - start,
         sourceStart,
         speed,
+        ...(freezeFrame ? { freezeFrame: true } : {}),
         role: text(item.role),
         mapID: placement.flattened ? null : filmoraString(c, 3),
         take: placement.flattened ? null : take ? take.folder + take.base : null,

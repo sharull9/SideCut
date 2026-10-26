@@ -2,18 +2,26 @@ import { audioIdentity } from "./audio-analysis";
 import { derivedCache } from "./derived-cache";
 import { LocalMediaReader } from "./preview";
 import { matteFrameIndex, type Cutout } from "@sidecut/core/cutout";
+import { storeFrame, readFrame, removeFrames, type CachedFrame } from "./frame-store";
+import { readPreference } from "./preferences";
+import { RVM_MODEL, type MattingBackend } from "./matting-models";
+export const preferredMattingBackend = (): MattingBackend =>
+  readPreference("sidecut.matte.backend") === "rvm" ? "rvm" : "mediapipe";
 
 export const CUTOUT_MODEL =
   "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/1/selfie_multiclass_256x256.tflite";
 export const MATTE_VERSION = "matte:mediapipe-0.10.32:multiclass-1:v1";
 export interface Matte {
+  backend?: MattingBackend;
   key: string;
-  frames: { timestamp: number; duration: number; image: Blob }[];
+  frames: { timestamp: number; duration: number; image: CachedFrame }[];
   width: number;
   height: number;
 }
-export async function cachedMatte(file: File) {
-  return derivedCache<Matte>(`${MATTE_VERSION}:${await audioIdentity(file)}`);
+export async function cachedMatte(file: File, backend = preferredMattingBackend()) {
+  return derivedCache<Matte>(
+    `${backend === "rvm" ? RVM_MODEL.version : MATTE_VERSION}:${await audioIdentity(file)}`,
+  );
 }
 
 export async function renderCutoutPNG(
@@ -54,27 +62,41 @@ export async function analyseCutout(
   duration: number,
   signal: AbortSignal,
   progress: (v: number) => void,
+  backend = preferredMattingBackend(),
 ): Promise<Matte> {
   signal.throwIfAborted();
   if (typeof Worker === "undefined" || typeof WebAssembly === "undefined")
     throw new Error("Cutout analysis needs browser workers and WebAssembly.");
-  const key = `${MATTE_VERSION}:${await audioIdentity(file)}`;
+  const version = backend === "rvm" ? RVM_MODEL.version : MATTE_VERSION;
+  const key = `${version}:${await audioIdentity(file)}`;
   const cached = await derivedCache<Matte>(key);
   signal.throwIfAborted();
   if (cached) return cached;
-  if (!(duration > 0 && duration <= 60))
-    throw new Error("Cutout analysis supports sources up to 60 seconds. Use a shorter source.");
-  let model = await derivedCache<ArrayBuffer>(`${MATTE_VERSION}:model`);
+  if (!Number.isFinite(duration) || duration <= 0)
+    throw new Error("Cutout analysis needs a known positive source duration.");
+  let model = await derivedCache<ArrayBuffer>(`${version}:model`);
   if (!model) {
-    const response = await fetch(CUTOUT_MODEL, { signal });
+    const response = await fetch(backend === "rvm" ? RVM_MODEL.url : CUTOUT_MODEL, { signal });
     if (!response.ok)
       throw new Error("Cutout model download failed. Check your connection and retry.");
     model = await response.arrayBuffer();
-    await derivedCache(`${MATTE_VERSION}:model`, model);
+    await derivedCache(`${version}:model`, model);
+  }
+  if (backend === "rvm") {
+    const digest = await crypto.subtle.digest("SHA-256", model);
+    if (
+      Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, "0")).join(
+        "",
+      ) !== RVM_MODEL.sha256
+    )
+      throw new Error("Matting model checksum does not match the pinned official release.");
   }
   signal.throwIfAborted();
-  const reader = await LocalMediaReader.open(file, kind, 512);
-  const worker = new Worker(new URL("./cutout-worker.ts", import.meta.url), { type: "module" });
+  const reader = await LocalMediaReader.open(file, kind, backend === "rvm" ? 1280 : 512);
+  const worker =
+    backend === "rvm"
+      ? new Worker(new URL("./rvm-worker.ts", import.meta.url), { type: "module" })
+      : new Worker(new URL("./cutout-worker.ts", import.meta.url), { type: "module" });
   const abort = () => worker.terminate();
   signal.addEventListener("abort", abort, { once: true });
   const send = (data: unknown, transfer: Transferable[] = []) =>
@@ -104,8 +126,7 @@ export async function analyseCutout(
       };
       worker.postMessage(data, transfer);
     });
-  const matte: Matte = { key, frames: [], width: 0, height: 0 };
-  let bytes = 0;
+  const matte: Matte = { key, backend, frames: [], width: 0, height: 0 };
   try {
     if (kind === "image" && reader.animated)
       throw new Error(
@@ -118,8 +139,6 @@ export async function analyseCutout(
       duration: number;
     }) => {
       signal.throwIfAborted();
-      if (matte.frames.length >= 3600)
-        throw new Error("Cutout analysis exceeds 3,600 frames. Use a shorter source.");
       const image = await createImageBitmap(frame.canvas);
       const result = await send({ image }, [image]);
       signal.throwIfAborted();
@@ -139,10 +158,11 @@ export async function analyseCutout(
           "image/png",
         ),
       );
-      bytes += blob.size;
-      if (bytes > 64 * 1024 * 1024)
-        throw new Error("Cutout cache exceeds 64 MiB. Use a shorter source.");
-      matte.frames.push({ timestamp: frame.timestamp, duration: frame.duration, image: blob });
+      matte.frames.push({
+        timestamp: frame.timestamp,
+        duration: frame.duration,
+        image: await storeFrame(blob),
+      });
       matte.width = result.width;
       matte.height = result.height;
       progress(Math.min(0.99, (frame.timestamp + frame.duration) / duration));
@@ -157,6 +177,9 @@ export async function analyseCutout(
     await derivedCache(key, matte);
     progress(1);
     return matte;
+  } catch (error) {
+    await removeFrames(matte.frames).catch(() => {});
+    throw error;
   } finally {
     signal.removeEventListener("abort", abort);
     worker.terminate();
@@ -174,7 +197,7 @@ export async function compositeCutout(
 ) {
   const index = matteFrameIndex(matte.frames, time),
     frame = matte.frames[index]!;
-  const bitmap = await createImageBitmap(frame.image);
+  const bitmap = await createImageBitmap(await readFrame(frame.image));
   const mask = document.createElement("canvas");
   mask.width = matte.width;
   mask.height = matte.height;
@@ -187,12 +210,18 @@ export async function compositeCutout(
   const pixels = ctx.getImageData(0, 0, mask.width, mask.height);
   for (let i = 0; i < pixels.data.length; i += 4) {
     // Suppress low-confidence background haze while retaining a soft transition band.
-    const a = Math.round(
-      Math.max(
-        0,
-        Math.min(1, (pixels.data[i + (settings.mode === "person" ? 0 : 1)]! / 255 - 0.1) / 0.8),
-      ) * 255,
-    );
+    const a =
+      matte.backend === "rvm"
+        ? pixels.data[i]!
+        : Math.round(
+            Math.max(
+              0,
+              Math.min(
+                1,
+                (pixels.data[i + (settings.mode === "person" ? 0 : 1)]! / 255 - 0.1) / 0.8,
+              ),
+            ) * 255,
+          );
     pixels.data[i] = pixels.data[i + 1] = pixels.data[i + 2] = 255;
     pixels.data[i + 3] = a;
   }

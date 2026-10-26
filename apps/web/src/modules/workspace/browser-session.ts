@@ -500,7 +500,23 @@ export class BrowserProjectSession {
   }
 
   async resource(mediaID: string) {
-    return this.store?.resource(this.state.project.id, mediaID) ?? null;
+    const stored = await this.store?.resource(this.state.project.id, mediaID);
+    if (stored || !this.native?.projectResource || !this.store) return stored ?? null;
+    const projectID = this.state.project.id;
+    const item = this.state.project.media.find((media) => media.id === mediaID);
+    if (!item) return null;
+    try {
+      const source = await this.native.projectResource(mediaID);
+      if (!source) return null;
+      const { resource } = await probeLocalFile(
+        new File([new Uint8Array(source.bytes)], source.name),
+      );
+      if (this.state.project.id !== projectID) return null;
+      await this.store.putResource(projectID, mediaID, resource);
+      return resource;
+    } catch {
+      return null;
+    }
   }
 
   async exportWebM(
@@ -756,7 +772,12 @@ export class BrowserProjectSession {
     }
   }
 
-  downloadProject() {
+  async createProject() {
+    this.assertWritable();
+    const json = encodeProjectFile(standardProject(`prj_${crypto.randomUUID()}`));
+    await this.openProject(new File([json], "Untitled.tandem", { type: "application/json" }));
+  }
+  downloadProject(version = false) {
     const json = this.archivedRaw ?? encodeProjectFile(this.projectFile());
     // Run the same full validator used for editing before exporting a project.
     const validated = this.archivedRaw
@@ -769,7 +790,7 @@ export class BrowserProjectSession {
     anchor.href = url;
     // Control characters and filesystem separators cannot be used in a download filename.
     // eslint-disable-next-line no-control-regex
-    anchor.download = `${this.state.project.name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_") || "Untitled"}.tandem`;
+    anchor.download = `${this.state.project.name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_") || "Untitled"}${version ? ` r${this.state.revision}` : ""}.tandem`;
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
@@ -1268,7 +1289,7 @@ export class BrowserProjectSession {
     const availability: Record<string, MediaAvailability> = {};
     await Promise.all(
       project.media.map(async (item) => {
-        const resource = await this.store?.resource(project.id, item.id);
+        const resource = await this.resource(item.id);
         availability[item.id] = resource
           ? { state: resource.state, detail: resource.detail }
           : {

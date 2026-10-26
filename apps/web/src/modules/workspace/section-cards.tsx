@@ -34,6 +34,7 @@ import { RiPresentationLine } from "@remixicon/react";
 import { useEditorSession } from "./editor-session";
 import { ToolTip } from "./tool-tip";
 import "./dialogs.css";
+import { useEditorCommand } from "./use-editor-command";
 
 export function SectionCardsDialog() {
   const { session, snapshot } = useEditorSession();
@@ -46,6 +47,7 @@ export function SectionCardsDialog() {
     [error, setError] = useState<string | null>(null),
     [done, setDone] = useState<string | null>(null);
   const disabled = snapshot.readOnly || snapshot.busy;
+  useEditorCommand("cards", () => setOpen(true));
   const project = snapshot.project;
   const sounds = project.media.filter((m) => m.hasAudio);
   const sections = project.markers.filter((m) => markerKind(m) === "section" && m.time > 0);

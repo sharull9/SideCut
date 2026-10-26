@@ -59,8 +59,10 @@ export function ExportDialog({
     if (preset === "wav") {
       const duration =
         useRange && range ? range.to - range.from : projectDuration(rendered).seconds;
-      if (duration <= 0 || duration > 300)
-        throw new Error("Audio export needs a sequence between zero and five minutes.");
+      if (duration <= 0 || Math.round(duration * 48000) * 4 + 44 > 256 * 1024 * 1024)
+        throw new Error(
+          "Audio export needs a nonempty range producing at most 256 MiB of PCM audio.",
+        );
     } else {
       const settings = exportPresetPlan(
         snapshot.project,

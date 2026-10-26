@@ -2,12 +2,12 @@ import { validateTranscript, type Transcript } from "@sidecut/core/transcript";
 import { audioIdentity } from "./audio-analysis";
 import { derivedCache } from "./derived-cache";
 
-export const TRANSCRIPTION_MODEL = "Xenova/whisper-tiny.en";
-export const TRANSCRIPTION_REVISION = "79fb389fc764e7c395bd330e9531d9d32ada7049";
-export const TRANSCRIPT_VERSION = `transcript:2:${TRANSCRIPTION_MODEL}:${TRANSCRIPTION_REVISION}:q8:word:en`;
-export async function cachedTranscript(file: File) {
+import { transcriptVersion, transcriptionLanguage } from "./transcription-config";
+export { TRANSCRIPTION_MODEL, TRANSCRIPTION_REVISION } from "./transcription-config";
+export const TRANSCRIPT_VERSION = transcriptVersion();
+export async function cachedTranscript(file: File, language = "en") {
   const value = await derivedCache<Transcript>(
-    `${TRANSCRIPT_VERSION}:${await audioIdentity(file)}`,
+    `${transcriptVersion(language)}:${await audioIdentity(file)}`,
   );
   return value ? validateTranscript(value) : undefined;
 }
@@ -17,11 +17,13 @@ export async function transcribeLocal(
   signal: AbortSignal,
   progress: (v: number) => void,
   onStatus: (v: string) => void,
+  locale = "en",
 ): Promise<Transcript> {
   signal.throwIfAborted();
   if (typeof Worker === "undefined" || typeof WebAssembly === "undefined")
     throw new Error("Local transcription needs WebAssembly and browser workers.");
-  const key = `${TRANSCRIPT_VERSION}:${await audioIdentity(file)}`;
+  const language = transcriptionLanguage(locale);
+  const key = `${transcriptVersion(language)}:${await audioIdentity(file)}`;
   const existing = await derivedCache<Transcript>(key);
   signal.throwIfAborted();
   if (existing) return validateTranscript(existing);
@@ -63,7 +65,7 @@ export async function transcribeLocal(
         resolve(event.data.transcript);
       }
     };
-    worker.postMessage({ samples }, [samples.buffer]);
+    worker.postMessage({ samples, language }, [samples.buffer]);
   });
   signal.throwIfAborted();
   validateTranscript(transcript);

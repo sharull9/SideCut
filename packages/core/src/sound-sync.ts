@@ -45,6 +45,7 @@ export interface SoundMatch {
   confidence: number;
   overlapStart: number;
   overlapEnd: number;
+  drift?: number;
 }
 export function correlateSound(
   a: Float32Array,
@@ -53,19 +54,14 @@ export function correlateSound(
   low = 100,
   high = 3500,
   near?: number,
+  options: { minimumConfidence?: number; background?: number } = {},
 ): SoundMatch {
-  if (
-    !Number.isFinite(rate) ||
-    rate < 2000 ||
-    a.length < rate ||
-    b.length < rate ||
-    a.length + b.length > 2_000_000
-  )
-    throw new Error(
-      "Sync needs at least one second of sound per file and at most 120 seconds at 8 kHz per pair.",
-    );
+  if (!Number.isFinite(rate) || rate < 2000 || a.length < rate || b.length < rate)
+    throw new Error("Sync needs at least one second of sound per file.");
   let n = 1;
   while (n < a.length + b.length) n *= 2;
+  if (n * 8 * 4 > 256 * 1024 * 1024)
+    throw new Error("Sound correlation exceeds its 256 MiB worker budget. Use shorter recordings.");
   const ar = new Float64Array(n),
     ai = new Float64Array(n),
     br = new Float64Array(n),
@@ -101,16 +97,23 @@ export function correlateSound(
       Math.abs(v) > Math.abs(value(best))
     )
       best = lag;
-    sum += v;
-    squares += v * v;
-    count++;
+    if (
+      options.background === undefined ||
+      near === undefined ||
+      Math.abs(lag + near * rate) <= options.background * rate
+    ) {
+      sum += v;
+      squares += v * v;
+      count++;
+    }
   }
   const peak = value(best),
     spread = Math.sqrt(Math.max(0, squares / count - (sum / count) ** 2));
   const confidence = spread > 0 ? Math.min(10_000, Math.abs(peak) / spread) : 0;
-  if (confidence < 15)
+  const minimumConfidence = options.minimumConfidence ?? 15;
+  if (confidence < minimumConfidence)
     throw new Error(
-      `Sound alignment failed: confidence ${confidence.toFixed(1)} is below 15. Choose recordings of the same moment or correct the offset manually.`,
+      `Sound alignment failed: confidence ${confidence.toFixed(1)} is below ${minimumConfidence}. Choose recordings of the same moment or correct the offset manually.`,
     );
   let fraction = 0;
   if (best > lower && best < upper) {
@@ -129,6 +132,7 @@ export function correlateSound(
 }
 
 export function alignSound(a: Float32Array, b: Float32Array): SoundMatch {
+  if (Math.max(a.length, b.length) > 60 * 8000) return alignLongSound(a, b);
   const decimate = (samples: Float32Array) =>
     Float32Array.from(
       { length: Math.floor(samples.length / 4) },
@@ -137,4 +141,83 @@ export function alignSound(a: Float32Array, b: Float32Array): SoundMatch {
     );
   const coarse = correlateSound(decimate(a), decimate(b), 2000, 150, 900);
   return correlateSound(a, b, 8000, 100, 3500, coarse.offset);
+}
+
+// Tandem SoundSync's coarse match, distributed fine stretches and robust drift fit.
+export function alignLongSound(a: Float32Array, b: Float32Array): SoundMatch {
+  const decimate = (input: Float32Array) => {
+    const taps = 33,
+      cutoff = 0.45 / 4;
+    const filter = Array.from({ length: taps }, (_, index) => {
+      const x = index - (taps - 1) / 2;
+      return (
+        (x === 0 ? 2 * cutoff : Math.sin(2 * Math.PI * cutoff * x) / (Math.PI * x)) *
+        (0.5 - 0.5 * Math.cos((2 * Math.PI * index) / (taps - 1)))
+      );
+    });
+    const total = filter.reduce((sum, value) => sum + value, 0);
+    return Float32Array.from({ length: Math.floor(input.length / 4) }, (_, index) => {
+      let sum = 0;
+      for (let j = 0; j < taps; j++) sum += ((input[index * 4 + j] ?? 0) * filter[j]!) / total;
+      return sum;
+    });
+  };
+  const coarse = correlateSound(decimate(a), decimate(b), 2000, 150, 900);
+  const start = Math.max(0, -coarse.offset),
+    end = Math.min(a.length / 8000, b.length / 8000 - coarse.offset);
+  const length = end - start,
+    count = Math.min(16, Math.max(4, Math.floor(length / 60))),
+    step = length / count;
+  const points: { time: number; offset: number }[] = [];
+  for (let i = 0; i < count; i++) {
+    const from = start + i * step;
+    const a0 = Math.max(0, Math.round(from * 8000)),
+      a1 = Math.min(a.length, Math.round((from + step) * 8000));
+    const b0 = Math.max(0, Math.round((from + coarse.offset - 0.5) * 8000));
+    const b1 = Math.min(b.length, Math.round((from + coarse.offset + step + 0.5) * 8000));
+    if (a1 - a0 <= 8000 || b1 - b0 <= 8000) continue;
+    const relative = (b0 - a0) / 8000;
+    try {
+      const fine = correlateSound(
+        a.subarray(a0, a1),
+        b.subarray(b0, b1),
+        8000,
+        100,
+        3500,
+        coarse.offset - relative,
+        { minimumConfidence: 8, background: 0.5 },
+      );
+      points.push({ time: from + step / 2, offset: relative + fine.offset });
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        !error.message.startsWith("Sound alignment failed: confidence")
+      )
+        throw error;
+    }
+  }
+  const median = (values: number[]) => {
+    values.sort((x, y) => x - y);
+    const at = Math.floor(values.length / 2);
+    return values.length % 2 ? values[at]! : (values[at - 1]! + values[at]!) / 2;
+  };
+  let offset = coarse.offset,
+    drift: number | undefined;
+  if (points.length) {
+    const slopes: number[] = [];
+    for (let i = 0; i < points.length; i++)
+      for (let j = i + 1; j < points.length; j++)
+        slopes.push((points[j]!.offset - points[i]!.offset) / (points[j]!.time - points[i]!.time));
+    const slope = slopes.length ? median(slopes) : 0;
+    const intercept = median(points.map((point) => point.offset - slope * point.time));
+    offset = intercept + (slope * (start + end)) / 2;
+    if (points.at(-1)!.time - points[0]!.time >= length / 2) drift = slope * length;
+  }
+  return {
+    offset,
+    confidence: coarse.confidence,
+    overlapStart: start,
+    overlapEnd: end,
+    ...(drift === undefined ? {} : { drift }),
+  };
 }

@@ -46,9 +46,13 @@ export interface NativeBridge {
   storageRequest?: (request: unknown) => Promise<unknown>;
   storagePutFile?: (bytes: Uint8Array) => Promise<string>;
   storageGetFile?: (id: string) => Promise<Uint8Array>;
+  storageRemoveFile?: (id: string) => Promise<void>;
   serviceSubscribe?: (listener: (request: RendererServiceRequest) => void) => () => void;
   serviceReply?: (id: string, result: unknown, error?: string) => Promise<void>;
+  serviceProgress?: (id: string, progress: number) => Promise<void>;
+  serviceJobs?: (jobs: unknown[]) => Promise<void>;
   projectRequest: (json: string) => HostReply;
+  projectResource?: (mediaID: string) => Promise<{ bytes: Uint8Array; name: string } | null>;
   projectSubscribe: (listener: (snapshot: HostSnapshot) => void) => () => void;
   projectFlush: () => Promise<void>;
   projectImport: (json: string) => Promise<HostSnapshot>;

@@ -133,16 +133,6 @@ it("follows host revision events until the CLI is cancelled and releases the req
   cleanup.push(() => server.close());
   const discovery = join(root, "endpoint.json");
   await writeFile(discovery, JSON.stringify(endpoint));
-  let watching = false;
-  const handle = api.handle.bind(api);
-  const observed = vi.spyOn(api, "handle").mockImplementation((operation, input, signal) => {
-    const result = handle(operation, input, signal);
-    if (operation === "watch") watching = true;
-    return result;
-  });
-  cleanup.push(async () => {
-    observed.mockRestore();
-  });
   const child = spawn(
     process.execPath,
     [
@@ -171,7 +161,7 @@ it("follows host revision events until the CLI is cancelled and releases the req
     if (child.exitCode == null) child.kill();
     await closed;
   });
-  await vi.waitFor(() => expect(watching).toBe(true), { timeout: 5000 });
+  await vi.waitFor(() => expect(api.events.subscriberCount).toBe(1), { timeout: 5000 });
   await api.handle("apply", {
     label: "Watched",
     commands: [{ updateProject: { patch: { name: "Watched" } } }],

@@ -83,18 +83,18 @@ describe("browser export preflight", () => {
     );
     expect(exportPlan(p).hasAudio).toBe(false);
   });
-  it("rejects unsupported processing, empty, long and excessive-frame-rate projects", () => {
+  it("supports long and high-frame-rate projects while rejecting invalid or unsupported processing", () => {
     expect(() => exportPlan(project([]))).toThrow(/Place a source/);
-    expect(() =>
+    expect(
       exportPlan(project([{ id: "v", kind: "video", clips: [{ ...clip, duration: 301 }] }])),
-    ).toThrow(/five minutes/);
-    expect(() =>
+    ).toMatchObject({ frameCount: 9030 });
+    expect(
       exportPlan(
         project([{ id: "v", kind: "video", clips: [clip] }], [], {
           frameRate: { numerator: 120, denominator: 1 },
         }),
       ),
-    ).toThrow(/60 fps/);
+    ).toMatchObject({ fps: 120, frameCount: 240 });
     expect(
       exportPlan(project([], [{ id: "v", kind: "audio", clips: [{ ...clip, speed: 2 }] }]))
         .hasAudio,

@@ -140,7 +140,7 @@ export class SourcePreview {
     })();
   }
 
-  async play(time: number) {
+  async play(time: number, rate = 1) {
     this.stop();
     const token = this.token;
     this.onError(null);
@@ -148,6 +148,39 @@ export class SourcePreview {
       const end = projectDuration(this.project).seconds;
       if (!end) {
         this.onStopped();
+        return;
+      }
+      if (rate !== 1) {
+        if (time >= end || (rate < 0 && time <= 0)) time = rate < 0 ? end : 0;
+        const began = performance.now(),
+          start = time;
+        this.playing = true;
+        const tick = () => {
+          if (token !== this.token || !this.playing || this.disposed) return;
+          const position = Math.max(
+            0,
+            Math.min(end, start + ((performance.now() - began) * rate) / 1000),
+          );
+          this.onTime(position);
+          this.paint(
+            position === end
+              ? Math.max(
+                  0,
+                  end -
+                    this.project.settings.frameRate.denominator /
+                      this.project.settings.frameRate.numerator,
+                )
+              : position,
+            token,
+          );
+          if ((rate < 0 && position <= 0) || (rate > 0 && position >= end)) {
+            this.stop();
+            this.onStopped();
+            return;
+          }
+          this.animation = requestAnimationFrame(tick);
+        };
+        tick();
         return;
       }
       if (time >= end) time = 0;

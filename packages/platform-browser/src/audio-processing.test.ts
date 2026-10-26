@@ -127,6 +127,39 @@ const p = (audio: object) =>
       ],
     },
   }).project;
+it("streaming mastering matches bulk output at arbitrary packet sizes and keeps timestamps relative to the range", async () => {
+  const values = Float32Array.from(
+    { length: rate },
+    (_, i) => (i % 4000 < 35 ? 1.4 : 0.05) * Math.sin(i / 8),
+  );
+  const outputs: Float32Array[] = [];
+  for (const streamMaster of [false, true]) {
+    const chunks: Float32Array[] = [];
+    let frames = 0;
+    for await (const block of mixTimelineAudio(
+      p({}),
+      async () => reader(values),
+      new AbortController().signal,
+      rate,
+      317,
+      0.7,
+      { start: 0.2, master: true, streamMaster },
+    )) {
+      expect(block.timestamp).toBeCloseTo(frames / rate, 10);
+      chunks.push(block.data.subarray(0, block.frames));
+      frames += block.frames;
+    }
+    expect(frames).toBe(24000);
+    const result = new Float32Array(frames);
+    let offset = 0;
+    for (const chunk of chunks) {
+      result.set(chunk, offset);
+      offset += chunk.length;
+    }
+    outputs.push(result);
+  }
+  expect(outputs[1]).toEqual(outputs[0]);
+});
 it("retains samples when decoded packet timestamps round above the sample clock", async () => {
   const source = {
     audio: async function* () {

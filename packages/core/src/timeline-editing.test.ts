@@ -28,6 +28,20 @@ function setup(
   });
 }
 describe("timeline editing", () => {
+  it("overwrites a destination, splits its source handles, and undoes atomically", () => {
+    const file = setup([clip("moving", 0, 2), clip("destination", 3, 6)], []);
+    const c = new ProjectCoordinator(file);
+    c.apply({ commands: [{ moveClips: { clipIDs: ["moving"], delta: 4, mode: "overwrite" } }] });
+    const clips = c.getSnapshot().project.videoTracks[0]!.clips;
+    expect(clips.map((v) => [v.start.seconds, v.duration.seconds, v.sourceStart.seconds])).toEqual([
+      [3, 1, 1],
+      [4, 2, 1],
+      [6, 3, 4],
+    ]);
+    expect(new Set(clips.map((v) => v.id)).size).toBe(3);
+    c.undo();
+    expect(c.getSnapshot().project).toEqual(file.project);
+  });
   it("replays deterministic split IDs and follows descendants in the same batch", () => {
     const initial = setup(),
       first = new ProjectCoordinator(initial),

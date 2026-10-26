@@ -31,7 +31,9 @@
     "selectsOverlappingClips": true,
     "linkedSelection": true,
     "escapeRestoresSelection": true,
-    "escapeRestoresRange": true
+    "escapeRestoresRange": true,
+    "crossTrackWithoutLinks": true,
+    "linkedSelectionToggle": true
   },
   "snapping": {
     "defaultSnaps": true,
@@ -52,7 +54,7 @@
   },
   "autoscroll": {
     "stationaryPointerContinues": true,
-    "delta": 232,
+    "delta": 236,
     "escapeStops": true,
     "noEditOnCancel": true
   },
@@ -105,11 +107,15 @@
     "minimalStillProtectsNavigation": true,
     "restoredPremiere": true
   },
+  "customKeymap": {
+    "nativeFileImport": true,
+    "toolDispatch": true,
+    "persistsOnReload": true,
+    "reset": true
+  },
   "limits": [
     "Windows Electron keyboard/pointer workflow",
-    "Premiere subset and editing-only map; native user keymap files remain unsupported",
     "Clipboard stays in one project; transitions require saved segments",
-    "Marquee selects one track plus linked partners",
     "Managed browser interaction subset; native macOS/Linux gestures unverified"
   ]
 }

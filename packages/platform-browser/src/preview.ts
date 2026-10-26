@@ -2,6 +2,7 @@ import type { Input, CanvasSink, AudioBufferSink } from "mediabunny";
 import type { Cutout } from "@sidecut/core/cutout";
 import type { PictureProxy } from "./proxy";
 import { proxyFrameIndex } from "./proxy";
+import { readFrame } from "./frame-store";
 import { openAnimatedImage, openLottie, type AnimationSource } from "./animation";
 
 export class LocalMediaReader {
@@ -116,7 +117,7 @@ export class LocalMediaReader {
         frame = this.proxy.frames[index];
       if (!frame) return null;
       if (this.proxyBitmap?.index !== index) {
-        const bitmap = await createImageBitmap(frame.image);
+        const bitmap = await createImageBitmap(await readFrame(frame.image));
         if (this.closed) {
           bitmap.close();
           throw new Error("Media reader is closed.");

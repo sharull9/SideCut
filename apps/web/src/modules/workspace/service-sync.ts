@@ -12,8 +12,6 @@ export async function syncService(
   const file = session.projectFile(),
     { items, reference } = soundTargets(file, request);
   const load = async (item: typeof reference) => {
-    if ((item.duration?.seconds ?? Infinity) > 60)
-      throw new QueryError("badRequest", "Browser sound sync supports sources up to 60 seconds.");
     const resource = await session.resource(item.id);
     if (resource?.state !== "available")
       throw new QueryError("notFound", `Missing sound source: ${item.path}.`);
@@ -29,6 +27,10 @@ export async function syncService(
   return {
     revision: file.revision,
     ...soundSyncPlan(file, reference, measured, request.place !== false),
-    warnings: ["Sound alignment is limited to 60-second sources; clock drift is not measured."],
+    warnings: measured.some(({ match }) => match.drift != null && Math.abs(match.drift) > 0.01)
+      ? [
+          "Recorder clock drift was measured. Alignment uses the offset at the overlap midpoint; clip speeds are unchanged.",
+        ]
+      : [],
   };
 }

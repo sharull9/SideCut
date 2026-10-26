@@ -223,6 +223,93 @@ export async function limit(
     }
   }
 }
+/** The same true-peak limiter as limit(), retaining lookahead/release across streamed blocks. */
+export class StreamingLimiter {
+  private readonly history: Float64Array[];
+  private readonly held: Float64Array;
+  private readonly delay: Float32Array[];
+  private readonly ceiling: number;
+  private readonly release: number;
+  private readonly lookahead: number;
+  private readonly latency: number;
+  private heldSum: number;
+  private reduction = 1;
+  private head = 0;
+  private position = 0;
+  private ended = false;
+  private queue: { index: number; gain: number }[] = [];
+  constructor(
+    rate: number,
+    private readonly channels: number,
+    ceilingDB = -1,
+    releaseMS = 100,
+  ) {
+    this.ceiling = gain(ceilingDB - 0.1);
+    this.lookahead = Math.max(1, Math.round(rate * 0.005));
+    this.latency = this.lookahead + 6;
+    this.history = Array.from({ length: channels }, () => new Float64Array(12));
+    this.held = new Float64Array(this.lookahead + 1).fill(1);
+    this.heldSum = this.held.length;
+    this.delay = Array.from({ length: channels }, () => new Float32Array(this.latency));
+    this.release = 1 - Math.exp(-1 / (releaseMS * 0.001 * rate));
+  }
+  push(input: readonly Float32Array[]): Float32Array[] {
+    if (this.ended) throw new Error("Limiter stream is closed.");
+    const frames = input[0]?.length ?? 0;
+    if (input.length !== this.channels || input.some((channel) => channel.length !== frames))
+      throw new Error("Limiter channel buffers must have equal lengths.");
+    const count =
+      Math.max(0, this.position + frames - this.latency) -
+      Math.max(0, this.position - this.latency);
+    const output = input.map(() => new Float32Array(count));
+    let written = 0;
+    for (let frame = 0; frame < frames; frame++, this.position++) {
+      const i = this.position;
+      let peak = 0;
+      for (let c = 0; c < this.channels; c++) {
+        const h = this.history[c]!;
+        h[i % 12] = input[c]![frame]!;
+        for (const phase of peakCoefficients) {
+          let value = 0;
+          for (let j = 0; j < 12; j++) value += phase[j]! * h[(i - j + 12) % 12]!;
+          peak = Math.max(peak, Math.abs(value));
+        }
+        peak = Math.max(peak, Math.abs(h[(i - 6 + 12) % 12]!));
+      }
+      const required = peak > this.ceiling ? this.ceiling / peak : 1;
+      while (this.queue.length > this.head && this.queue.at(-1)!.gain >= required) this.queue.pop();
+      this.queue.push({ index: i, gain: required });
+      while (this.queue[this.head]!.index <= i - this.lookahead - 2) this.head++;
+      const minimum = this.queue[this.head]!.gain;
+      this.heldSum += minimum - this.held[i % this.held.length]!;
+      this.held[i % this.held.length] = minimum;
+      const smoothed = Math.min(1, this.heldSum / this.held.length);
+      this.reduction =
+        smoothed < this.reduction
+          ? smoothed
+          : this.reduction + (smoothed - this.reduction) * this.release;
+      for (let c = 0; c < this.channels; c++) {
+        const line = this.delay[c]!,
+          value = line[i % this.latency]! * this.reduction;
+        line[i % this.latency] = input[c]![frame]!;
+        if (i >= this.latency) output[c]![written] = value;
+      }
+      if (i >= this.latency) written++;
+      if (this.head > 1024) {
+        this.queue.splice(0, this.head);
+        this.head = 0;
+      }
+    }
+    return output;
+  }
+  finish() {
+    const output = this.push(
+      Array.from({ length: this.channels }, () => new Float32Array(this.latency)),
+    );
+    this.ended = true;
+    return output;
+  }
+}
 // Portable granular time/pitch conversion. Apple TimePitch uses a different algorithm.
 export async function pitchAndSpeed(
   input: readonly Float32Array[],

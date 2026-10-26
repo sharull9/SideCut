@@ -1,3 +1,4 @@
+import { diskExport, releaseExport } from "./export-output";
 export type ExportEntry = { id: string; name: string; progress: number; preset?: string } & (
   | { status: "queued" | "running" | "cancelled" }
   | { status: "failed"; error: string }
@@ -14,6 +15,7 @@ export class ExportQueue {
     }
   >();
   private running = false;
+  private outputs = new Map<string, Blob>();
   getSnapshot = () => this.entries;
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -56,6 +58,11 @@ export class ExportQueue {
     this.cancel(id);
     const entry = this.entries.find((e) => e.id === id);
     if (entry?.status === "done") URL.revokeObjectURL(entry.url);
+    const blob = this.outputs.get(id);
+    if (blob) {
+      void releaseExport(blob).catch(() => {});
+      this.outputs.delete(id);
+    }
     this.entries = this.entries.filter((e) => e.id !== id);
     for (const listener of this.listeners) listener();
   }
@@ -70,18 +77,23 @@ export class ExportQueue {
     if (!task) return;
     this.running = true;
     this.update(entry.id, { ...entry, status: "running" });
+    let produced: Blob | undefined;
     try {
       const blob = await task.run(task.controller.signal, (progress) => {
         if (!task.controller.signal.aborted)
           this.update(entry.id, { ...entry, status: "running", progress });
       });
+      produced = blob;
       task.controller.signal.throwIfAborted();
-      const total = this.entries.reduce(
-        (sum, e) => sum + (e.status === "done" ? e.bytes : 0),
-        blob.size,
+      const total = [...this.outputs.values()].reduce(
+        (sum, value) => sum + (diskExport(value) ? 0 : value.size),
+        diskExport(blob) ? 0 : blob.size,
       );
-      if (total > 256 * 1024 * 1024)
+      if (total > 256 * 1024 * 1024) {
+        await releaseExport(blob);
         throw new Error("Completed exports exceed 256 MiB. Remove a download and retry.");
+      }
+      this.outputs.set(entry.id, blob);
       this.update(entry.id, {
         ...entry,
         status: "done",
@@ -90,6 +102,7 @@ export class ExportQueue {
         bytes: blob.size,
       });
     } catch (error) {
+      if (produced && !this.outputs.has(entry.id)) await releaseExport(produced).catch(() => {});
       this.update(
         entry.id,
         task.controller.signal.aborted

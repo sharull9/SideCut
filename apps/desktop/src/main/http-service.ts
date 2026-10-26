@@ -11,6 +11,12 @@ export class LocalHTTPService {
   private active = 0;
   private controllers = new Set<AbortController>();
   private pending = new Set<Promise<void>>();
+  private unsubscribe: () => void;
+  private leases = new Map<string, number>();
+  private leaseTimer: ReturnType<typeof setInterval> | undefined;
+  get leaseCount() {
+    return this.leases.size;
+  }
   private server = createServer(
     { maxHeaderSize: 8192, requestTimeout: 10000, headersTimeout: 10000 },
     (request, response) => {
@@ -22,8 +28,30 @@ export class LocalHTTPService {
       );
     },
   );
-  constructor(private readonly api: ProjectAPI) {
+  constructor(
+    private readonly api: ProjectAPI,
+    private readonly options: {
+      headless?: boolean;
+      onIdle?: () => void;
+      onOwnerRelease?: () => void;
+      busy?: () => boolean;
+    } = {},
+  ) {
+    let last = 0;
+    this.unsubscribe = api.project.subscribe(() => {
+      for (const { seq, kind, date: _date, ...event } of api.project.recentEvents()) {
+        if (seq <= last) continue;
+        last = seq;
+        if (kind === "edit" || kind === "undo" || kind === "redo" || kind === "reload")
+          api.events.publish({ ...event, kind });
+      }
+    });
     this.server.maxConnections = 16;
+    if (options.headless)
+      this.leaseTimer = setInterval(() => {
+        for (const [id, deadline] of this.leases) if (deadline < Date.now()) this.leases.delete(id);
+        if (!this.leases.size) options.onIdle?.();
+      }, 10000);
     this.server.timeout = 86430000;
     this.server.on("clientError", (_error, socket) =>
       socket.end("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n"),
@@ -41,7 +69,13 @@ export class LocalHTTPService {
     if (!address || typeof address === "string")
       throw new Error("Loopback listener did not start.");
     this.port = address.port;
-    return { port: this.port, token: this.token, pid: process.pid, apiVersion: "0.1.0" };
+    return {
+      port: this.port,
+      token: this.token,
+      pid: process.pid,
+      apiVersion: "0.1.0",
+      ...(this.options.headless ? { headless: true } : {}),
+    };
   }
   private async respond(request: IncomingMessage, response: ServerResponse) {
     const send = (status: number, value: unknown) => {
@@ -135,6 +169,95 @@ export class LocalHTTPService {
         fail(400, "badRequest", "Request must be an object.");
         return;
       }
+      if (this.options.headless && ["host-lease", "host-release"].includes(match[1]!)) {
+        if (match[1] === "host-lease") {
+          if (!this.api.ready()) {
+            fail(503, "unavailable", "Renderer is starting.");
+            return;
+          }
+          const id =
+            "lease" in input && typeof input.lease === "string"
+              ? input.lease
+              : randomBytes(32).toString("hex");
+          if (!/^[a-f0-9]{64}$/.test(id) || ("lease" in input && !this.leases.has(id))) {
+            fail(400, "badRequest", "Unknown host lease.");
+            return;
+          }
+          if (this.leases.size >= 64 && !this.leases.has(id)) {
+            fail(503, "unavailable", "Too many host leases.");
+            return;
+          }
+          this.leases.set(id, Date.now() + 45000);
+          send(200, { lease: id });
+        } else {
+          if (
+            !("lease" in input) ||
+            typeof input.lease !== "string" ||
+            !this.leases.delete(input.lease)
+          ) {
+            fail(400, "badRequest", "Unknown host lease.");
+            return;
+          }
+          send(200, {
+            released: true,
+            leases: this.leases.size,
+            busy: this.options.busy?.() ?? false,
+          });
+          if ("ownerReleased" in input && input.ownerReleased === true)
+            this.options.onOwnerRelease?.();
+          if (!this.leases.size) setImmediate(() => this.options.onIdle?.());
+        }
+        return;
+      }
+      if (match[1] === "watch" && request.headers.accept?.includes("text/event-stream")) {
+        const raw = request.headers["last-event-id"];
+        const after = raw === undefined ? undefined : Number(raw);
+        if (after !== undefined && (!Number.isSafeInteger(after) || after < 0)) {
+          fail(400, "badRequest", "Last-Event-ID must be a nonnegative event sequence.");
+          return;
+        }
+        response.writeHead(200, {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "X-Content-Type-Options": "nosniff",
+          Connection: "close",
+        });
+        response.write(
+          `retry: 2000\nevent: hello\ndata: ${JSON.stringify({
+            revision: JSON.parse(this.api.project.snapshot().json).revision,
+            seq: this.api.events.lastSeq,
+          })}\n\n`,
+        );
+        const stop = this.api.events.subscribe(after, (event) => {
+          if (response.destroyed) return;
+          if (response.writableLength > 1024 * 1024) {
+            response.destroy();
+            return;
+          }
+          response.write(
+            `id: ${event.seq}\nevent: ${event.kind}\ndata: ${JSON.stringify(event)}\n\n`,
+          );
+        });
+        const keepAlive = setInterval(() => {
+          if (response.writableLength > 1024 * 1024) response.destroy();
+          else response.write(": keep-alive\n\n");
+        }, 15000);
+        try {
+          await new Promise<void>((resolve) => {
+            const finish = () => {
+              controller.signal.removeEventListener("abort", finish);
+              resolve();
+            };
+            controller.signal.addEventListener("abort", finish, { once: true });
+            if (controller.signal.aborted) finish();
+          });
+        } finally {
+          clearInterval(keepAlive);
+          stop();
+          response.end();
+        }
+        return;
+      }
       const legacyRelink = match[1] === "relink" && ("mediaID" in input || "path" in input);
       if (serviceFields[match[1]!]?.author && !legacyRelink)
         input = {
@@ -144,7 +267,9 @@ export class LocalHTTPService {
               : "agent",
           ...input,
         };
-      send(200, await this.api.handle(match[1]!, input, controller.signal));
+      const result = await this.api.handle(match[1]!, input, controller.signal);
+      if (this.api.project.snapshot().saveState === "saving") await this.api.project.flush();
+      send(200, result);
     } catch (error) {
       if (error instanceof QueryError)
         fail(
@@ -178,6 +303,9 @@ export class LocalHTTPService {
     }
   }
   async close() {
+    this.unsubscribe();
+    clearInterval(this.leaseTimer);
+    this.leases.clear();
     for (const controller of this.controllers) controller.abort();
     await new Promise<void>((resolve, reject) => {
       this.server.close((error) => (error ? reject(error) : resolve()));

@@ -13,6 +13,7 @@ export class DurableStorage {
     readonly putFile: (bytes: Uint8Array) => Promise<string>,
     readonly getFile: (id: string) => Promise<Uint8Array<ArrayBuffer>>,
     readonly native = false,
+    readonly removeFile: (id: string) => Promise<void> = async () => {},
   ) {}
 
   static open(): Promise<DurableStorage> {
@@ -36,6 +37,9 @@ export class DurableStorage {
         put,
         async (id) => new Uint8Array(await get(id)),
         true,
+        async (id) => {
+          await bridge.storageRemoveFile?.(id);
+        },
       );
     }
     if (!globalThis.isSecureContext || !navigator.storage?.getDirectory || !navigator.locks)
@@ -136,6 +140,15 @@ export class DurableStorage {
           if (error instanceof DOMException && error.name === "NotFoundError")
             throw new Error("Stored media file is missing. Relink the source.", { cause: error });
           throw error;
+        }
+      },
+      false,
+      async (id) => {
+        if (!/^[a-f0-9-]{36}$/.test(id)) throw new Error("Invalid stored file ID.");
+        try {
+          await directory.removeEntry(id);
+        } catch (error) {
+          if (!(error instanceof DOMException && error.name === "NotFoundError")) throw error;
         }
       },
     );

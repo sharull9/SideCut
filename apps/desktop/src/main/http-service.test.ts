@@ -50,6 +50,45 @@ async function setup() {
   return { root, host, api, call, url, probe };
 }
 describe("authenticated loopback project service", () => {
+  it("streams job/export events, resumes by sequence, and cancels only the watcher", async () => {
+    const { api, call, host } = await setup();
+    const controller = new AbortController();
+    const response = await call("watch", {}, { accept: "text/event-stream" }, controller.signal);
+    expect(response.headers.get("content-type")).toBe("text/event-stream");
+    const reader = response.body!.getReader();
+    expect(new TextDecoder().decode((await reader.read()).value)).toContain("event: hello");
+    const job = api.events.publish({
+      kind: "jobs",
+      jobs: [{ id: "speech", state: "running", progress: 0.5 }],
+    });
+    expect(new TextDecoder().decode((await reader.read()).value)).toContain(`id: ${job.seq}`);
+    controller.abort();
+    await reader.cancel().catch(() => {});
+    const done = api.events.publish({
+      kind: "export",
+      export: { id: "render", state: "done", progress: 1 },
+    });
+    const resume = new AbortController();
+    const replay = await call(
+      "watch",
+      {},
+      { accept: "text/event-stream", "last-event-id": String(job.seq) },
+      resume.signal,
+    );
+    const replayReader = replay.body!.getReader();
+    let text = "";
+    while (!text.includes(`id: ${done.seq}`))
+      text += new TextDecoder().decode((await replayReader.read()).value);
+    expect(text).toContain("event: export");
+    expect(text).not.toContain(`id: ${job.seq}\n`);
+    resume.abort();
+    await replayReader.cancel().catch(() => {});
+    expect((await call("status")).status).toBe(200);
+    expect(JSON.parse(host.snapshot().json).revision).toBe(0);
+    expect(
+      (await call("watch", {}, { accept: "text/event-stream", "last-event-id": "NaN" })).status,
+    ).toBe(400);
+  });
   it("cancels a disconnected refresh without committing its media", async () => {
     const { root, host, api, call, probe } = await setup();
     await writeFile(join(root, "cancel.wav"), "synthetic");

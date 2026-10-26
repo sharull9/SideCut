@@ -881,8 +881,6 @@ export function editTimeline(
   }
   if ("moveClips" in command) {
     const body = command.moveClips;
-    if (body.mode != null && body.mode !== "place")
-      throw new Error("Overwrite moves are not implemented yet.");
     const ids = linkedIDs(p, body.clipIDs, body.includeLinked ?? true),
       selected = new Set(ids),
       destination = body.toTrackID != null ? requireTrack(p, body.toTrackID) : null;
@@ -918,7 +916,9 @@ export function editTimeline(
       });
     }
     for (const move of moved) {
-      const track = requireTrack(p, move.target.id);
+      let track = requireTrack(p, move.target.id);
+      if (body.mode === "overwrite")
+        track = clearRange(track, move.clip.start, end(move.clip), context);
       p = replace(p, sorted({ ...track, clips: [...track.clips, move.clip] }));
     }
     for (const carry of carried) {

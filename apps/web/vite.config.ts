@@ -9,7 +9,12 @@ export default defineConfig({
   // SPA prerender requests must use the same loopback address as the preview server.
   preview: { host: "127.0.0.1" },
   // First transcription must not reload the editor while its worker is running.
-  optimizeDeps: { include: ["@sidecut/platform-browser > @huggingface/transformers"] },
+  optimizeDeps: {
+    include: [
+      "@sidecut/platform-browser > @huggingface/transformers",
+      "@sidecut/platform-browser > onnxruntime-web/wasm",
+    ],
+  },
   plugins:
     lazyPlugins(() => [
       tailwindcss(),

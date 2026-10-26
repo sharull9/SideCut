@@ -1,0 +1,51 @@
+@import "tailwindcss";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+
+@theme {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+
+  --color-paper: oklch(0.985 0.002 106);
+  --color-ink: oklch(0.18 0.004 106);
+  --color-ink-soft: oklch(0.46 0.006 106);
+  --color-ink-faint: oklch(0.64 0.006 106);
+  --color-line: oklch(0.91 0.004 106);
+  --color-line-strong: oklch(0.84 0.005 106);
+  --color-brand: oklch(0.6 0.17 150);
+  --color-brand-deep: oklch(0.5 0.15 150);
+  --color-brand-soft: oklch(0.95 0.045 150);
+  --color-rec: oklch(0.62 0.21 27);
+}
+
+@layer base {
+  html {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+
+  ::selection {
+    background: var(--color-brand-soft);
+  }
+}
+
+@utility dot-grid {
+  background-image: radial-gradient(oklch(0.18 0.004 106 / 0.09) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
+@utility stage-glow {
+  background:
+    radial-gradient(120% 90% at 50% 110%, oklch(0.9 0.09 150 / 0.75), transparent 62%),
+    radial-gradient(80% 60% at 50% 0%, oklch(1 0 0), transparent 70%), oklch(0.975 0.012 150);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

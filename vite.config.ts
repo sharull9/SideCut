@@ -25,6 +25,7 @@ export default defineConfig({
       {
         files: [
           "apps/web/src/**/*.{ts,tsx}",
+          "apps/landing/src/**/*.{ts,tsx}",
           "packages/ui/src/**/*.{ts,tsx}",
           "packages/platform-browser/src/**/*.{ts,tsx}",
         ],

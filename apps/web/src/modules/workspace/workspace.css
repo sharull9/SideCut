@@ -40,6 +40,11 @@
   select:disabled {
     opacity: 0.5;
   }
+  select option,
+  select optgroup {
+    background: var(--card);
+    color: var(--foreground);
+  }
   [data-slot="field-label"] {
     font-size: 12px;
   }
@@ -704,6 +709,10 @@
   flex-shrink: 0;
   overflow-x: auto;
   border-bottom: 1px solid var(--border);
+}
+.editor-timeline[data-collapsed="true"] > :not(.editor-timeline-toolbar),
+.editor-timeline[data-collapsed="true"] .editor-timeline-toolbar > .editor-toolbar-group {
+  display: none;
 }
 .editor-timeline-toolbar h2 {
   margin-right: 8px;

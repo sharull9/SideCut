@@ -418,7 +418,33 @@
   }
 }
 .editor-media-section > .editor-trim-form {
+  margin-top: 0;
   padding: 10px 8px 12px;
+}
+.editor-local-library .editor-trim-form,
+.editor-local-library form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.editor-local-library [data-slot="field"] {
+  gap: 4px;
+}
+.editor-local-library details > summary {
+  min-height: 32px;
+  padding-inline: 8px;
+  border-block: 1px solid var(--border);
+  border-radius: 0;
+  background: color-mix(in oklch, var(--muted) 30%, transparent);
+  color: var(--foreground);
+  font-weight: 600;
+}
+.editor-local-library details[open] > summary {
+  background: color-mix(in oklch, var(--muted) 60%, transparent);
+}
+.editor-local-library details > .editor-trim-form {
+  margin-top: 0;
+  padding: 12px 8px;
 }
 
 .editor-asset-results {

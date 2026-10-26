@@ -126,6 +126,7 @@ export function WorkspaceHome() {
   });
   const [sideTab, setSideTab] = useState<SideTab>("media");
   const [sizes, setSizes] = useState<PanelSizes>({ ...DEFAULT_PANELS });
+  const [timelineCollapsed, setTimelineCollapsed] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 1280, height: 636 });
   const [preferencesReady, setPreferencesReady] = useState(false);
   const [preferenceError, setPreferenceError] = useState(false);
@@ -292,7 +293,10 @@ export function WorkspaceHome() {
                   variant="ghost"
                   size="sm"
                   className="editor-topbar-collapse"
-                  onClick={() => setSizes({ ...DEFAULT_PANELS })}
+                  onClick={() => {
+                    setSizes({ ...DEFAULT_PANELS });
+                    setTimelineCollapsed(false);
+                  }}
                 >
                   <RiLayoutLine data-icon="inline-start" aria-hidden="true" />
                   <span className="editor-button-label">Reset layout</span>
@@ -465,7 +469,11 @@ export function WorkspaceHome() {
         <div
           ref={container}
           className="editor-body"
-          style={{ gridTemplateRows: `${fitted.workspace}px ${DIVIDER_SIZE}px minmax(0, 1fr)` }}
+          style={{
+            gridTemplateRows: timelineCollapsed
+              ? "minmax(0, 1fr) 40px"
+              : `${fitted.workspace}px ${DIVIDER_SIZE}px minmax(0, 1fr)`,
+          }}
         >
           <div
             className="editor-workspace"
@@ -566,17 +574,23 @@ export function WorkspaceHome() {
               </>
             )}
           </div>
-          <PanelDivider
-            label="Viewer and timeline height"
-            controls="timeline-panel"
-            orientation="horizontal"
-            value={fitted.workspace}
-            min={WORKSPACE_MIN}
-            max={workspaceMax}
-            onChange={(value) => updatePanel("workspace", value)}
-            onReset={() => updatePanel("workspace", null)}
+          {!timelineCollapsed && (
+            <PanelDivider
+              label="Viewer and timeline height"
+              controls="timeline-panel"
+              orientation="horizontal"
+              value={fitted.workspace}
+              min={WORKSPACE_MIN}
+              max={workspaceMax}
+              onChange={(value) => updatePanel("workspace", value)}
+              onReset={() => updatePanel("workspace", null)}
+            />
+          )}
+          <Timeline
+            run={run}
+            collapsed={timelineCollapsed}
+            onToggleCollapsed={() => setTimelineCollapsed((current) => !current)}
           />
-          <Timeline run={run} />
         </div>
         <footer className="editor-statusbar">
           <span>

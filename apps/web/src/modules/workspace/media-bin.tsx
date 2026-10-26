@@ -34,6 +34,7 @@ import { MediaAnalysisControls, TakeIdentification } from "./media-analysis-cont
 import { MediaThumb } from "./source-samples";
 import { LocalAssetLibrary } from "./asset-library";
 import { SavedSegments } from "./saved-segments";
+import { RecordingControls } from "./recording-controls";
 import "./media-panel.css";
 
 type View = "list" | "grid";
@@ -404,6 +405,7 @@ export function MediaBin({
           </ul>
         )}
         <div className="editor-media-sections">
+          <RecordingControls />
           <LocalAssetLibrary />
           <SavedSegments />
         </div>

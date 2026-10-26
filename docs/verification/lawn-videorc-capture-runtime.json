@@ -1,0 +1,63 @@
+{
+  "testedAt": "2026-10-26T15:59:21.519Z",
+  "platform": "win32",
+  "production": true,
+  "syntheticDevices": true,
+  "recordings": [
+    {
+      "source": "camera",
+      "bytes": 114337,
+      "streams": [
+        {
+          "codec": "opus",
+          "packets": "36"
+        },
+        {
+          "codec": "vp8",
+          "packets": "42",
+          "width": 640,
+          "height": 480
+        }
+      ]
+    },
+    {
+      "source": "microphone",
+      "bytes": 25405,
+      "streams": [
+        {
+          "codec": "opus",
+          "packets": "34"
+        }
+      ]
+    },
+    {
+      "source": "screen",
+      "bytes": 30415,
+      "streams": [
+        {
+          "codec": "vp8",
+          "packets": "60",
+          "width": 320,
+          "height": 180
+        }
+      ]
+    }
+  ],
+  "checks": {
+    "readOnlyCannotStart": true,
+    "survivesPanelSwitch": true,
+    "syntheticScreenEndedSaves": true,
+    "recordImportPlaceReload": true,
+    "editableRecordingExport": {
+      "bytes": 193158,
+      "codecs": ["vp8", "opus"]
+    },
+    "cancelAddsNoMedia": true,
+    "replacementProjectPreservesDownloadAndBlocksImport": true,
+    "permissionFailureAllowsRetry": true,
+    "stagedFilesCleaned": true
+  },
+  "errors": [],
+  "accepted": true,
+  "browser": "156.0.8078.4"
+}

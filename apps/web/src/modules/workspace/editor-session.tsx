@@ -30,8 +30,9 @@ export function EditorSessionProvider({ children }: { children: ReactNode }) {
     const leave = (event: BeforeUnloadEvent) => {
       const state = session.getSnapshot();
       if (
-        !state.readOnly &&
-        (state.saveState === "saving" || state.saveState === "error" || state.busy)
+        (!state.readOnly &&
+          (state.saveState === "saving" || state.saveState === "error" || state.busy)) ||
+        !["idle", "error"].includes(session.recording.getSnapshot().status)
       ) {
         event.preventDefault();
         event.returnValue = "";

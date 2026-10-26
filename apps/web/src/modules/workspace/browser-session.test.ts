@@ -103,6 +103,79 @@ describe("persistent browser session", () => {
     vi.restoreAllMocks();
   });
 
+  it("binds capture to the starting project and stops it when that project is replaced", async () => {
+    const value = session();
+    await value.start();
+    const projectID = value.getSnapshot().project.id;
+    const start = vi.spyOn(value.recording, "start").mockResolvedValue();
+    await value.startRecording({ source: "microphone", microphone: false });
+    expect(start).toHaveBeenCalledWith({ source: "microphone", microphone: false });
+    expect(value.recordingProjectID).toBe(projectID);
+    vi.spyOn(value.recording, "getSnapshot").mockReturnValue({
+      status: "recording",
+      startedAt: 0,
+      bytes: 0,
+    });
+    const stop = vi.spyOn(value.recording, "stop").mockImplementation(() => {});
+    await value.createProject();
+    expect(value.getSnapshot().project.id).not.toBe(projectID);
+    expect(stop).toHaveBeenCalled();
+    expect(value.recordingProjectID).toBe(projectID);
+  });
+
+  it("does not request recording permissions before the project is writable", async () => {
+    const value = session();
+    const start = vi.spyOn(value.recording, "start");
+    await expect(value.startRecording({ source: "camera", microphone: false })).rejects.toThrow(
+      "read-only",
+    );
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it("retains completed recording data after save failure and retries without duplicate media", async () => {
+    const value = session();
+    await value.start();
+    const file = new File(["synthetic recording"], "recording.webm", { type: "audio/webm" });
+    value.recordingProjectID = value.getSnapshot().project.id;
+    vi.spyOn(value.recording, "getSnapshot").mockReturnValue({ status: "ready", file });
+    const discard = vi.spyOn(value.recording, "discard");
+    vi.mocked(probeLocalFile).mockResolvedValue({
+      item: {
+        id: "recorded",
+        path: file.name,
+        fingerprint: "recording",
+        kind: "audio",
+        role: "other",
+        hasVideo: false,
+        hasAudio: true,
+      },
+      resource: { file, state: "available", detail: "Local recording" },
+    });
+    failSave = true;
+    await expect(value.importRecording()).rejects.toThrow("quota");
+    expect(discard).not.toHaveBeenCalled();
+    expect(value.recording.getSnapshot()).toEqual({ status: "ready", file });
+    failSave = false;
+    await value.importRecording();
+    expect(discard).toHaveBeenCalledOnce();
+    expect(saved?.project.media).toHaveLength(1);
+    expect(value.getSnapshot().project.media).toHaveLength(1);
+  });
+
+  it("refuses to import a recording into a replacement project", async () => {
+    const value = session();
+    await value.start();
+    value.recordingProjectID = "previous-project";
+    vi.spyOn(value.recording, "getSnapshot").mockReturnValue({
+      status: "ready",
+      file: new File(["recording"], "old.webm"),
+    });
+    const discard = vi.spyOn(value.recording, "discard");
+    await expect(value.importRecording()).rejects.toThrow("original project");
+    expect(value.getSnapshot().project.media).toHaveLength(0);
+    expect(discard).not.toHaveBeenCalled();
+  });
+
   it("captures queued export bounds and rejects ranges outside the sequence", async () => {
     const value = session();
     await value.start();

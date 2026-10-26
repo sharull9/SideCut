@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "portless sidecut vp dev --strictPort",
+    "dev": "vp dev --strictPort",
     "generate-routes": "vp exec tsr generate",
     "build": "vp build",
-    "preview": "portless sidecut vp preview --strictPort",
+    "preview": "vp preview --strictPort",
     "typecheck": "vp run generate-routes && vp exec tsc --noEmit && vp exec tsc --noEmit -p tsconfig.node.json"
   },
   "dependencies": {

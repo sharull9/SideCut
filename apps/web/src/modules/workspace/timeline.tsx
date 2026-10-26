@@ -99,7 +99,15 @@ function TrackName({
   );
 }
 
-export function Timeline({ run }: { run: (action: () => unknown) => void }) {
+export function Timeline({
+  run,
+  collapsed,
+  onToggleCollapsed,
+}: {
+  run: (action: () => unknown) => void;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+}) {
   const { session, snapshot, editor } = useEditorSession();
   const actions = useEditActions(run, fitTimeline);
   const analysis = useSyncExternalStore(
@@ -276,8 +284,28 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
     );
 
   return (
-    <section id="timeline-panel" aria-labelledby="timeline-title" className="editor-timeline">
+    <section
+      id="timeline-panel"
+      aria-labelledby="timeline-title"
+      className="editor-timeline"
+      data-collapsed={collapsed}
+    >
       <div className="editor-timeline-toolbar">
+        <Button
+          size="icon-xs"
+          variant="ghost"
+          aria-label={collapsed ? "Expand timeline" : "Collapse timeline"}
+          title={collapsed ? "Expand timeline" : "Collapse timeline"}
+          aria-expanded={!collapsed}
+          aria-controls="timeline-tracks"
+          onClick={onToggleCollapsed}
+        >
+          {collapsed ? (
+            <RiArrowUpSLine aria-hidden="true" />
+          ) : (
+            <RiArrowDownSLine aria-hidden="true" />
+          )}
+        </Button>
         <h2 id="timeline-title">Timeline</h2>
         <div className="editor-toolbar-group">
           <TitleDialog />
@@ -377,6 +405,7 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
       </div>
       <EditToolbar run={run} actions={actions} />
       <div
+        id="timeline-tracks"
         ref={scroll}
         className="editor-timeline-scroll"
         role="region"

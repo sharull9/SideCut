@@ -22,6 +22,7 @@
     "package:desktop": "vp run build:desktop && vp run --filter @sidecut/client build && vp exec node scripts/package-desktop.mjs",
     "verify:packaged": "vp exec node scripts/verify-packaged.mjs",
     "verify:browsers": "vp exec node scripts/verify-browsers.mjs",
+    "verify:recording": "vp exec node scripts/verify-recording.mjs",
     "verify:windows-install": "pwsh -NoProfile -File scripts/verify-windows-install.ps1",
     "verify:sqlite": "vp exec node scripts/verify-sqlite.mjs",
     "verify:filmora": "vp exec node scripts/verify-filmora.mjs",

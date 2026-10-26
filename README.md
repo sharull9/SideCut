@@ -1,5 +1,12 @@
 # SideCut
 
+The [Lawn/Videorc integration phases](docs/lawn-videorc-phases.md) now include
+short browser recordings. Open **Project media → Record**, choose screen/window,
+camera or microphone, then stop and add the recording to Project media. Completed
+files can also be downloaded before import. Capture is limited to five minutes
+or 128 MiB and excludes system audio. Desktop capture remains a later phase.
+See [recording verification and remaining acceptance](docs/verification/lawn-videorc-capture.md).
+
 Current browser, keyboard and marked-range export fixes are recorded in the
 [continuation follow-up](docs/verification/continuation-2026-10-25-followup.md).
 

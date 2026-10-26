@@ -17,6 +17,7 @@ import { BrowserProjectStore } from "@sidecut/platform-browser/storage";
 import { acquireProjectWriter } from "@sidecut/platform-browser/writer-lock";
 import { SaveQueue } from "@sidecut/platform-browser/save-queue";
 import { BrowserJobs } from "@sidecut/platform-browser/jobs";
+import { BrowserRecording, type RecordingRequest } from "@sidecut/platform-browser/recording";
 import { ExportQueue } from "@sidecut/platform-browser/export-queue";
 import { exportPresetPlan, type ExportPreset } from "@sidecut/core/export-presets";
 import { projectDuration } from "@sidecut/core/render-plan";
@@ -151,6 +152,32 @@ export class BrowserProjectSession {
     );
   }
   readonly analysis = new MediaAnalysis(this);
+  readonly recording = new BrowserRecording();
+  recordingProjectID: string | null = null;
+  recordingRequest: RecordingRequest | null = null;
+  async startRecording(request: RecordingRequest) {
+    this.assertWritable();
+    if (this.native)
+      throw new Error(
+        "Use the browser editor for recording. Desktop capture is not available yet.",
+      );
+    if (!["idle", "error"].includes(this.recording.getSnapshot().status))
+      throw new Error("Finish or discard the current recording first.");
+    this.recordingProjectID = this.state.project.id;
+    this.recordingRequest = request;
+    await this.recording.start(request);
+  }
+  async importRecording() {
+    this.assertWritable();
+    const capture = this.recording.getSnapshot();
+    if (capture.status !== "ready")
+      throw new Error("Finish recording before adding it to the project.");
+    if (this.recordingProjectID !== this.state.project.id)
+      throw new Error("Return to the original project to add this recording, or download it.");
+    if (this.state.saveState === "error") await this.retrySave();
+    await this.importFiles([capture.file]);
+    await this.recording.discard();
+  }
   private archivedRaw: string | null = null;
   private envelope = standardProject("prj_loading");
   private coordinator: ProjectCoordinator | HostCoordinator = new ProjectCoordinator(this.envelope);
@@ -432,6 +459,11 @@ export class BrowserProjectSession {
 
   private update(patch: Partial<BrowserSnapshot>) {
     this.state = Object.freeze({ ...this.state, ...patch });
+    if (this.state.readOnly || this.state.project.id !== this.recordingProjectID) {
+      const capture = this.recording.getSnapshot();
+      if (capture.status === "requesting") void this.recording.discard().catch(() => {});
+      if (capture.status === "recording") this.recording.stop();
+    }
     for (const listener of this.listeners) listener();
   }
 
@@ -1307,6 +1339,7 @@ export class BrowserProjectSession {
   }
 
   async close() {
+    const discardRecording = this.recording.discard().catch(() => {});
     this.exports.clear();
     this.jobs.cancelAll();
     this.analysis.reset();
@@ -1332,5 +1365,6 @@ export class BrowserProjectSession {
     }
     release?.();
     store?.close();
+    await discardRecording;
   }
 }

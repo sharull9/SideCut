@@ -1,10 +1,10 @@
 {
-  "testedAt": "2026-10-26T16:50:12.163Z",
+  "testedAt": "2026-10-26T20:44:53.655Z",
   "platform": "win32",
   "production": true,
   "checks": {
     "saved": {
-      "name": "Recording-3845c414-8801-433e-bada-4cceb39e7970.webm",
+      "name": "Recording-4ebb65bd-b2c8-4681-bde7-a7f31911efdb.webm",
       "bytes": 4
     },
     "missingFolder": true,

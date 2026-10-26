@@ -3,6 +3,13 @@ export const rendererHost = "app";
 export const rendererOrigin = `${rendererScheme}://${rendererHost}`;
 
 export const bridgeChannels = {
+  nativeRecordingDevices: "sidecut:native-recording-devices",
+  nativeRecordingStart: "sidecut:native-recording-start",
+  nativeRecordingStop: "sidecut:native-recording-stop",
+  nativeRecordingList: "sidecut:native-recording-list",
+  nativeRecordingRetry: "sidecut:native-recording-retry",
+  capturePrepare: "sidecut:capture-prepare",
+  captureRelease: "sidecut:capture-release",
   recordingDirectory: "sidecut:recording-directory",
   recordingExport: "sidecut:recording-export",
   storageRequest: "sidecut:storage-request",

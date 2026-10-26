@@ -34,6 +34,7 @@ import { MediaAnalysisControls, TakeIdentification } from "./media-analysis-cont
 import { MediaThumb } from "./source-samples";
 import { LocalAssetLibrary } from "./asset-library";
 import { SavedSegments } from "./saved-segments";
+import { NativeRecordingControls } from "./native-recording-controls";
 import { RecordingControls } from "./recording-controls";
 import { SavedRecordings } from "./saved-recordings";
 import "./media-panel.css";
@@ -407,6 +408,7 @@ export function MediaBin({
         )}
         <div className="editor-media-sections">
           <RecordingControls />
+          <NativeRecordingControls />
           <SavedRecordings />
           <LocalAssetLibrary />
           <SavedSegments />

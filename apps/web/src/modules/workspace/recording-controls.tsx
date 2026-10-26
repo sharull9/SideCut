@@ -18,6 +18,11 @@ export function RecordingControls() {
     () => session.recordingRequest?.source ?? "screen",
   );
   const [microphone, setMicrophone] = useState(() => session.recordingRequest?.microphone ?? false);
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [cameraID, setCameraID] = useState(() => session.recordingRequest?.cameraID ?? "");
+  const [microphoneID, setMicrophoneID] = useState(
+    () => session.recordingRequest?.microphoneID ?? "",
+  );
   const [error, setError] = useState<string | null>(null);
   const [download, setDownload] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -29,6 +34,30 @@ export function RecordingControls() {
   const sameProject = session.recordingProjectID === snapshot.project.id;
   const startedAt = state.status === "recording" ? state.startedAt : null;
   const file = state.status === "ready" ? state.file : null;
+  useEffect(() => {
+    let alive = true;
+    let latest = 0;
+    const media = navigator.mediaDevices;
+    if (!media?.enumerateDevices) return;
+    const refresh = () => {
+      const request = ++latest;
+      void media
+        .enumerateDevices()
+        .then((next) => {
+          if (alive && request === latest)
+            setDevices(
+              next.filter((device) => device.kind === "videoinput" || device.kind === "audioinput"),
+            );
+        })
+        .catch(() => {});
+    };
+    refresh();
+    media.addEventListener("devicechange", refresh);
+    return () => {
+      alive = false;
+      media.removeEventListener("devicechange", refresh);
+    };
+  }, [state.status]);
 
   useEffect(() => {
     if (startedAt === null) return;
@@ -52,7 +81,12 @@ export function RecordingControls() {
     setError(null);
     setElapsed(0);
     try {
-      await session.startRecording({ source, microphone });
+      await session.startRecording({
+        source,
+        microphone,
+        cameraID: cameraID || undefined,
+        microphoneID: microphoneID || undefined,
+      });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not start recording.");
     }
@@ -110,6 +144,38 @@ export function RecordingControls() {
             device.
           </FieldDescription>
         </Field>
+        {(["videoinput", "audioinput"] as const).map((kind) => {
+          if (kind === "videoinput" ? source !== "camera" : source !== "microphone" && !microphone)
+            return null;
+          const id = kind === "videoinput" ? cameraID : microphoneID;
+          const label = kind === "videoinput" ? "Camera" : "Microphone";
+          const available = devices.filter((device) => device.kind === kind);
+          return (
+            <Field key={kind}>
+              <FieldLabel htmlFor={`recording-${kind}`}>{label}</FieldLabel>
+              <select
+                id={`recording-${kind}`}
+                value={id}
+                disabled={active || state.status === "ready" || importing}
+                onChange={(event) =>
+                  (kind === "videoinput" ? setCameraID : setMicrophoneID)(event.target.value)
+                }
+              >
+                <option value="">System default</option>
+                {id && !available.some((device) => device.deviceId === id) && (
+                  <option value={id}>Disconnected device — choose another</option>
+                )}
+                {available
+                  .filter((device) => device.deviceId)
+                  .map((device, index) => (
+                    <option key={device.deviceId} value={device.deviceId}>
+                      {device.label || `${label} ${index + 1}`}
+                    </option>
+                  ))}
+              </select>
+            </Field>
+          );
+        })}
         {source !== "microphone" && (
           <Field orientation="horizontal">
             <input
@@ -122,12 +188,7 @@ export function RecordingControls() {
             <FieldLabel htmlFor="recording-microphone">Include microphone</FieldLabel>
           </Field>
         )}
-        {session.native ? (
-          <p>
-            Recording is available in the browser editor. Desktop device permissions will be added
-            in a later phase.
-          </p>
-        ) : !support[source] ? (
+        {!support[source] ? (
           <p>
             This source needs a supported browser over HTTPS or localhost, with local storage and
             WebM recording.
@@ -151,7 +212,7 @@ export function RecordingControls() {
           {(state.status === "idle" || state.status === "error") && (
             <Button
               size="sm"
-              disabled={blocked || Boolean(session.native) || !support[source]}
+              disabled={blocked || !support[source]}
               onClick={() => {
                 void start();
               }}

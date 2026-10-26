@@ -141,6 +141,76 @@ describe("local recording ownership", () => {
     expect(video.stop).toHaveBeenCalled();
     expect(capture.getSnapshot()).toEqual({ status: "error", message: "Microphone denied" });
   });
+  it("uses exact selected devices and refuses a removed device without fallback", async () => {
+    devices.getUserMedia.mockRejectedValue(
+      new DOMException("Selected microphone disconnected", "OverconstrainedError"),
+    );
+    await capture.start({
+      source: "microphone",
+      microphone: false,
+      microphoneID: "removed-device",
+    });
+    expect(devices.getUserMedia).toHaveBeenCalledWith({
+      video: false,
+      audio: { deviceId: { exact: "removed-device" } },
+    });
+    expect(capture.getSnapshot().status).toBe("error");
+    expect(create).not.toHaveBeenCalled();
+  });
+  it("requests both selected camera and microphone exactly", async () => {
+    devices.getUserMedia.mockResolvedValue(new Stream([video, audio]));
+    await capture.start({
+      source: "camera",
+      microphone: true,
+      cameraID: "cam",
+      microphoneID: "mic",
+    });
+    expect(devices.getUserMedia).toHaveBeenCalledWith({
+      video: { deviceId: { exact: "cam" } },
+      audio: { deviceId: { exact: "mic" } },
+    });
+    expect(capture.getSnapshot().status).toBe("recording");
+  });
+  it("rejects a stream missing a requested track", async () => {
+    devices.getUserMedia.mockResolvedValue(new Stream([video]));
+    await capture.start({ source: "camera", microphone: true });
+    expect(capture.getSnapshot().status).toBe("error");
+    expect(video.stop).toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+  it("revokes host authorization when capture finishes", async () => {
+    const host = {
+      capturePrepare: vi.fn(async (_id: string) => {}),
+      captureRelease: vi.fn(async () => {}),
+    };
+    capture = new BrowserRecording(create, host);
+    await capture.start({ source: "microphone", microphone: false });
+    expect(host.capturePrepare).toHaveBeenCalledOnce();
+    capture.stop();
+    await ready();
+    expect(host.captureRelease).toHaveBeenCalledWith(host.capturePrepare.mock.calls[0]?.[0]);
+    expect(audio.stop).toHaveBeenCalled();
+  });
+  it("does not acquire devices after a stale host approval", async () => {
+    let approve: (() => void) | undefined;
+    const host = {
+      capturePrepare: vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            approve = resolve;
+          }),
+      ),
+      captureRelease: vi.fn(async () => {}),
+    };
+    capture = new BrowserRecording(create, host);
+    const starting = capture.start({ source: "camera", microphone: false });
+    await capture.discard();
+    approve?.();
+    await starting;
+    expect(host.captureRelease).toHaveBeenCalledTimes(2);
+    expect(devices.getUserMedia).not.toHaveBeenCalled();
+    expect(capture.getSnapshot().status).toBe("idle");
+  });
   it("releases devices if disk staging cannot open", async () => {
     create.mockRejectedValue(new Error("Quota exceeded"));
     await capture.start({ source: "microphone", microphone: false });

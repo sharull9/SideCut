@@ -4,12 +4,19 @@ The [Lawn/Videorc integration phases](docs/lawn-videorc-phases.md) now include
 short browser recordings. Open **Project media → Record**, choose screen/window,
 camera or microphone, then stop and add the recording to Project media. Completed
 files can also be downloaded before import. Capture is limited to five minutes
-or 128 MiB and excludes system audio. Desktop capture remains a later phase.
+or 128 MiB and excludes system audio. The desktop app now has scoped capture
+permissions and device selection; synthetic microphone recording and restart
+recovery pass. Desktop video encoding and physical-device acceptance remain open.
+See [LV006 evidence](docs/verification/lawn-videorc-native-permissions.md).
 See [recording verification and remaining acceptance](docs/verification/lawn-videorc-capture.md).
 **Project media → Saved recordings** now recovers completed and interrupted
 captures after restart. Save available chunks to a chosen folder; larger-file
 storage and native capture measurements are covered in the
 [LV003–LV005 report](docs/verification/lawn-videorc-storage-native.md).
+The Windows desktop app also offers **Project media → Native recording**, using
+FFmpeg with retained MKV sources, MP4 finalization and recovery retry. Synthetic
+H.264/AAC, hardware encoding and restart recovery pass; physical and long-run
+acceptance remain open. See [LV007 evidence](docs/verification/lawn-videorc-native-recorder.md).
 
 Current browser, keyboard and marked-range export fixes are recorded in the
 [continuation follow-up](docs/verification/continuation-2026-10-25-followup.md).

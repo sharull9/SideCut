@@ -1,7 +1,13 @@
 import { createDurableRecordingFile } from "./recording-storage";
+import type { NativeBridge } from "@sidecut/contracts/desktop";
 
 export type RecordingSource = "screen" | "camera" | "microphone";
-export type RecordingRequest = { source: RecordingSource; microphone: boolean };
+export type RecordingRequest = {
+  source: RecordingSource;
+  microphone: boolean;
+  cameraID?: string | undefined;
+  microphoneID?: string | undefined;
+};
 export type RecordingState =
   | { status: "idle" }
   | { status: "requesting" }
@@ -39,6 +45,7 @@ export interface RecordingFile {
 }
 
 type Run = {
+  captureID?: string;
   cancelled: boolean;
   streams: MediaStream[];
   file?: RecordingFile;
@@ -57,7 +64,10 @@ export class BrowserRecording {
   private state: RecordingState = { status: "idle" };
   private listeners = new Set<() => void>();
   private run: Run | undefined;
-  constructor(private readonly createFile = createDurableRecordingFile) {}
+  constructor(
+    private readonly createFile = createDurableRecordingFile,
+    private readonly host?: Pick<NativeBridge, "capturePrepare" | "captureRelease">,
+  ) {}
   getSnapshot = () => this.state;
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -71,6 +81,10 @@ export class BrowserRecording {
     clearInterval(run.timer);
     clearTimeout(run.stopTimer);
     for (const stream of run.streams) for (const track of stream.getTracks()) track.stop();
+    if (run.captureID) {
+      void this.host?.captureRelease?.(run.captureID).catch(() => {});
+      delete run.captureID;
+    }
   }
   async start(request: RecordingRequest, projectID?: string) {
     if (this.run) throw new Error("Finish or discard the current recording first.");
@@ -101,22 +115,41 @@ export class BrowserRecording {
       return stream;
     };
     try {
+      if (run.cancelled) return;
+      if (this.host) {
+        if (!this.host.capturePrepare || !this.host.captureRelease)
+          throw new Error("Desktop capture is unavailable. Update the desktop application.");
+        const id = crypto.randomUUID();
+        run.captureID = id;
+        await this.host.capturePrepare(id, {
+          source: request.source,
+          microphone: request.microphone,
+        });
+        if (run.cancelled) {
+          void this.host.captureRelease(id).catch(() => {});
+          throw new DOMException("Recording cancelled.", "AbortError");
+        }
+      }
+      const audio = request.microphoneID ? { deviceId: { exact: request.microphoneID } } : true;
+      const video = request.cameraID ? { deviceId: { exact: request.cameraID } } : true;
       // Display selection must run in the Start click's user activation, before disk awaits.
       const primary = await own(
         request.source === "screen"
           ? navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: false })
           : navigator.mediaDevices.getUserMedia({
-              video: request.source === "camera",
-              audio: request.source === "microphone" || request.microphone,
+              video: request.source === "camera" ? video : false,
+              audio: request.source === "microphone" || request.microphone ? audio : false,
             }),
       );
       let stream = primary;
       if (request.source === "screen" && request.microphone) {
-        const mic = await own(navigator.mediaDevices.getUserMedia({ audio: true }));
+        const mic = await own(navigator.mediaDevices.getUserMedia({ audio }));
         stream = new MediaStream([...primary.getVideoTracks(), ...mic.getAudioTracks()]);
       }
       if (
-        !stream.getTracks().length ||
+        (request.source !== "microphone" && !stream.getVideoTracks().length) ||
+        ((request.source === "microphone" || request.microphone) &&
+          !stream.getAudioTracks().length) ||
         stream.getTracks().some((track) => track.readyState === "ended")
       )
         throw new Error("The selected source stopped before recording could start.");

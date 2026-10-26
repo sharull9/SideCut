@@ -1,3 +1,8 @@
+import type {
+  NativeCaptureDevice,
+  NativeRecording,
+  NativeRecordingRequest,
+} from "./native-recording.ts";
 interface CommitResult {
   readonly revision: number;
   readonly label: string;
@@ -43,6 +48,16 @@ export interface FolderMedia {
   shortAudioFallback: boolean;
 }
 export interface NativeBridge {
+  nativeRecordingDevices?: () => Promise<NativeCaptureDevice[]>;
+  nativeRecordingStart?: (request: NativeRecordingRequest) => Promise<NativeRecording>;
+  nativeRecordingStop?: () => Promise<NativeRecording>;
+  nativeRecordingList?: () => Promise<NativeRecording[]>;
+  nativeRecordingRetry?: (id: string) => Promise<NativeRecording>;
+  capturePrepare?: (
+    id: string,
+    request: { source: "screen" | "camera" | "microphone"; microphone: boolean },
+  ) => Promise<void>;
+  captureRelease?: (id: string) => Promise<void>;
   recordingDirectory?: () => Promise<boolean>;
   recordingExport?: (id: string) => Promise<{ name: string; bytes: number }>;
   storageRequest?: (request: unknown) => Promise<unknown>;

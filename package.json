@@ -24,6 +24,8 @@
     "verify:browsers": "vp exec node scripts/verify-browsers.mjs",
     "verify:recording": "vp exec node scripts/verify-recording.mjs",
     "verify:recording-desktop": "vp exec node scripts/verify-recording-desktop.mjs",
+    "verify:capture-desktop": "vp exec node scripts/verify-capture-desktop.mjs",
+    "verify:native-recording": "vp exec node scripts/verify-native-recording.mjs",
     "verify:windows-install": "pwsh -NoProfile -File scripts/verify-windows-install.ps1",
     "verify:sqlite": "vp exec node scripts/verify-sqlite.mjs",
     "verify:filmora": "vp exec node scripts/verify-filmora.mjs",

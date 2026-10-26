@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./native-recording": "./src/native-recording.ts",
     "./recordings": "./src/recordings.ts",
     "./providers": "./src/providers.ts",
     "./assets": "./src/assets.ts",

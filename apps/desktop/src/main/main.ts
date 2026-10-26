@@ -1,4 +1,4 @@
-import { BrowserWindow, app, dialog, ipcMain, net, protocol, session, shell } from "electron";
+import { BrowserWindow, app, dialog, ipcMain, net, protocol, shell } from "electron";
 import { stat, writeFile, unlink, mkdir } from "node:fs/promises";
 import { dirname, join, isAbsolute } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -11,6 +11,7 @@ import {
 } from "../shared/bridge.ts";
 import { resolveRendererPath } from "./renderer-path.ts";
 import { registerRecordingStorage } from "./recording-ipc.ts";
+import { registerCapturePermissions } from "./capture-permissions.ts";
 import { DesktopAssetProviders } from "./asset-providers.ts";
 import { HostProjectService } from "./project-service.ts";
 import { NativeProjectStore } from "./project-store.ts";
@@ -18,6 +19,8 @@ import { NativeStorage } from "./sqlite-storage.ts";
 import { registerNativeIPC } from "./native-ipc.ts";
 import { ProjectAPI } from "./project-api.ts";
 import { LocalHTTPService } from "./http-service.ts";
+import { NativeRecorder } from "./native-recorder.ts";
+import { registerNativeRecorder } from "./native-recorder-ipc.ts";
 import { NativeMedia } from "./native-media.ts";
 import { mediaBinaries } from "./media-binaries.ts";
 import { rendererService } from "./renderer-service.ts";
@@ -188,10 +191,7 @@ void app
         else throw new Error("Invalid credential action.");
       },
     );
-    session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) =>
-      callback(false),
-    );
-    session.defaultSession.setPermissionCheckHandler(() => false);
+    registerCapturePermissions(isTrusted);
 
     ipcMain.handle(bridgeChannels.appInfo, (event): DesktopAppInfo => {
       if (
@@ -225,6 +225,15 @@ void app
         const binaries = mediaBinaries(
           process.env,
           app.isPackaged ? process.resourcesPath : undefined,
+        );
+        const closeRecorder = registerNativeRecorder(
+          new NativeRecorder(
+            binaries.ffmpeg,
+            binaries.ffprobe,
+            join(app.getPath("userData"), "native-recordings"),
+          ),
+          isTrusted,
+          Boolean(headlessProject || smoke),
         );
         let backgroundJobs = false,
           notifyIdle = () => {};
@@ -273,6 +282,7 @@ void app
         }
         const closeNative = registerNativeIPC(project, isTrusted, api);
         const close = async () => {
+          await closeRecorder();
           await http.close();
           renderer.close();
           await unlink(discovery).catch(() => {});

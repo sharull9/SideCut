@@ -152,15 +152,11 @@ export class BrowserProjectSession {
     );
   }
   readonly analysis = new MediaAnalysis(this);
-  readonly recording = new BrowserRecording();
+  readonly recording = new BrowserRecording(undefined, nativeBridge());
   recordingProjectID: string | null = null;
   recordingRequest: RecordingRequest | null = null;
   async startRecording(request: RecordingRequest) {
     this.assertWritable();
-    if (this.native)
-      throw new Error(
-        "Use the browser editor for recording. Desktop capture is not available yet.",
-      );
     if (!["idle", "error"].includes(this.recording.getSnapshot().status))
       throw new Error("Finish or discard the current recording first.");
     this.recordingProjectID = this.state.project.id;

@@ -2,6 +2,14 @@ import { contextBridge, ipcRenderer } from "electron";
 import { bridgeChannels, type DesktopAppInfo, type DesktopBridge } from "../shared/bridge.ts";
 
 const bridge: DesktopBridge = {
+  nativeRecordingDevices: () => ipcRenderer.invoke(bridgeChannels.nativeRecordingDevices),
+  nativeRecordingStart: (request) =>
+    ipcRenderer.invoke(bridgeChannels.nativeRecordingStart, request),
+  nativeRecordingStop: () => ipcRenderer.invoke(bridgeChannels.nativeRecordingStop),
+  nativeRecordingList: () => ipcRenderer.invoke(bridgeChannels.nativeRecordingList),
+  nativeRecordingRetry: (id) => ipcRenderer.invoke(bridgeChannels.nativeRecordingRetry, id),
+  capturePrepare: (id, request) => ipcRenderer.invoke(bridgeChannels.capturePrepare, id, request),
+  captureRelease: (id) => ipcRenderer.invoke(bridgeChannels.captureRelease, id),
   recordingDirectory: () => ipcRenderer.invoke(bridgeChannels.recordingDirectory),
   recordingExport: (id) => ipcRenderer.invoke(bridgeChannels.recordingExport, id),
   storageRequest: (request) => ipcRenderer.invoke(bridgeChannels.storageRequest, request),

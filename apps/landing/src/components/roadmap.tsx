@@ -1,6 +1,4 @@
-import { RiAddLine } from "@remixicon/react";
-import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { motion } from "motion/react";
 import { Reveal, SectionHeading } from "./reveal";
 
 const PHASES = [
@@ -51,8 +49,6 @@ const PHASES = [
 ] as const;
 
 export function Roadmap() {
-  const [open, setOpen] = useState(0);
-
   return (
     <section id="roadmap" className="scroll-mt-24 py-24">
       <SectionHeading eyebrow="Roadmap" title="Built in the open, one phase at a time">
@@ -60,73 +56,95 @@ export function Roadmap() {
         services. Each phase lands with its own acceptance checks.
       </SectionHeading>
 
-      <Reveal className="mx-auto mt-12 max-w-3xl px-6">
-        <ol className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-white">
-          {PHASES.map((phase, i) => {
-            const expanded = open === i;
-            return (
-              <li key={phase.title}>
-                <button
-                  type="button"
-                  aria-expanded={expanded}
-                  onClick={() => setOpen(expanded ? -1 : i)}
-                  className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-paper/70 focus-visible:bg-paper focus-visible:outline-none"
+      <ol className="mx-auto mt-14 grid max-w-6xl gap-4 px-6 md:grid-cols-2 lg:grid-cols-4">
+        {PHASES.map((phase, i) => {
+          const current = i === 0;
+          const last = i === PHASES.length - 1;
+          return (
+            <li key={phase.title}>
+              <Reveal
+                delay={i * 0.07}
+                className="relative h-full pl-8 md:max-lg:pl-0 lg:pt-10 lg:pl-0"
+              >
+                {/* Rail: vertical on small screens, horizontal across the row on lg. */}
+                <span
+                  aria-hidden
+                  className={`absolute top-6 -bottom-4 left-[7px] w-px md:max-lg:hidden lg:top-[15px] lg:bottom-auto lg:left-4 lg:h-px lg:w-auto ${
+                    current
+                      ? "bg-gradient-to-b from-brand to-line lg:right-[-1rem] lg:bg-gradient-to-r"
+                      : last
+                        ? "hidden lg:right-0 lg:block lg:bg-gradient-to-r lg:from-line lg:to-transparent"
+                        : "bg-line lg:right-[-1rem]"
+                  }`}
+                />
+                <span
+                  aria-hidden
+                  className={`absolute top-5 left-0 grid size-[15px] place-items-center rounded-full md:max-lg:hidden lg:top-2 lg:left-2 ${
+                    current ? "bg-brand-soft" : "bg-paper ring-1 ring-line-strong"
+                  }`}
                 >
-                  <span className="font-mono text-[11px] text-ink-faint">0{i + 1}</span>
-                  <span className="flex-1 text-[15px] font-medium">
-                    {phase.title}
-                    <span className="ml-2 font-mono text-[11px] font-normal text-ink-faint">
-                      {phase.range}
+                  {current ? (
+                    <span className="relative flex size-[7px]">
+                      <span className="absolute inset-0 animate-ping rounded-full bg-brand opacity-60 motion-reduce:animate-none" />
+                      <span className="relative size-[7px] rounded-full bg-brand" />
                     </span>
-                  </span>
-                  <span
-                    className={`hidden rounded-full px-2 py-0.5 text-[10.5px] font-medium sm:inline ${
-                      i === 0
-                        ? "bg-brand-soft text-brand-deep"
-                        : "bg-paper text-ink-soft ring-1 ring-line"
-                    }`}
-                  >
-                    {phase.status}
-                  </span>
-                  <motion.span
-                    animate={{ rotate: expanded ? 45 : 0 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 28 }}
-                    className="text-ink-soft"
-                  >
-                    <RiAddLine className="size-4" />
-                  </motion.span>
-                </button>
-                <AnimatePresence initial={false}>
-                  {expanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ type: "spring", stiffness: 300, damping: 34 }}
-                      className="overflow-hidden"
-                    >
-                      <ul className="grid gap-2 px-5 pb-5 pl-[52px] sm:grid-cols-2">
-                        {phase.items.map((item, j) => (
-                          <motion.li
-                            key={item}
-                            className="flex gap-2 text-[13.5px] leading-snug text-ink-soft"
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.05 + j * 0.04 }}
-                          >
-                            <span className="mt-[7px] size-1 shrink-0 rounded-full bg-ink/40" />
-                            {item}
-                          </motion.li>
-                        ))}
-                      </ul>
-                    </motion.div>
+                  ) : (
+                    <span className="size-[5px] rounded-full bg-line-strong" />
                   )}
-                </AnimatePresence>
-              </li>
-            );
-          })}
-        </ol>
-      </Reveal>
+                </span>
+
+                <motion.article
+                  className={`flex h-full flex-col rounded-[20px] border bg-white p-5 ${
+                    current
+                      ? "border-brand/35 shadow-[0_18px_40px_-28px_rgb(20_80_40/0.45)]"
+                      : "border-line shadow-[0_1px_2px_rgb(0_0_0/0.03)]"
+                  }`}
+                  whileHover={{ y: -3 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 26 }}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-mono text-[11px] tracking-wider text-ink-faint uppercase">
+                      Phase 0{i + 1}
+                    </span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10.5px] font-medium ${
+                        current
+                          ? "bg-brand-soft text-brand-deep"
+                          : "bg-paper text-ink-soft ring-1 ring-line"
+                      }`}
+                    >
+                      {phase.status}
+                    </span>
+                  </div>
+
+                  <h3 className="mt-4 text-[17px] leading-snug font-semibold tracking-[-0.015em] text-balance">
+                    {phase.title}
+                  </h3>
+                  <p className="mt-1 font-mono text-[11px] text-ink-faint">
+                    Milestones {phase.range}
+                  </p>
+
+                  <ul className="mt-4 flex flex-col gap-2.5 border-t border-line pt-4">
+                    {phase.items.map((item) => (
+                      <li
+                        key={item}
+                        className="flex gap-2.5 text-[13.5px] leading-snug text-pretty text-ink-soft"
+                      >
+                        <span
+                          className={`mt-[6px] size-1.5 shrink-0 rounded-full ${
+                            current ? "bg-brand" : "bg-ink/25"
+                          }`}
+                        />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </motion.article>
+              </Reveal>
+            </li>
+          );
+        })}
+      </ol>
     </section>
   );
 }

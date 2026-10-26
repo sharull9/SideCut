@@ -135,7 +135,8 @@ export class LocalHTTPService {
         fail(400, "badRequest", "Request must be an object.");
         return;
       }
-      if (serviceFields[match[1]!]?.author)
+      const legacyRelink = match[1] === "relink" && ("mediaID" in input || "path" in input);
+      if (serviceFields[match[1]!]?.author && !legacyRelink)
         input = {
           author:
             typeof request.headers["x-tandem-author"] === "string"

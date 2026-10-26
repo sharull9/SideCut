@@ -1,0 +1,67 @@
+{
+  "platform": "win32",
+  "reference": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "transport": "built Node ESM SDK subprocess to real Electron/browser owner",
+  "edited": {
+    "preview": {
+      "label": "Preview captions",
+      "dryRun": true,
+      "commands": 1,
+      "added": 0,
+      "changed": 1,
+      "removed": 0
+    },
+    "result": {
+      "label": "Fix captions",
+      "revision": 2,
+      "commands": 1,
+      "added": 0,
+      "changed": 1,
+      "removed": 0
+    },
+    "changes": [
+      {
+        "clipID": "caption",
+        "before": "Comics, news models!",
+        "after": "Convex, Muse models!"
+      }
+    ],
+    "text": "Convex, Muse models!",
+    "revision": 2,
+    "tracks": 2,
+    "author": "sdk-runtime"
+  },
+  "rendered": {
+    "frame": {
+      "width": 320,
+      "height": 180,
+      "signature": true
+    },
+    "frames": {
+      "times": [0, 0.5],
+      "width": 216,
+      "height": 98
+    },
+    "movie": {
+      "bytes": 4132,
+      "duration": 0.3
+    },
+    "check": true
+  },
+  "conflict": {
+    "failure": {
+      "code": "staleRevision",
+      "revision": 3
+    },
+    "revision": 5,
+    "caption": "Comics, news models!"
+  },
+  "uiRevisionMatched": true,
+  "undoVisible": true,
+  "limits": [
+    "Windows development Electron host",
+    "SDK connects to existing owner; no headless server startup or release",
+    "Project/status/apply/transcript/history/text helpers decode their results; other call results remain unknown",
+    "Native upstream SDK runner/Bun globals and all result types are not reproduced"
+  ]
+}

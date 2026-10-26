@@ -1,4 +1,4 @@
-import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
+import { ClientOnly, HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
 import appCss from "@sidecut/ui/globals.css?url";
 import { EditorSessionProvider } from "@/modules/workspace/editor-session";
 
@@ -39,7 +39,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <EditorSessionProvider>{children}</EditorSessionProvider>
+        <ClientOnly>
+          <EditorSessionProvider>{children}</EditorSessionProvider>
+        </ClientOnly>
         <Scripts />
       </body>
     </html>

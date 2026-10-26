@@ -1,0 +1,125 @@
+{
+  "platform": "win32",
+  "reference": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "undo": {
+    "emptyExit": 2,
+    "counted": "Undid 2 edits: \"Second\" (by runtime-cli), \"First\" (by runtime-cli). Now at revision 4.",
+    "single": "Undid \"Second\" (by runtime-cli). Now at revision 7.",
+    "visible": true
+  },
+  "redo": {
+    "emptyExit": 2,
+    "counted": {
+      "action": "redo",
+      "revision": 6,
+      "label": "Second",
+      "author": "runtime-cli",
+      "count": 2,
+      "labels": ["First", "Second"],
+      "authors": ["runtime-cli", "runtime-cli"]
+    },
+    "single": "Redid \"Second\" (by runtime-cli). Now at revision 8.",
+    "visible": true
+  },
+  "history": {
+    "limited": {
+      "revision": 2,
+      "undo": [
+        {
+          "label": "Second",
+          "author": "runtime-cli"
+        }
+      ],
+      "redo": null,
+      "events": [],
+      "edits": [
+        {
+          "revision": 2,
+          "kind": "edit",
+          "label": "Second",
+          "author": "runtime-cli",
+          "date": "2026-10-25T11:27:12.688Z"
+        }
+      ]
+    },
+    "readOnly": true
+  },
+  "validate": {
+    "result": {
+      "revision": 8,
+      "ok": true,
+      "valid": true,
+      "issues": []
+    },
+    "readOnly": true
+  },
+  "frame": {
+    "time": 1,
+    "filename": "frame-00.01.000.png",
+    "width": 160,
+    "height": 90,
+    "bytes": 711,
+    "centerPixel": [204, 51, 26, 255],
+    "explicitReadable": "Wrote C:\\Users\\Arafa\\AppData\\Local\\Temp\\sidecut-cli-history-review-se4LJY\\exports\\CLI shot.png (711 bytes) at 00:00.500.",
+    "originalPreserved": true
+  },
+  "failures": [
+    {
+      "args": ["undo", "--expect", "0"],
+      "code": 4
+    },
+    {
+      "args": ["redo", "--expect", "0"],
+      "code": 4
+    },
+    {
+      "args": ["undo", "--count", "0"],
+      "code": 2
+    },
+    {
+      "args": ["redo", "--count", "501"],
+      "code": 2
+    },
+    {
+      "args": ["history", "--limit", "0"],
+      "code": 2
+    },
+    {
+      "args": ["validate", "--refresh"],
+      "code": 2
+    }
+  ],
+  "frameFailures": [
+    {
+      "args": ["frame", "1"],
+      "code": 2
+    },
+    {
+      "args": ["frame", "99"],
+      "code": 2
+    },
+    {
+      "args": ["frame", "0", "--width", "0"],
+      "code": 2
+    },
+    {
+      "args": ["frame", "0", "-o", "../escape.png"],
+      "code": 2
+    },
+    {
+      "args": ["frame", "1:60"],
+      "code": 2
+    },
+    {
+      "args": ["frame", "0", "--format", "missing-format"],
+      "code": 5
+    }
+  ],
+  "finalRevision": 8,
+  "limits": [
+    "Windows development Electron runtime",
+    "Invalid validation exit tested at transport boundary because the coordinator rejects invalid projects",
+    "Managed exports paths and SideCut transport codes retained",
+    "Native macOS/Linux and reference rendering unverified"
+  ]
+}

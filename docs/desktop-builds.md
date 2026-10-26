@@ -74,9 +74,13 @@ Current acceptance is recorded in [phases 136–140](verification/phases-136-140
 Windows NSIS installation, the installed CLI launcher, encrypted credentials,
 lock refusal, import/edit/export/archive and reopening passed in a disposable
 Unicode/space installation path. The installer was then uninstalled. Native
-macOS/Linux installation scripts are prepared but have not run; no successful
-remote delivery workflow run exists in this evidence. `vp run check` currently
-passes 343 tests in 75 files. Windows installers are unsigned.
+macOS installation remains unverified. The later
+[Debian 12 container journey](verification/linux-container.md) passes unpacked
+and installed verification under its recorded locale/sandbox conditions; real
+Linux desktop sessions remain open. No successful remote delivery workflow run
+exists in this evidence. Windows and Linux lint, TypeScript and 521 tests in
+109 files pass. The existing `workspace.css` formatting failure prevents claiming
+that the full `check` command passes. Windows installers are unsigned.
 
 The following directory-package result is historical evidence from before the
 installed-delivery checks:
@@ -98,7 +102,8 @@ default application icon. See [macOS packaging options](https://www.electron.bui
 
 `verify:packaged` launches the unpacked application by default. The workflow's
 additional target scripts verify NSIS, copied DMG and installed `.deb` delivery;
-the latter two remain unexecuted. AppImage execution and real desktop permissions
+the macOS script remains unexecuted. Debian installation passes in the documented
+container. AppImage execution and real desktop permissions
 are separate acceptance checks. Bundled native-library notices and source provenance are
 included; distributing a public release still needs a review of its complete
 third-party notices and redistribution requirements.

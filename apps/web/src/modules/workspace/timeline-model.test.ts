@@ -8,6 +8,7 @@ import {
   projectDuration,
   sourceTime,
   previewIssue,
+  snapEdit,
 } from "./timeline-model";
 import { createEditorView } from "./editor-view";
 
@@ -36,6 +37,36 @@ const project = () =>
   }).project;
 
 describe("timeline view model", () => {
+  it("snaps moving edges, markers and playhead within screen distance and excludes selection", () => {
+    const value = decodeProjectFile({
+      revision: 0,
+      project: {
+        settings: { frameRate: { numerator: 30, denominator: 1 } },
+        markers: [{ id: "marker", time: 8, name: "Section", kind: "section" }],
+        videoTracks: [
+          {
+            id: "v",
+            kind: "video",
+            clips: [
+              {
+                id: "target",
+                start: 1,
+                duration: 10,
+                content: { solid: { color: { r: 0, g: 0, b: 0, a: 1 } } },
+              },
+            ],
+          },
+        ],
+      },
+    }).project;
+    expect(snapEdit(0.95, value, 60, [], 3).seconds).toBe(1);
+    expect(snapEdit(0.95, value, 600, [], 3).flicks).toBe(atFrame(0.95, value).flicks);
+    expect(snapEdit(0.95, value, 60, ["target"], 3).flicks).toBe(atFrame(0.95, value).flicks);
+    expect(snapEdit(3.05, value, 60, [], 3).seconds).toBe(3);
+    expect(snapEdit(8.04, value, 60, [], 3).seconds).toBe(8);
+    expect(snapEdit(9.05, value, 60, [], 3, 2).seconds).toBe(9);
+    expect(snapEdit(-0.1, value, 60, [], 3, 2).seconds).toBe(0);
+  });
   it("steps fractional frames without accumulating sample-rounding drift", () => {
     const value = project();
     let time = new Time(0n);

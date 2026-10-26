@@ -90,7 +90,7 @@ async function verify() {
     assert.equal((await call("comments")).comments[0].text, "Review this");
     assert.equal((await call("validate")).valid, true);
     assert.equal((await call("check", { quick: true })).frames, 0);
-    await call("check", {}, 501);
+    assert.ok((await call("check", {})).frames > 0);
     const watch = call("watch", { revision: inspected.revision, timeout: 2 });
     await cli("apply", "--commands", JSON.stringify([{ removeMarker: { markerID: "comment" } }]));
     assert.equal((await watch).changed, true);
@@ -106,7 +106,7 @@ async function verify() {
     assert.equal(search.local.length, 3);
     const remote = search.local[0];
     assert.equal((await call("assets-show", { id: remote.id })).asset.id, remote.id);
-    await call("assets-fetch", { id: remote.id }, 400);
+    await call("assets-fetch", { id: "import:missing-acceptance-asset" }, 404);
     await call("assets-generate", { prompt: "Do not call provider" }, 400);
     const fsRoot = "/@fs/" + root.replaceAll("\\", "/");
     const localID = await evaluate(`(async()=>{
@@ -196,8 +196,10 @@ async function verify() {
     });
     assert.ok(mcpFrame.content.some((c) => c.type === "image" && c.mimeType === "image/png"));
     await mcp.close();
-    await wait(async () =>
-      (await evaluate("document.body.innerText")).includes("Adapter acceptance"),
+    await wait(
+      async () =>
+        (await evaluate("document.querySelector('[data-testid=project-name]').textContent")) ===
+        "Adapter acceptance",
     );
     const sendKey = async (keyCode, modifiers = []) => {
       window.webContents.sendInputEvent({ type: "keyDown", keyCode, modifiers });
@@ -207,12 +209,31 @@ async function verify() {
     await evaluate(
       "document.querySelector('.editor-clip-body').click();document.querySelector('.editor-timeline-scroll').focus()",
     );
+    await wait(() =>
+      evaluate("document.querySelectorAll('.editor-clip[data-selected=true]').length>0"),
+    );
+    const copiedCount = await evaluate(
+      "document.querySelectorAll('.editor-clip[data-selected=true]').length",
+    );
+    assert.ok(copiedCount > 0);
     await sendKey("c", ["control"]);
     await evaluate("document.querySelector('[aria-label=\"Timeline playhead\"]').focus()");
     await sendKey("End");
     const beforePaste = await cli("status");
     await sendKey("v", ["control"]);
-    await wait(async () => (await cli("status")).clips === beforePaste.clips + 1);
+    try {
+      await wait(async () => (await cli("status")).clips === beforePaste.clips + copiedCount);
+    } catch (error) {
+      console.error({
+        copiedCount,
+        beforePaste,
+        afterPaste: await cli("status"),
+        alerts: await evaluate(
+          "[...document.querySelectorAll('[role=alert]')].map(e=>e.textContent)",
+        ),
+      });
+      throw error;
+    }
     await sendKey("z", ["control"]);
     await wait(async () => (await cli("status")).clips === beforePaste.clips);
     await evaluate("document.querySelector('[aria-label=\"Ripple range start seconds\"]').focus()");
@@ -295,7 +316,7 @@ async function verify() {
     await wait(() => evaluate("Boolean(document.querySelector('[role=dialog]'))"));
     assert.equal(await evaluate("document.querySelectorAll('[download]').length"), 1);
     await evaluate(
-      "(()=>{const select=document.querySelector('.editor-export-dialog select');const setter=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set;setter.call(select,'wav');select.dispatchEvent(new Event('change',{bubbles:true}));})()",
+      "(()=>{const select=document.querySelector('[aria-label=\"Export preset\"]');const setter=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set;setter.call(select,'wav');select.dispatchEvent(new Event('change',{bubbles:true}));})()",
     );
     await evaluate(
       "[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Queue export').click()",
@@ -359,7 +380,7 @@ async function verify() {
       },
       created: { name: created.name },
       cli: { revision: status.revision, clips: status.clips, exportBytes: exported.bytes },
-      review: { commentResolved: (await call("comments")).comments.length === 0, quickOnly: true },
+      review: { commentResolved: (await call("comments")).comments.length === 0, rendered: true },
       watch: { change: true, timeout: true },
       wait: { idle: true },
       resources: {
@@ -376,10 +397,10 @@ async function verify() {
       },
       segments: { saved: true, inserted: true },
       limits: [
-        "No rendered quality scan, reviewed baseline or sound matching",
-        "No automatic relink search or standalone-folder archive",
+        "This harness does not exercise reviewed baselines or sound matching",
+        "This harness does not exercise automatic folder relink or standalone-folder archive",
         "No provider network calls or paid generation tested",
-        "Windows development runtime; packaged/macOS/Linux acceptance pending",
+        "Windows development runtime; packaging has separate acceptance, native macOS/Linux remain unverified",
       ],
     };
     await writeFile(

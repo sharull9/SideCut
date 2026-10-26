@@ -1,154 +1,93 @@
 #!/usr/bin/env node
+import { readFile } from "node:fs/promises";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { discoverHost, hostCall } from "./host-client.mjs";
+import { findProject, verifyProjectOwner } from "./cli-foundation.mjs";
+import { definitions, prepareTool, toolResult, clientAuthor } from "./mcp-adapters.mjs";
 
-const project = [
-  "status",
-  "timeline",
-  "media",
-  "transcript",
-  "transcribe",
-  "search",
-  "pauses",
-  "tighten",
-  "join",
-  "captions",
-  "short",
-  "cards",
-  "apply",
-  "undo",
-  "redo",
-  "history",
-  "diff",
-  "restore",
-  "clips",
-  "validate",
-  "check",
-  "sync",
-  "comments",
-  "frame",
-  "frames",
-  "screenshot",
-  "clip",
-  "export",
-  "archive",
-  "relink",
-  "loudness",
-  "watch",
-  "wait",
-  "effects",
-];
-const tools = Object.fromEntries([
-  ...project.map((name) => [name, name]),
-  ...["search", "use", "show", "credits", "generate", "providers"].map((name) => [
-    `assets_${name}`,
-    `assets-${name}`,
-  ]),
-  ["segments_list", "segments"],
-  ["segments_save", "save-segment"],
-  ["segments_insert", "insert-segment"],
-]);
-const readOnly = new Set([
-  "status",
-  "timeline",
-  "transcript",
-  "search",
-  "pauses",
-  "history",
-  "diff",
-  "clips",
-  "validate",
-  "comments",
-  "frame",
-  "frames",
-  "screenshot",
-  "loudness",
-  "watch",
-  "wait",
-  "effects",
-  "assets_show",
-  "assets_credits",
-  "assets_providers",
-  "segments_list",
-]);
 const instructions =
-  "SideCut edits the running desktop project. Read status/timeline before editing. Use expectedRevision on mutations, label edits, and use apply idempotencyKey for retries. Helpers preview unless apply:true. Resolve comments with removeMarker. Read effects capability flags. check supports quick:true only. Provider downloads/paid generation require explicit opt-in. Do not retry other mutations after a lost reply. Read warnings: this server exposes SideCut baseline adapters, with documented Tandem compatibility gaps.";
+  "SideCut edits running desktop projects. Read status/timeline before editing. Use expectedRevision on mutations, label edits, and use apply idempotencyKey for retries. Helpers preview unless apply:true. Resolve comments with removeMarker. Read effects capability flags. Provider downloads/paid generation require explicit opt-in. Do not retry other mutations after a lost reply. Tools return readable text by default; json:true returns raw data. project selects an existing running owner; closed-project/headless editing is unsupported. Read warnings and the documented Tandem adapter limits.";
+
 async function main() {
-  const flag = process.argv.indexOf("--endpoint-file"),
-    host = await discoverHost(flag < 0 ? undefined : process.argv[flag + 1]);
-  const schema = await hostCall(host, "schema");
+  const options = new Map();
+  for (let i = 2; i < process.argv.length; i += 2) {
+    const key = process.argv[i];
+    if (
+      !["--endpoint-file", "--project", "--author"].includes(key) ||
+      !process.argv[i + 1] ||
+      options.has(key)
+    )
+      throw new Error("Expected --endpoint-file, --project, or --author followed by a value.");
+    options.set(key, process.argv[i + 1]);
+  }
   const server = new Server(
     { name: "sidecut", version: "0.1.0" },
     { capabilities: { tools: {} }, instructions },
   );
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: Object.entries(tools).map(([name, operation]) => ({
+    tools: definitions.map(({ name, title, description, inputSchema, annotations }) => ({
       name,
-      description: `${name.replaceAll("_", " ")} through the shared SideCut desktop host. Read returned warnings and capability limits.`,
-      inputSchema: schema.jsonSchemas[operation],
-      annotations: {
-        readOnlyHint: readOnly.has(name),
-        destructiveHint: !readOnly.has(name),
-        idempotentHint: readOnly.has(name),
-        openWorldHint: name.startsWith("assets_"),
-      },
+      title,
+      description,
+      inputSchema,
+      annotations,
     })),
   }));
   server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
-    const name = request.params.name;
-    if (!Object.hasOwn(tools, name))
-      return {
-        isError: true,
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({ error: { code: "notFound", message: "Unknown tool." } }),
-          },
-        ],
-      };
     try {
-      const result = await hostCall(
-        host,
-        tools[name],
-        request.params.arguments ?? {},
-        extra.signal,
+      const { tool, input, json, project } = prepareTool(
+        request.params.name,
+        request.params.arguments,
       );
-      if (typeof result.png === "string") {
-        const { png, ...metadata } = result;
-        return {
-          content: [
-            { type: "text", text: JSON.stringify(metadata) },
-            { type: "image", data: png, mimeType: "image/png" },
-          ],
-        };
+      if (tool.name === "effects") {
+        const result = JSON.parse(
+          await readFile(new URL("./effects-catalog.json", import.meta.url), "utf8"),
+        );
+        if (input.type != null)
+          result.effects = result.effects.filter(
+            (effect) => effect.type.toLowerCase() === input.type.toLowerCase(),
+          );
+        if (!result.effects.length) throw new Error("Unknown effect type.");
+        return toolResult(tool.operation, result, json);
       }
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      const selected = tool.usesProject
+        ? (project ??
+          options.get("--project") ??
+          process.env.SIDECUT_PROJECT ??
+          process.env.TANDEM_PROJECT)
+        : undefined;
+      const owner = selected == null ? undefined : await findProject(selected);
+      let host;
+      // Reuse the configured profile if it owns the project; otherwise connect
+      // to that project's existing owner. Never create another coordinator.
+      try {
+        host = await discoverHost(options.get("--endpoint-file"));
+        if (owner)
+          await verifyProjectOwner(owner, await hostCall(host, "status", {}, extra.signal));
+      } catch (error) {
+        if (!owner || extra.signal.aborted) throw error;
+        host = await discoverHost(`${owner}.api.json`);
+        await verifyProjectOwner(owner, await hostCall(host, "status", {}, extra.signal));
+      }
+      const author = options.get("--author") ?? clientAuthor(server.getClientVersion()?.name);
+      return toolResult(
+        tool.operation,
+        await hostCall(host, tool.operation, input, extra.signal, author),
+        json,
+      );
     } catch (error) {
       return {
         isError: true,
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              error: {
-                code: error.code ?? "unavailable",
-                message: error.message,
-                revision: error.revision,
-              },
-            }),
-          },
-        ],
+        content: [{ type: "text", text: error.message ?? "Host request failed." }],
       };
     }
   });
   await server.connect(new StdioServerTransport());
   process.once("SIGINT", () => void server.close());
 }
-main().catch(() => {
-  process.stderr.write(
-    "SideCut MCP could not connect. Start the desktop and select its discovery file.\n",
-  );
+main().catch((error) => {
+  process.stderr.write(`SideCut MCP could not start: ${error.message}\n`);
   process.exitCode = 1;
 });

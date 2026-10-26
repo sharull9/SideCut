@@ -1,0 +1,20 @@
+{
+  "testedAt": "2026-10-26T05:42:33.425Z",
+  "platform": "linux",
+  "arch": "x64",
+  "kernel": "6.18.54.1-microsoft-standard-WSL2",
+  "osRelease": "PRETTY_NAME=\"Debian GNU/Linux 12 (bookworm)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"12\"\nVERSION=\"12 (bookworm)\"\nVERSION_CODENAME=bookworm\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\"\n",
+  "packagedShellLauncher": true,
+  "artifacts": [
+    {
+      "name": "SideCut-0.0.1-linux-amd64.deb",
+      "bytes": 152662596,
+      "sha256": "0b6b57465d42f0fdbd20b6c48e76c8bb27fa1c6731f9e6d2305c9e5af9119beb"
+    },
+    {
+      "name": "SideCut-0.0.1-linux-x86_64.AppImage",
+      "bytes": 192807131,
+      "sha256": "4554763d685a0746ba92b17d9b0bcae2e4b2295f34fd83336bc3b0a6b56736c1"
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 import { mediaBinaries } from "./media-binaries.ts";
-import { describe, expect, it } from "vite-plus/test";
-import { readFile, mkdtemp, writeFile, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { describe, expect, it, vi } from "vite-plus/test";
+import { readFile, mkdtemp, writeFile, rm, stat } from "node:fs/promises";
+import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
 import { NativeMedia } from "./native-media.ts";
 
@@ -85,4 +85,63 @@ describe("native media jobs", () => {
       await rm(root, { recursive: true, force: true });
     }
   });
+  it("cancels an active HEVC encode and removes its temporary input and output", async () => {
+    const root = await mkdtemp(join(tmpdir(), "sidecut-codec-cancel-"));
+    const source = join(root, "source.mkv"),
+      binaries = mediaBinaries();
+    const media = new NativeMedia(binaries.ffmpeg, binaries.ffprobe);
+    const controller = new AbortController();
+    let folder = "",
+      cancelProgress = 0;
+    try {
+      await media.execute(
+        binaries.ffmpeg,
+        [
+          "-nostdin",
+          "-v",
+          "error",
+          "-f",
+          "lavfi",
+          "-i",
+          "testsrc2=size=640x360:rate=30:duration=30",
+          "-c:v",
+          "ffv1",
+          "-threads",
+          "2",
+          source,
+        ],
+        new AbortController().signal,
+        () => {},
+      );
+      const execute = media.execute.bind(media);
+      vi.spyOn(media, "execute").mockImplementation((binary, args, signal, line) => {
+        const input = args[args.indexOf("-i") + 1];
+        if (binary === binaries.ffmpeg && input) folder = dirname(input);
+        return execute(binary, args, signal, line);
+      });
+      await expect(
+        media.run(
+          "mp4",
+          await readFile(source),
+          controller.signal,
+          (value) => {
+            if (value > 0 && !controller.signal.aborted) {
+              cancelProgress = value;
+              controller.abort();
+            }
+          },
+          0,
+          30,
+          { codec: "hevc", videoBitrate: 5000000, audioBitrate: 320000 },
+        ),
+      ).rejects.toThrow(/cancelled/);
+      expect(cancelProgress).toBeGreaterThan(0);
+      expect(cancelProgress).toBeLessThan(0.95);
+      expect(folder).not.toBe("");
+      await expect(stat(folder)).rejects.toMatchObject({ code: "ENOENT" });
+    } finally {
+      controller.abort();
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 30000);
 });

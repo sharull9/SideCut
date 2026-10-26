@@ -1,5 +1,8 @@
 # SideCut
 
+Current browser, keyboard and marked-range export fixes are recorded in the
+[continuation follow-up](docs/verification/continuation-2026-10-25-followup.md).
+
 Foundation for a browser-first video editor with an optional desktop application.
 The shared editing engine, desktop application, and agent tools follow [the architecture plan](docs/monorepo-plan.md).
 The editor has resizable panels, editable sequence properties, browser autosave,
@@ -37,7 +40,8 @@ clipping, and background jobs expose progress and cancellation. Split with Ctrl/
 Ctrl/Cmd+B, trim with edge handles or inspector fields, and drag clips to move.
 Delete lifts selected clips; Shift+Delete removes their time. Link/Unlink controls
 keep picture and sound edits together. Export renders supported source edits
-locally to VP8/Opus WebM, up to five minutes and 1080p at 1–60 fps. Output length
+locally to VP8/Opus WebM, with exported ranges up to five minutes and frames up
+to 16 million pixels at 1–60 fps. Output length
 rounds up to a complete frame. Unsupported processing fails preflight visibly.
 
 Time edits opens controls for inserting time, closing a gap, and cutting multiple
@@ -306,17 +310,28 @@ schema offline; `schema --service` prints service operations. Native `new`,
 See [segment/CLI acceptance and limits](docs/verification/segments-cli.md).
 
 MCP is available with `node scripts/sidecut-mcp.mjs --endpoint-file <discovery-file>`.
-It exposes 43 tools through the same host, with PNG results for frame inspection.
+It exposes 43 tools through the same host, with readable replies by default,
+`json:true` for raw data, per-call `project` routing to an existing owner, and PNG
+image blocks for frame inspection. Tool discovery and `effects` work offline.
+See [MCP contracts, acceptance and limits](docs/verification/mcp-adapters.md).
 `@sidecut/client` derives TypeScript requests from the host definitions.
+Its [SDK workflow](docs/verification/sdk.md) adds typed JSON command builders,
+project helpers and guarded dry-run/apply batches. Build its Node entry with
+`vp run --filter @sidecut/client build`.
 The Export dialog now retains queued WebM/WAV downloads, and the editor includes
 more keyboard/clipboard controls and a compact desktop layout. See
 [setup, verification and remaining gaps](docs/verification/phases-131-135.md).
+Current [interaction acceptance](docs/verification/editor-interactions.md) covers
+clip menus, linked clipboard, cancellation, snapping and stationary autoscroll.
+[Export preset acceptance](docs/verification/export-presets.md) records full-resolution
+WebM, portrait/alternate formats, WAV and desktop H.264/4K HEVC results.
 
 Windows now has a per-user NSIS installer with a bundled CLI launcher. The installed
 app passes import/edit/export/archive/reopen checks in a temporary Unicode/space
 path. Chromium and Firefox pass the production browser journey on Windows;
-the tested WebKit port lacks required media APIs. macOS/Linux installation gates
-are prepared for native CI but remain unverified. See the
+the tested WebKit port lacks required media APIs. Debian 12 x64 container
+installation passes within the [recorded limits](docs/verification/linux-container.md);
+native macOS and real Linux desktop sessions remain unverified. See the
 [delivery, browser matrix and pinned parity audit](docs/verification/phases-136-140.md).
 
 Desktop downloads can be built manually from **Actions**, **Desktop builds**, **Run workflow**, or by pushing a version tag such as `v0.1.0`, after the workflow is pushed to GitHub. Linux builds produce AppImage and `.deb`; Apple Silicon builds produce `.dmg` and `.zip`. The workflow verifies the packaged app before uploading downloads, which expire after one day. macOS builds use ad-hoc signing and are not notarized. See [desktop builds](docs/desktop-builds.md) for commands, resource layout, free-tier limits and verification status.
@@ -327,7 +342,9 @@ Desktop downloads can be built manually from **Actions**, **Desktop builds**, **
 
 On Vercel, use `apps/web` as the root directory and the TanStack Start framework preset. Nitro detects Vercel and generates `.vercel/output` with server routing and static assets. Leave the build command and output directory at their framework defaults.
 
-GitHub Actions is configured to check and build on Windows, Linux, and macOS. Only local Windows verification has been performed so far.
+GitHub Actions is configured to check and build on Windows, Linux, and macOS.
+Local Windows and Debian 12 x64 container checks have run; native macOS and real
+Linux desktop sessions remain unverified.
 
 Browser persistence uses SQLite WASM in a worker and OPFS, with Web Locks coordinating tabs. Legacy IndexedDB projects, media, assets, and segments, plus localStorage preferences, migrate without deleting originals. OPFS failures block saving visibly. See [SQLite migration and verification](docs/verification/sqlite-migration.md) for checks and browser limits.
 
@@ -372,3 +389,34 @@ Asset actions include timeline placement with atomic undo, current licence credi
 CLI status, media, timeline, transcript and search now default to readable output; add `--json` for automation. Positional speech queries and `transcript ID --make` are supported. See [CLI query verification and limits](docs/verification/cli-queries.md).
 
 CLI pauses, tighten, join, captions and short now have readable previews and native flag mappings. Editing requires `--apply`; short copies retain their media within the same profile. See [helper verification and limits](docs/verification/cli-helpers.md).
+
+CLI cards now has readable previews, repeated `--marker` selection, `--no-sounds`
+and insert-mode flags. Applying cards uses shared history and undoes in one step.
+See [cards verification and limits](docs/verification/cli-cards.md).
+
+CLI `apply` accepts a JSON file, inline JSON or stdin (`-`), with readable results
+and native override flags. It commits one undo step by default; `--dry-run` checks
+without editing. See [apply verification and limits](docs/verification/cli-apply.md).
+
+CLI undo, redo, history, validate and frame now default to readable output. Undo
+and redo support counted steps and revision guards; validate returns exit 1 for
+errors. `frame TIME` writes a PNG in the project's exports folder and supports
+native size flags. See [history, validation and frame verification](docs/verification/cli-history-review.md).
+
+CLI frames, screenshot, clip, export and loudness now have native positional/flag
+mappings and readable results. Contact sheets and screenshots write managed PNGs;
+clip and export use the shared encoder, and loudness includes curves and gain-lane
+reports. See [render CLI verification and limits](docs/verification/cli-render.md).
+
+CLI watch follows revision events, effects works offline, and archive/relink/check
+have native flags and readable reports. See [resource CLI verification and limits](docs/verification/cli-resources.md).
+
+CLI comments, sync, wait, transcribe, diff, restore and clips now have native
+selectors and readable output. Job failures and wait deadlines return exit 1;
+comment resolution, sync and restore share editor history. See
+[analysis/history CLI verification](docs/verification/cli-analysis.md).
+
+CLI asset and segment commands now accept native positionals/flags and print
+readable library reports. `install-compat --bin-dir FOLDER` explicitly installs a
+`tandem` wrapper after checking name collisions, without changing PATH. See
+[library and launcher verification](docs/verification/cli-library.md).

@@ -103,6 +103,108 @@ describe("persistent browser session", () => {
     vi.restoreAllMocks();
   });
 
+  it("captures queued export bounds and rejects ranges outside the sequence", async () => {
+    const value = session();
+    await value.start();
+    await value.apply({
+      commands: [
+        {
+          insertClip: {
+            trackID: "trk_video_0",
+            clip: {
+              id: "solid",
+              duration: 2,
+              content: { solid: { color: { r: 0, g: 0, b: 1, a: 1 } } },
+            },
+          },
+        },
+      ],
+    });
+    const render = vi.spyOn(value, "exportWebM").mockResolvedValue(new Blob(["video"]));
+    let finish!: (blob: Blob) => void;
+    value.exports.enqueue(
+      "blocker",
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const range = { from: 0.5, to: 1.25 };
+    const id = value.queueExport(null, "webm", range);
+    range.from = 1;
+    finish(new Blob(["first"]));
+    await vi.waitFor(() =>
+      expect(value.exports.getSnapshot().find((entry) => entry.id === id)?.status).toBe("done"),
+    );
+    expect(render).toHaveBeenCalledWith(
+      expect.any(AbortSignal),
+      expect.any(Function),
+      null,
+      "webm",
+      { from: 0.5, to: 1.25 },
+    );
+    expect(value.exports.getSnapshot().find((entry) => entry.id === id)?.name).toContain(
+      "0.500-1.250s",
+    );
+    for (const invalid of [
+      { from: -1, to: 1 },
+      { from: 1, to: 1 },
+      { from: 0, to: 3 },
+      { from: NaN, to: 1 },
+    ])
+      expect(() => value.queueExport(null, "wav", invalid)).toThrow("inside the sequence");
+    expect(value.exports.getSnapshot()).toHaveLength(2);
+  });
+
+  it("refuses queued exports after the project revision changes", async () => {
+    const value = session();
+    await value.start();
+    let finish!: (blob: Blob) => void;
+    value.exports.enqueue(
+      "blocker",
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const render = vi.spyOn(value, "exportWebM").mockResolvedValue(new Blob(["video"]));
+    const id = value.queueExport();
+    await rename(value, "Changed after queueing");
+    finish(new Blob(["first"]));
+    await vi.waitFor(() =>
+      expect(value.exports.getSnapshot().find((entry) => entry.id === id)).toMatchObject({
+        status: "failed",
+        error: expect.stringContaining("Project changed"),
+      }),
+    );
+    expect(render).not.toHaveBeenCalled();
+  });
+  it("guards edits during queued audio rendering and releases the guard after cancellation", async () => {
+    const service = await import("./service-render");
+    const render = vi.spyOn(service, "renderService").mockImplementation(
+      async (_session, _operation, _request, signal) =>
+        new Promise((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+        }),
+    );
+    const value = session();
+    await value.start();
+    const id = value.queueExport(null, "wav");
+    expect(value.getSnapshot().busy).toBe(true);
+    await vi.waitFor(() => expect(render).toHaveBeenCalledTimes(1));
+    expect(() => rename(value, "Blocked while exporting")).toThrow("current file operation");
+    value.exports.cancel(id);
+    await vi.waitFor(() =>
+      expect(value.exports.getSnapshot().find((entry) => entry.id === id)?.status).toBe(
+        "cancelled",
+      ),
+    );
+    expect(value.getSnapshot().busy).toBe(false);
+    expect(value.jobs.getSnapshot()).toMatchObject([{ id: "export", status: "cancelled" }]);
+    await rename(value, "Editable again");
+    expect(value.getSnapshot().project.name).toBe("Editable again");
+  });
+
   it("restores archive source copies without their original paths", async () => {
     const value = session();
     await value.start();

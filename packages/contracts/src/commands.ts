@@ -326,6 +326,8 @@ export const EditBatchSchema = Schema.Struct({
 
 export type EditBatch = typeof EditBatchSchema.Type;
 export type EditCommand = typeof EditCommandSchema.Type;
+/** JSON command input, before time decoding and project defaults are applied. */
+export type EditCommandInput = typeof CommandBody.Encoded;
 export const editCommandJsonSchema = () =>
   Schema.toJsonSchemaDocument(Schema.toType(EditCommandSchema));
 export const editBatchJsonSchema = () => {

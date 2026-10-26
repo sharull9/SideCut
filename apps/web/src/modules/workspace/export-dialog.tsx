@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@sidecut/ui/components/button";
 import {
   Dialog,
@@ -11,18 +11,27 @@ import {
 } from "@sidecut/ui/components/dialog";
 import { Progress } from "@sidecut/ui/components/progress";
 import { Alert, AlertTitle, AlertDescription } from "@sidecut/ui/components/alert";
-import { exportPlan } from "@sidecut/core/render-plan";
-import { presetProject, type ExportPreset } from "@sidecut/core/export-presets";
+import { exportPlan, projectDuration } from "@sidecut/core/render-plan";
+import { exportPresetPlan, type ExportPreset } from "@sidecut/core/export-presets";
 import { missingFonts, missingFontWarning } from "@sidecut/core/text";
 import { fontAvailable } from "@sidecut/platform-browser/text";
 import { useFontVersion } from "./text-inspector";
-import { formatOf, formatProject } from "@sidecut/core/formats";
-import { useEditorSession } from "./editor-session";
+import { formatOf } from "@sidecut/core/formats";
+import { useEditorSession, useEditorView } from "./editor-session";
 import "./dialogs.css";
 
-export function ExportDialog() {
+export function ExportDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const { session, snapshot, editor } = useEditorSession();
+  const range = useEditorView((state) => state.range);
+  const rangeSelect = useRef<HTMLSelectElement>(null);
   const [formatID, setFormatID] = useState(""),
+    [useRange, setUseRange] = useState(false),
     [preset, setPreset] = useState<ExportPreset | "wav">("webm"),
     [error, setError] = useState<string | null>(null);
   const entries = useSyncExternalStore(
@@ -30,28 +39,57 @@ export function ExportDialog() {
     session.exports.getSnapshot,
     session.exports.getSnapshot,
   );
-  const format = formatOf(snapshot.project, formatID),
-    rendered = presetProject(
-      formatProject(snapshot.project, format?.id),
-      preset === "wav" ? "webm" : preset,
-    );
+  const format = formatOf(snapshot.project, formatID);
   useFontVersion();
+  let rendered = snapshot.project,
+    sizingWarnings: string[] = [];
   let issue: string | null = null,
     plan: ReturnType<typeof exportPlan> | null = null;
   try {
-    plan = exportPlan(rendered);
+    if (
+      useRange &&
+      (!range ||
+        !Number.isFinite(range.from) ||
+        !Number.isFinite(range.to) ||
+        range.from < 0 ||
+        range.to <= range.from ||
+        range.to > projectDuration(rendered).seconds)
+    )
+      throw new Error("Mark a non-empty timeline range inside the sequence before exporting it.");
+    if (preset === "wav") {
+      const duration =
+        useRange && range ? range.to - range.from : projectDuration(rendered).seconds;
+      if (duration <= 0 || duration > 300)
+        throw new Error("Audio export needs a sequence between zero and five minutes.");
+    } else {
+      const settings = exportPresetPlan(
+        snapshot.project,
+        preset,
+        preset === "short" ? null : (format?.id ?? null),
+      );
+      rendered = settings.project;
+      sizingWarnings = settings.warnings;
+      plan = exportPlan(
+        rendered,
+        true,
+        useRange && range ? { start: range.from, end: range.to } : null,
+      );
+    }
   } catch (cause) {
     issue = cause instanceof Error ? cause.message : String(cause);
   }
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger render={<Button size="sm" disabled={snapshot.saveState === "loading"} />}>
         Export
         {entries.some((e) => e.status === "running" || e.status === "queued") ? " · working" : ""}
       </DialogTrigger>
-      <DialogContent className="dark editor-dialog editor-dialog-wide editor-export-dialog">
+      <DialogContent
+        initialFocus={rangeSelect}
+        className="dark editor-dialog editor-dialog-wide editor-export-dialog"
+      >
         <DialogHeader>
-          <DialogTitle>Export WebM</DialogTitle>
+          <DialogTitle>Export video or audio</DialogTitle>
           <DialogDescription>
             Render WebM video or WAV audio locally. Queue up to five exports. Downloads stay
             available here until removed or the project closes.
@@ -60,7 +98,17 @@ export function ExportDialog() {
         {plan && (
           <p className="editor-dialog-summary">
             {plan.width} × {plan.height} · {Number(plan.fps.toFixed(3))} fps ·{" "}
-            {plan.duration.toFixed(2)} s
+            {(useRange && range ? range.to - range.from : plan.duration).toFixed(2)} s
+          </p>
+        )}
+        {preset === "wav" && (
+          <p className="editor-dialog-summary">
+            48 kHz stereo WAV ·{" "}
+            {(useRange && range
+              ? range.to - range.from
+              : projectDuration(snapshot.project).seconds
+            ).toFixed(2)}{" "}
+            s
           </p>
         )}
         {issue && (
@@ -69,9 +117,33 @@ export function ExportDialog() {
             <AlertDescription>{issue}</AlertDescription>
           </Alert>
         )}
+        {sizingWarnings.length > 0 && (
+          <Alert>
+            <AlertTitle>Export sizing</AlertTitle>
+            <AlertDescription>{sizingWarnings.join(" ")}</AlertDescription>
+          </Alert>
+        )}
+        <label>
+          Range
+          <select
+            ref={rangeSelect}
+            aria-label="Export range"
+            value={useRange ? "range" : "full"}
+            onChange={(event) => setUseRange(event.target.value === "range")}
+          >
+            <option value="full">Entire sequence</option>
+            <option value="range" disabled={!range || range.to <= range.from}>
+              Timeline range
+              {range
+                ? ` · ${range.from.toFixed(2)}–${range.to.toFixed(2)} s`
+                : " · mark I and O first"}
+            </option>
+          </select>
+        </label>
         <label>
           Preset
           <select
+            aria-label="Export preset"
             value={preset}
             onChange={(event) => {
               const value = event.target.value;
@@ -92,20 +164,26 @@ export function ExportDialog() {
             <option value="wav">Audio only · WAV</option>
           </select>
         </label>
-        {snapshot.project.settings.alternateFormats.length > 0 && (
-          <label className="editor-export-format">
-            Format
-            <select value={format?.id ?? ""} onChange={(event) => setFormatID(event.target.value)}>
-              <option value="">Main canvas</option>
-              {snapshot.project.settings.alternateFormats.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name} · {f.width} × {f.height}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        {missingFonts(rendered, fontAvailable, true).map((font) => (
+        {snapshot.project.settings.alternateFormats.length > 0 &&
+          preset !== "short" &&
+          preset !== "wav" && (
+            <label className="editor-export-format">
+              Format
+              <select
+                aria-label="Export format"
+                value={format?.id ?? ""}
+                onChange={(event) => setFormatID(event.target.value)}
+              >
+                <option value="">Main canvas</option>
+                {snapshot.project.settings.alternateFormats.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name} · {f.width} × {f.height}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        {(preset === "wav" ? [] : missingFonts(rendered, fontAvailable, true)).map((font) => (
           <Alert key={font.name}>
             <AlertTitle>Missing font</AlertTitle>
             <AlertDescription>{missingFontWarning(font)}</AlertDescription>
@@ -155,7 +233,7 @@ export function ExportDialog() {
         </ol>
         <p role="status">
           Exports run in order. If the project changes before a queued export starts, queue it
-          again. Output fits 1920 × 1080, or 1080 × 1920 for portrait.
+          again. Video dimensions follow the selected canvas, format or preset.
         </p>
         <DialogFooter>
           <Button
@@ -164,7 +242,7 @@ export function ExportDialog() {
               try {
                 setError(null);
                 editor.getState().setPlaying(false);
-                session.queueExport(format?.id ?? null, preset);
+                session.queueExport(format?.id ?? null, preset, useRange ? range : null);
               } catch (cause) {
                 setError(cause instanceof Error ? cause.message : String(cause));
               }

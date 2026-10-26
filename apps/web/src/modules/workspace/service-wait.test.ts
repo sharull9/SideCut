@@ -61,7 +61,12 @@ it("times out at zero and cancels only the waiter while the actual job continues
   );
   expect(
     await waitService(session, { what: "transcript", timeout: 0 }, new AbortController().signal),
-  ).toMatchObject({ done: false, timedOut: true, pending: [{ mediaID: "m", state: "running" }] });
+  ).toMatchObject({
+    ok: false,
+    done: false,
+    timedOut: true,
+    pending: [{ mediaID: "m", state: "running" }],
+  });
   const controller = new AbortController();
   const waiting = waitService(session, { what: "jobs", timeout: 86400 }, controller.signal);
   await Promise.resolve();
@@ -75,7 +80,11 @@ it("rejects unknown targets/media and returns failures as finished work", async 
   vi.spyOn(session.analysis, "transcribe").mockRejectedValue(new Error("Source missing"));
   expect(
     await waitService(session, { what: "transcript", timeout: 1 }, new AbortController().signal),
-  ).toMatchObject({ done: true, finished: [{ state: "failed", message: "Source missing" }] });
+  ).toMatchObject({
+    ok: false,
+    done: true,
+    finished: [{ state: "failed", message: "Source missing" }],
+  });
   await expect(
     waitService(session, { what: "matte", media: ["m"] }, new AbortController().signal),
   ).rejects.toThrow(/Nothing makes/);

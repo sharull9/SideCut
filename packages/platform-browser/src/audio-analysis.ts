@@ -1,3 +1,4 @@
+import { yieldTask } from "./yield-task";
 import { derivedCache } from "./derived-cache";
 import { analysisVersion, LoudnessMeter } from "@sidecut/core/loudness";
 import type { MeasuredSound } from "@sidecut/core/loudness";
@@ -51,7 +52,7 @@ export async function measureSource(
       Array.from({ length: buffer.numberOfChannels }, (_, c) => buffer.getChannelData(c)),
     );
     onProgress(Math.min(0.99, (item.timestamp + item.duration) / duration));
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await yieldTask();
   }
   signal.throwIfAborted();
   if (!meter) throw new Error("Source has no decodable audio to measure.");

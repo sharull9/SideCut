@@ -1,0 +1,91 @@
+{
+  "revision": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "sources": [
+    "Sources/TandemCLI/AssetsCommand.swift",
+    "Sources/TandemCLI/SegmentsCommand.swift",
+    "Sources/TandemAPI/AssetText.swift"
+  ],
+  "examples": [
+    {
+      "operation": "assets-providers",
+      "result": {
+        "providers": [
+          {
+            "id": "import",
+            "displayName": "Import",
+            "status": { "state": "ready" },
+            "kinds": ["image"],
+            "capabilities": { "search": true, "generate": false }
+          }
+        ]
+      },
+      "text": "Asset sources:\n  import  Import  ready  image; searches"
+    },
+    {
+      "operation": "assets-search",
+      "result": { "text": "missing", "local": [], "total": 0 },
+      "text": "Nothing in the library for \"missing\".\nSearch the providers too with --online (MCP: online: true), or add the starter set with install-starter."
+    },
+    {
+      "operation": "assets-fetch",
+      "result": {
+        "asset": { "kind": "icon", "name": "Picture", "state": "normalised" },
+        "file": "picture.png",
+        "licence": { "name": "Fixture", "licenceClass": "creditNeeded", "creditLine": "Artist" }
+      },
+      "text": "Picture (icon) is ready: picture.png\nLicence: Fixture (credit needed). Credit: Artist"
+    },
+    {
+      "operation": "assets-show",
+      "result": {
+        "asset": {
+          "id": "import:picture",
+          "kind": "icon",
+          "name": "Picture",
+          "provider": "import",
+          "state": "normalised",
+          "licenceClass": "noCredit",
+          "tags": []
+        },
+        "file": "picture.png"
+      },
+      "text": "import:picture  icon, ready\nName: Picture\nProvider: import\nLicence: no credit\nFile: picture.png"
+    },
+    {
+      "operation": "assets-use",
+      "result": {
+        "asset": { "name": "Picture", "kind": "icon", "licenceClass": "noCredit" },
+        "mediaID": "med_picture",
+        "files": ["picture.png"],
+        "at": 1,
+        "trackName": "Graphics",
+        "applied": { "revision": 2, "createdIDs": ["clip_picture"], "warnings": [] }
+      },
+      "text": "Placed Picture (icon) at 00:01.000 on Graphics as revision 2.\nMedia med_picture: picture.png. Clips: clip_picture."
+    },
+    {
+      "operation": "assets-credits",
+      "result": {
+        "text": "Artist",
+        "includeOptional": false,
+        "credits": {
+          "entries": [{ "line": "Artist", "required": true }],
+          "assets": [],
+          "warnings": []
+        }
+      },
+      "text": "Paste into the description:\n\nArtist"
+    },
+    {
+      "operation": "assets-generate",
+      "result": { "assets": [], "failures": ["Unavailable"] },
+      "text": "Nothing was made.\nFailed: Unavailable"
+    },
+    {
+      "operation": "assets-install-starter",
+      "result": { "counts": { "logo": 15, "sticker": 43, "icon": 32 }, "total": 90 },
+      "text": "The starter set is in the library: 43 stickers, 32 icons, 15 logos (90 assets). Each downloads the first time it's used."
+    }
+  ],
+  "notice": "Synthetic readable expectations from pinned Swift source with SideCut names. Native shared-library/headless mode and paid requests remain separate acceptance. TANDEM-LICENSE applies."
+}

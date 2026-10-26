@@ -393,7 +393,7 @@ describe("review, watch and CLI host adapters", () => {
         name: "Intro",
         at: 4,
         values: { title: "New", subtitle: "Second" },
-        author: "agent",
+        author: "cli",
       },
     });
     const readable = await cli("segments");

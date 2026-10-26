@@ -69,7 +69,8 @@ it("finds explicit and environment projects, nearest parents and excludes render
     file = join(root, "edit.tandem");
   await mkdir(nested, { recursive: true });
   await writeFile(file, "{}");
-  for (const name of contract.discovery.renderSnapshots) await writeFile(join(root, name), "{}");
+  for (const name of [...contract.discovery.renderSnapshots, "archive-0123456789ab-project.tandem"])
+    await writeFile(join(root, name), "{}");
   expect(await findProject(undefined, nested, {})).toBe(await realpath(file));
   expect(await findProject(root, nested, {})).toBe(await realpath(file));
   expect(await findProject(undefined, nested, { TANDEM_PROJECT: file })).toBe(await realpath(file));

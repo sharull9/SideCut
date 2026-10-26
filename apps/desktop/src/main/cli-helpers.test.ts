@@ -6,6 +6,7 @@ import { spawn } from "node:child_process";
 import { parseArguments } from "../../../../scripts/cli-foundation.mjs";
 import { prepareQueryCommand, queryText } from "../../../../scripts/cli-query-commands.mjs";
 import contract from "../../../../tests/fixtures/tandem/cli-helpers.json";
+import cardsContract from "../../../../tests/fixtures/tandem/cli-cards.json";
 import { HostProjectService } from "./project-service.ts";
 import { NativeProjectStore } from "./project-store.ts";
 import { ProjectAPI } from "./project-api.ts";
@@ -17,6 +18,8 @@ afterEach(async () => {
 it("matches pinned helper text including preview copy wording", () => {
   for (const example of contract.examples)
     expect(queryText(example.operation, example.result)).toBe(example.text);
+  for (const example of cardsContract.examples)
+    expect(queryText("cards", example.result)).toBe(example.text);
 });
 it("maps native helper flags and protects preview defaults", () => {
   const captions = prepareQueryCommand(
@@ -28,6 +31,22 @@ it("maps native helper flags and protects preview defaults", () => {
     parseArguments(["tighten", "--protect", "1,2", "--protect", "3", "--mid-min", "0.5"]),
   );
   expect(tighten?.flags.get("protect")).toEqual(["1,2", "3"]);
+  const cards = prepareQueryCommand(
+    parseArguments([
+      "project",
+      "cards",
+      "--marker",
+      "a,b",
+      "--marker",
+      "b",
+      "--no-sounds",
+      "--insert",
+    ]),
+  );
+  expect(cards?.flags.get("markers")).toBe('["a,b","b"]');
+  expect(cards?.flags.get("sounds")).toBe("false");
+  expect(cards?.flags.get("insert")).toBe(true);
+  expect(cards?.prepare({})).toMatchObject({ apply: false });
   expect(
     prepareQueryCommand(parseArguments(["short", "--copy", "-o", "portrait"]))?.flags.get(
       "copy-path",
@@ -38,10 +57,14 @@ it("maps native helper flags and protects preview defaults", () => {
     ["join", "extra"],
     ["pauses", "--apply"],
     ["captions", "--max-words", "2", "--words"],
+    ["cards", "extra"],
+    ["cards", "--unknown"],
+    ["cards", "--marker", "a", "--markers", "[]"],
+    ["cards", "--no-sounds", "--sounds", "true"],
   ])
     expect(() => prepareQueryCommand(parseArguments(args))).toThrow();
 });
-it("runs join apply/undo and short copy previews through the authoritative host", async () => {
+it("runs editing helpers and cards through the authoritative host", async () => {
   const root = await mkdtemp(join(tmpdir(), "sidecut-cli-helpers-"));
   cleanup.push(() => rm(root, { recursive: true, force: true }));
   const host = new HostProjectService(new NativeProjectStore(join(root, "current.tandem")));
@@ -166,4 +189,9 @@ it("runs join apply/undo and short copy previews through the authoritative host"
     changing.handle("short", { copy: true, copyPath: "stale-copy.tandem", apply: true }),
   ).rejects.toThrow("changed while preparing");
   await expect(stat(join(root, "exports", "stale-copy.tandem"))).rejects.toThrow();
+  const beforeCards = host.snapshot().json;
+  const unavailable = await cli("cards", "--no-sounds");
+  expect(unavailable.code).toBe(3);
+  expect(unavailable.err).toContain("attached editor");
+  expect(host.snapshot().json).toBe(beforeCards);
 });

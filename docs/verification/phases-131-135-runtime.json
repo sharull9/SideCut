@@ -34,7 +34,7 @@
   },
   "review": {
     "commentResolved": true,
-    "quickOnly": true
+    "rendered": true
   },
   "watch": {
     "change": true,
@@ -45,7 +45,7 @@
   },
   "resources": {
     "effects": 15,
-    "archiveBytes": 772406,
+    "archiveBytes": 774808,
     "relink": 1
   },
   "assets": {
@@ -60,9 +60,9 @@
     "inserted": true
   },
   "limits": [
-    "No rendered quality scan, reviewed baseline or sound matching",
-    "No automatic relink search or standalone-folder archive",
+    "This harness does not exercise reviewed baselines or sound matching",
+    "This harness does not exercise automatic folder relink or standalone-folder archive",
     "No provider network calls or paid generation tested",
-    "Windows development runtime; packaged/macOS/Linux acceptance pending"
+    "Windows development runtime; packaging has separate acceptance, native macOS/Linux remain unverified"
   ]
 }

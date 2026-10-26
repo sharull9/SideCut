@@ -13,7 +13,13 @@ export async function discoverHost(path = process.env.SIDECUT_API_FILE) {
     if (!base) throw new Error("Set SIDECUT_API_FILE to the desktop discovery file.");
     path = join(base, "sidecut", "current.tandem.api.json");
   }
-  const value = JSON.parse(await readFile(path, "utf8"));
+  const raw = await readFile(path, "utf8");
+  let value;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    throw new Error("Invalid discovery file.");
+  }
   if (
     !value ||
     !Number.isInteger(value.port) ||
@@ -37,7 +43,12 @@ export async function hostCall(host, operation, input = {}, signal, author = "mc
     body: JSON.stringify(input),
     signal,
   });
-  const result = await response.json();
+  let result;
+  try {
+    result = await response.json();
+  } catch {
+    throw new Error("Host returned an invalid JSON response.");
+  }
   if (!response.ok) {
     const error = new Error(result.error?.message ?? "Host request failed.");
     error.code = result.error?.code ?? "unavailable";

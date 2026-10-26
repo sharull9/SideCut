@@ -1,0 +1,24 @@
+{
+  "testedAt": "2026-10-25T17:51:55.340Z",
+  "platform": "win32",
+  "hidden": true,
+  "backgroundThrottling": true,
+  "results": [
+    {
+      "width": 320,
+      "height": 180,
+      "duration": "1.020000",
+      "frames": 30,
+      "bytes": 18736,
+      "elapsedSeconds": 2.6732798000000004,
+      "peakWorkingSetMiB": 703.6953125,
+      "progressUpdates": 31
+    }
+  ],
+  "limits": [
+    "Synthetic static solid picture and one-second tone followed by silence",
+    "One-second hidden-window regression, not a long stress run",
+    "Working set sums this Electron app's processes at one-second intervals; not a memory guarantee",
+    "No native Tandem golden, complex effects, source-video decoding stress or other platform acceptance"
+  ]
+}

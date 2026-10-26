@@ -1,0 +1,82 @@
+{
+  "platform": "win32",
+  "reference": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "preview": {
+    "count": 2,
+    "revision": 0,
+    "unchanged": true
+  },
+  "selected": {
+    "card": {
+      "number": "01",
+      "title": "Next",
+      "subtitle": "Subtitle",
+      "markerID": "second",
+      "at": 2,
+      "start": 1.3666666666666667,
+      "end": 4.566666666666666,
+      "cut": 1.8
+    },
+    "command": {
+      "addSectionCards": {
+        "markerIDs": ["second", "second"],
+        "duration": 3.2,
+        "kicker": "Chapter",
+        "trackID": "camera-track",
+        "mode": "insert",
+        "cuts": {
+          "second": 1.8
+        }
+      }
+    },
+    "sounds": "no sounds (asked for none)"
+  },
+  "applied": {
+    "revision": 1,
+    "label": "CLI cards",
+    "author": "fixture-agent",
+    "createdIDs": ["trk_qn7guspu", "clip_yaaqa77y", "clip_7w8bbxkq"],
+    "warnings": [
+      "The sections \"First\" and \"Next\" are closer than a card is long, so the first card cuts into the second one's wipe in."
+    ],
+    "dryRun": false,
+    "repeated": false,
+    "added": ["clip_7w8bbxkq", "clip_yaaqa77y"],
+    "removed": [],
+    "changed": [],
+    "duration": 6
+  },
+  "visibleCards": 2,
+  "staleExitCode": 4,
+  "existingCardReadable": true,
+  "failures": [
+    {
+      "args": ["--duration", "0.1"],
+      "code": 3
+    },
+    {
+      "args": ["--marker", "missing"],
+      "code": 3
+    },
+    {
+      "args": ["--track", "voice-track"],
+      "code": 5
+    },
+    {
+      "args": ["--unknown", "value"],
+      "code": 2
+    },
+    {
+      "args": ["extra"],
+      "code": 2
+    }
+  ],
+  "overwriteUndo": true,
+  "insertUndo": true,
+  "finalRevision": 4,
+  "limits": [
+    "Windows development Electron runtime",
+    "Cached speech; no model download",
+    "No sound-library acquisition or native macOS/Linux comparison"
+  ]
+}

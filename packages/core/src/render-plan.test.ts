@@ -16,6 +16,40 @@ function project(video: unknown[], audio: unknown[] = [], settings: unknown = {}
   }).project;
 }
 describe("browser export preflight", () => {
+  it("validates only the selected range and detects audio within that range", () => {
+    const value = project(
+      [
+        {
+          id: "v",
+          kind: "video",
+          clips: [
+            { ...clip, duration: 301 },
+            {
+              id: "bad",
+              start: 302,
+              duration: 1,
+              content: { graphic: { template: "unsupported" } },
+            },
+          ],
+        },
+      ],
+      [{ id: "a", kind: "audio", clips: [{ ...clip, id: "audio", start: 2 }] }],
+    );
+    expect(exportPlan(value, true, { start: 0, end: 1 })).toMatchObject({
+      duration: 1,
+      frameCount: 30,
+      hasAudio: false,
+    });
+    expect(exportPlan(value, true, { start: 2, end: 3 }).hasAudio).toBe(true);
+    expect(() => exportPlan(value, true, { start: 302, end: 303 })).toThrow();
+    for (const range of [
+      { start: -1, end: 1 },
+      { start: 1, end: 1 },
+      { start: 0, end: 304 },
+      { start: NaN, end: 1 },
+    ])
+      expect(() => exportPlan(value, true, range)).toThrow("Invalid export range");
+  });
   it("does not create a sound track for a frozen audio-only sequence", () => {
     expect(
       exportPlan(project([], [{ id: "a", kind: "audio", clips: [{ ...clip, freezeFrame: true }] }]))

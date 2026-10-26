@@ -17,7 +17,7 @@ import { speechLevel, speechMediaID } from "@sidecut/core/audio-editing";
 import { effectsOf } from "@sidecut/core/effect-editing";
 import { resolvedParams } from "@sidecut/core/effects";
 import { verifyGainLanes } from "./service-gains";
-import { serviceExportPlan } from "@sidecut/core/service-export";
+import { serviceExportPlan, serviceFormat } from "@sidecut/core/service-export";
 import { inspectionTimes } from "@sidecut/core/service-requests";
 const png = (canvas: HTMLCanvasElement) =>
   new Promise<Blob>((resolve, reject) =>
@@ -39,15 +39,13 @@ export async function renderService(
   request: Record<string, unknown>,
   signal: AbortSignal,
 ) {
+  const source = session.getSnapshot().project;
   const exportSettings = ["clip", "export"].includes(operation)
-    ? serviceExportPlan(session.getSnapshot().project, request, operation)
+    ? serviceExportPlan(source, request, operation)
     : null;
   let project =
     exportSettings?.project ??
-    formatProject(
-      session.getSnapshot().project,
-      request.format === "main" ? null : ((request.format as string) ?? null),
-    );
+    formatProject(source, serviceFormat(source, request.format as string | undefined));
   const duration = projectDuration(project).seconds,
     readers = new Map<string, Promise<LocalMediaReader>>(),
     warnings = new Set<string>();
@@ -60,11 +58,7 @@ export async function renderService(
           local = await resource(id);
         if (!item || local?.state !== "available")
           throw new Error(`Source ${item?.path ?? id} is missing or unsupported.`);
-        const opened = await LocalMediaReader.open(
-          local.file,
-          item.kind,
-          Math.min(1920, project.settings.width),
-        );
+        const opened = await LocalMediaReader.open(local.file, item.kind, project.settings.width);
         return opened;
       })();
       readers.set(id, existing);
@@ -73,7 +67,7 @@ export async function renderService(
   };
   const lut = createLUTLoader(resource);
   try {
-    if (operation !== "loudness") {
+    if (operation !== "loudness" && request.audioOnly !== true) {
       const tracks = [];
       for (const track of project.videoTracks) {
         const clips = [];
@@ -474,7 +468,7 @@ export async function renderService(
         finalLevels = value;
       },
     });
-    const plan = exportPlan(project, true);
+    const plan = exportPlan(project, true, { start, end });
     return {
       data: await base64(blob),
       bytes: blob.size,

@@ -74,6 +74,13 @@ await cp(join(root, "scripts/cli-project-commands.mjs"), join(cli, "cli-project-
 await cp(join(root, "scripts/edit-batch.schema.json"), join(cli, "edit-batch.schema.json"));
 await cp(join(root, "scripts/cli-foundation.mjs"), join(cli, "cli-foundation.mjs"));
 await cp(join(root, "scripts/cli-query-commands.mjs"), join(cli, "cli-query-commands.mjs"));
+await cp(join(root, "scripts/cli-apply-command.mjs"), join(cli, "cli-apply-command.mjs"));
+await cp(join(root, "scripts/cli-render-commands.mjs"), join(cli, "cli-render-commands.mjs"));
+await cp(join(root, "scripts/cli-resource-commands.mjs"), join(cli, "cli-resource-commands.mjs"));
+await cp(join(root, "scripts/cli-analysis-commands.mjs"), join(cli, "cli-analysis-commands.mjs"));
+await cp(join(root, "scripts/cli-library-commands.mjs"), join(cli, "cli-library-commands.mjs"));
+await cp(join(root, "scripts/cli-compatibility.mjs"), join(cli, "cli-compatibility.mjs"));
+await cp(join(root, "scripts/effects-catalog.json"), join(cli, "effects-catalog.json"));
 const workspaceRequire = createRequire(join(root, "package.json"));
 const commanderRoot = dirname(workspaceRequire.resolve("commander"));
 await cp(commanderRoot, join(cli, "node_modules/commander"), { recursive: true });

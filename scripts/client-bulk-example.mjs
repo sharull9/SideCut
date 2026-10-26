@@ -1,8 +1,7 @@
-// Node 24 can load this client's erasable TypeScript directly.
-import { SideCutClient, ServiceError } from "../packages/client/src/index.ts";
-import { discoverHost } from "./host-client.mjs";
-const client = new SideCutClient(await discoverHost());
-const status = await client.call("status", {});
+// Run `vp run --filter @sidecut/client build` before this Node 24 example.
+import { openProjectClient, ServiceError } from "../packages/client/dist/node.mjs";
+const client = await openProjectClient();
+const status = await client.status();
 if (!status || typeof status !== "object" || typeof status.revision !== "number")
   throw new Error("Invalid status revision.");
 const options = {

@@ -1,0 +1,31 @@
+{
+  "testedAt": "2026-10-25T18:04:59.970Z",
+  "platform": "win32",
+  "results": [
+    {
+      "preset": "final",
+      "codec": "h264",
+      "width": 3840,
+      "height": 2160,
+      "frames": 900,
+      "duration": "30.000000",
+      "bytes": 1682127,
+      "elapsedSeconds": 29.1731694
+    },
+    {
+      "preset": "youtube4k",
+      "codec": "hevc",
+      "width": 3840,
+      "height": 2160,
+      "frames": 900,
+      "duration": "30.000000",
+      "bytes": 1848015,
+      "elapsedSeconds": 109.7481907
+    }
+  ],
+  "limits": [
+    "Thirty-second static 4K solid without audio",
+    "Windows development Electron HTTP export path and bundled FFmpeg",
+    "Not long source-video decoding, complex effects, five minutes at 4K, or upstream golden acceptance"
+  ]
+}

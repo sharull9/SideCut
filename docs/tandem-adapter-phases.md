@@ -188,42 +188,48 @@ Acceptance per command: match flags/defaults, JSON and text output, exit code, a
 - [x] 130.17: Project command short. Portrait preview/apply/undo, dry-run copy reporting, exclusive named snapshots, fresh history and same-profile resource copy/reopen pass.
       See [CLI helper evidence and limits](verification/cli-helpers.md) for pauses through short.
 
-- [ ] 130.18: Project command cards.
-- [ ] 130.19: Project command apply.
-- [ ] 130.20: Project command undo.
-- [ ] 130.21: Project command redo.
-- [ ] 130.22: Project command history.
-- [ ] 130.23: Project command validate.
-- [ ] 130.24: Project command frame.
-- [ ] 130.25: Project command frames.
-- [ ] 130.26: Project command screenshot.
-- [ ] 130.27: Project command clip.
-- [ ] 130.28: Project command export.
-- [ ] 130.29: Project command loudness.
-- [ ] 130.30: Project command watch.
-- [ ] 130.31: Project command effects.
-- [ ] 130.32: Project command archive.
-- [ ] 130.33: Project command relink.
-- [ ] 130.34: Project command check.
-- [ ] 130.35: Project command comments.
-- [ ] 130.36: Project command sync.
-- [ ] 130.37: Project command wait.
-- [ ] 130.38: Project command transcribe.
-- [ ] 130.39: Project command diff.
-- [ ] 130.40: Project command restore.
-- [ ] 130.41: Project command clips.
-- [ ] 130.42: Library command providers.
-- [ ] 130.43: Library command search.
-- [ ] 130.44: Library command fetch.
-- [ ] 130.45: Library command show.
-- [ ] 130.46: Library command use.
-- [ ] 130.47: Library command credits.
-- [ ] 130.48: Library command generate.
-- [ ] 130.49: Library command install-starter.
-- [ ] 130.50: Library command segments.
-- [ ] 130.51: Library command save-segment.
-- [ ] 130.52: Library command insert-segment.
-- [ ] 130.53: Compatibility launcher and collision handling.
+- [x] 130.18: Project command cards. Pinned readable output, repeated marker/no-sounds mappings, preview defaults, visible apply, stale rejection and overwrite/insert undo pass CLI tests and Windows Electron. Transport-code differences remain documented in [CLI cards evidence and limits](verification/cli-cards.md).
+- [x] 130.19: Project command apply. File/inline/stdin batches, readable/JSON results, native overrides, dry runs, idempotency, atomic failure, visible editor apply and shared undo pass host tests and Windows Electron. Label, shorthand and transport differences are recorded in [CLI apply evidence and limits](verification/cli-apply.md).
+- [x] 130.20: Project command undo. Pinned readable single/count results, native count/expect flags, empty/stale/invalid failures and visible editor restoration pass host subprocess tests and Windows Electron.
+- [x] 130.21: Project command redo. Single/count JSON and readable replay, bounded available steps, empty/stale/invalid failures and visible restored edits pass host tests and Windows Electron.
+- [x] 130.22: Project command history. Readable/JSON defaults, newest-first limits, pinned timestamp/opening/scan/event formatting, invalid limits and read-only behavior pass tests and Electron.
+- [x] 130.23: Project command validate. Readable/JSON validation, warning-only success and read-only behavior pass real host tests and Electron; invalid projects return exit 1 through a boundary responder using the real validator because the coordinator refuses invalid state.
+- [x] 130.24: Project command frame. Positional time, native size/output flags, default exclusive PNG output, decoded pixel/dimension checks and nonmutating failures pass Windows Electron. Image/export format validation now shares one resolver.
+      See [history/review CLI evidence and compatibility limits](verification/cli-history-review.md) for phases 130.20–130.24.
+- [x] 130.25: Project command frames. Positional/interval times, native flags/default names, readable/JSON sheets, PNG dimensions and nonmutating failures pass pinned tests and Windows Electron.
+- [x] 130.26: Project command screenshot. Default and explicit exclusive editor PNGs, readable/JSON output, invalid positionals and overwrite failure pass host/subprocess and Windows Electron checks.
+- [x] 130.27: Project command clip. Native positional ranges, audio-only and track flags, readable results and a non-silent stereo 48 kHz PCM clip pass; reversed ranges and missing tracks fail unchanged.
+- [x] 130.28: Project command export. Native range/preset/output flags, readable/JSON results, verified H.264/WebM files, companion snapshots and nonmutating output/preset/range failures pass Windows Electron.
+- [x] 130.29: Project command loudness. Positional media and curve/track/gain/threshold flags, pinned readable summaries, actual source/mix/gain measurements and nonmutating failures pass tests and Windows Electron.
+      See [render CLI evidence and compatibility limits](verification/cli-render.md) for phases 130.25–130.29.
+- [x] 130.30: Project command watch. Continuous revision-event text/JSON, once results, timeout handling and waiter cancellation pass host/subprocess and Electron checks; native SSE progress remains separate.
+- [x] 130.31: Project command effects. Offline catalogue/defaults, case-insensitive positional type, readable output and unknown-type failure pass pinned tests and Electron CLI.
+- [x] 130.32: Project command archive. Native project/to/cache/dry-run flags, copy manifests, consolidation undo, preview/nonoverwrite behavior and safe post-consolidation discovery pass Windows Electron.
+- [x] 130.33: Project command relink. Repeated search/dry-run/label/expect flags, actual WAV restoration, visible media path, stale/missing-folder failures and shared undo pass Electron.
+- [x] 130.34: Project command check. Native flags, readable/JSON findings and exit status, rendered/quick checks and nonmutating failures pass tests and Electron.
+      See [resource CLI evidence and limits](verification/cli-resources.md) for phases 130.30–130.34.
+- [x] 130.35: Project command comments. Readable context/clips, resolve IDs/all through one guarded edit, unknown IDs and visible undo pass host tests and Electron.
+- [x] 130.36: Project command sync. Native delay/file/default/no-place flags, CLI author forwarding, 80 ms picture delay, 250 ms sound matching, dry runs and undo pass tests and Electron.
+- [x] 130.37: Project command wait. Native target/media/timeout flags, readable outcomes, cached speech success and failure/timeout exit 1 pass tests and Electron; native SSE progress remains separate.
+- [x] 130.38: Project command transcribe. Native positional sources/wait modes, author-preserving request marking, readable cached results and failed-job exit 1 pass tests and Electron.
+- [x] 130.39: Project command diff. Positional/since baselines, readable aggregate/per-edit changes, real moved-clip JSON and invalid-baseline failures pass tests and Electron.
+- [x] 130.40: Project command restore. Preview/apply flags, exact clip restoration, CLI author, invalid baselines, visible state and one-step undo pass host tests and Electron.
+- [x] 130.41: Project command clips. Readable and IDs-only output, native track/range/media flags and nonmutating missing-track failures pass tests and Electron.
+      See [analysis/history CLI evidence and limits](verification/cli-analysis.md) for phases 130.35–130.41.
+- [x] 130.42: Library command providers. Readable/JSON output for all 12 sources and syntax validation pass tests and Electron CLI.
+- [x] 130.43: Library command search. Native positional words, kind/provider/online/limit mappings, local success and unknown-filter failures pass tests and Electron.
+- [x] 130.44: Library command fetch. Positional ID, cached normalization/metadata, readable output and missing-ID failure pass Electron.
+- [x] 130.45: Library command show. Native ID, prompt/model/licence/file reports, read-only behavior and missing-ID failure pass Electron.
+- [x] 130.46: Library command use. Native placement flags, CLI author, visible image insertion, credits and shared undo pass Electron.
+- [x] 130.47: Library command credits. Optional flag, recorded licence precedence, readable/JSON block and read-only behavior pass Electron.
+- [x] 130.48: Library command generate. Kind/prompt/duration/variation mappings, paid guard and real normalization through a fixture-only partial provider response pass Electron; live paid calls remain separate.
+- [x] 130.49: Library command install-starter. Readable/JSON pinned 90-asset metadata-only catalogue and idempotence pass Electron.
+- [x] 130.50: Library command segments. Native default/list syntax and readable/JSON listing pass tests and Electron.
+- [x] 130.51: Library command save-segment. Name, exact clips/range, fields/replace, copied resources, revision-free saves and invalid selections pass Electron.
+- [x] 130.52: Library command insert-segment. Required time, values/mode/label/expect, CLI author, visible filled title and one-step undo pass Electron.
+- [x] 130.53: Compatibility launcher and collision handling. Explicit install-compat, foreign-command refusal, unchanged PATH, actual wrapper invocation and idempotence pass tests and unpacked Windows acceptance.
+
+See [library CLI and compatibility evidence/limits](verification/cli-library.md). All CLI subphases have adapter acceptance; native standalone library/headless routing and full upstream parity remain outside the recorded bounds.
 
 ## Group 131: MCP
 
@@ -234,63 +240,63 @@ remains open; see [phases 131–135](verification/phases-131-135.md).
 
 Acceptance per tool: match the reference input schema and text/image/error result blocks through an actual MCP client. Mutations must use the same revisions and undo history as the UI. Read-only tools must not mutate the project.
 
-- [ ] 131.01: status.
-- [ ] 131.02: timeline.
-- [ ] 131.03: media.
-- [ ] 131.04: transcript.
-- [ ] 131.05: transcribe.
-- [ ] 131.06: search.
-- [ ] 131.07: pauses.
-- [ ] 131.08: tighten.
-- [ ] 131.09: join.
-- [ ] 131.10: captions.
-- [ ] 131.11: short.
-- [ ] 131.12: cards.
-- [ ] 131.13: apply.
-- [ ] 131.14: undo.
-- [ ] 131.15: redo.
-- [ ] 131.16: history.
-- [ ] 131.17: diff.
-- [ ] 131.18: restore.
-- [ ] 131.19: clips.
-- [ ] 131.20: validate.
-- [ ] 131.21: check.
-- [ ] 131.22: sync.
-- [ ] 131.23: comments.
-- [ ] 131.24: frame.
-- [ ] 131.25: frames.
-- [ ] 131.26: screenshot.
-- [ ] 131.27: clip.
-- [ ] 131.28: export.
-- [ ] 131.29: archive.
-- [ ] 131.30: relink.
-- [ ] 131.31: loudness.
-- [ ] 131.32: watch.
-- [ ] 131.33: wait.
-- [ ] 131.34: assets_search.
-- [ ] 131.35: assets_use.
-- [ ] 131.36: assets_show.
-- [ ] 131.37: assets_credits.
-- [ ] 131.38: assets_generate.
-- [ ] 131.39: segments_list.
-- [ ] 131.40: segments_save.
-- [ ] 131.41: segments_insert.
-- [ ] 131.42: assets_providers.
-- [ ] 131.43: effects.
+- [x] 131.01: status. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.02: timeline. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.03: media. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.04: transcript. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.05: transcribe. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.06: search. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.07: pauses. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.08: tighten. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.09: join. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.10: captions. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.11: short. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.12: cards. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.13: apply. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.14: undo. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.15: redo. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.16: history. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.17: diff. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.18: restore. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.19: clips. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.20: validate. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.21: check. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.22: sync. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.23: comments. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.24: frame. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.25: frames. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.26: screenshot. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.27: clip. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.28: export. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.29: archive. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.30: relink. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.31: loudness. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.32: watch. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.33: wait. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.34: assets_search. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.35: assets_use. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.36: assets_show. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.37: assets_credits. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.38: assets_generate. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.39: segments_list. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.40: segments_save. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.41: segments_insert. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.42: assets_providers. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
+- [x] 131.43: effects. Verified with pinned schemas/readable fixtures and real MCP stdio success/failure in [the MCP report](verification/mcp-adapters.md).
 
 ## Group 134: Interactions
 
 Acceptance per interaction: exercise it in the running editor with keyboard or pointer input, confirm the resulting project/selection/focus, and verify cancellation or an input-focus boundary.
 
 - [x] 134.01: Shortcut dispatch and input focus. Baseline subset verified with real keyboard events and input-focus protection.
-- [ ] 134.02: Keymap selection.
-- [ ] 134.03: Context menus.
-- [ ] 134.04: Copy and paste with ID remapping.
+- [x] 134.02: Keymap selection. Verified in Electron with real input and cancellation/focus checks; [scope and evidence](verification/editor-interactions.md).
+- [x] 134.03: Context menus. Verified in Electron with real input and cancellation/focus checks; [scope and evidence](verification/editor-interactions.md).
+- [x] 134.04: Copy and paste with ID remapping. Verified in Electron with real input and cancellation/focus checks; [scope and evidence](verification/editor-interactions.md).
 - [x] 134.05: Timeline range selection. Shift-drag and I/O use the shared range controls.
-- [ ] 134.06: Marquee selection.
-- [ ] 134.07: Snapping modifiers.
+- [x] 134.06: Marquee selection. Verified in Electron with real input and cancellation/focus checks; [scope and evidence](verification/editor-interactions.md).
+- [x] 134.07: Snapping modifiers. Verified in Electron with real input and cancellation/focus checks; [scope and evidence](verification/editor-interactions.md).
 - [x] 134.08: Track height resize. Pointer/keyboard separator reuses the existing accessible resize control.
-- [ ] 134.09: Timeline scroll and zoom.
-- [ ] 134.10: Drag autoscroll.
-- [ ] 134.11: Keyboard clip navigation.
-- [ ] 134.12: Keyboard trim and move.
+- [x] 134.09: Timeline scroll and zoom. Verified in Electron with real input and cancellation/focus checks; [scope and evidence](verification/editor-interactions.md).
+- [x] 134.10: Drag autoscroll. Verified in Electron with real input and cancellation/focus checks; [scope and evidence](verification/editor-interactions.md).
+- [x] 134.11: Keyboard clip navigation. Verified in Electron with real input and cancellation/focus checks; [scope and evidence](verification/editor-interactions.md).
+- [x] 134.12: Keyboard trim and move. Verified in Electron with real input and cancellation/focus checks; [scope and evidence](verification/editor-interactions.md).

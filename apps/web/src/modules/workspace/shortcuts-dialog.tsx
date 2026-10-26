@@ -15,6 +15,14 @@ type Row = { label: string; keys: string[][]; premiereOnly?: boolean };
 
 const GROUPS: { title: string; rows: Row[] }[] = [
   {
+    title: "Project",
+    rows: [
+      { label: "Save on this device", keys: [["Mod", "S"]] },
+      { label: "Open project", keys: [["Mod", "O"]] },
+      { label: "Export", keys: [["Mod", "E"]] },
+    ],
+  },
+  {
     title: "Playback & navigation",
     rows: [
       { label: "Play / pause", keys: [["Space"]], premiereOnly: true },
@@ -28,6 +36,14 @@ const GROUPS: { title: string; rows: Row[] }[] = [
         premiereOnly: true,
       },
       { label: "Previous / next edit", keys: [["↑"], ["↓"]], premiereOnly: true },
+      {
+        label: "Previous / next marker",
+        keys: [
+          ["Mod", "Shift", "M"],
+          ["Shift", "M"],
+        ],
+        premiereOnly: true,
+      },
       { label: "Start / end of sequence", keys: [["Home"], ["End"]], premiereOnly: true },
     ],
   },
@@ -43,7 +59,18 @@ const GROUPS: { title: string; rows: Row[] }[] = [
       },
       { label: "Lift selection", keys: [["Delete"]] },
       { label: "Ripple delete", keys: [["Shift", "Delete"]] },
+      { label: "Ripple trim start / end to playhead", keys: [["Q"], ["W"]], premiereOnly: true },
       { label: "Nudge selection", keys: [[","], ["."]], premiereOnly: true },
+      { label: "Link / unlink selection", keys: [["Mod", "L"]], premiereOnly: true },
+      { label: "Add marker at playhead", keys: [["M"]], premiereOnly: true },
+      {
+        label: "Add video / audio track",
+        keys: [
+          ["Mod", "Alt", "V"],
+          ["Mod", "Alt", "A"],
+        ],
+        premiereOnly: true,
+      },
       { label: "Undo", keys: [["Mod", "Z"]] },
       {
         label: "Redo",
@@ -58,6 +85,11 @@ const GROUPS: { title: string; rows: Row[] }[] = [
     title: "Selection & clipboard",
     rows: [
       { label: "Select all", keys: [["Mod", "A"]] },
+      {
+        label: "Select clips after playhead",
+        keys: [["A"], ["Mod", "Shift", "A"]],
+        premiereOnly: true,
+      },
       { label: "Clear selection and range", keys: [["Esc"]] },
       { label: "Copy", keys: [["Mod", "C"]] },
       { label: "Paste at playhead", keys: [["Mod", "V"]] },
@@ -65,11 +97,18 @@ const GROUPS: { title: string; rows: Row[] }[] = [
   },
   {
     title: "Range",
-    rows: [{ label: "Mark in / out", keys: [["I"], ["O"]], premiereOnly: true }],
+    rows: [
+      { label: "Mark in / out", keys: [["I"], ["O"]], premiereOnly: true },
+      { label: "Mark targeted clip at playhead", keys: [["X"]], premiereOnly: true },
+    ],
   },
   {
     title: "Zoom",
-    rows: [{ label: "Zoom in / out", keys: [["+"], ["-"]], premiereOnly: true }],
+    rows: [
+      { label: "Zoom in / out", keys: [["+"], ["-"]], premiereOnly: true },
+      { label: "Fit timeline", keys: [["Shift", "Z"], ["\\"]], premiereOnly: true },
+      { label: "Toggle snapping", keys: [["S"]], premiereOnly: true },
+    ],
   },
 ];
 

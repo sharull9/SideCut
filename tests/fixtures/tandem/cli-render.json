@@ -1,0 +1,132 @@
+{
+  "revision": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "sources": [
+    "Sources/TandemCLI/CLI.swift",
+    "Sources/TandemAPI/ReadableText.swift",
+    "Sources/TandemAPI/SoundCheck.swift",
+    "Sources/TandemAPI/ServiceTypes.swift"
+  ],
+  "examples": [
+    {
+      "operation": "frames",
+      "result": { "path": "frames.png", "bytes": 256, "times": [0, 1], "warnings": [] },
+      "text": "Wrote frames.png (256 bytes): 2 frames, at 00:00.000, 00:01.000."
+    },
+    {
+      "operation": "screenshot",
+      "result": { "path": "sidecut-window.png", "bytes": 512, "warnings": ["Notice"] },
+      "text": "Wrote sidecut-window.png (512 bytes).\nWarning: Notice"
+    },
+    {
+      "operation": "clip",
+      "result": {
+        "path": "voice.wav",
+        "preset": "review",
+        "duration": 2,
+        "elapsed": 0.25,
+        "tracks": ["Voice"],
+        "warnings": []
+      },
+      "text": "Wrote voice.wav (review, sound only, 00:02.000 long) in 0.3s. Only Voice plays, at the timeline's own level (not mastered)."
+    },
+    {
+      "operation": "export",
+      "result": {
+        "path": "movie.mp4",
+        "preset": "youtube1080",
+        "width": 1920,
+        "height": 1080,
+        "codec": "h264",
+        "videoBitrate": 20000000,
+        "format": "wide",
+        "duration": 2,
+        "elapsed": 1.5,
+        "integratedLUFS": -16,
+        "truePeakDBTP": -1,
+        "loudnessTarget": -16,
+        "truePeakCeiling": -1,
+        "warnings": []
+      },
+      "text": "Wrote movie.mp4 (youtube1080: 1920x1080 H.264 at 20 Mbps, wide format, 00:02.000 long) in 1.5s. Loudness -16.0 LUFS, true peak -1.0 dBTP (mastered to -16 LUFS, peaks under -1 dBTP)."
+    },
+    {
+      "operation": "loudness",
+      "result": {
+        "speechLoudness": -20,
+        "target": -16,
+        "truePeakCeiling": -1,
+        "media": [
+          {
+            "mediaID": "voice",
+            "path": "voice.wav",
+            "integratedLUFS": -24,
+            "truePeakDBTP": -5,
+            "loudnessRange": 2,
+            "state": "ready"
+          },
+          {
+            "mediaID": "offline",
+            "path": "offline.wav",
+            "integratedLUFS": null,
+            "truePeakDBTP": null,
+            "state": "none"
+          }
+        ],
+        "clips": [
+          {
+            "track": "A1 Voice",
+            "speech": true,
+            "normalizeTo": -20,
+            "gainDB": 2,
+            "normalizeGainDB": 4,
+            "peakDBTP": 1,
+            "muted": false
+          }
+        ]
+      },
+      "text": "Speech is levelled to -20.0 LUFS; export brings the mix to -16.0 LUFS with true peaks under -1.0 dBTP.\n  voice  voice.wav  -24.0 LUFS, peak -5.0 dBTP, range 2.0 LU\n  offline  offline.wav  not measured yet\n1 of 1 speech clips aren't at the speech level; normalizeSpeech sets them.\n1 speech clip peaks over the -1.0 dBTP ceiling once levelled (up to +1.0 dBTP), which export's limiter squashes; normalizeSpeech holds them with a compressor and a limiter.\nClip levels by track (clip gain is added after levelling):\n  A1 Voice  1 clip  levelled to -20.0 LUFS (+4.0 dB)  gain +2.0 dB"
+    },
+    {
+      "operation": "loudness",
+      "result": {
+        "curve": {
+          "start": 0,
+          "end": 1,
+          "step": 1,
+          "integratedLUFS": -20,
+          "truePeakDBTP": -3,
+          "points": [
+            { "time": 0, "momentaryLUFS": null, "shortTermLUFS": null, "peakDBFS": null },
+            { "time": 1, "momentaryLUFS": -20, "shortTermLUFS": -20, "peakDBFS": -3 }
+          ]
+        },
+        "tracks": ["Voice", "Music"],
+        "gains": []
+      },
+      "text": "Voice and Music from 00:00.000 to 00:01.000, every 1 s, as the timeline plays it (export's master gain moves it all by the same amount).\nIntegrated -20.0 LUFS, true peak -3.0 dBTP. Loudest: -20.0 LUFS momentary at 00:01.000.\nShort-term: ·▇\n  time        momentary   short-term  peak\n  00:00.000   silent      silent\n  00:01.000   -20.0 LUFS  -20.0 LUFS  -3.0 dBFS\nMomentary is the 400 ms centred on each time, short-term the 3 s, peak the highest sample in the 400 ms.\nGain lanes against the render, 00:00.000 to 00:01.000:\n  No audio track plays here."
+    },
+    {
+      "operation": "loudness",
+      "result": {
+        "curve": {
+          "start": 0,
+          "end": 1,
+          "step": 1,
+          "integratedLUFS": null,
+          "truePeakDBTP": null,
+          "points": []
+        },
+        "peaks": {
+          "threshold": -3,
+          "windows": 1,
+          "stretches": [{ "start": 0.2, "end": 0.6, "peakDBFS": -2, "windows": 1 }]
+        },
+        "gains": [
+          { "track": "Voice", "compared": 1, "worstDB": 0.2, "lateBy": null, "mismatches": [] }
+        ]
+      },
+      "text": "The mix from 00:00.000 to 00:01.000, every 1 s, as the timeline plays it (export's master gain moves it all by the same amount).\nIntegrated silent, true peak silent.\nShort-term: \n1 window peaks over -3.0 dBFS, in 1 stretch:\n  00:00.200-00:00.600  peak -2.0 dBFS (1 window)\nA window is the 400 ms centred on a row; its peak is its highest sample.\nGain lanes against the render, 00:00.000 to 00:01.000:\n  Voice  follows its lane (1 s compared, within 0.2 dB)"
+    }
+  ],
+  "notice": "Synthetic pinned expectations adapted to SideCut names. TANDEM-LICENSE applies; native reference execution remains unverified."
+}

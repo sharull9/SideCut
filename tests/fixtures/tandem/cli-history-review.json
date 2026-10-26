@@ -1,0 +1,76 @@
+{
+  "revision": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "sources": [
+    "Sources/TandemCLI/CLI.swift",
+    "Sources/TandemAPI/ReadableText.swift",
+    "Sources/TandemAPI/TimeText.swift"
+  ],
+  "examples": [
+    {
+      "operation": "undo",
+      "result": { "revision": 4, "label": "Trim", "author": "cli" },
+      "text": "Undid \"Trim\" (by cli). Now at revision 4."
+    },
+    {
+      "operation": "redo",
+      "result": { "revision": 6, "labels": ["Trim", "Move"], "authors": ["cli", "agent"] },
+      "text": "Redid 2 edits: \"Trim\" (by cli), \"Move\" (by agent). Now at revision 6."
+    },
+    {
+      "operation": "history",
+      "result": { "revision": 0, "undo": [], "events": [] },
+      "text": "Revision 0.\nNothing to undo."
+    },
+    {
+      "operation": "history",
+      "result": {
+        "revision": 3,
+        "undo": [
+          { "label": "Move", "author": "cli", "start": 1, "end": 2, "tracks": ["V1 Camera"] }
+        ],
+        "redo": "Trim",
+        "edits": [
+          {
+            "revision": 3,
+            "kind": "undo",
+            "label": "Trim",
+            "author": "cli",
+            "date": "2001-01-02T03:04:05",
+            "start": 1,
+            "end": 1,
+            "tracks": ["V1 Camera"],
+            "summary": "One clip"
+          }
+        ]
+      },
+      "text": "Revision 3.\nUndo, newest first:\n  Move  (cli)  00:01.000-00:02.000 on V1 Camera\nRedo: Trim\nEdits, newest first (kept across restarts; sidecut diff --since <revision> shows what each did to the clips):\n  r3  2001-01-02 03:04  Undo Trim  (cli)  at 00:01.000 on V1 Camera  One clip"
+    },
+    {
+      "operation": "validate",
+      "result": { "revision": 3, "issues": [] },
+      "text": "Revision 3 is valid. No problems found."
+    },
+    {
+      "operation": "validate",
+      "result": {
+        "revision": 3,
+        "issues": [
+          { "severity": "error", "message": "Missing media." },
+          { "severity": "warning", "message": "Offline source." }
+        ]
+      },
+      "text": "Revision 3: 1 error, 1 warning.\n  error: Missing media.\n  warning: Offline source."
+    },
+    {
+      "operation": "frame",
+      "result": {
+        "time": 1.5,
+        "path": "exports/frame-00.01.500.png",
+        "bytes": 256,
+        "warnings": ["Offline source."]
+      },
+      "text": "Wrote exports/frame-00.01.500.png (256 bytes) at 00:01.500.\nWarning: Offline source."
+    }
+  ],
+  "notice": "Synthetic pinned expectations with SideCut spelling. TANDEM-LICENSE applies. Native execution and service metadata parity remain separate."
+}

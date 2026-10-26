@@ -15,7 +15,16 @@ const switches = new Set(
     " ",
   ),
 );
-const repeatable = new Set(["search", "clips", "field", "value", "media", "tracks", "protect"]);
+const repeatable = new Set([
+  "search",
+  "clips",
+  "field",
+  "value",
+  "media",
+  "tracks",
+  "protect",
+  "marker",
+]);
 const aliases = { h: "help", v: "version", o: "output", expect: "expected-revision" };
 export function parseArguments(args) {
   const flags = new Map();
@@ -33,7 +42,7 @@ export function parseArguments(args) {
   for (let index = 0; index < args.length; index++) {
     const arg = args[index];
     if (arg === "--") break;
-    if (!arg.startsWith("-") || /^-[\d.:]+$/.test(arg)) continue;
+    if (arg === "-" || !arg.startsWith("-") || /^-[\d.:]+$/.test(arg)) continue;
     const name = arg.replace(/^--?/, "").split("=")[0];
     const key = aliases[name] ?? name;
     if (!switches.has(key) && !arg.includes("=") && args[index + 1]?.startsWith("--"))
@@ -78,7 +87,10 @@ export async function findProject(path, directory = process.cwd(), env = process
     const projects = entries
       .filter(
         (e) =>
-          e.isFile() && e.name.endsWith(".tandem") && !/\.(mp4|mov|m4v)\.tandem$/i.test(e.name),
+          e.isFile() &&
+          e.name.endsWith(".tandem") &&
+          !/\.(mp4|mov|m4v)\.tandem$/i.test(e.name) &&
+          !/^archive-[a-f0-9]{12}-project\.tandem$/i.test(e.name),
       )
       .map((e) => e.name)
       .sort();
@@ -136,7 +148,12 @@ export async function discoverEndpoint(flags, env = process.env, directory = pro
     (project ? `${project}.api.json` : defaultDiscoveryPath(env));
   let endpoint;
   try {
-    endpoint = JSON.parse(await readFile(file, "utf8"));
+    const raw = await readFile(file, "utf8");
+    try {
+      endpoint = JSON.parse(raw);
+    } catch {
+      throw new Error("Invalid discovery file.");
+    }
   } catch (error) {
     if (error.code === "ENOENT" && project)
       throw new Error(

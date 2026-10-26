@@ -46,8 +46,11 @@ const url = `http://127.0.0.1:${server.address().port}`;
 const results = [];
 const evidencePrefix = process.env.SIDECUT_VERIFICATION_PREFIX ?? "phase-136";
 assert.match(evidencePrefix, /^[a-z0-9-]+$/);
+const selectedEngine = process.env.SIDECUT_VERIFICATION_ENGINE;
+assert.ok(selectedEngine == null || ["chromium", "firefox", "webkit"].includes(selectedEngine));
 try {
   for (const [name, engine] of Object.entries({ chromium, firefox, webkit })) {
+    if (selectedEngine && selectedEngine !== name) continue;
     let browser, page;
     const result = {
       engine: name,
@@ -132,6 +135,34 @@ try {
       await page.reload();
       await page.waitForFunction(() => document.querySelectorAll(".editor-clip-body").length === 2);
       result.journey.reopen = true;
+      const reader = await context.newPage();
+      reader.setDefaultTimeout(20000);
+      reader.on("pageerror", (error) => result.errors.push(`Read-only tab: ${error.message}`));
+      await reader.goto(url);
+      await reader.locator('.editor-session-label[data-state="read-only"]').waitFor();
+      await reader.locator(".editor-timeline-scroll").focus();
+      await reader.keyboard.press("Home");
+      await reader.keyboard.press("ArrowRight");
+      assert.equal(await reader.getByTestId("timeline-timecode").textContent(), "00:00:00:01");
+      await reader.keyboard.press("Control+a");
+      assert.equal(await reader.locator('.editor-clip[data-selected="true"]').count(), 2);
+      await reader.keyboard.press("Delete");
+      assert.equal(await reader.locator(".editor-clip-body").count(), 2);
+      await reader.keyboard.press("s");
+      assert.equal(
+        await reader
+          .getByRole("button", { name: "Toggle snapping", exact: true })
+          .getAttribute("aria-pressed"),
+        "false",
+      );
+      await reader.close();
+      await page.bringToFront();
+      result.journey.readOnlyKeyboard = {
+        navigation: true,
+        selection: true,
+        deleteBlocked: true,
+        snappingViewToggle: true,
+      };
       const pcm = Buffer.alloc(44 + 9600 * 2);
       pcm.write("RIFF");
       pcm.writeUInt32LE(pcm.length - 8, 4);
@@ -192,7 +223,7 @@ try {
           status: "unsupported",
           message: await page.locator('[role="alert"]').allTextContents(),
         };
-      await page.locator(".editor-export-dialog select").first().selectOption("wav");
+      await page.getByLabel("Export preset", { exact: true }).selectOption("wav");
       await page.getByRole("button", { name: "Queue export", exact: true }).click();
       await page.waitForFunction(
         () =>
@@ -231,7 +262,7 @@ try {
       await page.screenshot({
         path: join(root, `docs/verification/${evidencePrefix}-${name}.png`),
       });
-      result.accepted = result.journey.webm.status === "passed";
+      result.accepted = result.journey.webm.status === "passed" && result.errors.length === 0;
     } catch (error) {
       result.accepted = false;
       result.errors.push(error.message);

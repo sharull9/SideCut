@@ -1,3 +1,4 @@
+import { yieldTask } from "./yield-task";
 import { mixTimelineAudio } from "./audio";
 import { measureSource } from "./audio-analysis";
 import { createLUTLoader } from "./lut";
@@ -7,6 +8,8 @@ import type { ClipEffect } from "@sidecut/contracts/project";
 import { paintPicture } from "./picture";
 import type { Project, Clip } from "@sidecut/contracts/project";
 import { enabledTracks, exportPlan, projectDuration } from "@sidecut/core/render-plan";
+import { audioSegments } from "@sidecut/core/audio-plan";
+import { transitionWindow } from "@sidecut/core/transitions";
 import type { LocalResource } from "./storage";
 import { LoudnessMeter, type MeasuredSound } from "@sidecut/core/loudness";
 import { LocalMediaReader } from "./preview";
@@ -27,12 +30,10 @@ export async function renderWebM(
 ): Promise<Blob> {
   const work = new AbortController();
   const signal = AbortSignal.any([externalSignal, work.signal]);
-  const plan = exportPlan(project, options.fullResolution);
   const bitrate = options.bitrate ?? 4000000;
   const start = options.start ?? 0,
     end = options.end ?? projectDuration(project).seconds;
-  if (start < 0 || end <= start || end > projectDuration(project).seconds + 1 / plan.fps)
-    throw new Error("Invalid export range.");
+  const plan = exportPlan(project, options.fullResolution, { start, end });
   const count = Math.ceil((end - start) * plan.fps - 1e-7);
   const lut = createLUTLoader(resource);
   signal.throwIfAborted();
@@ -101,41 +102,54 @@ export async function renderWebM(
   signal.addEventListener("abort", cancel, { once: true });
   try {
     // Resolve every used source before encoding so a missing later clip cannot produce a partial download.
+    const pictureClips = enabledTracks(project, "video").flatMap((track) => {
+      const handles = new Set(
+        track.transitions.flatMap((transition) => {
+          const window = transitionWindow(track, transition);
+          return window && window.start < end && window.end > start
+            ? [transition.fromClipID, transition.toClipID]
+            : [];
+        }),
+      );
+      return track.clips.filter(
+        (clip) =>
+          clip.enabled &&
+          ((clip.start.seconds < end && clip.start.seconds + clip.duration.seconds > start) ||
+            handles.has(clip.id)),
+      );
+    });
+    const soundClips = audioSegments(project)
+      .filter((segment) => segment.start < end && segment.end > start)
+      .map((segment) => segment.clip);
     const mediaIDs = new Set(
-      [...enabledTracks(project, "video"), ...enabledTracks(project, "audio")].flatMap((t) =>
-        t.clips
-          .filter((c) => c.enabled && !(t.kind === "audio" && (c.audio?.muted || c.freezeFrame)))
-          .filter((c) => c.content.media != null)
-          .map(id),
-      ),
+      [...pictureClips, ...soundClips].filter((clip) => clip.content.media != null).map(id),
     );
     await Promise.all([...mediaIDs].map(reader));
     const paths = new Set<string>();
-    for (const track of enabledTracks(project, "video"))
-      for (const clip of track.clips.filter((c) => c.enabled)) {
-        const mediaID =
-          clip.content.media &&
-          typeof clip.content.media === "object" &&
-          "mediaID" in clip.content.media
-            ? clip.content.media.mediaID
-            : null;
-        const media = project.media.find((m) => m.id === mediaID);
-        for (const fx of [
-          ...((media?.look ?? []) as readonly ClipEffect[]),
-          ...effectsOf(clip, "video"),
-        ]) {
-          if (
-            fx.enabled === false ||
-            fx.type !== "lut" ||
-            (Number(resolvedParams(fx).intensity) === 0 &&
-              !clip.keyframes[`video.effects.${fx.id}.intensity`]?.length)
-          )
-            continue;
-          paths.add(String(resolvedParams(fx).path ?? ""));
-          for (const key of clip.keyframes[`video.effects.${fx.id}.path`] ?? [])
-            if (typeof key.value === "string") paths.add(key.value);
-        }
+    for (const clip of pictureClips) {
+      const mediaID =
+        clip.content.media &&
+        typeof clip.content.media === "object" &&
+        "mediaID" in clip.content.media
+          ? clip.content.media.mediaID
+          : null;
+      const media = project.media.find((m) => m.id === mediaID);
+      for (const fx of [
+        ...((media?.look ?? []) as readonly ClipEffect[]),
+        ...effectsOf(clip, "video"),
+      ]) {
+        if (
+          fx.enabled === false ||
+          fx.type !== "lut" ||
+          (Number(resolvedParams(fx).intensity) === 0 &&
+            !clip.keyframes[`video.effects.${fx.id}.intensity`]?.length)
+        )
+          continue;
+        paths.add(String(resolvedParams(fx).path ?? ""));
+        for (const key of clip.keyframes[`video.effects.${fx.id}.path`] ?? [])
+          if (typeof key.value === "string") paths.add(key.value);
       }
+    }
     await Promise.all([...paths].map(lut));
     signal.throwIfAborted();
     await output.start();
@@ -146,7 +160,7 @@ export async function renderWebM(
         await paintPicture(ctx, project, start + time, reader, signal, lut);
         await video.add(time, 1 / plan.fps);
         onProgress(((index + 1) / count) * 0.95);
-        if (index % 3 === 0) await new Promise((resolve) => setTimeout(resolve, 0));
+        if (index % 3 === 0) await yieldTask();
       }
       video.close();
     };

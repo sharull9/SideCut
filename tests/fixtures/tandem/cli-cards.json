@@ -1,0 +1,51 @@
+{
+  "revision": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "sources": [
+    "Sources/TandemCLI/CLI.swift",
+    "Sources/TandemCLI/Arguments.swift",
+    "Sources/TandemAPI/SectionCards.swift"
+  ],
+  "defaults": { "apply": false, "json": false, "author": "cli" },
+  "examples": [
+    {
+      "result": {
+        "revision": 2,
+        "cards": [
+          {
+            "number": 1,
+            "at": 3,
+            "title": "Next",
+            "subtitle": "Details",
+            "start": 2.8,
+            "end": 6,
+            "cut": 2.8
+          }
+        ],
+        "sounds": "no sounds (asked for none)",
+        "warnings": ["Moved into a pause."]
+      },
+      "text": "1 section card (dry run, revision 2):\n  1  00:03.000  \"Next\" / \"Details\"  card 00:02.800-00:06.000 (3.2 s)  take cut at 00:02.800\nSound: no sounds (asked for none).\nWarning: Moved into a pause.\nNothing changed yet. Run again with --apply (or apply: true) to add them."
+    },
+    {
+      "result": {
+        "revision": 3,
+        "cards": [
+          {
+            "number": 1,
+            "at": 3,
+            "title": "Next",
+            "start": 3,
+            "end": 6.2,
+            "cut": 3,
+            "existingClipID": "card"
+          }
+        ],
+        "sounds": "silent",
+        "warnings": [],
+        "applied": { "revision": 4, "label": "Cards" }
+      },
+      "text": "1 section card (applied, revision 3):\n  1  00:03.000  \"Next\"  card 00:03.000-00:06.200 (3.2 s)  already there, renumbered\nSound: silent.\nApplied as revision 4 (\"Cards\"). Undo with `sidecut undo`."
+    }
+  ],
+  "notice": "Synthetic expectations derived from pinned Swift source, with SideCut command names. TANDEM-LICENSE applies; native reference execution is unverified."
+}

@@ -87,12 +87,14 @@ export async function transcribeService(
     pending = files.filter((f) => !["ready", "failed"].includes(f.state));
   return {
     revision: currentRevision(),
+    ok: !files.some((f) => f.state === "failed") && (request.wait !== true || pending.length === 0),
     files,
     headless: false,
     ...(request.wait === true
       ? {
           waited: {
             what: "transcript",
+            ok: pending.length === 0 && !finished.some((f) => f.state === "failed"),
             done: pending.length === 0,
             timedOut: timedOut && pending.length > 0,
             elapsed: (performance.now() - started) / 1000,

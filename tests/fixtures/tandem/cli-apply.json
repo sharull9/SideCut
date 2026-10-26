@@ -1,0 +1,59 @@
+{
+  "revision": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "sources": [
+    "Sources/TandemCLI/CLI.swift",
+    "Sources/TandemAPI/ReadableText.swift",
+    "Sources/TandemAPI/ServiceTypes.swift"
+  ],
+  "examples": [
+    {
+      "result": {
+        "revision": 2,
+        "label": "Arrange",
+        "author": "cli",
+        "createdIDs": ["clip_a"],
+        "dryRun": true,
+        "repeated": false,
+        "added": ["clip_a"],
+        "removed": ["clip_old"],
+        "changed": ["clip_b"],
+        "duration": 63.5,
+        "warnings": ["Check the overlap."]
+      },
+      "text": "Dry run of \"Arrange\" at revision 2: it would work.\nCreated: clip_a\n1 clip added, 1 removed (clip_old), 1 changed. Timeline is 01:03.500 long.\nWarning: Check the overlap."
+    },
+    {
+      "result": {
+        "revision": 3,
+        "label": "Rename",
+        "author": "cli",
+        "createdIDs": [],
+        "dryRun": false,
+        "repeated": false,
+        "added": [],
+        "removed": [],
+        "changed": [],
+        "duration": 0,
+        "warnings": []
+      },
+      "text": "Applied \"Rename\" by cli as revision 3."
+    },
+    {
+      "result": {
+        "revision": 3,
+        "label": "Rename",
+        "author": "cli",
+        "createdIDs": [],
+        "dryRun": false,
+        "repeated": true,
+        "added": [],
+        "removed": [],
+        "changed": [],
+        "duration": 0,
+        "warnings": []
+      },
+      "text": "Already applied \"Rename\" (same idempotency key) as revision 3. Nothing changed."
+    }
+  ],
+  "notice": "Synthetic expectations derived from pinned Swift source; TANDEM-LICENSE applies. Native reference execution and inferred command labels remain unverified."
+}

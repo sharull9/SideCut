@@ -207,6 +207,7 @@ export async function waitService(
         what,
         revision: session.getSnapshot().revision,
         done: !pending.length,
+        ok: !pending.length && !all.some((item) => item.state === "failed"),
         timedOut: !!pending.length,
         elapsed,
         finished: all.filter(finished),

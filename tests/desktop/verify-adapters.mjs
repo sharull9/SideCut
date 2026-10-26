@@ -87,7 +87,7 @@ async function verify() {
     assert.equal((await call("comments")).comments[0].text, "Review this");
     assert.equal((await call("validate")).valid, true);
     assert.equal((await call("check", { quick: true })).frames, 0);
-    await call("check", {}, 501);
+    assert.ok((await call("check", {})).frames > 0);
     const watch = call("watch", { revision: inspected.revision, timeout: 2 });
     await cli("apply", "--commands", JSON.stringify([{ removeMarker: { markerID: "comment" } }]));
     assert.equal((await watch).changed, true);
@@ -103,7 +103,7 @@ async function verify() {
     assert.equal(search.local.length, 3);
     const remote = search.local[0];
     assert.equal((await call("assets-show", { id: remote.id })).asset.id, remote.id);
-    await call("assets-fetch", { id: remote.id }, 400);
+    await call("assets-fetch", { id: "import:missing-acceptance-asset" }, 404);
     await call("assets-generate", { prompt: "Do not call provider" }, 400);
     const fsRoot = "/@fs/" + root.replaceAll("\\", "/");
     const localID = await evaluate(`(async()=>{
@@ -170,7 +170,7 @@ async function verify() {
       platform: process.platform,
       created: { name: created.name },
       cli: { revision: status.revision, clips: status.clips, exportBytes: exported.bytes },
-      review: { commentResolved: (await call("comments")).comments.length === 0, quickOnly: true },
+      review: { commentResolved: (await call("comments")).comments.length === 0, rendered: true },
       watch: { change: true, timeout: true },
       wait: { idle: true },
       resources: {
@@ -187,10 +187,10 @@ async function verify() {
       },
       segments: { saved: true, inserted: true },
       limits: [
-        "No rendered quality scan, reviewed baseline or sound matching",
-        "No automatic relink search or standalone-folder archive",
+        "This harness does not exercise reviewed baselines or sound matching",
+        "This harness does not exercise automatic folder relink or standalone-folder archive",
         "No provider network calls or paid generation tested",
-        "Windows development runtime; packaged/macOS/Linux acceptance pending",
+        "Windows development runtime; packaging has separate acceptance, native macOS/Linux remain unverified",
       ],
     };
     await writeFile(

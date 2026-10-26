@@ -1,0 +1,102 @@
+{
+  "revision": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "sources": [
+    "Sources/TandemCLI/CLI.swift",
+    "Sources/TandemAPI/ReadableText.swift",
+    "Sources/TandemAPI/Archive.swift",
+    "Sources/TandemAPI/Relink.swift",
+    "Sources/TandemAPI/Check.swift"
+  ],
+  "examples": [
+    {
+      "operation": "watch",
+      "result": { "changed": false, "revision": 2, "events": [] },
+      "text": "No change. Still at revision 2."
+    },
+    {
+      "operation": "watch",
+      "result": {
+        "changed": true,
+        "revision": 3,
+        "events": [{ "revision": 3, "kind": "edit", "label": "Move", "author": "cli" }]
+      },
+      "text": "Changed. Now at revision 3.\n  r3  edit  Move  (cli)"
+    },
+    {
+      "operation": "effects",
+      "result": {
+        "effects": [
+          {
+            "type": "blur",
+            "domain": "video",
+            "summary": "Softens the picture.",
+            "params": [
+              {
+                "key": "radius",
+                "kind": "number",
+                "min": 0,
+                "max": 100,
+                "unit": "pixels",
+                "defaultValue": 0
+              }
+            ]
+          }
+        ],
+        "transitions": [{ "type": "dissolve", "defaultDuration": 0.5 }],
+        "layouts": [{ "preset": "full", "name": "Full" }],
+        "animatable": ["video.opacity"]
+      },
+      "text": "Effects (addEffect {\"type\": ..., \"params\": {...}}):\n  blur  video  Softens the picture.\n    radius: number 0...100 pixels, default 0\nTransitions: dissolve (0.500s)\nLayouts (applyLayout): full (Full)\nAnimatable parameters (setKeyframes): video.opacity"
+    },
+    {
+      "operation": "relink",
+      "result": {
+        "revision": 0,
+        "dryRun": true,
+        "relinked": [{ "mediaID": "m", "from": "old.wav", "to": "found.wav" }],
+        "missing": [],
+        "searched": ["sources"]
+      },
+      "text": "Would relink 1 of 1 missing file:\n  m  old.wav -> found.wav\nSearched: sources.\nNothing changed yet. Run it without --dry-run to relink them."
+    },
+    {
+      "operation": "check",
+      "result": {
+        "revision": 2,
+        "ranges": [{ "start": 0, "duration": 1 }],
+        "frames": 0,
+        "seconds": 0.1,
+        "problems": [{ "start": 0, "end": 1, "message": "Black picture.", "clipIDs": ["c"] }],
+        "notes": [],
+        "warnings": [],
+        "clipNames": { "c": "Camera" },
+        "commands": []
+      },
+      "text": "Checked 00:00.000-00:01.000 (quick: no frames rendered) in 0.1 s: 1 problem:\n  00:00.000-00:01.000  Black picture.  On: c Camera"
+    },
+    {
+      "operation": "archive",
+      "result": {
+        "mode": "archive",
+        "dryRun": true,
+        "project": "/source/project.tandem",
+        "folder": "/copy",
+        "collected": [],
+        "madeRelative": 0,
+        "folderFiles": 1,
+        "folderBytes": 1000,
+        "folderParts": [],
+        "copiedFiles": 0,
+        "copiedBytes": 0,
+        "reusedFiles": 0,
+        "fonts": [],
+        "missing": [],
+        "leftOut": [],
+        "otherProjects": [],
+        "warnings": []
+      },
+      "text": "Dry run, nothing changed. Archiving project.tandem would write a standalone copy to /copy: the project folder (1 file, 1 KB) and 0 files from outside it (0 KB).\nRun it without --dry-run (dryRun: false) to write the archive."
+    }
+  ],
+  "notice": "Synthetic pinned expectations with SideCut command names. Native SSE, filesystem collection and error conventions retain recorded adapter differences. TANDEM-LICENSE applies."
+}

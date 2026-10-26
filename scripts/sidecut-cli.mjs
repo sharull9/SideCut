@@ -3,6 +3,12 @@ import { readFile } from "node:fs/promises";
 import { z } from "zod";
 import { prepareProjectCommand, launchApplication } from "./cli-project-commands.mjs";
 import { prepareQueryCommand, queryHelp } from "./cli-query-commands.mjs";
+import { prepareApplyCommand } from "./cli-apply-command.mjs";
+import { prepareRenderCommand } from "./cli-render-commands.mjs";
+import { prepareResourceCommand } from "./cli-resource-commands.mjs";
+import { prepareAnalysisCommand } from "./cli-analysis-commands.mjs";
+import { prepareLibraryCommand } from "./cli-library-commands.mjs";
+import { installCompatibilityLauncher } from "./cli-compatibility.mjs";
 import {
   parseArguments,
   discoverEndpoint,
@@ -83,10 +89,37 @@ async function main(args) {
   if (flags.has("service") && !words.includes("schema"))
     throw new Error("--service requires schema.");
   flags.delete("service");
-  const queryCommand = prepareQueryCommand({ flags, words });
+  if (words[0] === "install-compat") {
+    if (words.length !== 1) throw new Error("install-compat takes no positional arguments.");
+    for (const flag of flags.keys())
+      if (!["bin-dir", "json"].includes(flag))
+        throw new Error(`Unknown install-compat option --${flag}.`);
+    const result = await installCompatibilityLauncher(flags.get("bin-dir"));
+    process.stdout.write(
+      (flags.has("json")
+        ? JSON.stringify(result)
+        : `${result.installed ? "Created" : "Already installed"}: ${result.path}. PATH is unchanged.`) +
+        "\n",
+    );
+    return;
+  }
+  const queryCommand =
+    (await prepareApplyCommand({ flags, words })) ??
+    prepareLibraryCommand({ flags, words }) ??
+    prepareAnalysisCommand({ flags, words }) ??
+    prepareResourceCommand({ flags, words }) ??
+    prepareRenderCommand({ flags, words }) ??
+    prepareQueryCommand({ flags, words });
   if (queryCommand) {
     flags = queryCommand.flags;
     words = queryCommand.words;
+  }
+  if (queryCommand?.offline) {
+    const result = await queryCommand.offline();
+    process.stdout.write(
+      (queryCommand.text ? queryCommand.text(result) : JSON.stringify(result)) + "\n",
+    );
+    return;
   }
   const projectCommand = prepareProjectCommand(args, { flags, words });
   if (projectCommand.flags) {
@@ -165,6 +198,18 @@ async function main(args) {
   }
   if (!Object.hasOwn(schema.operations, operation))
     throw new Error(`Unknown command: ${operation}.`);
+  if (queryCommand?.execute) {
+    const result = await queryCommand.execute(call);
+    if (result != null)
+      process.stdout.write(
+        (typeof result === "string"
+          ? result
+          : queryCommand.text
+            ? queryCommand.text(result)
+            : JSON.stringify(result)) + "\n",
+      );
+    return;
+  }
   if (flags.has("request") && flags.has("input")) throw new Error("Choose --request or --input.");
   let input = flags.has("input")
     ? JSON.parse(await readFile(String(flags.get("input")), "utf8"))
@@ -251,17 +296,20 @@ async function main(args) {
   do {
     const result = await call(operation, input);
     if (!result) return;
-    process.stdout.write(
-      (["segments", "save-segment", "insert-segment"].includes(operation) && !flags.has("json")
+    const output =
+      ["segments", "save-segment", "insert-segment"].includes(operation) && !flags.has("json")
         ? segmentText(operation, result)
         : queryCommand?.text
           ? queryCommand.text(result)
           : projectCommand.text
             ? projectCommand.text(result)
-            : JSON.stringify(result)) + "\n",
-    );
+            : JSON.stringify(result);
+    if (output) process.stdout.write(output + "\n");
+    if (["validate", "check", "wait", "transcribe"].includes(operation) && result.ok === false)
+      process.exitCode = 1;
     if (!flags.has("follow")) return;
     input = { ...input, revision: result.revision, generation: result.generation };
+    if (!result.changed) await new Promise((resolve) => setTimeout(resolve, 50));
   } while (!controller.signal.aborted);
 }
 

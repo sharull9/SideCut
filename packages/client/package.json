@@ -3,13 +3,21 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "exports": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./node": {
+      "types": "./src/node.ts",
+      "default": "./dist/node.mjs"
+    }
+  },
   "scripts": {
+    "build": "vp pack",
     "typecheck": "vp exec tsc --noEmit"
   },
   "dependencies": {
     "@sidecut/contracts": "workspace:*",
-    "@sidecut/core": "workspace:*"
+    "@sidecut/core": "workspace:*",
+    "effect": "catalog:"
   },
   "devDependencies": {
     "@sidecut/config": "workspace:*",

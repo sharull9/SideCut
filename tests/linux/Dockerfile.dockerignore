@@ -1,0 +1,15 @@
+.git
+**/node_modules
+**/dist
+**/dist-ssr
+**/.output
+**/.nitro
+**/.tanstack
+**/.vite-plus
+**/.package
+**/release
+**/.env*
+**/*.local
+**/coverage
+**/.vitest
+**/*.tsbuildinfo

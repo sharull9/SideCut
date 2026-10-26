@@ -7,6 +7,41 @@ import { cleanVoice } from "@sidecut/core/audio-processing";
 import { audioIdentity, measureSource } from "./audio-analysis";
 import * as voice from "./voice-isolation";
 const rate = 48000;
+it("masters fractional-frame ranges without writing past the output buffer", async () => {
+  const values = Float32Array.from({ length: rate * 2 }, (_, i) => 0.1 * Math.sin(i / 10));
+  const project = decodeProjectFile({
+    revision: 0,
+    project: {
+      settings: { frameRate: { numerator: 30000, denominator: 1001 } },
+      media: [{ id: "m", path: "tone.wav", kind: "audio", duration: 2 }],
+      audioTracks: [
+        {
+          id: "a",
+          kind: "audio",
+          clips: [{ id: "c", duration: 2, content: { media: { mediaID: "m" } } }],
+        },
+      ],
+    },
+  }).project;
+  const start = 1001 / 30000,
+    end = (51 * 1001) / 30000;
+  const counts = [];
+  for (const master of [false, true]) {
+    let count = 0;
+    for await (const block of mixTimelineAudio(
+      project,
+      async () => reader(values),
+      new AbortController().signal,
+      rate,
+      4096,
+      end,
+      { start, master },
+    ))
+      count += block.frames;
+    counts.push(count);
+  }
+  expect(counts).toEqual([80080, 80080]);
+});
 it("masters only the requested range and starts its output timestamps at zero", async () => {
   const values = Float32Array.from({ length: rate }, (_, i) => 0.1 * Math.sin(i / 10));
   const blocks = [];
@@ -23,6 +58,40 @@ it("masters only the requested range and starts its output timestamps at zero", 
   expect(blocks.reduce((sum, block) => sum + block.frames, 0)).toBe(9600);
   expect(blocks[0]!.timestamp).toBe(0);
   expect(blocks.some((block) => block.data.some((sample) => sample !== 0))).toBe(true);
+});
+it("seeks directly to a short mastered range late in a long source", async () => {
+  const project = decodeProjectFile({
+    revision: 0,
+    project: {
+      media: [{ id: "m", path: "long.wav", kind: "audio", duration: 601 }],
+      audioTracks: [
+        {
+          id: "a",
+          kind: "audio",
+          clips: [{ id: "c", duration: 601, content: { media: { mediaID: "m" } } }],
+        },
+      ],
+    },
+  }).project;
+  const values = Float32Array.from({ length: rate }, (_, i) => 0.1 * Math.sin(i / 10));
+  const audio = vi.fn(async function* (from: number, to: number) {
+    expect(from).toBe(600);
+    expect(to).toBe(601);
+    yield { buffer: buffer(values), timestamp: 600, duration: 1 };
+  });
+  let count = 0;
+  for await (const block of mixTimelineAudio(
+    project,
+    async () => ({ audio }),
+    new AbortController().signal,
+    rate,
+    4096,
+    601,
+    { start: 600, master: true },
+  ))
+    count += block.frames;
+  expect(count).toBe(rate);
+  expect(audio).toHaveBeenCalledTimes(1);
 });
 const buffer = (values: Float32Array) =>
   ({

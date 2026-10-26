@@ -1,0 +1,151 @@
+{
+  "platform": "win32",
+  "reference": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "outputs": [
+    {
+      "preset": "webm",
+      "name": "Untitled sequence.webm",
+      "format": null,
+      "width": 320,
+      "height": 180,
+      "codec": "vp8",
+      "duration": "0.100000",
+      "bytes": 546
+    },
+    {
+      "preset": "review",
+      "name": "Untitled sequence review.webm",
+      "format": null,
+      "width": 1280,
+      "height": 720,
+      "codec": "vp8",
+      "duration": "0.100000",
+      "bytes": 2027
+    },
+    {
+      "preset": "youtube1080",
+      "name": "Untitled sequence youtube1080.webm",
+      "format": null,
+      "width": 1920,
+      "height": 1080,
+      "codec": "vp8",
+      "duration": "0.100000",
+      "bytes": 4031
+    },
+    {
+      "preset": "short",
+      "name": "Untitled sequence portrait short.webm",
+      "format": null,
+      "width": 1080,
+      "height": 1920,
+      "codec": "vp8",
+      "duration": "0.100000",
+      "bytes": 4031
+    },
+    {
+      "preset": "webm",
+      "name": "Untitled sequence square.webm",
+      "format": "square",
+      "width": 640,
+      "height": 640,
+      "codec": "vp8",
+      "duration": "0.100000",
+      "bytes": 1192
+    },
+    {
+      "preset": "webm",
+      "name": "Untitled sequence.webm",
+      "format": "",
+      "width": 3840,
+      "height": 2160,
+      "codec": "vp8",
+      "duration": "0.100000",
+      "bytes": 14584
+    },
+    {
+      "preset": "webm",
+      "name": "Untitled sequence 1.500-2.000s.webm",
+      "format": "",
+      "width": 320,
+      "height": 180,
+      "codec": "vp8",
+      "duration": "0.500000",
+      "bytes": 954
+    }
+  ],
+  "nativeOutputs": [
+    {
+      "preset": "review",
+      "width": 1280,
+      "height": 720,
+      "codec": "h264",
+      "frames": 3,
+      "duration": "0.100000",
+      "warnings": []
+    },
+    {
+      "preset": "youtube1080",
+      "width": 1920,
+      "height": 1080,
+      "codec": "h264",
+      "frames": 3,
+      "duration": "0.100000",
+      "warnings": []
+    },
+    {
+      "preset": "short",
+      "width": 1080,
+      "height": 1920,
+      "codec": "h264",
+      "frames": 3,
+      "duration": "0.100000",
+      "warnings": []
+    },
+    {
+      "preset": "youtube4k",
+      "width": 3840,
+      "height": 2160,
+      "codec": "hevc",
+      "frames": 3,
+      "duration": "0.100000",
+      "warnings": []
+    },
+    {
+      "preset": "final",
+      "width": 3840,
+      "height": 2160,
+      "codec": "h264",
+      "frames": 3,
+      "duration": "0.100000",
+      "warnings": []
+    }
+  ],
+  "missingPortraitDisablesQueue": true,
+  "timelineRange": {
+    "from": 1.5,
+    "to": 2,
+    "videoDuration": 0.5,
+    "wav": {
+      "bytes": 96044,
+      "duration": 0.5
+    },
+    "clearedRangeDisablesQueue": true,
+    "ignoresUnrelatedMissingAndUnsupportedClips": true
+  },
+  "wavWithUnsupportedVideo": {
+    "magic": "RIFF",
+    "bytes": 19244,
+    "sampleRate": 48000,
+    "channels": 2
+  },
+  "accessibility": {
+    "violations": [],
+    "passes": 18
+  },
+  "limits": [
+    "Three-frame solid fixtures, not long/4K stress tests",
+    "UI WebM VP8/Opus and WAV; desktop MP4/HEVC remain service outputs",
+    "Queue stays in memory with five-entry/256MiB limits",
+    "Native macOS/Linux and upstream rendered golden comparison unverified"
+  ]
+}

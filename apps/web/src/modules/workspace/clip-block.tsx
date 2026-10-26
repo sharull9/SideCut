@@ -1,10 +1,19 @@
-import { useEffect, useRef, useState } from "react";
-import type { Clip, Track, Project } from "@sidecut/contracts/project";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Clip, Track } from "@sidecut/contracts/project";
 import { useEditorSession } from "./editor-session";
-import { atFrame } from "./timeline-model";
+import { atFrame, snapEdit } from "./timeline-model";
 import { Time } from "@sidecut/contracts/time";
-import { selectionWithLinks } from "./edit-actions";
+import { selectionWithLinks, type EditActions } from "./edit-actions";
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuGroup,
+  ContextMenuItem,
+  ContextMenuSeparator,
+} from "@sidecut/ui/components/context-menu";
 import { SourceSamples } from "./source-samples";
+import { useDragAutoScroll } from "./drag-autoscroll";
 
 interface Gesture {
   operation: "move" | "trim" | "ripple" | "roll" | "slip" | "slide";
@@ -17,28 +26,6 @@ interface Gesture {
   target: string | null;
   scrollStart: number;
 }
-export function snapEdit(
-  seconds: number,
-  project: Project,
-  zoom: number,
-  exclude: readonly string[],
-  playhead: number,
-) {
-  const candidates = [
-    0,
-    playhead,
-    ...[...project.videoTracks, ...project.audioTracks].flatMap((t) =>
-      t.clips
-        .filter((c) => !exclude.includes(c.id))
-        .flatMap((c) => [c.start.seconds, c.start.seconds + c.duration.seconds]),
-    ),
-  ];
-  const nearest = candidates.sort((a, b) => Math.abs(a - seconds) - Math.abs(b - seconds))[0];
-  return nearest !== undefined && Math.abs(nearest - seconds) <= 6 / zoom
-    ? atFrame(nearest, project)
-    : atFrame(seconds, project);
-}
-
 // Colour family for a clip: picture, sound, text, graphic, or adjustment.
 function clipKind(clip: Clip, track: Track) {
   if (track.kind === "audio") return "audio";
@@ -55,26 +42,30 @@ export function ClipBlock({
   zoom,
   selected,
   run,
+  actions,
 }: {
   clip: Clip;
   track: Track;
   zoom: number;
   selected: readonly string[];
   run: (action: () => unknown) => void;
+  actions: EditActions;
 }) {
   const { session, snapshot, editor } = useEditorSession();
   const [gesture, setGesture] = useState<Gesture | null>(null);
+  const { track: trackAutoScroll, stop: stopAutoScroll } = useDragAutoScroll();
   const active = useRef<Gesture | null>(null);
   const capture = useRef<HTMLElement | null>(null);
   const suppressed = useRef(false);
   const selectedByPointer = useRef(false);
-  const clear = () => {
+  const clear = useCallback(() => {
+    stopAutoScroll();
     const value = active.current;
     active.current = null;
     setGesture(null);
     if (value && capture.current?.hasPointerCapture(value.pointer))
       capture.current.releasePointerCapture(value.pointer);
-  };
+  }, [stopAutoScroll]);
   useEffect(() => {
     const cancel = (event: KeyboardEvent) => {
       if (event.key === "Escape" && active.current) {
@@ -83,13 +74,21 @@ export function ClipBlock({
         clear();
       }
     };
-    window.addEventListener("keydown", cancel);
+    const blur = () => {
+      if (active.current) {
+        suppressed.current = true;
+        clear();
+      }
+    };
+    window.addEventListener("keydown", cancel, true);
+    window.addEventListener("blur", blur);
     return () => {
-      window.removeEventListener("keydown", cancel);
+      window.removeEventListener("keydown", cancel, true);
+      window.removeEventListener("blur", blur);
       if (active.current && capture.current?.hasPointerCapture(active.current.pointer))
         capture.current.releasePointerCapture(active.current.pointer);
     };
-  }, []);
+  }, [clear]);
   const disabled = snapshot.readOnly || snapshot.busy || track.locked;
   const choose = (additive = false) => {
     const ids = selectionWithLinks(snapshot.project, [clip.id]);
@@ -137,15 +136,19 @@ export function ClipBlock({
     active.current = value;
     setGesture(value);
   };
-  const move = (event: React.PointerEvent<HTMLElement>) => {
+  const updateDrag = (
+    point: {
+      clientX: number;
+      clientY: number;
+      ctrlKey: boolean;
+      metaKey: boolean;
+      shiftKey: boolean;
+    },
+    scroller: HTMLElement | null,
+  ) => {
+    const event = point;
     const value = active.current;
     if (!value) return;
-    const scroller = event.currentTarget.closest<HTMLElement>(".editor-timeline-scroll");
-    if (scroller) {
-      const bounds = scroller.getBoundingClientRect();
-      if (event.clientX > bounds.right - 32) scroller.scrollLeft += 12;
-      else if (event.clientX < bounds.left + 248 + 32) scroller.scrollLeft -= 12;
-    }
     const original =
       value.edge === "end" ? clip.start.seconds + clip.duration.seconds : clip.start.seconds;
     const proposed =
@@ -153,7 +156,10 @@ export function ClipBlock({
     const snapped =
       value.operation === "ripple" && value.edge === "start" && proposed < 0
         ? Time.fromSeconds(proposed).roundedToFrame(snapshot.project.settings.frameRate)
-        : event.ctrlKey || event.metaKey
+        : !editor.getState().snapping ||
+            event.ctrlKey ||
+            event.metaKey ||
+            (event.shiftKey && value.operation === "move")
           ? atFrame(Math.max(0, proposed), snapshot.project)
           : snapEdit(
               proposed,
@@ -161,6 +167,7 @@ export function ClipBlock({
               zoom,
               value.ids,
               editor.getState().playhead.seconds,
+              value.operation === "move" ? clip.duration.seconds : 0,
             );
     const target =
       document
@@ -175,6 +182,19 @@ export function ClipBlock({
     const next = { ...value, delta, target };
     active.current = next;
     setGesture(next);
+  };
+  const move = (event: React.PointerEvent<HTMLElement>) => {
+    if (!active.current) return;
+    const point = {
+      clientX: event.clientX,
+      clientY: event.clientY,
+      ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey,
+      shiftKey: event.shiftKey,
+    };
+    const scroller = event.currentTarget.closest<HTMLElement>(".editor-timeline-scroll");
+    updateDrag(point, scroller);
+    trackAutoScroll(scroller, point.clientX, () => updateDrag(point, scroller));
   };
   const finish = () => {
     const value = active.current;
@@ -192,7 +212,7 @@ export function ClipBlock({
           expectedRevision: value.revision,
           commands: [
             value.operation === "slip"
-              ? { slip: { clipID: clip.id, delta: value.delta } }
+              ? { slip: { clipID: clip.id, delta: -value.delta * clip.speed } }
               : { slide: { clipID: clip.id, delta: value.delta } },
           ],
         });
@@ -281,12 +301,21 @@ export function ClipBlock({
       suppressed.current = true;
       clear();
     },
+    onLostPointerCapture: () => {
+      if (active.current) {
+        suppressed.current = true;
+        clear();
+      }
+    },
   };
   const nudgeTrim = (edge: "start" | "end", event: React.KeyboardEvent) => {
+    if (event.isDefaultPrevented() || event.nativeEvent.isComposing) return;
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
     const delta =
-      ((event.key === "ArrowLeft" ? -1 : 1) * snapshot.project.settings.frameRate.denominator) /
+      ((event.key === "ArrowLeft" ? -1 : 1) *
+        (event.shiftKey ? 5 : 1) *
+        snapshot.project.settings.frameRate.denominator) /
       snapshot.project.settings.frameRate.numerator;
     run(() =>
       session.apply({
@@ -307,62 +336,115 @@ export function ClipBlock({
     );
   };
   return (
-    <div
-      className="editor-clip"
-      data-clip-id={clip.id}
-      data-kind={clipKind(clip, track)}
-      data-selected={selected.includes(clip.id)}
-      data-invalid={duration <= 0 || start < 0}
-      style={{ left: start * zoom, width: Math.max(2, duration * zoom) }}
-      title={`${clip.name ?? clip.id} · ${start.toFixed(3)} s · ${duration.toFixed(3)} s`}
+    <ContextMenu
+      onOpenChange={(open) => {
+        if (open && !editor.getState().selected.includes(clip.id)) choose();
+      }}
     >
-      {clip.content.media !== null &&
-        typeof clip.content.media === "object" &&
-        "mediaID" in clip.content.media &&
-        typeof clip.content.media.mediaID === "string" && (
-          <SourceSamples
-            mediaID={clip.content.media.mediaID}
-            clip={clip}
-            audio={track.kind === "audio"}
-          />
-        )}
-      <button
-        className="editor-clip-body"
-        aria-label={`Select clip ${clip.name ?? clip.id}`}
-        title="Drag to move. Alt-drag to slip source; Alt+Shift-drag to slide between neighbors."
-        aria-pressed={selected.includes(clip.id)}
-        onPointerDown={(event) => begin(event, null)}
-        {...pointer}
-        onClick={(event) => {
-          if (suppressed.current) {
-            suppressed.current = false;
-            selectedByPointer.current = false;
-            return;
-          }
-          if (selectedByPointer.current) {
-            selectedByPointer.current = false;
-            return;
-          }
-          choose(event.shiftKey || event.ctrlKey || event.metaKey);
-        }}
+      <ContextMenuTrigger
+        className="editor-clip"
+        data-clip-id={clip.id}
+        data-kind={clipKind(clip, track)}
+        data-selected={selected.includes(clip.id)}
+        data-invalid={duration <= 0 || start < 0}
+        style={{ left: start * zoom, width: Math.max(2, duration * zoom) }}
+        title={`${clip.name ?? clip.id} · ${start.toFixed(3)} s · ${duration.toFixed(3)} s`}
       >
-        <span className="editor-clip-label">{clip.name ?? clip.id}</span>
-        {clip.linkGroup && <span aria-label="Linked clip"> ↔</span>}
-      </button>
-      {(["start", "end"] as const).map((edge) => (
+        {clip.content.media !== null &&
+          typeof clip.content.media === "object" &&
+          "mediaID" in clip.content.media &&
+          typeof clip.content.media.mediaID === "string" && (
+            <SourceSamples
+              mediaID={clip.content.media.mediaID}
+              clip={clip}
+              audio={track.kind === "audio"}
+            />
+          )}
         <button
-          key={edge}
-          className="editor-trim-handle"
-          data-edge={edge}
-          aria-label={`Trim ${edge} ${clip.name ?? clip.id}`}
-          title="Drag to trim. Shift-drag to ripple trim; Alt-drag to roll a touching cut."
-          disabled={disabled}
-          onPointerDown={(event) => begin(event, edge)}
+          className="editor-clip-body"
+          aria-label={`Select clip ${clip.name ?? clip.id}`}
+          title="Drag to move. Alt-drag to slip source; Alt+Shift-drag to slide between neighbors."
+          aria-pressed={selected.includes(clip.id)}
+          onKeyDown={(event) => {
+            if ((event.key === "Enter" || event.key === " ") && !event.nativeEvent.isComposing) {
+              event.preventDefault();
+              suppressed.current = false;
+              selectedByPointer.current = false;
+              choose(event.shiftKey || event.ctrlKey || event.metaKey);
+            }
+          }}
+          onPointerDown={(event) => begin(event, null)}
           {...pointer}
-          onKeyDown={(event) => nudgeTrim(edge, event)}
-          onClick={(event) => event.stopPropagation()}
-        />
-      ))}
-    </div>
+          onClick={(event) => {
+            if (event.detail === 0) {
+              suppressed.current = false;
+              selectedByPointer.current = false;
+              choose(event.shiftKey || event.ctrlKey || event.metaKey);
+              return;
+            }
+            if (suppressed.current) {
+              suppressed.current = false;
+              selectedByPointer.current = false;
+              return;
+            }
+            if (selectedByPointer.current) {
+              selectedByPointer.current = false;
+              return;
+            }
+            choose(event.shiftKey || event.ctrlKey || event.metaKey);
+          }}
+        >
+          <span className="editor-clip-label">{clip.name ?? clip.id}</span>
+          {clip.linkGroup && <span aria-label="Linked clip"> ↔</span>}
+        </button>
+        {(["start", "end"] as const).map((edge) => (
+          <button
+            key={edge}
+            className="editor-trim-handle"
+            data-edge={edge}
+            aria-label={`Trim ${edge} ${clip.name ?? clip.id}`}
+            title="Drag to trim. Shift-drag to ripple trim; Alt-drag to roll a touching cut."
+            disabled={disabled}
+            onPointerDown={(event) => begin(event, edge)}
+            {...pointer}
+            onKeyDown={(event) => nudgeTrim(edge, event)}
+            onClick={(event) => event.stopPropagation()}
+          />
+        ))}
+      </ContextMenuTrigger>
+      <ContextMenuContent
+        aria-label={`Actions for ${clip.name ?? clip.id}`}
+        finalFocus={() =>
+          document.querySelector<HTMLElement>(
+            `[data-clip-id="${CSS.escape(clip.id)}"] .editor-clip-body`,
+          )
+        }
+      >
+        <ContextMenuGroup>
+          <ContextMenuItem onClick={actions.copy}>Copy clips</ContextMenuItem>
+          <ContextMenuItem disabled={disabled || !actions.hasClipboard} onClick={actions.paste}>
+            Paste at playhead
+          </ContextMenuItem>
+          <ContextMenuItem disabled={disabled} onClick={actions.split}>
+            Split at playhead
+          </ContextMenuItem>
+        </ContextMenuGroup>
+        <ContextMenuSeparator />
+        <ContextMenuGroup>
+          <ContextMenuItem disabled={disabled || selected.length < 2} onClick={actions.link}>
+            Link selection
+          </ContextMenuItem>
+          <ContextMenuItem disabled={disabled || !clip.linkGroup} onClick={actions.unlink}>
+            Unlink selection
+          </ContextMenuItem>
+          <ContextMenuItem disabled={disabled} onClick={() => actions.remove(false)}>
+            Lift selection
+          </ContextMenuItem>
+          <ContextMenuItem disabled={disabled} onClick={() => actions.remove(true)}>
+            Ripple delete selection
+          </ContextMenuItem>
+        </ContextMenuGroup>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }

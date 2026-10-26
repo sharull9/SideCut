@@ -4,9 +4,10 @@ import { transitionTypes } from "@sidecut/contracts/project";
 import { serviceDefinitions } from "@sidecut/core/service-requests";
 import { queryDefinitions } from "@sidecut/core/project-queries";
 import { effectRegistry, renderedEffects } from "@sidecut/core/effects";
-import { readFile, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import inventory from "../../../../tests/fixtures/tandem/pinned-inventory.json";
+import { definitions as mcpTools } from "../../../../scripts/mcp-adapters.mjs";
 it("accounts for every pinned edit command, service, asset operation and MCP tool", async () => {
   const commandSchema = editCommandJsonSchema();
   const names = new Set<string>();
@@ -37,11 +38,7 @@ it("accounts for every pinned edit command, service, asset operation and MCP too
       ),
   );
   expect(assetMissing).toEqual([]);
-  const mcp = await readFile(resolve("scripts/sidecut-mcp.mjs"), "utf8");
-  for (const name of inventory.tools.filter(
-    (tool) => !tool.startsWith("assets_") && !tool.startsWith("segments_"),
-  ))
-    expect(mcp).toContain(`"${name}"`);
+  expect(mcpTools.map((tool) => tool.name).sort()).toEqual([...inventory.tools].sort());
   expect(effectRegistry.map((e) => e.type).sort()).toEqual([...inventory.effects].sort());
   expect([...transitionTypes].sort()).toEqual([...inventory.transitions].sort());
   if (process.env.SIDECUT_WRITE_PARITY_AUDIT === "1")

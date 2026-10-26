@@ -1,0 +1,85 @@
+{
+  "platform": "win32",
+  "reference": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "start": 0,
+  "comments": {
+    "context": "Before | After",
+    "resolved": 1,
+    "undo": true
+  },
+  "sync": {
+    "picture": 0.08,
+    "default": 0.08,
+    "offset": 0.2500000001970429,
+    "author": "runtime-cli",
+    "undo": true
+  },
+  "wait": {
+    "words": 2,
+    "ok": true,
+    "timeoutExit": 1
+  },
+  "transcribe": {
+    "words": 2,
+    "ok": true,
+    "failureExit": 1,
+    "failed": [
+      {
+        "kind": "transcript",
+        "mediaID": "offline",
+        "path": "offline.wav",
+        "state": "failed",
+        "message": "Import this source on this device before analysing it."
+      }
+    ]
+  },
+  "diff": {
+    "changed": 1,
+    "baseline": 6
+  },
+  "restore": {
+    "items": 1,
+    "author": "runtime-cli",
+    "undo": true
+  },
+  "clips": {
+    "ids": ["cam"]
+  },
+  "failures": [
+    {
+      "args": ["comments", "resolve", "unknown"],
+      "code": 2
+    },
+    {
+      "args": ["sync", "2"],
+      "code": 2
+    },
+    {
+      "args": ["wait", "unknown"],
+      "code": 2
+    },
+    {
+      "args": ["transcribe", "missing", "--wait"],
+      "code": 5
+    },
+    {
+      "args": ["diff", "999999"],
+      "code": 2
+    },
+    {
+      "args": ["restore", "--from", "999999", "--clips", "cam", "--apply"],
+      "code": 2
+    },
+    {
+      "args": ["clips", "--track", "missing"],
+      "code": 5
+    }
+  ],
+  "limits": [
+    "Cached two-word transcript; no model acquisition",
+    "Picture-delay defaults persist independently of undo",
+    "Sync uses bounded local WAV fixture",
+    "Wait progress is final-result text rather than native SSE progress",
+    "Windows runtime; native platforms unverified"
+  ]
+}

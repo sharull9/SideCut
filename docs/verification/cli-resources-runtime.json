@@ -1,0 +1,88 @@
+{
+  "platform": "win32",
+  "reference": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "watch": {
+    "event": {
+      "seq": 1,
+      "kind": "edit",
+      "date": "2026-10-25T12:01:46.150Z",
+      "revision": 1,
+      "generation": 0,
+      "label": "Watched fixture",
+      "author": "runtime-cli"
+    },
+    "cancelled": true
+  },
+  "effects": {
+    "count": 15,
+    "offline": true
+  },
+  "relink": {
+    "preview": [
+      {
+        "mediaID": "voice",
+        "from": "missing.wav",
+        "to": "sources/missing.wav"
+      }
+    ],
+    "applied": {
+      "revision": 2,
+      "label": "CLI relink",
+      "author": "runtime-cli",
+      "createdIDs": [],
+      "warnings": [],
+      "dryRun": false,
+      "repeated": false,
+      "added": [],
+      "removed": [],
+      "changed": [],
+      "duration": 2
+    },
+    "undo": true
+  },
+  "archive": {
+    "previewWritesNothing": true,
+    "copy": "C:\\Users\\Arafa\\AppData\\Local\\Temp\\archive-copy-1792929707833\\sidecut-cli-resources-aq3xA5",
+    "collected": 3,
+    "consolidationUndo": true
+  },
+  "check": {
+    "quick": true,
+    "frames": 6,
+    "problemExit": 1,
+    "readOnly": true
+  },
+  "failures": [
+    {
+      "args": ["watch", "--once", "--timeout", "NaN"],
+      "code": 2
+    },
+    {
+      "args": ["archive", "--with-cache"],
+      "code": 2
+    },
+    {
+      "args": [
+        "relink",
+        "--search",
+        "C:\\Users\\Arafa\\AppData\\Local\\Temp\\sidecut-cli-resources-aq3xA5\\not-there",
+        "--dry-run"
+      ],
+      "code": 5
+    },
+    {
+      "args": ["check", "--quick", "--cuts"],
+      "code": 2
+    },
+    {
+      "args": ["check", "--width", "1"],
+      "code": 2
+    }
+  ],
+  "finalRevision": 7,
+  "limits": [
+    "Watch uses revision long polling rather than native SSE job/export events",
+    "Folder archive collects managed project resources only",
+    "Windows development runtime; native platforms unverified"
+  ]
+}

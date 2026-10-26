@@ -40,6 +40,7 @@ describe("122.02 transcription results", () => {
     expect(worker.transcribe).toHaveBeenCalledTimes(1);
     expect(result).toMatchObject({
       revision: 3,
+      ok: true,
       files: [{ kind: "transcript", mediaID: "m", state: "ready", words: 0 }],
       waited: {
         what: "transcript",
@@ -68,6 +69,7 @@ describe("122.02 transcription results", () => {
       () => 2,
     );
     expect(result).toMatchObject({
+      ok: false,
       waited: { done: false, timedOut: true, finished: [], pending: [{ state: "queued" }] },
     });
     expect(controller.signal.aborted).toBe(false);
@@ -85,6 +87,7 @@ describe("122.02 transcription results", () => {
         () => 2,
       ),
     ).toMatchObject({
+      ok: false,
       files: [{ state: "failed", message: "Model unavailable" }],
       waited: { done: true, timedOut: false, pending: [] },
     });

@@ -2,6 +2,18 @@
 import type { Project } from "@sidecut/contracts/project";
 import { formatProject } from "./formats";
 import { QueryError } from "./project-queries";
+export function serviceFormat(source: Project, named?: string) {
+  const format = named === "main" ? undefined : named;
+  if (
+    format === "portrait" &&
+    !source.settings.alternateFormats.some((f) => f.id === format) &&
+    Math.abs(source.settings.width / source.settings.height - 9 / 16) < 0.005
+  )
+    return undefined;
+  if (format && !source.settings.alternateFormats.some((f) => f.id === format))
+    throw new QueryError("notFound", `No output format "${format}". Add it before rendering.`);
+  return format;
+}
 export function serviceExportPlan(
   source: Project,
   request: Record<string, unknown>,
@@ -19,14 +31,7 @@ export function serviceExportPlan(
   };
   const presetName = aliases[key] ?? key;
   if (presetName === "short" && named == null) format = "portrait";
-  if (
-    format === "portrait" &&
-    !source.settings.alternateFormats.some((f) => f.id === format) &&
-    Math.abs(source.settings.width / source.settings.height - 9 / 16) < 0.001
-  )
-    format = undefined;
-  if (format && !source.settings.alternateFormats.some((f) => f.id === format))
-    throw new QueryError("notFound", `No output format "${format}". Add it before exporting.`);
+  format = serviceFormat(source, format);
   let project = formatProject(source, format);
   const preset =
     presetName ||

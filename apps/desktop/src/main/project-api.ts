@@ -91,6 +91,7 @@ export class ProjectAPI {
       pending = [...api.pending, ...(Array.isArray(ui.pending) ? ui.pending : [])];
     return {
       what: "export",
+      ok: !pending.length && !finished.some((item) => object(item).state === "failed"),
       done: !pending.length,
       timedOut: !!pending.length,
       elapsed: (Date.now() - started) / 1000,
@@ -476,7 +477,7 @@ export class ProjectAPI {
                     .path.split(/[\\/]/)
                     .at(-1)}`
                 : `Transcribe ${commands.length} files`),
-            author: "agent",
+            author: request.author ?? "agent",
           },
           file,
           snapshot.generation,
@@ -802,6 +803,7 @@ export class ProjectAPI {
                 {
                   commands: raw.commands,
                   label: request.label ?? "Sync by sound",
+                  author: request.author ?? "agent",
                   dryRun: request.dryRun,
                   expectedRevision: file.revision,
                 },
@@ -840,6 +842,7 @@ export class ProjectAPI {
                 expectedRevision: request.expectedRevision,
                 dryRun: request.dryRun,
                 label: request.label ?? "Set picture delay",
+                author: request.author ?? "agent",
                 commands: changed.map((m) => ({
                   updateMedia: {
                     mediaID: m.id,

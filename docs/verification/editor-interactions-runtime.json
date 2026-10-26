@@ -1,0 +1,115 @@
+{
+  "platform": "win32",
+  "reference": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "keymap": {
+    "minimalBlocksNavigation": true,
+    "premiereSteps": true,
+    "inputProtected": true
+  },
+  "navigation": {
+    "nextEdit": 3,
+    "previousEdit": 2
+  },
+  "clipboard": {
+    "newClipIDs": true,
+    "newLinkGroup": true,
+    "relativeTiming": true,
+    "selectedPasted": true,
+    "oneUndo": true
+  },
+  "menuAccessibility": {
+    "violations": [],
+    "passes": 14
+  },
+  "contextMenu": {
+    "pointer": true,
+    "keyboard": true,
+    "escapeRestoresFocus": true,
+    "editingKeysProtected": true
+  },
+  "marquee": {
+    "selectsOverlappingClips": true,
+    "linkedSelection": true,
+    "escapeRestoresSelection": true,
+    "escapeRestoresRange": true
+  },
+  "snapping": {
+    "defaultSnaps": true,
+    "controlBypass": true,
+    "shiftMoveBypass": true,
+    "cancelPreservesProject": true,
+    "keyboardToggle": true,
+    "buttonToggle": true,
+    "repeatIgnored": true,
+    "toggleInputProtected": true,
+    "keyboardActivationAfterCancel": true
+  },
+  "scrollZoom": {
+    "horizontalWheel": true,
+    "modifierWheelZoom": true,
+    "keyboardZoom": true,
+    "inputProtected": true
+  },
+  "autoscroll": {
+    "stationaryPointerContinues": true,
+    "delta": 232,
+    "escapeStops": true,
+    "noEditOnCancel": true
+  },
+  "keyboardEdits": {
+    "oneFrameMove": true,
+    "fiveFrameMove": true,
+    "fiveFrameTrim": true,
+    "lockedTrackRejected": true
+  },
+  "extendedKeymap": {
+    "markTargetedClip": true,
+    "selectForward": true,
+    "modifierSelectForward": true,
+    "linkAndUnlink": true,
+    "modifierZoom": true,
+    "fitAliases": true,
+    "targetedEditNavigation": true,
+    "markerNavigation": true,
+    "inputProtected": true
+  },
+  "workspaceShortcuts": {
+    "exportDialog": true,
+    "dialogBlocksDelete": true,
+    "inputProtected": true,
+    "pickerDispatch": true,
+    "saveKeepsRevision": true
+  },
+  "creationShortcuts": {
+    "markerAtPlayhead": true,
+    "videoTrack": true,
+    "audioTrack": true,
+    "oneStepUndo": true,
+    "inputProtected": true
+  },
+  "playheadTrim": {
+    "start": true,
+    "end": true,
+    "startMovesPlayheadToEdit": true,
+    "endKeepsPlayhead": true,
+    "boundaryNoop": true,
+    "oneStepUndo": true
+  },
+  "slipGesture": {
+    "rightDragRevealsEarlierSource": true,
+    "scalesWithClipSpeed": true,
+    "timelinePositionUnchanged": true
+  },
+  "keymapPersistence": {
+    "selectionSurvivesReopen": true,
+    "minimalStillProtectsNavigation": true,
+    "restoredPremiere": true
+  },
+  "limits": [
+    "Windows Electron keyboard/pointer workflow",
+    "Premiere subset and editing-only map; native user keymap files remain unsupported",
+    "Clipboard stays in one project; transitions require saved segments",
+    "Marquee selects one track plus linked partners",
+    "Managed browser interaction subset; native macOS/Linux gestures unverified"
+  ]
+}

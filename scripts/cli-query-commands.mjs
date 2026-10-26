@@ -1,9 +1,59 @@
 // TandemCLI/CLI.swift and TandemAPI/ReadableText.swift at 735a9b8.
 // Notice: tests/fixtures/tandem/TANDEM-LICENSE.
-const helpers = new Set(["pauses", "tighten", "join", "captions", "short"]);
-const commands = new Set(["status", "media", "timeline", "transcript", "search", ...helpers]);
+const helpers = new Set(["pauses", "tighten", "join", "captions", "short", "cards"]);
+const commands = new Set([
+  "status",
+  "media",
+  "timeline",
+  "transcript",
+  "search",
+  "undo",
+  "redo",
+  "history",
+  "validate",
+  "frame",
+  ...helpers,
+]);
 export function queryHelp(topic) {
   const usage = {
+    "install-compat":
+      "install-compat --bin-dir FOLDER [--json]\nOpt-in tandem launcher. Refuses existing commands and PATH collisions; PATH is unchanged.",
+    assets:
+      "assets providers|search|fetch|show|use|credits|generate|install-starter [options]\nsearch [WORDS ...] [--kind LIST --provider LIST --online --limit COUNT]\nfetch|show|use ID; use [--at TIME --duration TIME --anchor NAME --pop --label TEXT]\ncredits [--optional]; generate sfx|music PROMPT [--duration TIME --variations COUNT]\nGeneration retains the explicit paid-confirmation guard.",
+    segments:
+      "segments [list | save NAME | insert NAME] [options]\nsave NAME --clips ID,ID | --from TIME --to TIME [--field ID=LABEL ...] [--replace]\ninsert NAME --at TIME [--value KEY=TEXT ...] [--mode place|overwrite|insert] [--expect REVISION]",
+    comments: "comments [resolve ID ... | resolve --all] [--label TEXT] [--json]",
+    sync: "sync [DELAY | FILE ...] [--media ID ...] [--default] [--to REFERENCE] [--no-place] [--dry-run] [--expect REVISION] [--json]",
+    wait: "wait [transcript|matte|proxy|jobs|export] [--media ID ...] [--timeout SECONDS] [--json]",
+    transcribe:
+      "transcribe MEDIA_OR_CLIP ... [--wait | --no-wait] [--timeout SECONDS] [--label TEXT] [--json]",
+    diff: "diff [REVISION_OR_FILE] [--since REVISION_OR_FILE] [--json]",
+    restore:
+      "restore --from REVISION_OR_FILE [--clips ID,ID | --from-time TIME --to-time TIME --track NAME] [--apply] [--expect REVISION] [--json]",
+    clips: "clips [--track NAME] [--from TIME --to TIME] [--media ID] [--ids] [--json]",
+    watch:
+      "watch [--once] [--timeout SECONDS] [--json]\nFollows revision events until interrupted. --once returns one watch result.",
+    effects: "effects [TYPE] [--json]\nReads the shipped catalogue without opening a project.",
+    archive: "archive [PROJECT] [--to FOLDER] [--with-cache] [--dry-run] [--label TEXT] [--json]",
+    relink: "relink [--search FOLDER ...] [--dry-run] [--label TEXT] [--expect REVISION] [--json]",
+    check:
+      "check [--from TIME --to TIME] [--changed] [--quick | --cuts] [--width PIXELS] [--json]\nExit status is 1 when problems are found.",
+    frames:
+      "frames [TIME ...] [--every TIME --from TIME --to TIME] [--width PIXELS] [-o FILE.png] [--format ID] [--json]",
+    screenshot:
+      "screenshot [-o FILE.png] [--json]\nDefault output: sidecut-window.png in the managed exports folder.",
+    clip: "clip START END [--preset NAME] [--tracks NAME,NAME] [--audio-only] [-o FILE] [--json]",
+    export: "export [--preset NAME] [--from TIME --to TIME] [--format ID] [-o FILE] [--json]",
+    loudness:
+      "loudness [MEDIA_ID] [--from TIME --to TIME --step TIME] [--tracks NAME,NAME] [--gains] [--over DBFS] [--json]",
+    undo: "undo [--count COUNT] [--expect REVISION] [--json]",
+    redo: "redo [--count COUNT] [--expect REVISION] [--json]",
+    history: "history [--limit COUNT] [--json]",
+    validate: "validate [--json]\nExit status is 0 when valid and 1 when the project has errors.",
+    frame:
+      "frame TIME [--width PIXELS] [--height PIXELS] [-o FILE.png] [--format ID] [--json]\nDefault output: frame-MM.SS.mmm.png in the managed project's exports folder.",
+    apply:
+      "apply FILE|-|JSON [--dry-run] [--expect REVISION] [--label TEXT] [--author NAME] [--key ID] [--json]\nCommits one undo step by default. Accepts a batch, a command list or a single command.\n--input FILE, --request JSON and --commands JSON are also supported.",
     status: "status [--revision] [--json]",
     media: "media [--refresh] [--json]",
     timeline: "timeline [--from TIME --to TIME] [--words] [--summary] [--json]",
@@ -17,6 +67,8 @@ export function queryHelp(topic) {
     captions:
       "captions [--max-words COUNT] [--y NUMBER] [--track NAME] [--from TIME --to TIME] [--apply] [--expect REVISION] [--json]",
     short: "short [--copy [-o FILE]] [--apply] [--expect REVISION] [--json]",
+    cards:
+      "cards [--kicker WORDS] [--duration TIME] [--insert] [--no-sounds] [--marker ID ...] [--track ID] [--apply] [--expect REVISION] [--json]",
   }[topic];
   return usage
     ? `Usage: sidecut ${usage}\nReadable output is the default; --json preserves the service result.${helpers.has(topic) && topic !== "pauses" ? "\nPreview by default. --apply commits; --label and --author annotate the edit." : ""}\n--project PATH selects a project; --endpoint-file PATH selects its authenticated running host.`
@@ -30,6 +82,11 @@ export function prepareQueryCommand(parsed) {
     words = parsed.words.slice(0, offset + 1),
     positional = parsed.words.slice(offset + 1),
     allowed = {
+      undo: ["count", "expected-revision"],
+      redo: ["count", "expected-revision"],
+      history: ["limit"],
+      validate: [],
+      frame: ["time", "width", "height", "max-width", "max-height", "output", "format"],
       status: ["revision"],
       media: ["refresh"],
       timeline: ["from", "to", "words", "summary", "format"],
@@ -66,13 +123,29 @@ export function prepareQueryCommand(parsed) {
         "expected-revision",
       ],
       short: ["copy", "output", "copy-path", "apply", "label", "expected-revision"],
+      cards: [
+        "marker",
+        "markers",
+        "duration",
+        "kicker",
+        "track",
+        "insert",
+        "no-sounds",
+        "sounds",
+        "apply",
+        "label",
+        "expected-revision",
+      ],
     }[operation];
   for (const key of flags.keys())
     if (
       !["json", "project", "author", "endpoint-file", "input", "request", ...allowed].includes(key)
     )
       throw new Error(`Unknown ${operation} option --${key}.`);
-  if (operation === "search" && positional.length) {
+  if (operation === "frame" && positional.length === 1) {
+    if (flags.has("time")) throw new Error("Duplicate frame time.");
+    flags.set("time", positional[0]);
+  } else if (operation === "search" && positional.length) {
     if (flags.has("phrase")) throw new Error("Duplicate search phrase.");
     flags.set("phrase", positional.join(" "));
   } else if (operation === "transcript" && positional.length === 1) {
@@ -88,7 +161,33 @@ export function prepareQueryCommand(parsed) {
     throw new Error("search needs a phrase.");
   if (flags.has("make") && !flags.has("id") && !flags.has("input") && !flags.has("request"))
     throw new Error("--make needs a media or clip ID.");
+  if (operation === "frame") {
+    if (!flags.has("time") && !flags.has("input") && !flags.has("request"))
+      throw new Error("frame needs a time, like frame 01:23.500.");
+    if (flags.has("time")) parseCommandTime(flags.get("time"));
+    for (const [source, target] of [
+      ["width", "max-width"],
+      ["height", "max-height"],
+    ]) {
+      if (!flags.has(source)) continue;
+      if (flags.has(target)) throw new Error(`Choose --${source} or --${target}.`);
+      flags.set(target, flags.get(source));
+      flags.delete(source);
+    }
+  }
   if (!helpers.has(operation) || operation === "pauses") flags.delete("author");
+  if (operation === "cards") {
+    if (flags.has("marker")) {
+      if (flags.has("markers")) throw new Error("Choose --marker or --markers.");
+      flags.set("markers", JSON.stringify(flags.get("marker")));
+      flags.delete("marker");
+    }
+    if (flags.has("no-sounds")) {
+      if (flags.has("sounds")) throw new Error("Choose --no-sounds or --sounds.");
+      flags.set("sounds", "false");
+      flags.delete("no-sounds");
+    }
+  }
   if (operation === "short" && flags.has("copy-path")) flags.set("copy", true);
   for (const [source, target] of [
     ["max-words", "words"],
@@ -128,6 +227,11 @@ export function prepareQueryCommand(parsed) {
     make,
     timeout,
     prepare(input) {
+      if (operation === "frame") {
+        input = { ...input, time: parseCommandTime(input.time) };
+        if (input.output == null)
+          input.output = `frame-${clock(input.time).replaceAll(":", ".")}.png`;
+      }
       if (helpers.has(operation) && operation !== "pauses") {
         if (input.apply == null) input.apply = false;
         if (input.author == null)
@@ -209,6 +313,8 @@ function analysisSummary(analysis = {}) {
       : "(not analysed yet)";
 }
 export function queryText(operation, result) {
+  if (["undo", "redo", "history", "validate", "frame"].includes(operation))
+    return reviewText(operation, result);
   if (helpers.has(operation)) return helperText(operation, result);
   if (operation === "timeline")
     return (
@@ -329,6 +435,108 @@ export function queryText(operation, result) {
   return lines.join("\n");
 }
 
+export function parseCommandTime(value) {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) return value;
+  if (typeof value !== "string") throw new Error("Expected a nonnegative time.");
+  const parts = value.trim().replace(/s$/, "").split(":");
+  if (
+    parts.length > 3 ||
+    parts.some(
+      (p, i) =>
+        !(i === parts.length - 1 ? /^(?:\d+(?:\.\d*)?|\.\d+)$/.test(p) : /^\d+$/.test(p)) ||
+        (i > 0 && Number(p) >= 60),
+    )
+  )
+    throw new Error("Invalid time.");
+  const seconds = parts.reduce((sum, p) => sum * 60 + Number(p), 0);
+  if (!Number.isFinite(seconds)) throw new Error("Invalid time.");
+  return seconds;
+}
+
+function reviewText(operation, r) {
+  if (operation === "undo" || operation === "redo") {
+    const verb = operation === "undo" ? "Undid" : "Redid";
+    return r.labels?.length > 1 && r.labels.length === r.authors?.length
+      ? `${verb} ${r.labels.length} edits: ${r.labels.map((label, i) => `"${label}" (by ${r.authors[i]})`).join(", ")}. Now at revision ${r.revision}.`
+      : `${verb} "${r.label}" (by ${r.author}). Now at revision ${r.revision}.`;
+  }
+  if (operation === "validate") {
+    if (!r.issues.length) return `Revision ${r.revision} is valid. No problems found.`;
+    const errors = r.issues.filter((i) => i.severity === "error").length,
+      warnings = r.issues.length - errors;
+    return [
+      `Revision ${r.revision}: ${errors} error${errors === 1 ? "" : "s"}, ${warnings} warning${warnings === 1 ? "" : "s"}.`,
+      ...r.issues.map((i) => `  ${i.severity}: ${i.message}`),
+    ].join("\n");
+  }
+  if (operation === "frame") {
+    const at = r.time != null ? ` at ${clock(r.time)}` : "";
+    return [
+      r.path
+        ? `Wrote ${r.path} (${r.bytes} bytes)${at}.`
+        : `PNG${at}, ${r.bytes} bytes (base64 in the JSON result).`,
+      ...(r.warnings ?? []).map((w) => `Warning: ${w}`),
+    ].join("\n");
+  }
+  const place = (entry) =>
+      entry.start == null || entry.end == null
+        ? ""
+        : `  ${entry.start === entry.end ? `at ${clock(entry.start)}` : `${clock(entry.start)}-${clock(entry.end)}`}${entry.tracks?.length ? ` on ${entry.tracks.join(", ")}` : ""}`,
+    stamp = (value, event = false) => {
+      if (!value) return "(time unavailable)";
+      const date = new Date(value),
+        now = new Date(),
+        pad = (n) => String(n).padStart(2, "0"),
+        time = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+      return event || date.toDateString() === now.toDateString()
+        ? `${time}:${pad(date.getSeconds())}`
+        : `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${time}`;
+    },
+    lines = [`Revision ${r.revision}.`, r.undo.length ? "Undo, newest first:" : "Nothing to undo."];
+  for (const entry of r.undo) lines.push(`  ${entry.label}  (${entry.author})${place(entry)}`);
+  if (r.redo) lines.push(`Redo: ${r.redo}`);
+  if (r.edits?.length) {
+    lines.push(
+      "Edits, newest first (kept across restarts; sidecut diff --since <revision> shows what each did to the clips):",
+    );
+    for (let i = 0; i < r.edits.length; i++) {
+      const edit = r.edits[i];
+      if (edit.kind === "opened") {
+        lines.push(
+          `  r${edit.revision}  ${stamp(edit.date)}  the history starts here${edit.revision > 0 ? " (edits before it weren't recorded, or were made somewhere that kept no history)" : ""}`,
+        );
+        continue;
+      }
+      let end = i + 1;
+      while (
+        end < r.edits.length &&
+        edit.label === "Found new media" &&
+        r.edits[end].label === edit.label &&
+        r.edits[end].author === edit.author &&
+        r.edits[end].kind === edit.kind
+      )
+        end++;
+      if (end > i + 1) {
+        const oldest = r.edits[end - 1];
+        lines.push(
+          `  r${oldest.revision}-r${edit.revision}  ${stamp(oldest.date)}-${stamp(edit.date)}  ${edit.label} x${end - i}  (${edit.author})`,
+        );
+        i = end - 1;
+      } else
+        lines.push(
+          `  r${edit.revision}  ${stamp(edit.date)}  ${edit.kind === "undo" ? "Undo " : edit.kind === "redo" ? "Redo " : ""}${edit.label}  (${edit.author})${place(edit)}${edit.summary ? `  ${edit.summary}` : ""}`,
+        );
+    }
+  } else if (r.events?.length) {
+    lines.push("Recent changes:");
+    for (const event of r.events)
+      lines.push(
+        `  ${stamp(event.date, true)}  r${event.revision ?? 0}  ${event.kind}  ${event.label ?? ""}  (${event.author ?? "?"})`,
+      );
+  }
+  return lines.join("\n");
+}
+
 function helperText(operation, r) {
   const lines = [],
     applied = r.applied,
@@ -350,7 +558,19 @@ function helperText(operation, r) {
       lines.push(`No transcript yet for ${r.missing.join(", ")}, so pauses there aren't listed.`);
     return lines.join("\n");
   }
-  if (operation === "join") {
+  if (operation === "cards") {
+    action = "add them";
+    lines.push(`${plural(r.cards.length, "section card")} (${mode}, revision ${r.revision}):`);
+    for (const card of r.cards) {
+      let line = `  ${card.number}  ${clock(card.at)}  "${card.title}"`;
+      if (card.subtitle != null) line += ` / "${card.subtitle}"`;
+      line += `  card ${range(card.start, card.end)} (${(card.end - card.start).toFixed(1)} s)`;
+      if (card.cut != null && card.cut !== card.at) line += `  take cut at ${clock(card.cut)}`;
+      if (card.existingClipID != null) line += "  already there, renumbered";
+      lines.push(line);
+    }
+    lines.push(`Sound: ${r.sounds}.`);
+  } else if (operation === "join") {
     action = "join them";
     lines.push(
       r.joins.length

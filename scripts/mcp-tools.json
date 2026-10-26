@@ -1,0 +1,4328 @@
+{
+  "revision": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "notice": "Tool properties/defaults/annotations extracted from pinned Swift. Apply command properties/definitions use the current portable SideCut command schema, not native model definitions. Project field help shortened. TANDEM-LICENSE applies.",
+  "tools": [
+    {
+      "name": "status",
+      "title": "Project status",
+      "description": "The project's name, revision, length, unsaved changes, who has it open, undo and redo, background jobs, and agent edits still waiting for Mike's review (reviewPending).",
+      "operation": "status",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Project status",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "timeline",
+      "title": "Read the timeline",
+      "description": "The edit as compact text: tracks top to bottom as the app shows them, one line per clip with its ID, timeline range, media and source range, link group and settings, plus transitions, gaps and markers. On a long project start with summary: true (one line per track), then read a part with from/to. words: true shows what's said in each voice clip; format: json gives the project JSON.",
+      "operation": "timeline",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": ["number", "string"],
+            "description": "Only clips overlapping from this time. Seconds or mm:ss.mmm."
+          },
+          "to": {
+            "type": ["number", "string"],
+            "description": "Only clips overlapping up to this time. Seconds or mm:ss.mmm."
+          },
+          "words": {
+            "type": "boolean",
+            "description": "Show the words each voice clip plays."
+          },
+          "summary": {
+            "type": "boolean",
+            "description": "Just one line per track and the markers."
+          },
+          "format": {
+            "type": "string",
+            "enum": ["text", "json"],
+            "description": "text (default) or json."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Read the timeline",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "media",
+      "title": "List media",
+      "description": "Media files in the project with their role, length, how many clips use them and analysis status (transcript, loudness, proxy, cutout matte). refresh: true scans the project folder for new files first.",
+      "operation": "media",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "refresh": {
+            "type": "boolean",
+            "description": "Scan the folder for new files first."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "List media",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "transcript",
+      "title": "Read a transcript",
+      "description": "Word timings. With a clip ID the words that clip plays in timeline time; with a media ID the whole file in file time; with no ID everything said on the timeline.",
+      "operation": "transcript",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "A clip ID or media ID. Leave out for the whole timeline."
+          },
+          "from": {
+            "type": ["number", "string"],
+            "description": "Start of the range. Seconds or mm:ss.mmm."
+          },
+          "to": {
+            "type": ["number", "string"],
+            "description": "End of the range. Seconds or mm:ss.mmm."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Read a transcript",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "transcribe",
+      "title": "Transcribe a file",
+      "description": "Makes a transcript of any media with sound, whatever its role or track (a generated clip to check for made-up speech, a sound effect), with the same on-device SpeechAnalyzer as camera takes. Camera takes and what's on a speech track are transcribed anyway. Marks the file (transcribe: true, one undo step) so the transcript is made wherever the project is open. With wait: true it waits and returns each file's state and word count (0 words: no speech); then `transcript` reads it. Use this instead of Whisper or an online model.",
+      "operation": "transcribe",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "media": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "A media ID, clip ID or path."
+            },
+            "description": "The files to transcribe."
+          },
+          "wait": {
+            "type": "boolean",
+            "description": "Wait for the transcripts. With the app closed nothing else makes them, so wait."
+          },
+          "timeout": {
+            "type": "number",
+            "description": "Seconds to wait. Default 600."
+          },
+          "label": {
+            "type": "string",
+            "description": "Undo label."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false,
+        "required": ["media"]
+      },
+      "annotations": {
+        "title": "Transcribe a file",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "search",
+      "title": "Find a phrase",
+      "description": "Finds where a phrase is said, as timeline ranges with the clips that play it (ignoring case and punctuation). Also lists matches in material that isn't on the timeline.",
+      "operation": "search",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "phrase": {
+            "type": "string",
+            "description": "Words to find."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "At most this many hits."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false,
+        "required": ["phrase"]
+      },
+      "annotations": {
+        "title": "Find a phrase",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "pauses",
+      "title": "List pauses",
+      "description": "Silences between words on the voice tracks, in timeline time, with the words either side.",
+      "operation": "pauses",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "min": {
+            "type": ["number", "string"],
+            "description": "Shortest pause to list. Default 0.6 s. Seconds or mm:ss.mmm."
+          },
+          "from": {
+            "type": ["number", "string"],
+            "description": "Start of the range. Seconds or mm:ss.mmm."
+          },
+          "to": {
+            "type": ["number", "string"],
+            "description": "End of the range. Seconds or mm:ss.mmm."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "List pauses",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "tighten",
+      "title": "Tighten pauses",
+      "description": "Shortens pauses with frame-aligned ripple deletes that cut the whole take and let B-roll, music and titles follow: by what each pause follows (mike: true for Mike's rules, 0.4 s after a sentence, 0.12 s after a comma, 0.08 s mid-sentence, only pauses of 0.5 s or more; or sentence, comma and mid keeps of your own), or every pause longer than min down to keep. protect leaves pauses containing those times alone; widen: true also widens joins between speech clips that leave less than the keep, from silence in the take either side. A dry run that returns the plan and the commands unless apply: true.",
+      "operation": "tighten",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "mike": {
+            "type": "boolean",
+            "description": "Mike's rules: sentence 0.4, comma 0.12, mid 0.08, min 0.5, midMin 0.5. The other fields override them."
+          },
+          "sentence": {
+            "type": ["number", "string"],
+            "description": "Keep this much after a word ending . ? or ! Seconds or mm:ss.mmm."
+          },
+          "comma": {
+            "type": ["number", "string"],
+            "description": "Keep this much after a word ending , ; or : (default: the mid keep). Seconds or mm:ss.mmm."
+          },
+          "mid": {
+            "type": ["number", "string"],
+            "description": "Keep this much of a mid-sentence pause. Seconds or mm:ss.mmm."
+          },
+          "midMin": {
+            "type": ["number", "string"],
+            "description": "Comma and mid-sentence pauses at least this long change, so breaths stay. Default 0.5 s. Seconds or mm:ss.mmm."
+          },
+          "protect": {
+            "type": "array",
+            "items": {
+              "type": ["number", "string"],
+              "description": "A timeline time. Seconds or mm:ss.mmm."
+            },
+            "description": "Leave the pauses containing these times alone."
+          },
+          "widen": {
+            "type": "boolean",
+            "description": "Also widen joins that leave less than the keep, with ripple trims into silence the take has either side (never past a transcribed word)."
+          },
+          "min": {
+            "type": ["number", "string"],
+            "description": "Pauses at least this long get shortened. Default 0.6 s, or 0.5 s for sentence pauses with the keeps by kind. Seconds or mm:ss.mmm."
+          },
+          "keep": {
+            "type": ["number", "string"],
+            "description": "How much of every pause to keep. Default 0.15 s. Not with sentence, comma, mid or mike. Seconds or mm:ss.mmm."
+          },
+          "apply": {
+            "type": "boolean",
+            "description": "Make the cut. Without it nothing changes."
+          },
+          "from": {
+            "type": ["number", "string"],
+            "description": "Only pauses after this time. Seconds or mm:ss.mmm."
+          },
+          "to": {
+            "type": ["number", "string"],
+            "description": "Only pauses before this time. Seconds or mm:ss.mmm."
+          },
+          "label": {
+            "type": "string",
+            "description": "Undo label."
+          },
+          "author": {
+            "type": "string",
+            "description": "Who made the edit."
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "description": "Refuse unless the project is at this revision."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Tighten pauses",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "join",
+      "title": "Join through-edits",
+      "description": "Finds through-edits, cuts where a clip carries straight on into the next piece of the same file with the same settings (putting cuts back with ripple trims leaves them), and joins each into one clip together with its linked camera, screen and voice clips, so the take is one clip again. What plays doesn't change. Cuts that would play differently joined (a transition or a fade on the cut, different settings, animation that wouldn't carry on) are listed with the reason and left. A dry run that returns the plan and the command unless apply: true. To join one cut, apply {\"join\": {\"clipID\": \"<the clip before the cut>\"}}.",
+      "operation": "join",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": ["number", "string"],
+            "description": "Only cuts at or after this time. Seconds or mm:ss.mmm."
+          },
+          "to": {
+            "type": ["number", "string"],
+            "description": "Only cuts at or before this time. Seconds or mm:ss.mmm."
+          },
+          "apply": {
+            "type": "boolean",
+            "description": "Join them. Without it nothing changes."
+          },
+          "label": {
+            "type": "string",
+            "description": "Undo label."
+          },
+          "author": {
+            "type": "string",
+            "description": "Who made the edit."
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "description": "Refuse unless the project is at this revision."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Join through-edits",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "captions",
+      "title": "Add word captions",
+      "description": "Adds word-by-word captions from the transcripts (a few words at a time, the spoken word highlighted, Mike's shorts style) on a Captions track. A dry run that returns the plan and the commands unless apply: true.",
+      "operation": "captions",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": ["number", "string"],
+            "description": "Only speech after this time. Seconds or mm:ss.mmm."
+          },
+          "to": {
+            "type": ["number", "string"],
+            "description": "Only speech before this time. Seconds or mm:ss.mmm."
+          },
+          "words": {
+            "type": "integer",
+            "description": "Most words on screen at once. Default 3."
+          },
+          "y": {
+            "type": "number",
+            "description": "Height on screen, 0 top to 1 bottom. Default 0.42, between screen and camera in a short."
+          },
+          "track": {
+            "type": "string",
+            "description": "Video track to use, made if missing. Default Captions."
+          },
+          "apply": {
+            "type": "boolean",
+            "description": "Add them. Without it nothing changes."
+          },
+          "label": {
+            "type": "string",
+            "description": "Undo label."
+          },
+          "author": {
+            "type": "string",
+            "description": "Who made the edit."
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "description": "Refuse unless the project is at this revision."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Add word captions",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "short",
+      "title": "Lay out a 9:16 short",
+      "description": "Adds the portrait output format and places every video clip in it the way Mike's shorts look: screen, B-roll and graphics in the top half, the camera in the bottom half with its background, full-frame camera moments filling the frame. The landscape edit is untouched. With copy: true the short becomes its own 1080x1920 project instead, which the app shows portrait. A dry run unless apply: true. Then export with the short preset.",
+      "operation": "short",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "apply": {
+            "type": "boolean",
+            "description": "Lay it out. Without it nothing changes."
+          },
+          "copy": {
+            "type": "boolean",
+            "description": "Make the short a 1080x1920 project of its own beside this one (\"<Name> Short.tandem\"), laid out and made portrait, so the app shows it portrait. This project isn't edited. What you usually want."
+          },
+          "copyPath": {
+            "type": "string",
+            "description": "The copy's file name or path, relative to the project's folder."
+          },
+          "label": {
+            "type": "string",
+            "description": "Undo label."
+          },
+          "author": {
+            "type": "string",
+            "description": "Who made the edit."
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "description": "Refuse unless the project is at this revision."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Lay out a 9:16 short",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "cards",
+      "title": "Add section cards",
+      "description": "Puts a numbered section card at every section marker after the start (or at markers): Convex's bands wipe in, the card holds the number, the marker's name as the title, its note as the subtitle and progress bars for the count, and the bands wipe out, with a soft whoosh on each sweep from the asset library. Each card is as long as its words need to be read. A card already at a marker is renumbered and keeps its words. A dry run that returns the plan and the commands unless apply: true.",
+      "operation": "cards",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "markers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Marker IDs to put cards at. Default: every section marker after 0:00."
+          },
+          "kicker": {
+            "type": "string",
+            "description": "Words beside the number, like Section or Tip, shown as SECTION 1 OF 3."
+          },
+          "duration": {
+            "type": ["number", "string"],
+            "description": "Every card's length. Default: each fitted to its words, 4 to 7 s; the wipes keep their length. Seconds or mm:ss.mmm."
+          },
+          "track": {
+            "type": "string",
+            "description": "Video track ID for the cards. Default Graphics."
+          },
+          "insert": {
+            "type": "boolean",
+            "description": "Make room at each marker so the card is a pause and its wipes show the shots either side (the whole take moves). The take is cut in the pause before the section's first word: a marker on a word moves the cut into the pause beside it (up to 0.3 s), so the word isn't clipped, and the plan says so."
+          },
+          "sounds": {
+            "type": "boolean",
+            "description": "A whoosh on each sweep, from the asset library. Default true."
+          },
+          "apply": {
+            "type": "boolean",
+            "description": "Add them. Without it nothing changes."
+          },
+          "label": {
+            "type": "string",
+            "description": "Undo label."
+          },
+          "author": {
+            "type": "string",
+            "description": "Who made the edit."
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "description": "Refuse unless the project is at this revision."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Add section cards",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "apply",
+      "title": "Edit the project",
+      "description": "Applies a batch of edit commands atomically as one undo step. If any command fails nothing changes and the error says which one and why. Returns the new revision, created IDs and warnings. See the command list in the schema; times are seconds.",
+      "operation": "apply",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "commands": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "addMarker": {
+                      "type": "object",
+                      "properties": {
+                        "marker": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "time": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "duration": {
+                              "anyOf": [
+                                {
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "name": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "kind": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "note": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": ["time"],
+                          "allOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": {}
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["marker"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["addMarker"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "updateMarker": {
+                      "type": "object",
+                      "properties": {
+                        "markerID": {
+                          "type": "string"
+                        },
+                        "patch": {
+                          "type": "object"
+                        }
+                      },
+                      "required": ["markerID", "patch"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["updateMarker"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "removeMarker": {
+                      "type": "object",
+                      "properties": {
+                        "markerID": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["markerID"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["removeMarker"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "addSectionCards": {
+                      "type": "object",
+                      "properties": {
+                        "markerIDs": {
+                          "anyOf": [
+                            {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "trackID": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "duration": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "kicker": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "mode": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": ["place", "overwrite", "insert"]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "soundIn": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "mediaID": {
+                                  "type": "string"
+                                },
+                                "gainDB": {
+                                  "anyOf": [
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "offset": {
+                                  "anyOf": [
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": ["mediaID"],
+                              "additionalProperties": true
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "soundOut": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "mediaID": {
+                                  "type": "string"
+                                },
+                                "gainDB": {
+                                  "anyOf": [
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "offset": {
+                                  "anyOf": [
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": ["mediaID"],
+                              "additionalProperties": true
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "cuts": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "number"
+                              }
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["addSectionCards"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "fitSectionCards": {
+                      "type": "object",
+                      "properties": {
+                        "clipIDs": {
+                          "anyOf": [
+                            {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["fitSectionCards"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "insertTemplate": {
+                      "type": "object",
+                      "properties": {
+                        "template": {
+                          "type": "object"
+                        },
+                        "at": {
+                          "type": "number"
+                        },
+                        "values": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "string"
+                              }
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "mode": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": ["place", "overwrite", "insert"]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["template", "at"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["insertTemplate"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "setFormatLayout": {
+                      "type": "object",
+                      "properties": {
+                        "clipIDs": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "format": {
+                          "type": "string"
+                        },
+                        "slot": {
+                          "type": "string",
+                          "enum": ["top", "bottom", "full"]
+                        },
+                        "cutout": {
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["clipIDs", "format", "slot"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["setFormatLayout"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "adoptFormat": {
+                      "type": "object",
+                      "properties": {
+                        "format": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["format"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["adoptFormat"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "normalizeSpeech": {
+                      "type": "object",
+                      "properties": {
+                        "measured": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "object",
+                                "properties": {
+                                  "integratedLUFS": {
+                                    "type": "number"
+                                  },
+                                  "truePeakDBTP": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": ["integratedLUFS", "truePeakDBTP"],
+                                "additionalProperties": true
+                              }
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["normalizeSpeech"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "addTransition": {
+                      "type": "object",
+                      "properties": {
+                        "trackID": {
+                          "type": "string"
+                        },
+                        "transition": {
+                          "type": "object"
+                        },
+                        "sound": {
+                          "anyOf": [
+                            {
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["trackID", "transition"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["addTransition"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "updateTransition": {
+                      "type": "object",
+                      "properties": {
+                        "transitionID": {
+                          "type": "string"
+                        },
+                        "patch": {
+                          "type": "object"
+                        }
+                      },
+                      "required": ["transitionID", "patch"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["updateTransition"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "removeTransition": {
+                      "type": "object",
+                      "properties": {
+                        "transitionID": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["transitionID"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["removeTransition"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "addEffect": {
+                      "type": "object",
+                      "properties": {
+                        "clipID": {
+                          "type": "string"
+                        },
+                        "effect": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "type": {
+                              "type": "string"
+                            },
+                            "enabled": {
+                              "anyOf": [
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "params": {
+                              "anyOf": [
+                                {
+                                  "type": "object"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": ["type"],
+                          "additionalProperties": true
+                        },
+                        "index": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["clipID", "effect"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["addEffect"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "updateEffect": {
+                      "type": "object",
+                      "properties": {
+                        "clipID": {
+                          "type": "string"
+                        },
+                        "effectID": {
+                          "type": "string"
+                        },
+                        "patch": {
+                          "type": "object"
+                        }
+                      },
+                      "required": ["clipID", "effectID", "patch"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["updateEffect"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "removeEffect": {
+                      "type": "object",
+                      "properties": {
+                        "clipID": {
+                          "type": "string"
+                        },
+                        "effectID": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["clipID", "effectID"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["removeEffect"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "moveEffect": {
+                      "type": "object",
+                      "properties": {
+                        "clipID": {
+                          "type": "string"
+                        },
+                        "effectID": {
+                          "type": "string"
+                        },
+                        "index": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": ["clipID", "effectID", "index"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["moveEffect"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "applyLayout": {
+                      "type": "object",
+                      "properties": {
+                        "clipIDs": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "preset": {
+                          "type": "string",
+                          "enum": ["full", "pipRight", "pipLeft", "split", "fill"]
+                        }
+                      },
+                      "required": ["clipIDs", "preset"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["applyLayout"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "zoomToRegion": {
+                      "type": "object",
+                      "properties": {
+                        "clipID": {
+                          "type": "string"
+                        },
+                        "rect": {
+                          "type": "object",
+                          "properties": {
+                            "x": {
+                              "type": "number"
+                            },
+                            "y": {
+                              "type": "number"
+                            },
+                            "width": {
+                              "type": "number"
+                            },
+                            "height": {
+                              "type": "number"
+                            }
+                          },
+                          "required": ["x", "y", "width", "height"],
+                          "additionalProperties": true
+                        },
+                        "at": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "duration": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["clipID", "rect"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["zoomToRegion"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "setKeyframes": {
+                      "type": "object",
+                      "properties": {
+                        "clipID": {
+                          "type": "string"
+                        },
+                        "parameter": {
+                          "type": "string"
+                        },
+                        "keyframes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "time": {
+                                "type": "number"
+                              },
+                              "value": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "x": {
+                                        "type": "number"
+                                      },
+                                      "y": {
+                                        "type": "number"
+                                      }
+                                    },
+                                    "required": ["x", "y"],
+                                    "additionalProperties": true
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "r": {
+                                        "type": "number"
+                                      },
+                                      "g": {
+                                        "type": "number"
+                                      },
+                                      "b": {
+                                        "type": "number"
+                                      },
+                                      "a": {
+                                        "anyOf": [
+                                          {
+                                            "type": "number"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": ["r", "g", "b"],
+                                    "additionalProperties": true
+                                  }
+                                ]
+                              },
+                              "interpolation": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": ["linear", "easeIn", "easeOut", "easeInOut", "hold"]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": ["time", "value"],
+                            "allOf": [
+                              {
+                                "type": "object",
+                                "additionalProperties": {}
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "required": ["clipID", "parameter", "keyframes"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["setKeyframes"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "addMotion": {
+                      "type": "object",
+                      "properties": {
+                        "clipIDs": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "style": {
+                          "type": "string",
+                          "enum": ["zoomIn", "zoomOut", "panLeft", "panRight", "panUp", "panDown"]
+                        },
+                        "amount": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["clipIDs", "style"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["addMotion"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "showAngle": {
+                      "type": "object",
+                      "properties": {
+                        "range": {
+                          "type": "object",
+                          "properties": {
+                            "start": {
+                              "type": "number"
+                            },
+                            "duration": {
+                              "type": "number"
+                            }
+                          },
+                          "required": ["start", "duration"],
+                          "additionalProperties": true
+                        },
+                        "trackID": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["range", "trackID"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["showAngle"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "join": {
+                      "type": "object",
+                      "properties": {
+                        "clipID": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["clipID"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["join"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "joinThroughEdits": {
+                      "type": "object",
+                      "properties": {
+                        "range": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "start": {
+                                  "type": "number"
+                                },
+                                "duration": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": ["start", "duration"],
+                              "additionalProperties": true
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["joinThroughEdits"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "setSpeed": {
+                      "type": "object",
+                      "properties": {
+                        "clipID": {
+                          "type": "string"
+                        },
+                        "speed": {
+                          "type": "number"
+                        },
+                        "ripple": {
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "includeLinked": {
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["clipID", "speed"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["setSpeed"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "holdFrame": {
+                      "type": "object",
+                      "properties": {
+                        "clipID": {
+                          "type": "string"
+                        },
+                        "range": {
+                          "type": "object",
+                          "properties": {
+                            "start": {
+                              "type": "number"
+                            },
+                            "duration": {
+                              "type": "number"
+                            }
+                          },
+                          "required": ["start", "duration"],
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": ["clipID", "range"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["holdFrame"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "updateClip": {
+                      "type": "object",
+                      "properties": {
+                        "clipID": {
+                          "type": "string"
+                        },
+                        "patch": {
+                          "type": "object"
+                        }
+                      },
+                      "required": ["clipID", "patch"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["updateClip"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "placeMedia": {
+                      "type": "object",
+                      "properties": {
+                        "mediaIDs": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "at": {
+                          "type": "number"
+                        },
+                        "sourceStart": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "duration": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "mode": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": ["place", "insert", "overwrite"]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "videoTrackID": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "audioTrackID": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "includeAudio": {
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "anchor": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "centre",
+                                "top",
+                                "bottom",
+                                "topLeft",
+                                "topRight",
+                                "bottomLeft",
+                                "bottomRight",
+                                "lowerThird"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "pop": {
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "speed": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["mediaIDs", "at"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["placeMedia"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "placeSynced": {
+                      "type": "object",
+                      "properties": {
+                        "mediaID": {
+                          "type": "string"
+                        },
+                        "trackID": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["mediaID"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["placeSynced"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "cutRanges": {
+                      "type": "object",
+                      "properties": {
+                        "ranges": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "start": {
+                                "type": "number"
+                              },
+                              "duration": {
+                                "type": "number"
+                              }
+                            },
+                            "required": ["start", "duration"],
+                            "additionalProperties": true
+                          }
+                        },
+                        "trackIDs": {
+                          "anyOf": [
+                            {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["ranges"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["cutRanges"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "closeGap": {
+                      "type": "object",
+                      "properties": {
+                        "trackID": {
+                          "type": "string"
+                        },
+                        "at": {
+                          "type": "number"
+                        }
+                      },
+                      "required": ["trackID", "at"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["closeGap"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "insertTime": {
+                      "type": "object",
+                      "properties": {
+                        "at": {
+                          "type": "number"
+                        },
+                        "duration": {
+                          "type": "number"
+                        },
+                        "trackIDs": {
+                          "anyOf": [
+                            {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["at", "duration"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["insertTime"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "roll": {
+                      "type": "object",
+                      "properties": {
+                        "leftClipID": {
+                          "type": "string"
+                        },
+                        "rightClipID": {
+                          "type": "string"
+                        },
+                        "delta": {
+                          "type": "number"
+                        }
+                      },
+                      "required": ["leftClipID", "rightClipID", "delta"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["roll"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "slip": {
+                      "type": "object",
+                      "properties": {
+                        "clipID": {
+                          "type": "string"
+                        },
+                        "delta": {
+                          "type": "number"
+                        },
+                        "includeLinked": {
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["clipID", "delta"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["slip"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "slide": {
+                      "type": "object",
+                      "properties": {
+                        "clipID": {
+                          "type": "string"
+                        },
+                        "delta": {
+                          "type": "number"
+                        }
+                      },
+                      "required": ["clipID", "delta"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["slide"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "blade": {
+                      "type": "object",
+                      "properties": {
+                        "at": {
+                          "type": "number"
+                        },
+                        "trackIDs": {
+                          "anyOf": [
+                            {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "clipIDs": {
+                          "anyOf": [
+                            {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["at"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["blade"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "trim": {
+                      "type": "object",
+                      "properties": {
+                        "clipID": {
+                          "type": "string"
+                        },
+                        "edge": {
+                          "type": "string",
+                          "enum": ["start", "end"]
+                        },
+                        "to": {
+                          "type": "number"
+                        },
+                        "ripple": {
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "includeLinked": {
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["clipID", "edge", "to"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["trim"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "moveClips": {
+                      "type": "object",
+                      "properties": {
+                        "clipIDs": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "delta": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "toTrackID": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "includeLinked": {
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "mode": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": ["place", "overwrite"]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["clipIDs"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["moveClips"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "removeClips": {
+                      "type": "object",
+                      "properties": {
+                        "clipIDs": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "ripple": {
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "includeLinked": {
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["clipIDs"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["removeClips"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "link": {
+                      "type": "object",
+                      "properties": {
+                        "clipIDs": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": ["clipIDs"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["link"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "unlink": {
+                      "type": "object",
+                      "properties": {
+                        "clipIDs": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": ["clipIDs"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["unlink"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "rippleDeleteRange": {
+                      "type": "object",
+                      "properties": {
+                        "range": {
+                          "type": "object",
+                          "properties": {
+                            "start": {
+                              "type": "number"
+                            },
+                            "duration": {
+                              "type": "number"
+                            }
+                          },
+                          "required": ["start", "duration"],
+                          "additionalProperties": true
+                        },
+                        "trackIDs": {
+                          "anyOf": [
+                            {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["range"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["rippleDeleteRange"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "updateProject": {
+                      "type": "object",
+                      "properties": {
+                        "patch": {
+                          "type": "object"
+                        }
+                      },
+                      "required": ["patch"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["updateProject"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "updateSettings": {
+                      "type": "object",
+                      "properties": {
+                        "patch": {
+                          "type": "object"
+                        }
+                      },
+                      "required": ["patch"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["updateSettings"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "addMedia": {
+                      "type": "object",
+                      "properties": {
+                        "item": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "path": {
+                              "type": "string"
+                            },
+                            "kind": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": ["video", "audio", "image"]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "role": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "camera",
+                                    "screen",
+                                    "broll",
+                                    "graphic",
+                                    "sticker",
+                                    "music",
+                                    "sfx",
+                                    "image",
+                                    "other"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "takeID": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "takeOffset": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "duration": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "frameRate": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "numerator": {
+                                      "type": "integer",
+                                      "maximum": 9007199254740991,
+                                      "exclusiveMinimum": 0
+                                    },
+                                    "denominator": {
+                                      "type": "integer",
+                                      "maximum": 9007199254740991,
+                                      "exclusiveMinimum": 0
+                                    }
+                                  },
+                                  "required": ["numerator", "denominator"],
+                                  "allOf": [
+                                    {
+                                      "type": "object",
+                                      "additionalProperties": {}
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "width": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "maximum": 9007199254740991,
+                                  "exclusiveMinimum": 0
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "height": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "maximum": 9007199254740991,
+                                  "exclusiveMinimum": 0
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "hasVideo": {
+                              "anyOf": [
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "hasAudio": {
+                              "anyOf": [
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "hasAlpha": {
+                              "anyOf": [
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "variableFrameRate": {
+                              "anyOf": [
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "undecodableCodec": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "fingerprint": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "look": {
+                              "anyOf": [
+                                {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object"
+                                  }
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "livePhotoVideo": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "pictureDelay": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "pictureDelayCorrected": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "transcribe": {
+                              "anyOf": [
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": ["path"],
+                          "allOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": {}
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["item"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["addMedia"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "updateMedia": {
+                      "type": "object",
+                      "properties": {
+                        "mediaID": {
+                          "type": "string"
+                        },
+                        "patch": {
+                          "type": "object"
+                        }
+                      },
+                      "required": ["mediaID", "patch"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["updateMedia"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "removeMedia": {
+                      "type": "object",
+                      "properties": {
+                        "mediaID": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["mediaID"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["removeMedia"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "addTrack": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": ["video", "audio"]
+                        },
+                        "name": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "index": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "id": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["kind"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["addTrack"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "removeTrack": {
+                      "type": "object",
+                      "properties": {
+                        "trackID": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["trackID"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["removeTrack"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "moveTrack": {
+                      "type": "object",
+                      "properties": {
+                        "trackID": {
+                          "type": "string"
+                        },
+                        "index": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": ["trackID", "index"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["moveTrack"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "updateTrack": {
+                      "type": "object",
+                      "properties": {
+                        "trackID": {
+                          "type": "string"
+                        },
+                        "patch": {
+                          "type": "object"
+                        }
+                      },
+                      "required": ["trackID", "patch"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["updateTrack"],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "insertClip": {
+                      "type": "object",
+                      "properties": {
+                        "trackID": {
+                          "type": "string"
+                        },
+                        "clip": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "name": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "content": {
+                              "type": "object"
+                            },
+                            "start": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "duration": {
+                              "type": "number"
+                            },
+                            "sourceStart": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "speed": {
+                              "anyOf": [
+                                {
+                                  "type": "number",
+                                  "exclusiveMinimum": 0
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "freezeFrame": {
+                              "anyOf": [
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "holdEdges": {
+                              "anyOf": [
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "enabled": {
+                              "anyOf": [
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "linkGroup": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "video": {
+                              "anyOf": [
+                                {
+                                  "type": "object"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "audio": {
+                              "anyOf": [
+                                {
+                                  "type": "object"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "keyframes": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object"
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "tags": {
+                              "anyOf": [
+                                {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": ["content", "duration"],
+                          "allOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": {}
+                            }
+                          ]
+                        },
+                        "mode": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": ["place", "overwrite", "insert"]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["trackID", "clip"],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": ["insertClip"],
+                  "additionalProperties": true
+                }
+              ],
+              "minProperties": 1,
+              "maxProperties": 1
+            }
+          },
+          "expectedRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "idempotencyKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dryRun": {
+            "type": "boolean",
+            "description": "Check the batch on a copy without changing anything."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false,
+        "required": ["commands"],
+        "$defs": {}
+      },
+      "annotations": {
+        "title": "Edit the project",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "undo",
+      "title": "Undo",
+      "description": "Undoes the last edit, or the last `count` edits in one go (stopping early if the history runs out). Each undo makes a new revision, so undo several with count rather than one call after another. Pass expectedRevision so you only undo your own edit if nothing changed since.",
+      "operation": "undo",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "description": "Refuse unless the project is at this revision."
+          },
+          "count": {
+            "type": "integer",
+            "description": "How many steps to undo. Default 1."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Undo",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "redo",
+      "title": "Redo",
+      "description": "Redoes the last undone edit, or the last `count`.",
+      "operation": "redo",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "description": "Refuse unless the project is at this revision."
+          },
+          "count": {
+            "type": "integer",
+            "description": "How many steps to redo. Default 1."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Redo",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "history",
+      "title": "Edit history",
+      "description": "What undo would undo (newest first, with who made each edit), and the edit history, which lasts across restarts: each edit's revision, who made it, and where it was (times and tracks).",
+      "operation": "history",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "description": "How many entries. Default 20."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Edit history",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "diff",
+      "title": "What changed since",
+      "description": "What changed on the timeline since a revision, a backup or an export, clip by clip: added, removed, moved, trimmed, and changed settings (transform, gain, keyframes, effects...), with timeline times and track names. Since a revision, it's grouped by edit with who made it (the edit history lasts across restarts). An export is read from the .mp4.tandem snapshot beside it. Use it to find what Mike changed since you last looked, instead of diffing timeline JSON yourself. Pass json: true for each clip before and after.",
+      "operation": "diff",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "since": {
+            "type": "string",
+            "description": "A revision (95), a .tandem file (a backup in .tandem/backups or an export's .mp4.tandem snapshot), or an export (exports/v3.mp4). Paths are absolute or relative to the project folder."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false,
+        "required": ["since"]
+      },
+      "annotations": {
+        "title": "What changed since",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "restore",
+      "title": "Restore clips",
+      "description": "Puts clips back as they were in a revision, a backup or an export's snapshot: their place, trims, settings and keyframes. Name the clips, or give fromTime and toTime (and track) for every clip that was in that stretch; clips that weren't there come out. One undo step through the usual edit path. A dry run that returns the plan and the commands unless apply: true. Transitions, media and markers aren't restored.",
+      "operation": "restore",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "A revision (95), a .tandem file, or an export (exports/v3.mp4)."
+          },
+          "clips": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Clip IDs to restore."
+          },
+          "fromTime": {
+            "type": ["number", "string"],
+            "description": "With toTime: every clip there in this stretch (in that timeline's times). Seconds or mm:ss.mmm."
+          },
+          "toTime": {
+            "type": ["number", "string"],
+            "description": "End of the stretch. Seconds or mm:ss.mmm."
+          },
+          "track": {
+            "type": "string",
+            "description": "Keep the stretch to one track: an ID, a name or a label like V3."
+          },
+          "apply": {
+            "type": "boolean",
+            "description": "Restore them. Without it nothing changes."
+          },
+          "label": {
+            "type": "string",
+            "description": "Undo label."
+          },
+          "author": {
+            "type": "string",
+            "description": "Who made the edit."
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "description": "Refuse unless the project is at this revision."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false,
+        "required": ["from"]
+      },
+      "annotations": {
+        "title": "Restore clips",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "clips",
+      "title": "Find clips",
+      "description": "Lists clips with their ID, track, start, end and what they play, filtered by track, time and media, so you can find IDs without reading the whole timeline.",
+      "operation": "clips",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "track": {
+            "type": "string",
+            "description": "A track ID, name (Camera) or label (V2)."
+          },
+          "from": {
+            "type": ["number", "string"],
+            "description": "Clips that end after this time. Seconds or mm:ss.mmm."
+          },
+          "to": {
+            "type": ["number", "string"],
+            "description": "Clips that start before this time. Seconds or mm:ss.mmm."
+          },
+          "media": {
+            "type": "string",
+            "description": "A media ID, path or file name."
+          },
+          "ids": {
+            "type": "boolean",
+            "description": "Just the IDs, one a line."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Find clips",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "validate",
+      "title": "Check the project",
+      "description": "Checks the project for problems: overlaps, clips past the end of their media, missing files, broken transitions.",
+      "operation": "validate",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Check the project",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "check",
+      "title": "Check for problems",
+      "description": "Looks for what Mike would otherwise catch in review: black frames and gaps, one-frame flickers, green screens that didn't key and white blocks that come and go. Notes, which don't fail it, are judgement calls: pictures zoomed past their own pixels; dead air (0.8 s or more of a still picture with nothing said and no sound effect or music swell: cut it, or keep it if the pause earns it); and page changes on the screen recording with no transition (push them if they're pages in an explainer or slides); and slivers, clips or gaps between clips on a track shorter than a frame. Renders the frames small, so a minute takes seconds. Run it with changed: true on what you changed before handing back. With cuts: true it checks only for words clipped at cuts, and gives the trims that fix them. ok is false when it finds a problem.",
+      "operation": "check",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": ["number", "string"],
+            "description": "Start. Default 0. Seconds or mm:ss.mmm."
+          },
+          "to": {
+            "type": ["number", "string"],
+            "description": "End. Default the end of the timeline. Seconds or mm:ss.mmm."
+          },
+          "changed": {
+            "type": "boolean",
+            "description": "Only the stretches agents changed that are waiting for Mike's review."
+          },
+          "quick": {
+            "type": "boolean",
+            "description": "Only the checks that need no rendering: gaps, slivers and pictures zoomed past their own pixels. No dead air or page changes."
+          },
+          "cuts": {
+            "type": "boolean",
+            "description": "Only the cuts on the speech tracks, from the files' own sound (nothing rendered): a clippedWord problem where the voice runs right up to a cut, full band or above 4 kHz (a final \"s\"). Each has cut.fix, a trim into the nearest real pause (0.08 s quiet in both bands) within 0.3 s; commands holds them all, latest first, to apply with expectedRevision: revision. Run it after cutting the take."
+          },
+          "width": {
+            "type": "integer",
+            "description": "How wide frames are rendered for the scan. Default 384."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Check for problems",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "sync",
+      "title": "Sync picture and sound",
+      "description": "Two jobs. With delay: a webcam's picture lags its mic (Mike's by about 0.08 s), so lips and voice drift apart; every camera take (or the media files named) shows its picture that much later in the file, in the app, frames, review clips, check and exports; the sound, the cuts and word times stay put. 0 puts it back as recorded. Never slip clips by hand as well, or the delay doubles. Without delay or files it lists each file's delay and the default new camera takes get. With files (another camera angle, an external mic): lines each up with the camera take by sound, however much of the take it covers, and reports how much further into the file the same moment is (offset, positive when it started first), how far the clocks drift apart over the overlap, and a confidence (unrelated sound scores under 10; under 15 is refused and nothing changes). Then, as one undo step, it puts each file in the camera's take and places it beside the take's clips, linked (placeSynced): an angle on its own track above the camera's (\"Angle 2\"), off until the showAngle edit command shows it over a range, its own sound not placed; a sound file on Voice, with the camera's own sound there moved to a muted \"Camera sound\" track. Takes about 20 s for a 46 min camera take.",
+      "operation": "sync",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "delay": {
+            "type": ["number", "string"],
+            "description": "How late the picture is against the sound, in seconds (0.08 for 80 ms). 0 puts it back. Seconds or mm:ss.mmm."
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "A media ID."
+            },
+            "description": "The files to set the delay on. Default: every camera take."
+          },
+          "makeDefault": {
+            "type": "boolean",
+            "description": "Make it the delay new camera takes get, in Tandem's settings."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "A media ID or path."
+            },
+            "description": "Files to line up with the camera take by sound, instead of a delay."
+          },
+          "to": {
+            "type": "string",
+            "description": "With files: the media ID or path of the file to line them up with. Default: the camera take."
+          },
+          "place": {
+            "type": "boolean",
+            "description": "With files: place each beside the take. Default true; false only sets their takes."
+          },
+          "dryRun": {
+            "type": "boolean",
+            "description": "With files: measure and check the edit without changing anything."
+          },
+          "label": {
+            "type": "string",
+            "description": "Undo label."
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "description": "Refuse unless the project is at this revision."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Sync picture and sound",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "comments",
+      "title": "Mike's comments",
+      "description": "The comments Mike left on the timeline for you, earliest first: each one's ID, time and what he asked, with what's said a few seconds either side and the clips playing there. Do what each asks, label the edit with what you did, and remove the comment in the same apply batch with {\"removeMarker\": {\"markerID\": \"<id>\"}}. Comments move with ripple edits, so read them again after one.",
+      "operation": "comments",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Mike's comments",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "frame",
+      "title": "Look at a frame",
+      "description": "Renders the timeline at a time and returns the picture. Default 1280 px wide; pass output to save a PNG instead.",
+      "operation": "frame",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "time": {
+            "type": ["number", "string"],
+            "description": "Timeline time. Seconds or mm:ss.mmm."
+          },
+          "maxWidth": {
+            "type": "integer",
+            "description": "Largest width in pixels. Default 1280."
+          },
+          "maxHeight": {
+            "type": "integer",
+            "description": "Largest height in pixels."
+          },
+          "output": {
+            "type": "string",
+            "description": "Save the PNG here instead of returning it (absolute, or relative to the project folder)."
+          },
+          "format": {
+            "type": "string",
+            "description": "An alternate output format ID, like portrait."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false,
+        "required": ["time"]
+      },
+      "annotations": {
+        "title": "Look at a frame",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {
+        "maxWidth": 1280
+      }
+    },
+    {
+      "name": "frames",
+      "title": "Look at several frames",
+      "description": "Renders the timeline at several times and returns one contact sheet, each frame labelled with its time underneath. Give times, or every (seconds) with from and to, or both. At most 48 frames; each 480 px wide by default. Pass output to save the PNG instead.",
+      "operation": "frames",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "times": {
+            "type": "array",
+            "items": {
+              "type": ["number", "string"],
+              "description": "Timeline time. Seconds or mm:ss.mmm."
+            },
+            "description": "The times to show."
+          },
+          "every": {
+            "type": ["number", "string"],
+            "description": "A frame every this many seconds, from from to to. Seconds or mm:ss.mmm."
+          },
+          "from": {
+            "type": ["number", "string"],
+            "description": "Where every starts. Default 0. Seconds or mm:ss.mmm."
+          },
+          "to": {
+            "type": ["number", "string"],
+            "description": "Where every stops (shown). Default the end of the timeline (not shown). Seconds or mm:ss.mmm."
+          },
+          "width": {
+            "type": "integer",
+            "description": "Each frame's width in pixels, 64 to 1920. Default 480."
+          },
+          "output": {
+            "type": "string",
+            "description": "Save the PNG here instead of returning it (absolute, or relative to the project folder)."
+          },
+          "format": {
+            "type": "string",
+            "description": "An alternate output format ID, like portrait."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Look at several frames",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "screenshot",
+      "title": "Screenshot the app",
+      "description": "Captures the Tandem app's window, to see what Mike sees. Needs the app open.",
+      "operation": "screenshot",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "output": {
+            "type": "string",
+            "description": "Save the PNG here instead of returning it."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Screenshot the app",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "clip",
+      "title": "Render a review clip",
+      "description": "Renders part of the timeline to an MP4 (720p review preset by default) so the edit can be watched. tracks plays only those audio tracks (solo or stems), at the timeline's own level rather than mastered; audioOnly (or an output ending .m4a or .wav) writes the sound alone. Returns the file path.",
+      "operation": "clip",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": ["number", "string"],
+            "description": "Timeline start. Seconds or mm:ss.mmm."
+          },
+          "end": {
+            "type": ["number", "string"],
+            "description": "Timeline end. Seconds or mm:ss.mmm."
+          },
+          "output": {
+            "type": "string",
+            "description": "Where to write it. Default: exports/review <start>-<end>.mp4 (with the track names, and .m4a for audioOnly)."
+          },
+          "preset": {
+            "type": "string",
+            "description": "Export preset: review (default), youtube1080, youtube4k, short."
+          },
+          "tracks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Only these audio tracks play, by name or ID, like [\"Music\"]."
+          },
+          "audioOnly": {
+            "type": "boolean",
+            "description": "Write the sound alone, as a .m4a."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false,
+        "required": ["start", "end"]
+      },
+      "annotations": {
+        "title": "Render a review clip",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "export",
+      "title": "Export the video",
+      "description": "Renders the timeline (or a range) with an export preset, loudness-matched to the project target. A preset sets the quality (codec, bitrate, resolution class) and the frame keeps the canvas's shape, so youtube1080 of a 1080x1920 project is 1080x1920. Returns the file path, the size, codec and bitrate used, and the measured loudness.",
+      "operation": "export",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "preset": {
+            "type": "string",
+            "description": "youtube4k, youtube1080, review or short. Default: the one that fits the canvas, youtube1080 up to 1080 pixels on the short side (1920x1080, 1080x1920), youtube4k above. short renders the portrait format, or the canvas when it's 9:16."
+          },
+          "output": {
+            "type": "string",
+            "description": "Where to write the file. Default: exports/<name> r<revision>.mp4."
+          },
+          "from": {
+            "type": ["number", "string"],
+            "description": "Start of the range. Seconds or mm:ss.mmm."
+          },
+          "to": {
+            "type": ["number", "string"],
+            "description": "End of the range. Seconds or mm:ss.mmm."
+          },
+          "format": {
+            "type": "string",
+            "description": "An alternate output format ID, like portrait."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Export the video",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "archive",
+      "title": "Archive the project",
+      "description": "Makes the project standalone so it opens on another Mac. Without `to`, the media, LUTs and fonts it uses from outside its folder are copied into it (media/<folder they were in>/, assets/lut/, assets/font/) and the project is pointed at the copies as one undo step. With `to`, a standalone copy of the whole project folder is written inside that folder (proxies and mattes left out unless withCache), and the original is left alone. Copies are checked, never replace a different file, and are recorded in archive.json; missing files are listed and left as they are. dryRun: true lists what would be copied and the sizes first.",
+      "operation": "archive",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "to": {
+            "type": "string",
+            "description": "Folder to write a standalone copy into (absolute, or relative to the project folder). Leave out to make the project's own folder standalone."
+          },
+          "withCache": {
+            "type": "boolean",
+            "description": "With to: also copy proxies, mattes, thumbnails and isolated voice. Transcripts, waveforms and loudness always go."
+          },
+          "dryRun": {
+            "type": "boolean",
+            "description": "List what would be copied, and the sizes, without changing anything."
+          },
+          "label": {
+            "type": "string",
+            "description": "Undo label."
+          },
+          "author": {
+            "type": "string",
+            "description": "Who made the edit."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Archive the project",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "relink",
+      "title": "Relink missing media",
+      "description": "Finds media files that aren't where the project says (moved, or the project opened on another Mac) by name in the project folder and any search folders, checking their content against what the project knew, and points the project at them as one undo step. dryRun: true only reports.",
+      "operation": "relink",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Folders to look in as well as the project's own, subfolders included."
+          },
+          "dryRun": {
+            "type": "boolean",
+            "description": "Say what would be relinked without changing anything."
+          },
+          "label": {
+            "type": "string",
+            "description": "Undo label."
+          },
+          "author": {
+            "type": "string",
+            "description": "Who made the edit."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Relink missing media",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "loudness",
+      "title": "Loudness",
+      "description": "Measured loudness of each file with sound, the project's speech level (-20 LUFS unless changed) and master target (-14 LUFS), the gain each levelled clip gets, and how many speech clips aren't at the speech level, and which ones a limiter holds or would peak over the true peak ceiling once levelled (apply normalizeSpeech to level them and hold those peaks). With from, to, step or tracks it renders the mix instead and gives its loudness over time (momentary and short-term LUFS and peak at each step, as the timeline plays it, before export's master gain): use it for music swells, fades and sound effects against the voice. gains also checks each track's render against its gain lane and says where a gain change lands late or not at all. over lists where the mix peaks over a level, as stretches.",
+      "operation": "loudness",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "mediaID": {
+            "type": "string",
+            "description": "Just this file."
+          },
+          "from": {
+            "type": ["number", "string"],
+            "description": "Measure the mix from here. Default 0. Seconds or mm:ss.mmm."
+          },
+          "to": {
+            "type": ["number", "string"],
+            "description": "...to here. Default: the end. Seconds or mm:ss.mmm."
+          },
+          "step": {
+            "type": ["number", "string"],
+            "description": "A row every this many seconds (at least 0.1). Default: about 50 rows. Seconds or mm:ss.mmm."
+          },
+          "tracks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Only these audio tracks play, by name or ID, like [\"Music\", \"SFX\"]."
+          },
+          "gains": {
+            "type": "boolean",
+            "description": "Also check each track's render follows its gain lane (the tracks given, or every one that plays)."
+          },
+          "over": {
+            "type": "number",
+            "description": "List only the 400 ms windows whose highest sample is over this many dBFS, merged into stretches (0 for clipping, -1 for the true peak ceiling). Without step it measures every 0.4 s so nothing is missed."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Loudness",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "watch",
+      "title": "Wait for a change",
+      "description": "Waits until the project moves past a revision (default: now), for example to react when Mike edits in the app. Returns the changes, or changed: false after the timeout.",
+      "operation": "watch",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "description": "Wait for a revision after this one."
+          },
+          "timeout": {
+            "type": "number",
+            "description": "Seconds to wait. Default 30, at most 600."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Wait for a change",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "wait",
+      "title": "Wait for background work",
+      "description": "Waits until background work is done and says what finished: transcript, matte or proxy (the ones the project makes, or one file's with media), jobs (every analysis job, the default) or export (exports running through the app or tandem serve). With the app closed it makes the work itself while it waits. Use it instead of polling media or status. A file nothing makes a transcript for is an error pointing at `transcribe`. On timeout it returns what's still going; call it again to keep waiting.",
+      "operation": "wait",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "what": {
+            "type": "string",
+            "enum": ["transcript", "matte", "proxy", "jobs", "export"],
+            "description": "What to wait for. Default jobs."
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "A media ID, clip ID or path."
+            },
+            "description": "Just these files."
+          },
+          "timeout": {
+            "type": "number",
+            "description": "Seconds to wait. Default 600; keep it shorter if your client times tool calls out, and call again."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Wait for background work",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "assets_search",
+      "title": "Find assets",
+      "description": "Searches Mike's asset library (music, sound effects, stickers, icons, logos, fonts, stock) by words, kind and source. online: true asks the providers too (Noto emoji, Iconify, SVGL, Fontsource, Pexels, Pixabay); what they find joins the library, so its ID works with assets_use right away.",
+      "operation": "assets-search",
+      "usesProject": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Words to match, like whoosh or rocket."
+          },
+          "kind": {
+            "type": "string",
+            "description": "Kinds, comma separated: music, sfx, sticker, overlay, video, image, font, icon, logo, lut, title, transition."
+          },
+          "provider": {
+            "type": "string",
+            "description": "Only these sources, comma separated, like noto or import."
+          },
+          "online": {
+            "type": "boolean",
+            "description": "Ask the providers too, not just the library."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "At most this many results. Default 20."
+          },
+          "maxDuration": {
+            "type": ["number", "string"],
+            "description": "Only sounds and clips up to this long. Seconds or mm:ss.mmm."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Find assets",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      },
+      "defaults": {}
+    },
+    {
+      "name": "assets_use",
+      "title": "Use an asset",
+      "description": "Downloads and normalises an asset if needed, copies it into the project's assets folder (a shared library asset, shared:..., is used where it is instead, and archiving copies it in), records the use for the credits and adds it to the project's media. With at it's also placed on the track for its kind (sound effects on SFX at -15 dB, music on Music at -31 dB with a fade out, stickers and logos on Graphics). One undo step, credited to you.",
+      "operation": "assets-use",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "An asset ID from assets_search, like noto:1f680 or import:..."
+          },
+          "at": {
+            "type": ["number", "string"],
+            "description": "Place it here on the timeline. Leave out to only add it to the media. Seconds or mm:ss.mmm."
+          },
+          "duration": {
+            "type": ["number", "string"],
+            "description": "How long the clip lasts. Default: all of it (5 s for a still). Seconds or mm:ss.mmm."
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["place", "overwrite", "insert"],
+            "description": "place (default) fails if its track is taken there."
+          },
+          "anchor": {
+            "type": "string",
+            "enum": [
+              "bottom",
+              "bottomLeft",
+              "bottomRight",
+              "top",
+              "topLeft",
+              "topRight",
+              "centre",
+              "lowerThird"
+            ],
+            "description": "Where a picture sits: fitted to 40% of the frame's width and 30% of its height at this edge or corner. Stickers default to bottom."
+          },
+          "pop": {
+            "type": "boolean",
+            "description": "Pop it in at the start and out at the end."
+          },
+          "label": {
+            "type": "string",
+            "description": "Undo label."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false,
+        "required": ["id"]
+      },
+      "annotations": {
+        "title": "Use an asset",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      },
+      "defaults": {}
+    },
+    {
+      "name": "assets_show",
+      "title": "Show an asset",
+      "description": "What the library knows about one asset, without downloading anything: its name, kind, provider (and model), the prompt a generated one was made from, duration, loudness, licence and credit, and the file it plays from. Use it instead of reading meta.json.",
+      "operation": "assets-show",
+      "usesProject": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "An asset ID, like elevenlabs:music_2p839smz."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false,
+        "required": ["id"]
+      },
+      "annotations": {
+        "title": "Show an asset",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "assets_credits",
+      "title": "Description credits",
+      "description": "The credits block for the video description, built from the assets the project uses and their recorded licences, plus anything to sort out before publishing (unknown licences, subscriptions to keep).",
+      "operation": "assets-credits",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "includeOptional": {
+            "type": "boolean",
+            "description": "Also list courtesy credits nobody requires."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Description credits",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "assets_generate",
+      "title": "Generate a sound or music",
+      "description": "Makes a sound effect (0.5 to 30 s) or a music cue (3 to 600 s, instrumental) with ElevenLabs and adds it to the library. Each take is a paid request, so make one unless asked for more. Check assets_providers first if it fails.",
+      "operation": "assets-generate",
+      "usesProject": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["sfx", "music"]
+          },
+          "prompt": {
+            "type": "string",
+            "description": "What it should sound like, like \"short airy whoosh, left to right\"."
+          },
+          "duration": {
+            "type": ["number", "string"],
+            "description": "Length. Seconds or mm:ss.mmm."
+          },
+          "variations": {
+            "type": "integer",
+            "description": "Takes to make, each paid. Default 1, at most 4."
+          },
+          "loop": {
+            "type": "boolean",
+            "description": "Sound effects: loop seamlessly."
+          },
+          "vocals": {
+            "type": "boolean",
+            "description": "Music: allow vocals (instrumental by default)."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false,
+        "required": ["kind", "prompt"]
+      },
+      "annotations": {
+        "title": "Generate a sound or music",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      },
+      "defaults": {}
+    },
+    {
+      "name": "segments_list",
+      "title": "List saved segments",
+      "description": "Mike's saved segments (an intro, an outro, like and subscribe, comment below) in the shared library's Segments folder: each one's name, length, clips, the tracks it goes on and the fields it asks for.",
+      "operation": "segments",
+      "usesProject": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "List saved segments",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "segments_save",
+      "title": "Save clips as a segment",
+      "description": "Saves clips from the timeline as a reusable segment in the shared library (Segments/<name>/), with copies of the files they play beside it so it stands on its own. Name the clips exactly (clipIDs, linked partners aren't added) or give a range (from and to: every clip wholly inside). fields turns titles into words asked for on insert, each {\"clipID\": ..., \"label\": ...}. Doesn't change the project.",
+      "operation": "save-segment",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "What it's called in the library, like Intro."
+          },
+          "clipIDs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The clips to save."
+          },
+          "from": {
+            "type": ["number", "string"],
+            "description": "Or: every clip wholly after this time... Seconds or mm:ss.mmm."
+          },
+          "to": {
+            "type": ["number", "string"],
+            "description": "...and before this one. Seconds or mm:ss.mmm."
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "clipID": {
+                  "type": "string"
+                },
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["clipID"]
+            },
+            "description": "Titles whose words are asked for on insert; the words now are the default."
+          },
+          "replace": {
+            "type": "boolean",
+            "description": "Replace a segment already called that. Files only the old one had stay (projects play them); the rest goes to the Trash."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false,
+        "required": ["name"]
+      },
+      "annotations": {
+        "title": "Save clips as a segment",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "segments_insert",
+      "title": "Insert a segment",
+      "description": "Puts a saved segment on the timeline at a time: its clips go on tracks of the same names (made if missing), linked, as one undo step credited to you. Its files are used where they are in the library, added to the project's media as needed; archiving the project copies them in. values fills its fields.",
+      "operation": "insert-segment",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The segment's name, from segments_list."
+          },
+          "at": {
+            "type": ["number", "string"],
+            "description": "Where it starts. Seconds or mm:ss.mmm."
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Words for its fields, by key."
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["place", "overwrite", "insert"],
+            "description": "place (default) fails where a track is taken; overwrite replaces what's there; insert pushes later clips right."
+          },
+          "label": {
+            "type": "string",
+            "description": "Undo label."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false,
+        "required": ["name", "at"]
+      },
+      "annotations": {
+        "title": "Insert a segment",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "assets_providers",
+      "title": "Asset sources",
+      "description": "Every asset source and whether it works now, with what to fix: a missing key, an ElevenLabs key without the sound_generation permission, a source that's off until its licence is agreed.",
+      "operation": "assets-providers",
+      "usesProject": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Asset sources",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    },
+    {
+      "name": "effects",
+      "title": "Effects and layouts",
+      "description": "The effects addEffect accepts with their parameters and defaults, the transition types, the layout presets and the parameters setKeyframes can animate.",
+      "operation": "effects",
+      "usesProject": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Just this effect type."
+          },
+          "project": {
+            "type": "string",
+            "description": "Path to the .tandem file (or its folder). Defaults to the configured project."
+          },
+          "json": {
+            "type": "boolean",
+            "description": "Return the raw JSON result instead of readable text."
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Effects and layouts",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "defaults": {}
+    }
+  ]
+}

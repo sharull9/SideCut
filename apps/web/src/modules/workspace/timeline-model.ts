@@ -7,6 +7,38 @@ export function atFrame(seconds: number, project: Project): Time {
   return Time.fromSeconds(Math.max(0, seconds)).roundedToFrame(project.settings.frameRate);
 }
 
+/** Snap either moving edge within six screen pixels, excluding the dragged clips. */
+export function snapEdit(
+  seconds: number,
+  project: Project,
+  zoom: number,
+  exclude: readonly string[],
+  playhead: number,
+  duration = 0,
+): Time {
+  let nearest = seconds,
+    distance = 6 / zoom;
+  const consider = (target: number) => {
+    for (const candidate of [target, target - duration]) {
+      const next = Math.abs(candidate - seconds);
+      if (candidate >= 0 && next <= distance) {
+        nearest = candidate;
+        distance = next;
+      }
+    }
+  };
+  consider(0);
+  consider(playhead);
+  for (const marker of project.markers) consider(marker.time);
+  for (const track of [...project.videoTracks, ...project.audioTracks])
+    for (const clip of track.clips) {
+      if (exclude.includes(clip.id)) continue;
+      consider(clip.start.seconds);
+      consider(clip.start.seconds + clip.duration.seconds);
+    }
+  return atFrame(nearest, project);
+}
+
 export function stepFrame(time: Time, delta: number, project: Project): Time {
   const frame =
     time.roundedToFrame(project.settings.frameRate).frameIndex(project.settings.frameRate) +

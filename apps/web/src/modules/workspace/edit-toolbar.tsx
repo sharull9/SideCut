@@ -13,21 +13,28 @@ import {
   RiMergeCellsHorizontal,
   RiRulerLine,
   RiScissorsCutLine,
+  RiFocus2Line,
 } from "@remixicon/react";
 import { useEditorSession, useEditorView } from "./editor-session";
-import { useEditActions } from "./edit-actions";
+import type { EditActions } from "./edit-actions";
 import { TimeEditsDialog } from "./time-edits-dialog";
 import { SpeechToolsDialog } from "./speech-tools";
 import { ShortcutsDialog } from "./shortcuts-dialog";
 import { MOD, ToolTip } from "./tool-tip";
 import "./toolbar.css";
 
-export function EditToolbar({ run }: { run: (action: () => unknown) => void }) {
+export function EditToolbar({
+  run,
+  actions,
+}: {
+  run: (action: () => unknown) => void;
+  actions: EditActions;
+}) {
   const { session, editor } = useEditorSession();
   const keymap = useEditorView((s) => s.keymap),
     range = useEditorView((s) => s.range);
   const selected = useEditorView((s) => s.selected);
-  const actions = useEditActions(run);
+  const snapping = useEditorView((state) => state.snapping);
   const [start, setStart] = useState("0"),
     [finish, setFinish] = useState("1");
   useEffect(() => {
@@ -57,6 +64,17 @@ export function EditToolbar({ run }: { run: (action: () => unknown) => void }) {
           </label>
         </ToolTip>
         <ShortcutsDialog />
+        <ToolTip label="Toggle snapping" shortcut="S">
+          <Button
+            size="icon-xs"
+            variant={snapping ? "secondary" : "ghost"}
+            aria-label="Toggle snapping"
+            aria-pressed={snapping}
+            onClick={() => editor.getState().setSnapping(!snapping)}
+          >
+            <RiFocus2Line aria-hidden="true" />
+          </Button>
+        </ToolTip>
       </div>
       <div className="editor-toolbar-group">
         <ToolTip label="Split at playhead" shortcut={`${MOD} K`}>

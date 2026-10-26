@@ -1,5 +1,5 @@
 import { it, expect } from "vite-plus/test";
-import { shortcut, ownsKey } from "./keyboard";
+import { shortcut, ownsKey, workspaceShortcut } from "./keyboard";
 import { copyClips, pasteClips } from "./clipboard";
 import { decodeProjectFile } from "@sidecut/contracts/project";
 import { ProjectCoordinator } from "@sidecut/core/coordinator";
@@ -13,6 +13,21 @@ const key = (value: string, extra: Partial<KeyboardEvent> = {}) => ({
   defaultPrevented: false,
   ...extra,
 });
+it("routes workspace commands with either platform modifier and preserves other chords", () => {
+  for (const modifiers of [{ ctrlKey: true }, { metaKey: true }]) {
+    expect(workspaceShortcut(key("s", modifiers))).toBe("save");
+    expect(workspaceShortcut(key("o", modifiers))).toBe("open");
+    expect(workspaceShortcut(key("e", modifiers))).toBe("export");
+    for (const blocked of [
+      { shiftKey: true },
+      { altKey: true },
+      { isComposing: true },
+      { defaultPrevented: true },
+    ])
+      expect(workspaceShortcut(key("e", { ...modifiers, ...blocked }))).toBe(null);
+  }
+  expect(workspaceShortcut(key("e"))).toBe(null);
+});
 it("routes platform modifiers and suppresses composing/prevented events", () => {
   expect(shortcut(key("z", { ctrlKey: true }), "premiere")).toBe("undo");
   expect(shortcut(key("z", { metaKey: true, shiftKey: true }), "premiere")).toBe("redo");
@@ -20,6 +35,8 @@ it("routes platform modifiers and suppresses composing/prevented events", () => 
   expect(shortcut(key("Delete", { defaultPrevented: true }), "premiere")).toBe(null);
   expect(shortcut(key(" "), "minimal")).toBe(null);
   expect(shortcut(key("i"), "premiere")).toBe("markIn");
+  expect(shortcut(key("<", { shiftKey: true }), "premiere")).toBe("nudgeLeft");
+  expect(shortcut(key(">", { shiftKey: true }), "premiere")).toBe("nudgeRight");
 });
 it("leaves keys to focused tabs, sliders, summaries and buttons", () => {
   const el = (...roles: string[]) =>
@@ -32,6 +49,34 @@ it("leaves keys to focused tabs, sliders, summaries and buttons", () => {
   expect(ownsKey(body, "play")).toBe(false);
   expect(ownsKey(body, "forward")).toBe(false);
   expect(ownsKey(null, "play")).toBe(false);
+});
+it("routes the extended Premiere chords without consuming unsupported shifted letters", () => {
+  for (const [value, modifiers, action] of [
+    ["a", {}, "selectForward"],
+    ["a", { ctrlKey: true, shiftKey: true }, "selectForward"],
+    ["m", { shiftKey: true }, "nextMarker"],
+    ["m", { metaKey: true, shiftKey: true }, "previousMarker"],
+    ["l", { ctrlKey: true }, "toggleLink"],
+    ["z", { shiftKey: true }, "zoomToFit"],
+    ["\\", {}, "zoomToFit"],
+    ["=", { ctrlKey: true }, "zoomIn"],
+    ["-", { metaKey: true }, "zoomOut"],
+    ["Delete", { altKey: true }, "rippleRemove"],
+    ["ArrowLeft", { altKey: true }, "nudgeLeft"],
+    ["ArrowRight", { altKey: true }, "nudgeRight"],
+    ["x", {}, "markClip"],
+    ["m", {}, "addMarker"],
+    ["v", { ctrlKey: true, altKey: true }, "addVideoTrack"],
+    ["a", { metaKey: true, altKey: true }, "addAudioTrack"],
+    ["q", {}, "rippleTrimStart"],
+    ["w", {}, "rippleTrimEnd"],
+    ["s", {}, "toggleSnapping"],
+  ] as const) {
+    expect(shortcut(key(value, modifiers), "premiere")).toBe(action);
+    expect(shortcut(key(value, modifiers), "minimal")).toBe(null);
+  }
+  for (const value of ["i", "o", "a", "x", "ArrowUp", "ArrowDown"])
+    expect(shortcut(key(value, { shiftKey: true }), "premiere")).toBe(null);
 });
 it("pastes with new IDs and link groups as one atomic undo step", () => {
   const file = decodeProjectFile({

@@ -257,6 +257,9 @@ importers:
       '@sidecut/core':
         specifier: workspace:*
         version: link:../core
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.5
     devDependencies:
       '@sidecut/config':
         specifier: workspace:*

@@ -1,0 +1,716 @@
+{
+  "revision": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "sources": ["Sources/TandemAPI/MCPServer.swift", "Sources/TandemAPI/CommandSchema.swift"],
+  "sha256": "8af317f1c464ed838c09e8814545bb64a65e9fff717d79a3c3e516edf066d6d9",
+  "notice": "Tool properties/defaults/annotations extracted from pinned Swift. Apply command properties/definitions use the current portable SideCut command schema, not native model definitions. Project field help shortened. TANDEM-LICENSE applies.",
+  "tools": [
+    {
+      "name": "status",
+      "operation": "status",
+      "properties": ["project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Project status",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "timeline",
+      "operation": "timeline",
+      "properties": ["from", "to", "words", "summary", "format", "project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Read the timeline",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "media",
+      "operation": "media",
+      "properties": ["refresh", "project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "List media",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "transcript",
+      "operation": "transcript",
+      "properties": ["id", "from", "to", "project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Read a transcript",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "transcribe",
+      "operation": "transcribe",
+      "properties": ["media", "wait", "timeout", "label", "project", "json"],
+      "required": ["media"],
+      "defaults": {},
+      "annotations": {
+        "title": "Transcribe a file",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "search",
+      "operation": "search",
+      "properties": ["phrase", "limit", "project", "json"],
+      "required": ["phrase"],
+      "defaults": {},
+      "annotations": {
+        "title": "Find a phrase",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "pauses",
+      "operation": "pauses",
+      "properties": ["min", "from", "to", "project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "List pauses",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tighten",
+      "operation": "tighten",
+      "properties": [
+        "mike",
+        "sentence",
+        "comma",
+        "mid",
+        "midMin",
+        "protect",
+        "widen",
+        "min",
+        "keep",
+        "apply",
+        "from",
+        "to",
+        "label",
+        "author",
+        "expectedRevision",
+        "project",
+        "json"
+      ],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Tighten pauses",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "join",
+      "operation": "join",
+      "properties": [
+        "from",
+        "to",
+        "apply",
+        "label",
+        "author",
+        "expectedRevision",
+        "project",
+        "json"
+      ],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Join through-edits",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "captions",
+      "operation": "captions",
+      "properties": [
+        "from",
+        "to",
+        "words",
+        "y",
+        "track",
+        "apply",
+        "label",
+        "author",
+        "expectedRevision",
+        "project",
+        "json"
+      ],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Add word captions",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "short",
+      "operation": "short",
+      "properties": [
+        "apply",
+        "copy",
+        "copyPath",
+        "label",
+        "author",
+        "expectedRevision",
+        "project",
+        "json"
+      ],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Lay out a 9:16 short",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "cards",
+      "operation": "cards",
+      "properties": [
+        "markers",
+        "kicker",
+        "duration",
+        "track",
+        "insert",
+        "sounds",
+        "apply",
+        "label",
+        "author",
+        "expectedRevision",
+        "project",
+        "json"
+      ],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Add section cards",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "apply",
+      "operation": "apply",
+      "properties": [
+        "label",
+        "author",
+        "commands",
+        "expectedRevision",
+        "idempotencyKey",
+        "dryRun",
+        "project",
+        "json"
+      ],
+      "required": ["commands"],
+      "defaults": {},
+      "annotations": {
+        "title": "Edit the project",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "undo",
+      "operation": "undo",
+      "properties": ["expectedRevision", "count", "project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Undo",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "redo",
+      "operation": "redo",
+      "properties": ["expectedRevision", "count", "project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Redo",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "history",
+      "operation": "history",
+      "properties": ["limit", "project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Edit history",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "diff",
+      "operation": "diff",
+      "properties": ["since", "project", "json"],
+      "required": ["since"],
+      "defaults": {},
+      "annotations": {
+        "title": "What changed since",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "restore",
+      "operation": "restore",
+      "properties": [
+        "from",
+        "clips",
+        "fromTime",
+        "toTime",
+        "track",
+        "apply",
+        "label",
+        "author",
+        "expectedRevision",
+        "project",
+        "json"
+      ],
+      "required": ["from"],
+      "defaults": {},
+      "annotations": {
+        "title": "Restore clips",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "clips",
+      "operation": "clips",
+      "properties": ["track", "from", "to", "media", "ids", "project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Find clips",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "validate",
+      "operation": "validate",
+      "properties": ["project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Check the project",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "check",
+      "operation": "check",
+      "properties": ["from", "to", "changed", "quick", "cuts", "width", "project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Check for problems",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "sync",
+      "operation": "sync",
+      "properties": [
+        "delay",
+        "media",
+        "makeDefault",
+        "files",
+        "to",
+        "place",
+        "dryRun",
+        "label",
+        "expectedRevision",
+        "project",
+        "json"
+      ],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Sync picture and sound",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "comments",
+      "operation": "comments",
+      "properties": ["project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Mike's comments",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "frame",
+      "operation": "frame",
+      "properties": ["time", "maxWidth", "maxHeight", "output", "format", "project", "json"],
+      "required": ["time"],
+      "defaults": {
+        "maxWidth": 1280
+      },
+      "annotations": {
+        "title": "Look at a frame",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "frames",
+      "operation": "frames",
+      "properties": [
+        "times",
+        "every",
+        "from",
+        "to",
+        "width",
+        "output",
+        "format",
+        "project",
+        "json"
+      ],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Look at several frames",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "screenshot",
+      "operation": "screenshot",
+      "properties": ["output", "project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Screenshot the app",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "clip",
+      "operation": "clip",
+      "properties": ["start", "end", "output", "preset", "tracks", "audioOnly", "project", "json"],
+      "required": ["start", "end"],
+      "defaults": {},
+      "annotations": {
+        "title": "Render a review clip",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "export",
+      "operation": "export",
+      "properties": ["preset", "output", "from", "to", "format", "project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Export the video",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "archive",
+      "operation": "archive",
+      "properties": ["to", "withCache", "dryRun", "label", "author", "project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Archive the project",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "relink",
+      "operation": "relink",
+      "properties": ["search", "dryRun", "label", "author", "project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Relink missing media",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "loudness",
+      "operation": "loudness",
+      "properties": ["mediaID", "from", "to", "step", "tracks", "gains", "over", "project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Loudness",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "watch",
+      "operation": "watch",
+      "properties": ["revision", "timeout", "project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Wait for a change",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "wait",
+      "operation": "wait",
+      "properties": ["what", "media", "timeout", "project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Wait for background work",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "assets_search",
+      "operation": "assets-search",
+      "properties": ["text", "kind", "provider", "online", "limit", "maxDuration", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Find assets",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "assets_use",
+      "operation": "assets-use",
+      "properties": ["id", "at", "duration", "mode", "anchor", "pop", "label", "project", "json"],
+      "required": ["id"],
+      "defaults": {},
+      "annotations": {
+        "title": "Use an asset",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "assets_show",
+      "operation": "assets-show",
+      "properties": ["id", "json"],
+      "required": ["id"],
+      "defaults": {},
+      "annotations": {
+        "title": "Show an asset",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "assets_credits",
+      "operation": "assets-credits",
+      "properties": ["includeOptional", "project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Description credits",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "assets_generate",
+      "operation": "assets-generate",
+      "properties": ["kind", "prompt", "duration", "variations", "loop", "vocals", "json"],
+      "required": ["kind", "prompt"],
+      "defaults": {},
+      "annotations": {
+        "title": "Generate a sound or music",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "segments_list",
+      "operation": "segments",
+      "properties": ["json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "List saved segments",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "segments_save",
+      "operation": "save-segment",
+      "properties": ["name", "clipIDs", "from", "to", "fields", "replace", "project", "json"],
+      "required": ["name"],
+      "defaults": {},
+      "annotations": {
+        "title": "Save clips as a segment",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "segments_insert",
+      "operation": "insert-segment",
+      "properties": ["name", "at", "values", "mode", "label", "project", "json"],
+      "required": ["name", "at"],
+      "defaults": {},
+      "annotations": {
+        "title": "Insert a segment",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "assets_providers",
+      "operation": "assets-providers",
+      "properties": ["json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Asset sources",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "effects",
+      "operation": "effects",
+      "properties": ["type", "project", "json"],
+      "required": [],
+      "defaults": {},
+      "annotations": {
+        "title": "Effects and layouts",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    }
+  ]
+}

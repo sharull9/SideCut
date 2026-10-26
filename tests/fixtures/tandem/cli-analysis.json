@@ -1,0 +1,102 @@
+{
+  "revision": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "sources": [
+    "Sources/TandemCLI/CLI.swift",
+    "Sources/TandemAPI/Comments.swift",
+    "Sources/TandemAPI/Sync.swift",
+    "Sources/TandemAPI/Wait.swift",
+    "Sources/TandemAPI/Diff.swift"
+  ],
+  "examples": [
+    {
+      "operation": "comments",
+      "result": { "revision": 2, "comments": [] },
+      "text": "No comments (revision 2)."
+    },
+    {
+      "operation": "sync",
+      "result": {
+        "files": [{ "id": "cam", "path": "camera.mp4", "role": "camera", "pictureDelay": 0.08 }],
+        "defaultDelay": 0
+      },
+      "text": "How late each file's picture is against its sound (each clip shows its picture that much later, so lips match the voice):\n  cam  camera.mp4  camera  80 ms\nNew camera takes keep their picture as recorded (sidecut sync <seconds> --default sets a delay for them)."
+    },
+    {
+      "operation": "wait",
+      "result": {
+        "what": "transcript",
+        "done": false,
+        "timedOut": true,
+        "elapsed": 0.1,
+        "finished": [],
+        "pending": [
+          { "kind": "transcript", "path": "voice.wav", "state": "running", "progress": 0.25 }
+        ]
+      },
+      "text": "Still going after 0.1 s, when the wait timed out:\n  voice.wav: running 25%\nRun the same `sidecut wait` again to keep waiting."
+    },
+    {
+      "operation": "transcribe",
+      "result": {
+        "files": [{ "mediaID": "voice", "path": "voice.wav", "state": "ready", "words": 2 }]
+      },
+      "text": "Asked for transcripts of:\n  voice.wav (voice): ready, 2 words\n`sidecut transcript voice` reads it."
+    },
+    {
+      "operation": "diff",
+      "result": {
+        "revision": 3,
+        "since": "revision 2",
+        "changes": [
+          {
+            "kind": "added",
+            "id": "c",
+            "track": "V1 Camera",
+            "start": 0,
+            "end": 1,
+            "content": "Camera",
+            "details": []
+          }
+        ]
+      },
+      "text": "Since revision 2 (now revision 3): 1 added.\n  added  c  V1 Camera  00:00.000-00:01.000  Camera\nFull detail (each clip before and after) with --json. Put clips back with sidecut restore --from <revision or file> --clips <ids>."
+    },
+    {
+      "operation": "restore",
+      "result": {
+        "revision": 3,
+        "from": "revision 2",
+        "items": [
+          {
+            "action": "changeBack",
+            "id": "c",
+            "track": "V1 Camera",
+            "start": 0,
+            "end": 1,
+            "content": "Camera",
+            "details": ["position"]
+          }
+        ]
+      },
+      "text": "Restore 1 clip as it was in revision 2 (dry run, revision 3):\n  change back  c  V1 Camera  00:00.000-00:01.000  Camera: position\nNothing changed yet. Run again with --apply (or apply: true) to restore them. Transitions, media and markers aren't restored."
+    },
+    {
+      "operation": "clips",
+      "result": {
+        "revision": 2,
+        "clips": [
+          {
+            "id": "c",
+            "track": "V1 Camera",
+            "start": 0,
+            "end": 1,
+            "content": "Camera",
+            "enabled": false
+          }
+        ]
+      },
+      "text": "1 clip (revision 2):\n  c  V1 Camera  00:00.000-00:01.000  Camera  off"
+    }
+  ],
+  "notice": "Synthetic pinned contracts adapted to SideCut UI names and supported transport. Native progress streaming and headless routing remain separate. TANDEM-LICENSE applies."
+}

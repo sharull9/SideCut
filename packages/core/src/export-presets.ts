@@ -1,17 +1,13 @@
 import type { Project } from "@sidecut/contracts/project";
-import { formatProject } from "./formats";
+import { serviceExportPlan } from "./service-export";
 export type ExportPreset = "webm" | "review" | "youtube1080" | "short";
+export function exportPresetPlan(
+  project: Project,
+  preset: ExportPreset,
+  format: string | null = null,
+) {
+  return serviceExportPlan(project, { preset, ...(format == null ? {} : { format }) });
+}
 export function presetProject(project: Project, preset: ExportPreset): Project {
-  if (preset === "short") return formatProject(project, "portrait");
-  if (preset !== "review" && preset !== "youtube1080") return project;
-  const scale =
-    (preset === "review" ? 720 : 1080) / Math.min(project.settings.width, project.settings.height);
-  return {
-    ...project,
-    settings: {
-      ...project.settings,
-      width: Math.max(2, Math.floor((project.settings.width * scale) / 2) * 2),
-      height: Math.max(2, Math.floor((project.settings.height * scale) / 2) * 2),
-    },
-  };
+  return exportPresetPlan(project, preset).project;
 }

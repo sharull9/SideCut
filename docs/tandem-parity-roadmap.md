@@ -1002,7 +1002,7 @@ Accept when a real MCP client can inspect, edit, undo, and inspect a frame while
 ### Phase 132: TypeScript client
 
 - [x] Generate client request/command types from the authoritative schemas.
-- [ ] Port the reference SDK usage patterns over the compatible service.
+- [x] Port the reference SDK usage patterns over the compatible service. Guarded read/plan/edit, helpers and standalone Node acceptance pass within [documented SDK limits](verification/sdk.md).
 
 Accept when a small bulk-edit client handles conflicts and idempotent retries without relying on manually duplicated types.
 
@@ -1011,6 +1011,7 @@ Accept when a small bulk-edit client handles conflicts and idempotent retries wi
 ### Phase 133: Export presets and queue
 
 - [ ] Complete reference preset sizing/quality, alternate-format exports, and audio-only variants.
+      Portable preset planning, full-resolution WebM, alternate/portrait output, WAV and Windows H.264/4K HEVC pass [current export acceptance](verification/export-presets.md). Long-form quality/golden comparisons and the broader queue/delivery requirements remain open.
 - [x] Add queued jobs, cancellation, error details, and completed-output actions. Baseline UI queue; persistent/service queues remain pending.
 
 Accept each preset/output mode separately against dimensions, frame counts, audio levels, and warnings.
@@ -1057,6 +1058,10 @@ Accept when the installed build completes the journey and records signing/instal
 Accept when the installed build passes on real macOS. A Windows build cannot supply this evidence.
 
 ### Phase 139: Linux delivery
+
+Debian 12 x64 packaging and the unpacked/installed app journey pass in a UTF-8
+Xvfb container; see [the container evidence and limits](verification/linux-container.md).
+This does not close the distribution/desktop-session gates below.
 
 - [ ] Package/install for the selected Linux distributions and desktop environments.
 - [ ] Verify file dialogs, credential fallback, process cleanup, codecs, and the same journey.

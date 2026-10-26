@@ -1,11 +1,14 @@
 import { createStore } from "zustand/vanilla";
 import { Time } from "@sidecut/contracts/time";
+export const KEYMAP_STORAGE_KEY = "sidecut.keymap.v1";
 
 export interface EditorView {
   playhead: Time;
   playing: boolean;
   seekVersion: number;
   zoom: number;
+  snapping: boolean;
+  setSnapping: (snapping: boolean) => void;
   selected: readonly string[];
   selectMany: (ids: readonly string[]) => void;
   keymap: "premiere" | "minimal";
@@ -27,6 +30,8 @@ export function createEditorView() {
     playing: false,
     seekVersion: 0,
     zoom: 60,
+    snapping: true,
+    setSnapping: (snapping) => set({ snapping }),
     selected: [],
     selectMany: (selected) => set({ selected }),
     keymap: "premiere",

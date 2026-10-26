@@ -1,0 +1,119 @@
+{
+  "platform": "win32",
+  "reference": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "revision": 1,
+  "frames": {
+    "times": [0, 1],
+    "bytes": 1939,
+    "width": 216,
+    "height": 98,
+    "interval": [0, 0.5, 1]
+  },
+  "screenshot": {
+    "bytes": 109932,
+    "width": 1424,
+    "height": 835
+  },
+  "clip": {
+    "duration": 1,
+    "codec": "pcm_s16le",
+    "tracks": ["CLI Voice"],
+    "sampleRate": "48000",
+    "channels": 2,
+    "nonSilent": true
+  },
+  "export": {
+    "duration": "0.500000",
+    "codec": "h264",
+    "width": 320,
+    "height": 180,
+    "snapshotRevision": 1,
+    "originalPreserved": true
+  },
+  "loudness": {
+    "media": {
+      "mediaID": "voice",
+      "path": "voice.wav",
+      "integratedLUFS": -18.236423412049675,
+      "truePeakDBTP": -14.745973691521485,
+      "loudnessRange": 0,
+      "state": "ready"
+    },
+    "curve": {
+      "points": 6,
+      "integratedLUFS": -15.515782384582748,
+      "peaks": 6,
+      "gains": [
+        {
+          "trackID": "voice-track",
+          "track": "CLI Voice",
+          "compared": 1,
+          "lateBy": null,
+          "worstDB": 0,
+          "mismatches": []
+        }
+      ]
+    }
+  },
+  "failures": [
+    {
+      "args": ["frames"],
+      "code": 2
+    },
+    {
+      "args": ["frames", "99"],
+      "code": 2
+    },
+    {
+      "args": ["frames", "0", "-o", "../escape.png"],
+      "code": 2
+    },
+    {
+      "args": ["screenshot"],
+      "code": 2
+    },
+    {
+      "args": ["screenshot", "extra"],
+      "code": 2
+    },
+    {
+      "args": ["clip", "1", "0"],
+      "code": 2
+    },
+    {
+      "args": ["clip", "0", "1", "--audio-only", "--tracks", "missing"],
+      "code": 5
+    },
+    {
+      "args": ["export", "--preset", "missing"],
+      "code": 5
+    },
+    {
+      "args": ["export", "--to", "99"],
+      "code": 3
+    },
+    {
+      "args": ["export", "--preset", "final", "--to", "0.5", "-o", "movie.mp4"],
+      "code": 2
+    },
+    {
+      "args": ["loudness", "missing"],
+      "code": 5
+    },
+    {
+      "args": ["loudness", "--from", "0", "--to", "1", "--step", "0"],
+      "code": 2
+    },
+    {
+      "args": ["loudness", "--tracks", "missing"],
+      "code": 5
+    }
+  ],
+  "projectUnchanged": true,
+  "limits": [
+    "Windows development Electron runtime",
+    "Short local sine/solid fixture; no long or 4K encoder stress test",
+    "Managed exclusive output names and SideCut transport codes retained",
+    "Native macOS/Linux and upstream rendering comparison unverified"
+  ]
+}

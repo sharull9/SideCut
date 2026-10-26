@@ -4,7 +4,7 @@ import { TitleDialog } from "./title-dialog";
 import { MarkerStrips } from "./marker-strip";
 import { SectionCardsDialog } from "./section-cards";
 import { TemplateDialog } from "./template-dialog";
-import { useRef, useState, useEffect, useMemo, useSyncExternalStore } from "react";
+import { useCallback, useRef, useState, useEffect, useMemo, useSyncExternalStore } from "react";
 import { placeWords } from "@sidecut/core/transcript";
 import { Time } from "@sidecut/contracts/time";
 import {
@@ -33,9 +33,10 @@ import { ClipBlock } from "./clip-block";
 import { EditToolbar } from "./edit-toolbar";
 import { placeSource, MEDIA_DRAG_TYPE } from "./placement";
 import { PanelDivider } from "./panel-divider";
-import { selectionWithLinks } from "./edit-actions";
+import { selectionWithLinks, useEditActions } from "./edit-actions";
 import { ToolTip } from "./tool-tip";
 import "./toolbar.css";
+import { useDragAutoScroll } from "./drag-autoscroll";
 
 const HEADER = 248;
 const RIPPLE_HELP = {
@@ -100,6 +101,7 @@ function TrackName({
 
 export function Timeline({ run }: { run: (action: () => unknown) => void }) {
   const { session, snapshot, editor } = useEditorSession();
+  const actions = useEditActions(run, fitTimeline);
   const analysis = useSyncExternalStore(
     session.analysis.subscribe,
     session.analysis.getSnapshot,
@@ -136,17 +138,80 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
   const zoom = useEditorView((state) => state.zoom);
   const selected = useEditorView((state) => state.selected);
   const scroll = useRef<HTMLDivElement>(null);
+  const { track: trackAutoScroll, stop: stopAutoScroll } = useDragAutoScroll();
   const [trackHeights, setTrackHeights] = useState<Record<string, number>>({});
   const drag = useRef<{
     trackID: string;
     start: number;
     shift: boolean;
     selected: readonly string[];
+    range: { from: number; to: number } | null;
+    pointer: number;
+    lane: HTMLDivElement;
     moved: boolean;
   } | null>(null);
   const ignoreClick = useRef(false);
   const [box, setBox] = useState<{ trackID: string; from: number; to: number } | null>(null);
   const [viewport, setViewport] = useState(960);
+  const finishMarquee = useCallback(
+    (cancel = false) => {
+      const active = drag.current;
+      if (!active) return;
+      stopAutoScroll();
+      drag.current = null;
+      ignoreClick.current = active.moved || cancel;
+      if (cancel) {
+        editor.getState().selectMany(active.selected);
+        editor.getState().setRange(active.range);
+      }
+      if (active.lane.hasPointerCapture(active.pointer))
+        active.lane.releasePointerCapture(active.pointer);
+      setBox(null);
+    },
+    [editor, stopAutoScroll],
+  );
+  useEffect(() => {
+    const cancel = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && drag.current) {
+        event.preventDefault();
+        finishMarquee(true);
+      }
+    };
+    const blur = () => finishMarquee(true);
+    window.addEventListener("keydown", cancel, true);
+    window.addEventListener("blur", blur);
+    return () => {
+      window.removeEventListener("keydown", cancel, true);
+      window.removeEventListener("blur", blur);
+    };
+  }, [editor, finishMarquee]);
+  const updateMarquee = (lane: HTMLDivElement, clientX: number) => {
+    const active = drag.current;
+    if (!active) return;
+    const time = Math.max(0, (clientX - lane.getBoundingClientRect().left) / zoom);
+    if (Math.abs(time - active.start) * zoom < 5 && !active.moved) return;
+    active.moved = true;
+    const from = Math.min(time, active.start),
+      to = Math.max(time, active.start);
+    setBox({ trackID: active.trackID, from, to });
+    if (active.shift)
+      editor
+        .getState()
+        .setRange({ from: atFrame(from, project).seconds, to: atFrame(to, project).seconds });
+    else
+      editor.getState().selectMany(
+        selectionWithLinks(
+          project,
+          tracks
+            .find((track) => track.id === active.trackID)
+            ?.clips.filter(
+              (clip) =>
+                clip.start.seconds < to && clip.start.seconds + clip.duration.seconds > from,
+            )
+            .map((clip) => clip.id) ?? [],
+        ),
+      );
+  };
   useEffect(() => {
     const element = scroll.current;
     if (!element) return;
@@ -168,6 +233,12 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
   const project = snapshot.project;
   const tracks = [...project.videoTracks.toReversed(), ...project.audioTracks];
   const duration = projectDuration(project).seconds;
+  function fitTimeline() {
+    editor
+      .getState()
+      .setZoom(((scroll.current?.clientWidth ?? 960) - HEADER - 32) / Math.max(5, duration + 1));
+    if (scroll.current) scroll.current.scrollLeft = 0;
+  }
   const width = Math.min(2_000_000, Math.max(viewport - HEADER, 600, (duration + 5) * zoom));
   const tickStep =
     [0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600, 1800, 3600].find(
@@ -204,14 +275,7 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
               className="editor-tool-button"
               aria-label="+ Video"
               disabled={disabled}
-              onClick={() =>
-                run(() =>
-                  session.apply({
-                    label: "Add video track",
-                    commands: [{ addTrack: { kind: "video" } }],
-                  }),
-                )
-              }
+              onClick={() => actions.addTrack("video")}
             >
               <RiVideoAddLine data-icon="inline-start" aria-hidden="true" />
               <span className="editor-tool-text" aria-hidden="true">
@@ -226,14 +290,7 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
               className="editor-tool-button"
               aria-label="+ Audio"
               disabled={disabled}
-              onClick={() =>
-                run(() =>
-                  session.apply({
-                    label: "Add audio track",
-                    commands: [{ addTrack: { kind: "audio" } }],
-                  }),
-                )
-              }
+              onClick={() => actions.addTrack("audio")}
             >
               <RiFileMusicLine data-icon="inline-start" aria-hidden="true" />
               <span className="editor-tool-text" aria-hidden="true">
@@ -270,15 +327,7 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
               variant="ghost"
               className="editor-tool-button"
               aria-label="Fit"
-              onClick={() => {
-                editor
-                  .getState()
-                  .setZoom(
-                    ((scroll.current?.clientWidth ?? 960) - HEADER - 32) /
-                      Math.max(5, duration + 1),
-                  );
-                if (scroll.current) scroll.current.scrollLeft = 0;
-              }}
+              onClick={fitTimeline}
             >
               <RiExpandWidthLine data-icon="inline-start" aria-hidden="true" />
               <span className="editor-tool-text" aria-hidden="true">
@@ -308,7 +357,7 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
           {timecode(playhead, project)}
         </span>
       </div>
-      <EditToolbar run={run} />
+      <EditToolbar run={run} actions={actions} />
       <div
         ref={scroll}
         className="editor-timeline-scroll"
@@ -316,6 +365,7 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
         aria-label="Timeline tracks"
         tabIndex={0}
         onKeyDown={(event) => {
+          if (event.defaultPrevented) return;
           if (event.key === "Escape") {
             if (drag.current) editor.getState().selectMany(drag.current.selected);
             else editor.getState().select(null);
@@ -378,7 +428,7 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
               <div className="editor-playhead-head" style={{ left: playhead.seconds * zoom }} />
             </div>
           </div>
-          <MarkerStrips header={HEADER} width={width} zoom={zoom} run={run} />
+          <MarkerStrips header={HEADER} width={width} zoom={zoom} addMarker={actions.addMarker} />
           {tracks.map((track) => {
             const list = track.kind === "video" ? project.videoTracks : project.audioTracks;
             const index = list.findIndex((item) => item.id === track.id);
@@ -545,49 +595,23 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                       ),
                       shift: event.shiftKey,
                       selected: editor.getState().selected,
+                      range: editor.getState().range,
+                      pointer: event.pointerId,
+                      lane: event.currentTarget,
                       moved: false,
                     };
                   }}
                   onPointerMove={(event) => {
                     const active = drag.current;
                     if (!active || active.trackID !== track.id) return;
-                    const time = Math.max(
-                      0,
-                      (event.clientX - event.currentTarget.getBoundingClientRect().left) / zoom,
-                    );
-                    if (Math.abs(time - active.start) * zoom < 5 && !active.moved) return;
-                    active.moved = true;
-                    const from = Math.min(time, active.start),
-                      to = Math.max(time, active.start);
-                    setBox({ trackID: track.id, from, to });
-                    if (active.shift)
-                      editor.getState().setRange({
-                        from: atFrame(from, project).seconds,
-                        to: atFrame(to, project).seconds,
-                      });
-                    else
-                      editor.getState().selectMany(
-                        selectionWithLinks(
-                          project,
-                          track.clips
-                            .filter(
-                              (c) =>
-                                c.start.seconds < to && c.start.seconds + c.duration.seconds > from,
-                            )
-                            .map((c) => c.id),
-                        ),
-                      );
+                    const lane = event.currentTarget,
+                      clientX = event.clientX;
+                    updateMarquee(lane, clientX);
+                    trackAutoScroll(scroll.current, clientX, () => updateMarquee(lane, clientX));
                   }}
-                  onPointerUp={() => {
-                    ignoreClick.current = drag.current?.moved ?? false;
-                    drag.current = null;
-                    setBox(null);
-                  }}
-                  onPointerCancel={() => {
-                    if (drag.current) editor.getState().selectMany(drag.current.selected);
-                    drag.current = null;
-                    setBox(null);
-                  }}
+                  onPointerUp={() => finishMarquee()}
+                  onPointerCancel={() => finishMarquee(true)}
+                  onLostPointerCapture={() => finishMarquee(true)}
                   onDragOver={(event) => {
                     if (event.dataTransfer.types.includes(MEDIA_DRAG_TYPE)) {
                       event.preventDefault();
@@ -640,6 +664,7 @@ export function Timeline({ run }: { run: (action: () => unknown) => void }) {
                       zoom={zoom}
                       selected={selected}
                       run={run}
+                      actions={actions}
                     />
                   ))}
                   {box?.trackID === track.id && (

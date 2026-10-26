@@ -1,0 +1,98 @@
+{
+  "platform": "win32",
+  "reference": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "providers": 12,
+  "search": ["import:picture"],
+  "fetch": {
+    "id": "import:picture",
+    "state": "normalised"
+  },
+  "show": {
+    "prompt": "Fixture prompt",
+    "model": "Fixture model"
+  },
+  "use": {
+    "author": "runtime-cli",
+    "revision": 1,
+    "undo": true
+  },
+  "credits": "Credits\nFixture artist",
+  "starter": {
+    "counts": {
+      "sticker": 43,
+      "icon": 32,
+      "logo": 15
+    },
+    "total": 90,
+    "assets": 90,
+    "downloaded": false,
+    "warnings": []
+  },
+  "generate": {
+    "assets": [
+      {
+        "id": "elevenlabs:sfx_0cf6f461-ae33-4b0e-9188-1669e8147754",
+        "state": "normalised"
+      }
+    ],
+    "failures": ["Take 2: ElevenLabs request failed (500). Check provider setup and retry."],
+    "transport": "fixture only; no paid requests"
+  },
+  "segments": {
+    "saved": "CLI Intro",
+    "copied": 2,
+    "listed": 1,
+    "insertAuthor": "runtime-cli",
+    "field": "title",
+    "visible": true,
+    "undo": true
+  },
+  "failures": [
+    {
+      "args": ["assets", "search", "--kind", "nope"],
+      "code": 2
+    },
+    {
+      "args": ["assets", "search", "--provider", "missing"],
+      "code": 5
+    },
+    {
+      "args": ["assets", "fetch", "missing"],
+      "code": 5
+    },
+    {
+      "args": ["assets", "show", "missing"],
+      "code": 5
+    },
+    {
+      "args": ["assets", "use", "missing"],
+      "code": 5
+    },
+    {
+      "args": ["assets", "generate", "sfx", "Unconfirmed"],
+      "code": 2
+    },
+    {
+      "args": ["assets", "generate", "image", "Bad kind"],
+      "code": 2
+    },
+    {
+      "args": ["segments", "save", "Bad", "--clips", "missing"],
+      "code": 5
+    },
+    {
+      "args": ["segments", "insert", "Missing", "--at", "0"],
+      "code": 5
+    },
+    {
+      "args": ["segments", "insert", "CLI Intro"],
+      "code": 2
+    }
+  ],
+  "limits": [
+    "Library commands use the attached browser library rather than a native standalone filesystem library",
+    "Generation uses a fixture provider boundary and real normalization; no credentials or paid network calls",
+    "No online provider search in this run",
+    "Windows runtime; native platforms unverified"
+  ]
+}

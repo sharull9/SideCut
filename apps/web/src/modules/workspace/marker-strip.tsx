@@ -30,14 +30,14 @@ export function MarkerStrips({
   header,
   width,
   zoom,
-  run,
+  addMarker,
 }: {
   header: number;
   width: number;
   zoom: number;
-  run: (action: () => unknown) => void;
+  addMarker: () => void;
 }) {
-  const { session, snapshot, editor } = useEditorSession();
+  const { snapshot, editor } = useEditorSession();
   const playhead = useEditorView((s) => s.playhead);
   const [editing, setEditing] = useState<Marker | "new-comment" | null>(null);
   const disabled = snapshot.readOnly || snapshot.busy;
@@ -55,22 +55,7 @@ export function MarkerStrips({
       id: "markers",
       label: "Markers",
       items: markers.filter((m) => markerKind(m) !== "comment"),
-      add: () =>
-        run(() =>
-          session.apply({
-            label: "Add marker",
-            commands: [
-              {
-                addMarker: {
-                  marker: {
-                    time: playhead.seconds,
-                    name: `Marker ${markers.filter((m) => markerKind(m) !== "comment").length + 1}`,
-                  },
-                },
-              },
-            ],
-          }),
-        ),
+      add: addMarker,
     },
     {
       id: "comments",

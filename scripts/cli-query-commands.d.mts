@@ -1,5 +1,6 @@
 export function queryHelp(topic?: string): string | undefined;
 export function clock(seconds: number): string;
+export function parseCommandTime(value: unknown): number;
 export function queryText(operation: string, result: Record<string, unknown>): string;
 export function prepareQueryCommand(parsed: { flags: Map<string, unknown>; words: string[] }):
   | {

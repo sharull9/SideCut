@@ -1,0 +1,48 @@
+{
+  "platform": "win32",
+  "reference": "735a9b8e162c1f951044baa892d94993869f2e77",
+  "initialRevision": 0,
+  "preview": "Dry run of \"Preview\" at revision 0: it would work.\nCreated: cli-track, cli-solid\n1 clip added. Timeline is 00:03.000 long.\n",
+  "applied": {
+    "revision": 1,
+    "label": "CLI batch",
+    "author": "fixture-agent",
+    "createdIDs": ["cli-track", "cli-solid"],
+    "warnings": [],
+    "dryRun": false,
+    "repeated": false,
+    "added": ["cli-solid"],
+    "removed": [],
+    "changed": [],
+    "duration": 3
+  },
+  "filePreviewUnchanged": true,
+  "stdinApplied": true,
+  "visibleClip": "cli-solid",
+  "inlineApplied": {
+    "revision": 3,
+    "label": "Inline",
+    "author": "runtime-cli",
+    "createdIDs": [],
+    "warnings": [],
+    "dryRun": false,
+    "repeated": false,
+    "added": [],
+    "removed": [],
+    "changed": [],
+    "duration": 0
+  },
+  "environmentAuthor": "runtime-cli",
+  "idempotentRetryUnchanged": true,
+  "staleExitCode": 4,
+  "invalidBatchExitCode": 2,
+  "atomicFailureUnchanged": true,
+  "batchUndo": true,
+  "inlineUndo": true,
+  "finalRevision": 4,
+  "limits": [
+    "Windows development Electron runtime",
+    "Native reference execution and installed launchers unverified",
+    "Service-generated labels and transport errors retain SideCut conventions"
+  ]
+}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vite-plus/test";
 import { decodeProjectFile, encodeProjectFile } from "@sidecut/contracts/project";
-import { serviceExportPlan } from "./service-export";
+import { serviceExportPlan, serviceFormat } from "./service-export";
 import { speechLevel } from "./audio-editing";
 import { compareGains } from "./gain-follow";
 import { modelProblems, frameStats, frameProblems, checkRanges } from "./quality-check";
@@ -44,6 +44,26 @@ const fixture = () =>
     },
   });
 describe("123.04, 125.02-03, 126.01-02 reference follow-ups", () => {
+  it("resolves image and export formats through the same checked boundary", () => {
+    const source = fixture().project;
+    expect(serviceFormat(source, "main")).toBeUndefined();
+    expect(() => serviceFormat(source, "missing-format")).toThrow(
+      'No output format "missing-format"',
+    );
+    const portrait = { ...source, settings: { ...source.settings, width: 1080, height: 1920 } };
+    expect(serviceFormat(portrait, "portrait")).toBeUndefined();
+    expect(
+      serviceFormat({ ...portrait, settings: { ...portrait.settings, width: 1088 } }, "portrait"),
+    ).toBeUndefined();
+    const alternate = {
+      ...source,
+      settings: {
+        ...source.settings,
+        alternateFormats: [{ id: "square", name: "Square", width: 640, height: 640 }],
+      },
+    };
+    expect(serviceFormat(alternate, "square")).toBe("square");
+  });
   it("matches pinned request/result fixtures and rejects malformed or incompatible requests", () => {
     const file = fixture();
     for (const row of contracts.exports)

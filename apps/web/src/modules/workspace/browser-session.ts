@@ -2,7 +2,6 @@ import type { FolderMedia } from "@sidecut/contracts/desktop";
 import { createArchive, openArchive, type ArchiveResource } from "@sidecut/core/archive";
 import { importEDL, importFilmora, object } from "@sidecut/core/interchange";
 import { HostCoordinator, nativeBridge } from "./host-coordinator";
-import { formatProject } from "@sidecut/core/formats";
 import { parseCube } from "@sidecut/core/cube-lut";
 import { validateProject } from "@sidecut/core/validation";
 import { ProjectCoordinator } from "@sidecut/core/coordinator";
@@ -19,7 +18,8 @@ import { acquireProjectWriter } from "@sidecut/platform-browser/writer-lock";
 import { SaveQueue } from "@sidecut/platform-browser/save-queue";
 import { BrowserJobs } from "@sidecut/platform-browser/jobs";
 import { ExportQueue } from "@sidecut/platform-browser/export-queue";
-import { presetProject, type ExportPreset } from "@sidecut/core/export-presets";
+import { exportPresetPlan, type ExportPreset } from "@sidecut/core/export-presets";
+import { projectDuration } from "@sidecut/core/render-plan";
 import { probeLocalFile, mediaIdentity } from "@sidecut/platform-browser/media";
 import { MediaAnalysis } from "./media-analysis";
 import { assetUsePlan, assetUses, recordAssetUse } from "@sidecut/core/asset-use";
@@ -93,35 +93,59 @@ function coordinatorState(coordinator: ProjectCoordinator | HostCoordinator): Se
 export class BrowserProjectSession {
   readonly jobs = new BrowserJobs(2);
   readonly exports = new ExportQueue();
-  queueExport(format: string | null = null, preset: ExportPreset | "wav" = "webm") {
+  queueExport(
+    format: string | null = null,
+    preset: ExportPreset | "wav" = "webm",
+    range: { from: number; to: number } | null = null,
+  ) {
+    format = preset === "short" ? "portrait" : preset === "wav" ? null : format;
     const { project, revision } = this.state;
-    const name = `${project.name.replace(/[\\/:*?"<>|]/g, "_") || "SideCut"}${format ? ` ${format}` : ""}${preset === "webm" ? "" : ` ${preset}`}.${preset === "wav" ? "wav" : "webm"}`;
+    const bounds = range ? { ...range } : null;
+    if (
+      bounds &&
+      (!Number.isFinite(bounds.from) ||
+        !Number.isFinite(bounds.to) ||
+        bounds.from < 0 ||
+        bounds.to <= bounds.from ||
+        bounds.to > projectDuration(project).seconds)
+    )
+      throw new Error("Choose a non-empty export range inside the sequence.");
+    const name = `${project.name.replace(/[\\/:*?"<>|]/g, "_") || "SideCut"}${format ? ` ${format}` : ""}${preset === "webm" ? "" : ` ${preset}`}${bounds ? ` ${bounds.from.toFixed(3)}-${bounds.to.toFixed(3)}s` : ""}.${preset === "wav" ? "wav" : "webm"}`;
     return this.exports.enqueue(
       name,
       async (signal, progress) => {
         if (this.state.project.id !== project.id || this.state.revision !== revision)
           throw new Error("Project changed after this export was queued. Queue it again.");
         if (preset === "wav") {
-          const { renderService } = await import("./service-render");
-          const duration = Math.max(
-            0,
-            ...[...project.videoTracks, ...project.audioTracks].flatMap((t) =>
-              t.clips.map((c) => c.start.seconds + c.duration.seconds),
-            ),
-          );
-          const result = await renderService(
-            this,
-            "clip",
-            { start: 0, end: duration, audioOnly: true, format },
-            signal,
-          );
-          if (!("data" in result) || typeof result.data !== "string")
-            throw new Error("Audio export returned no data.");
-          return new Blob([Uint8Array.from(atob(result.data), (c) => c.charCodeAt(0))], {
-            type: "audio/wav",
-          });
+          if (!this.store || this.state.busy || this.state.saveState === "loading")
+            throw new Error("Wait for the current project operation to finish.");
+          const epoch = this.epoch;
+          this.update({ busy: true });
+          try {
+            const { renderService } = await import("./service-render");
+            return await this.jobs.run("export", "Export audio", 10, signal, async (jobSignal) => {
+              const result = await renderService(
+                this,
+                "clip",
+                {
+                  start: bounds?.from ?? 0,
+                  end: bounds?.to ?? projectDuration(project).seconds,
+                  audioOnly: true,
+                  format,
+                },
+                jobSignal,
+              );
+              if (!("data" in result) || typeof result.data !== "string")
+                throw new Error("Audio export returned no data.");
+              return new Blob([Uint8Array.from(atob(result.data), (c) => c.charCodeAt(0))], {
+                type: "audio/wav",
+              });
+            });
+          } finally {
+            if (this.epoch === epoch) this.update({ busy: false });
+          }
         }
-        return this.exportWebM(signal, progress, format, preset);
+        return this.exportWebM(signal, progress, format, preset, bounds);
       },
       preset,
     );
@@ -484,11 +508,13 @@ export class BrowserProjectSession {
     onProgress: (progress: number) => void,
     format: string | null = null,
     preset: ExportPreset = "webm",
+    range: { from: number; to: number } | null = null,
   ) {
     if (!this.store || this.state.busy || this.state.saveState === "loading")
       throw new Error("Wait for the current project operation to finish.");
     const store = this.store,
-      project = presetProject(formatProject(this.state.project, format), preset),
+      settings = exportPresetPlan(this.state.project, preset, format),
+      project = settings.project,
       epoch = this.epoch,
       controller = new AbortController();
     this.exportController = controller;
@@ -501,39 +527,20 @@ export class BrowserProjectSession {
         10,
         AbortSignal.any([signal, controller.signal]),
         async (jobSignal, progress) => {
-          const rendered = await renderWebM(
+          return renderWebM(
             project,
             (id) => store.resource(project.id, id),
             jobSignal,
             (value) => {
-              const portion = this.native ? value * 0.8 : value;
-              progress(portion);
-              onProgress(portion);
+              progress(value);
+              onProgress(value);
+            },
+            {
+              fullResolution: true,
+              bitrate: settings.videoBitrate,
+              ...(range ? { start: range.from, end: range.to } : {}),
             },
           );
-          if (!this.native) return rendered;
-          const id = crypto.randomUUID();
-          const stop = this.native.nativeProgress((jobID, value) => {
-            if (jobID === id) {
-              progress(0.8 + value * 0.2);
-              onProgress(0.8 + value * 0.2);
-            }
-          });
-          const cancel = () => {
-            void this.native?.nativeCancel(id);
-          };
-          jobSignal.addEventListener("abort", cancel, { once: true });
-          try {
-            jobSignal.throwIfAborted();
-            const input = new Uint8Array(await rendered.arrayBuffer());
-            jobSignal.throwIfAborted();
-            const bytes = await this.native.nativeMedia(id, "export", input);
-            jobSignal.throwIfAborted();
-            return new Blob([new Uint8Array(bytes)], { type: "video/webm" });
-          } finally {
-            stop();
-            jobSignal.removeEventListener("abort", cancel);
-          }
         },
       );
     } finally {

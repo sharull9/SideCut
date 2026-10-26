@@ -139,26 +139,47 @@ export function previewIssue(project: Project, time: number): string | null {
   return null;
 }
 
-export function exportPlan(project: Project, fullResolution = false) {
-  const duration = projectDuration(project).seconds;
+export function exportPlan(
+  project: Project,
+  fullResolution = false,
+  range: { start: number; end: number } | null = null,
+) {
+  const sequenceDuration = projectDuration(project).seconds;
+  const start = range?.start ?? 0,
+    end = range?.end ?? sequenceDuration;
+  if (
+    range &&
+    (!Number.isFinite(start) ||
+      !Number.isFinite(end) ||
+      start < 0 ||
+      end <= start ||
+      end > sequenceDuration)
+  )
+    throw new Error("Invalid export range.");
+  const duration = end - start;
   if (duration <= 0) throw new Error("Place a source before exporting.");
-  if (duration > 300)
-    throw new Error("The first browser exporter supports sequences up to five minutes.");
+  if (duration > 300) throw new Error("The browser exporter supports ranges up to five minutes.");
   const fps = project.settings.frameRate.numerator / project.settings.frameRate.denominator;
   if (fps < 1 || fps > 60)
     throw new Error("Browser export currently supports frame rates from 1 to 60 fps.");
   const boundaries = [
-    0,
+    start,
     ...[...project.videoTracks, ...project.audioTracks].flatMap((t) =>
       t.clips.flatMap((c) => [c.start.seconds, c.start.seconds + c.duration.seconds]),
     ),
-  ];
+    ...[...project.videoTracks, ...project.audioTracks].flatMap((track) =>
+      track.transitions.flatMap((transition) => {
+        const window = transitionWindow(track, transition);
+        return window ? [window.start, window.end] : [];
+      }),
+    ),
+  ].filter((time) => time >= start && time < end);
   for (const time of boundaries) {
     const issue = previewIssue(project, time);
     if (issue) throw new Error(issue);
   }
-  const enabledAudio = enabledTracks(project, "audio").filter((t) =>
-    t.clips.some((c) => c.enabled && !c.audio?.muted && !c.freezeFrame),
+  const hasAudio = audioSegments(project).some(
+    (segment) => segment.start < end && segment.end > start,
   );
   const w = project.settings.width,
     h = project.settings.height;
@@ -172,7 +193,7 @@ export function exportPlan(project: Project, fullResolution = false) {
     fps,
     width: Math.max(2, Math.floor((w * scale) / 2) * 2),
     height: Math.max(2, Math.floor((h * scale) / 2) * 2),
-    hasAudio: enabledAudio.length > 0,
+    hasAudio,
   };
 }
 

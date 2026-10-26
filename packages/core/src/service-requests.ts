@@ -40,6 +40,7 @@ export const serviceDefinitions = {
   watch: { revision: "integer", generation: "integer", timeout: "number" },
   wait: { what: "string", media: "strings", timeout: "number" },
   sync: {
+    author: "string",
     delay: "time",
     media: "strings",
     makeDefault: "boolean",
@@ -142,7 +143,13 @@ export const serviceDefinitions = {
     track: "string",
   },
   transcript: { id: "string", ...range },
-  transcribe: { media: "strings", wait: "boolean", timeout: "number", label: "string" },
+  transcribe: {
+    media: "strings",
+    wait: "boolean",
+    timeout: "number",
+    label: "string",
+    author: "string",
+  },
   search: { phrase: "string", limit: "signedInteger" },
   pauses: { ...range, min: "time" },
   tighten: {

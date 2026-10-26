@@ -1,3 +1,4 @@
+import { yieldTask } from "./yield-task";
 import type { Project } from "@sidecut/contracts/project";
 import { audioSegments, seamlessAudio } from "@sidecut/core/audio-plan";
 import { projectDuration } from "@sidecut/core/render-plan";
@@ -45,7 +46,7 @@ const needsProcessing = (clip: Clip) =>
   );
 const checkpoint = (signal?: AbortSignal) => async () => {
   signal?.throwIfAborted();
-  await new Promise((resolve) => setTimeout(resolve, 0));
+  await yieldTask();
   signal?.throwIfAborted();
 };
 async function processedClip(
@@ -90,7 +91,7 @@ async function processedClip(
         input[c]![i] = (values[j] ?? 0) * (1 - f) + (values[j + 1] ?? values[j] ?? 0) * f;
       }
     }
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await yieldTask();
   }
   let measured = -Infinity;
   if (typeof clip.audio?.normalizeTo === "number") {
@@ -187,7 +188,7 @@ export async function masterAudio(
     for (let i = 0; i < values[0]!.length; i += 32768) {
       signal?.throwIfAborted();
       meter.process(values.map((p) => p.subarray(i, i + 32768)));
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await yieldTask();
     }
     return meter.result();
   };
@@ -240,7 +241,8 @@ export async function* mixTimelineAudio(
   options: MixOptions = {},
 ) {
   if (options.master) {
-    if (duration > 300) throw new Error("Browser mastering supports sequences up to five minutes.");
+    if (duration - (options.start ?? 0) > 300)
+      throw new Error("Browser mastering supports ranges up to five minutes.");
     const mixed = [
       new Float32Array(Math.ceil((duration - (options.start ?? 0)) * sampleRate)),
       new Float32Array(Math.ceil((duration - (options.start ?? 0)) * sampleRate)),
@@ -274,7 +276,7 @@ export async function* mixTimelineAudio(
       for (let c = 0; c < 2; c++)
         data.set(mastered[c]!.subarray(first, first + frames), c * frames);
       yield { data, sampleRate, numberOfChannels: 2, timestamp: first / sampleRate, frames };
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await yieldTask();
     }
     return;
   }
@@ -297,13 +299,10 @@ export async function* mixTimelineAudio(
       Number(segment.clip.audio?.fadeOut ?? 0) < 0.003 &&
       !segment.tailWindow,
   }));
-  const total = Math.ceil(duration * sampleRate);
+  const firstFrame = Math.max(0, Math.floor((options.start ?? 0) * sampleRate));
+  const total = firstFrame + Math.ceil((duration - (options.start ?? 0)) * sampleRate);
   try {
-    for (
-      let first = Math.max(0, Math.floor((options.start ?? 0) * sampleRate));
-      first < total;
-      first += blockFrames
-    ) {
+    for (let first = firstFrame; first < total; first += blockFrames) {
       signal.throwIfAborted();
       const count = Math.min(blockFrames, total - first),
         start = first / sampleRate,
@@ -359,8 +358,15 @@ export async function* mixTimelineAudio(
           continue;
         }
         source.iterator ??= (await reader(segment.mediaID)).audio(
-          segment.sourceStart,
-          segment.sourceEnd,
+          Math.max(
+            segment.sourceStart,
+            clip.sourceStart.seconds +
+              (Math.max(start, segment.start) - clip.start.seconds) * clip.speed,
+          ),
+          Math.min(
+            segment.sourceEnd,
+            clip.sourceStart.seconds + (duration - clip.start.seconds) * clip.speed,
+          ),
         );
         const from = Math.max(0, Math.ceil((segment.start - start) * sampleRate - 1e-7)),
           to = Math.min(count, Math.ceil((segment.end - start) * sampleRate - 1e-7));
@@ -395,7 +401,7 @@ export async function* mixTimelineAudio(
         }
       }
       yield { data, sampleRate, numberOfChannels: 2, timestamp: start, frames: count };
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await yieldTask();
     }
   } finally {
     await Promise.all(sources.map((source) => source.iterator?.return?.()));

@@ -29,8 +29,10 @@ import { Timeline } from "./timeline";
 import { Viewer } from "./viewer";
 import { ClipInspector } from "./clip-inspector";
 import { SidePanel } from "./side-panel";
-import { useEditorSession } from "./editor-session";
+import { useEditorSession, useEditorView } from "./editor-session";
+import { KEYMAP_STORAGE_KEY } from "./editor-view";
 import { PanelDivider } from "./panel-divider";
+import { protectsEditing, workspaceShortcut } from "./keyboard";
 import {
   DEFAULT_PANELS,
   DIVIDER_SIZE,
@@ -73,10 +75,12 @@ function PanelRail({
 }
 
 export function WorkspaceHome() {
-  const { session, snapshot } = useEditorSession();
+  const { session, snapshot, editor } = useEditorSession();
+  const keymap = useEditorView((state) => state.keymap);
   const projectPicker = useRef<HTMLInputElement>(null);
   const filmoraPicker = useRef<HTMLInputElement>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
   const locked = snapshot.readOnly || snapshot.busy;
   function run(action: () => unknown) {
     setActionError(null);
@@ -84,11 +88,28 @@ export function WorkspaceHome() {
       .then(action)
       .catch((cause) => setActionError(cause instanceof Error ? cause.message : String(cause)));
   }
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (protectsEditing(event.target)) return;
+      const action = workspaceShortcut(event);
+      if (!action) return;
+      event.preventDefault();
+      if (event.repeat || snapshot.saveState === "loading") return;
+      if (action === "save") {
+        if (!locked) run(() => session.retrySave());
+      } else if (action === "open") {
+        if (!snapshot.busy) projectPicker.current?.click();
+      } else setExportOpen(true);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  });
   const [sideTab, setSideTab] = useState<SideTab>("media");
   const [sizes, setSizes] = useState<PanelSizes>({ ...DEFAULT_PANELS });
   const [dimensions, setDimensions] = useState({ width: 1280, height: 636 });
   const [preferencesReady, setPreferencesReady] = useState(false);
   const [preferenceError, setPreferenceError] = useState(false);
+  const [keymapError, setKeymapError] = useState(false);
   const container = useRef<HTMLDivElement>(null);
   const previousWidth = useRef(1280);
   const fitted = fitPanels(sizes, dimensions.width, dimensions.height);
@@ -109,6 +130,9 @@ export function WorkspaceHome() {
         if (!active) return;
         setSizes(readPanelSizes(readPreference(PANEL_STORAGE_KEY)));
         setSideTab(readSideTab(readPreference(SIDE_TAB_KEY)));
+        editor
+          .getState()
+          .setKeymap(readPreference(KEYMAP_STORAGE_KEY) === "minimal" ? "minimal" : "premiere");
         setPreferencesReady(true);
       })
       .catch(() => {
@@ -126,7 +150,7 @@ export function WorkspaceHome() {
       active = false;
       observer.disconnect();
     };
-  }, []);
+  }, [editor]);
 
   useEffect(() => {
     if (!preferencesReady) return;
@@ -138,6 +162,12 @@ export function WorkspaceHome() {
   useEffect(() => {
     if (preferencesReady) void writePreference(SIDE_TAB_KEY, sideTab).catch(() => {});
   }, [sideTab, preferencesReady]);
+  useEffect(() => {
+    if (!preferencesReady) return;
+    void writePreference(KEYMAP_STORAGE_KEY, keymap)
+      .then(() => setKeymapError(false))
+      .catch(() => setKeymapError(true));
+  }, [keymap, preferencesReady]);
 
   function updatePanel<K extends keyof PanelSizes>(panel: K, value: PanelSizes[K]) {
     setSizes((current) => ({ ...current, [panel]: value }));
@@ -323,7 +353,7 @@ export function WorkspaceHome() {
                 </Button>
               </Tip>
             </div>
-            <ExportDialog />
+            <ExportDialog open={exportOpen} onOpenChange={setExportOpen} />
           </div>
         </header>
 
@@ -548,6 +578,9 @@ export function WorkspaceHome() {
             Revision {snapshot.revision}
           </span>
           {preferenceError && <span role="alert">Panel sizes could not be saved</span>}
+          {keymapError && (
+            <span role="alert">Keyboard layout could not be saved on this device</span>
+          )}
         </footer>
       </main>
     </TooltipProvider>

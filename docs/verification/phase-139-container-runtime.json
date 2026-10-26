@@ -1,0 +1,37 @@
+{
+  "runs": [
+    {
+      "scope": "Docker defaults",
+      "exitCode": 1,
+      "startedAt": "2026-10-26T05:40:05.095770609Z",
+      "finishedAt": "2026-10-26T05:40:05.883213344Z",
+      "result": "Chromium sandbox namespace creation refused"
+    },
+    {
+      "scope": "Sandbox namespace capability, default locale",
+      "exitCode": 1,
+      "startedAt": "2026-10-26T05:40:10.105520332Z",
+      "finishedAt": "2026-10-26T05:40:40.682745352Z",
+      "result": "IndexedDB backing-store failure in Unicode profile"
+    },
+    {
+      "scope": "Sandbox namespace capability, UTF-8 locale",
+      "exitCode": 0,
+      "startedAt": "2026-10-26T05:41:20.13291714Z",
+      "finishedAt": "2026-10-26T05:41:34.188774522Z",
+      "result": "Unpacked and installed packaged journeys passed; Debian package removed"
+    }
+  ],
+  "network": "none",
+  "testedAt": "2026-10-26T05:43:14.2138631Z",
+  "image": "sha256:9fd61dd51c787c2e822a2d2e382172d14b7ebf67626fed837d9c0dff729a5049",
+  "runtimeRequirements": [
+    "SYS_ADMIN container capability",
+    "seccomp=unconfined container policy",
+    "LANG=C.UTF-8",
+    "LC_ALL=C.UTF-8",
+    "XDG_CURRENT_DESKTOP=GNOME"
+  ],
+  "user": "node (uid 1000)",
+  "hostMounts": []
+}

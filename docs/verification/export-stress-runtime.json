@@ -1,0 +1,34 @@
+{
+  "testedAt": "2026-10-25T17:49:48.833Z",
+  "platform": "win32",
+  "hidden": true,
+  "backgroundThrottling": true,
+  "results": [
+    {
+      "width": 320,
+      "height": 180,
+      "duration": "300.020000",
+      "frames": 9000,
+      "bytes": 548434,
+      "elapsedSeconds": 251.7180967,
+      "peakWorkingSetMiB": 1140.71875,
+      "progressUpdates": 9001
+    },
+    {
+      "width": 3840,
+      "height": 2160,
+      "duration": "30.020000",
+      "frames": 900,
+      "bytes": 863342,
+      "elapsedSeconds": 20.88110990000001,
+      "peakWorkingSetMiB": 1102.44921875,
+      "progressUpdates": 901
+    }
+  ],
+  "limits": [
+    "Synthetic static solid picture and one-second tone followed by silence",
+    "Five-minute 320x180 and thirty-second 4K tests, not five minutes at 4K",
+    "Working set sums this Electron app's processes at one-second intervals; not a memory guarantee",
+    "No native Tandem golden, complex effects, source-video decoding stress or other platform acceptance"
+  ]
+}

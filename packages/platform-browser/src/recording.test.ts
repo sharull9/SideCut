@@ -203,6 +203,32 @@ describe("local recording ownership", () => {
     expect(devices.getDisplayMedia).not.toHaveBeenCalled();
   });
 
+  it("detects stopped tracks even if the source emits no ended event", async () => {
+    vi.useFakeTimers();
+    await capture.start({ source: "screen", microphone: false });
+    video.stop();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(capture.getSnapshot().status).toBe("ready");
+  });
+
+  it("retains committed data on close and on write failure when durable storage supports recovery", async () => {
+    file.preserve = vi.fn(async () => {});
+    await capture.start({ source: "screen", microphone: false });
+    Recorder.latest.data("prefix");
+    await vi.waitFor(() => expect(file.write).toHaveBeenCalled());
+    await capture.close();
+    expect(file.preserve).toHaveBeenCalledOnce();
+    expect(file.remove).not.toHaveBeenCalled();
+    expect(video.stop).toHaveBeenCalled();
+    expect(capture.getSnapshot().status).toBe("idle");
+    await capture.start({ source: "microphone", microphone: false });
+    vi.mocked(file.write).mockRejectedValue(new Error("Storage quota"));
+    Recorder.latest.data();
+    await failed();
+    expect(file.preserve).toHaveBeenCalledTimes(2);
+    expect(file.remove).not.toHaveBeenCalled();
+  });
+
   it("cannot publish a ready file after cancellation during finalization", async () => {
     let finish: ((value: File) => void) | undefined;
     vi.mocked(file.finish).mockImplementation(

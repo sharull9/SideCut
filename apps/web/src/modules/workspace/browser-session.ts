@@ -165,7 +165,7 @@ export class BrowserProjectSession {
       throw new Error("Finish or discard the current recording first.");
     this.recordingProjectID = this.state.project.id;
     this.recordingRequest = request;
-    await this.recording.start(request);
+    await this.recording.start(request, this.recordingProjectID);
   }
   async importRecording() {
     this.assertWritable();
@@ -1339,7 +1339,7 @@ export class BrowserProjectSession {
   }
 
   async close() {
-    const discardRecording = this.recording.discard().catch(() => {});
+    const discardRecording = this.recording.close().catch(() => {});
     this.exports.clear();
     this.jobs.cancelAll();
     this.analysis.reset();

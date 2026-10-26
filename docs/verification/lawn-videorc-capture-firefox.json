@@ -1,0 +1,66 @@
+{
+  "testedAt": "2026-10-26T16:48:57.987Z",
+  "platform": "win32",
+  "production": true,
+  "syntheticDevices": true,
+  "recordings": [
+    {
+      "source": "camera",
+      "bytes": 101550,
+      "streams": [
+        {
+          "codec": "vp8",
+          "packets": "70",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "codec": "opus",
+          "packets": "116"
+        }
+      ]
+    },
+    {
+      "source": "microphone",
+      "bytes": 34947,
+      "streams": [
+        {
+          "codec": "opus",
+          "packets": "104"
+        }
+      ]
+    },
+    {
+      "source": "screen",
+      "bytes": 39203,
+      "streams": [
+        {
+          "codec": "vp8",
+          "packets": "41",
+          "width": 320,
+          "height": 180
+        }
+      ]
+    }
+  ],
+  "checks": {
+    "readOnlyCannotStart": true,
+    "survivesPanelSwitch": true,
+    "recordImportPlaceReload": true,
+    "editableRecordingExport": {
+      "bytes": 73548,
+      "codecs": ["vp8", "opus"]
+    },
+    "completedCaptureSurvivesAcceptedReload": true,
+    "activeCaptureRetainsExportablePrefixAfterNavigation": true,
+    "cancelAddsNoMedia": true,
+    "replacementProjectPreservesDownloadAndBlocksImport": true,
+    "permissionFailureAllowsRetry": true,
+    "stagedFilesCleaned": true
+  },
+  "errors": [],
+  "accepted": true,
+  "engine": "firefox",
+  "browser": "157.0",
+  "step": "record screen"
+}

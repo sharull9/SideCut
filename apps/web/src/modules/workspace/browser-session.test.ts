@@ -109,7 +109,7 @@ describe("persistent browser session", () => {
     const projectID = value.getSnapshot().project.id;
     const start = vi.spyOn(value.recording, "start").mockResolvedValue();
     await value.startRecording({ source: "microphone", microphone: false });
-    expect(start).toHaveBeenCalledWith({ source: "microphone", microphone: false });
+    expect(start).toHaveBeenCalledWith({ source: "microphone", microphone: false }, projectID);
     expect(value.recordingProjectID).toBe(projectID);
     vi.spyOn(value.recording, "getSnapshot").mockReturnValue({
       status: "recording",

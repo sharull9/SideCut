@@ -35,6 +35,7 @@ import { MediaThumb } from "./source-samples";
 import { LocalAssetLibrary } from "./asset-library";
 import { SavedSegments } from "./saved-segments";
 import { RecordingControls } from "./recording-controls";
+import { SavedRecordings } from "./saved-recordings";
 import "./media-panel.css";
 
 type View = "list" | "grid";
@@ -406,6 +407,7 @@ export function MediaBin({
         )}
         <div className="editor-media-sections">
           <RecordingControls />
+          <SavedRecordings />
           <LocalAssetLibrary />
           <SavedSegments />
         </div>

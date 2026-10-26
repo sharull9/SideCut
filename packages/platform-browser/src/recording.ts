@@ -1,3 +1,5 @@
+import { createDurableRecordingFile } from "./recording-storage";
+
 export type RecordingSource = "screen" | "camera" | "microphone";
 export type RecordingRequest = { source: RecordingSource; microphone: boolean };
 export type RecordingState =
@@ -20,7 +22,7 @@ export function recordingSupport() {
   const devices = typeof navigator !== "undefined" ? navigator.mediaDevices : undefined;
   const recorder = typeof MediaRecorder !== "undefined";
   const storage = typeof navigator !== "undefined" && Boolean(navigator.storage?.getDirectory);
-  const video = recorder && MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus");
+  const video = recorder && MediaRecorder.isTypeSupported("video/webm;codecs=vp8");
   const audio = recorder && MediaRecorder.isTypeSupported("audio/webm;codecs=opus");
   return {
     screen: local && storage && video && Boolean(devices?.getDisplayMedia),
@@ -33,37 +35,7 @@ export interface RecordingFile {
   write: (chunk: Blob) => Promise<void>;
   finish: () => Promise<File>;
   remove: () => Promise<void>;
-}
-
-async function createRecordingFile(type: string): Promise<RecordingFile> {
-  const root = await navigator.storage.getDirectory();
-  const directory = await root.getDirectoryHandle("sidecut-recordings", { create: true });
-  const name = `Recording-${new Date().toISOString().replaceAll(/[:.]/g, "-")}-${crypto.randomUUID()}.webm`;
-  const handle = await directory.getFileHandle(name, { create: true });
-  let writer: FileSystemWritableFileStream;
-  try {
-    writer = await handle.createWritable();
-  } catch (error) {
-    await directory.removeEntry(name);
-    throw error;
-  }
-  let closed = false;
-  return {
-    write: (chunk) => writer.write(chunk),
-    async finish() {
-      await writer.close();
-      closed = true;
-      const file = await handle.getFile();
-      return new File([file], name, { type, lastModified: file.lastModified });
-    },
-    async remove() {
-      if (!closed) {
-        await writer.abort().catch(() => {});
-        closed = true;
-      }
-      await directory.removeEntry(name);
-    },
-  };
+  preserve?: () => Promise<void>;
 }
 
 type Run = {
@@ -85,7 +57,7 @@ export class BrowserRecording {
   private state: RecordingState = { status: "idle" };
   private listeners = new Set<() => void>();
   private run: Run | undefined;
-  constructor(private readonly createFile = createRecordingFile) {}
+  constructor(private readonly createFile = createDurableRecordingFile) {}
   getSnapshot = () => this.state;
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -96,11 +68,11 @@ export class BrowserRecording {
     for (const listener of this.listeners) listener();
   }
   private release(run: Run) {
-    clearTimeout(run.timer);
+    clearInterval(run.timer);
     clearTimeout(run.stopTimer);
     for (const stream of run.streams) for (const track of stream.getTracks()) track.stop();
   }
-  async start(request: RecordingRequest) {
+  async start(request: RecordingRequest, projectID?: string) {
     if (this.run) throw new Error("Finish or discard the current recording first.");
     if (!recordingSupport()[request.source]) {
       this.publish({
@@ -149,8 +121,16 @@ export class BrowserRecording {
       )
         throw new Error("The selected source stopped before recording could start.");
       const type =
-        request.source === "microphone" ? "audio/webm;codecs=opus" : "video/webm;codecs=vp8,opus";
-      run.file = await this.createFile(type);
+        request.source === "microphone"
+          ? "audio/webm;codecs=opus"
+          : stream.getAudioTracks().length
+            ? "video/webm;codecs=vp8,opus"
+            : "video/webm;codecs=vp8";
+      if (!MediaRecorder.isTypeSupported(type))
+        throw new Error(
+          "This browser cannot record the selected combination of picture and sound.",
+        );
+      run.file = await this.createFile(type, projectID);
       if (run.cancelled) {
         await run.file.remove();
         return;
@@ -210,8 +190,18 @@ export class BrowserRecording {
             { once: true },
           );
       recorder.start(1000);
-      run.timer = setTimeout(() => this.stop(), recordingLimits.seconds * 1000);
-      this.publish({ status: "recording", startedAt: Date.now(), bytes: 0 });
+      const startedAt = Date.now();
+      // Some capture sources stop producing events when ended. Check track state as well.
+      run.timer = setInterval(() => {
+        if (
+          Date.now() - startedAt >= recordingLimits.seconds * 1000 ||
+          run.streams.some((input) =>
+            input.getTracks().some((track) => track.readyState === "ended"),
+          )
+        )
+          this.stop();
+      }, 1000);
+      this.publish({ status: "recording", startedAt, bytes: 0 });
     } catch (error) {
       this.release(run);
       await run.file?.remove().catch(() => {});
@@ -232,15 +222,17 @@ export class BrowserRecording {
     const run = this.run;
     if (!run?.recorder || this.state.status === "stopping" || this.state.status === "ready") return;
     this.publish({ status: "stopping" });
-    clearTimeout(run.timer);
+    clearInterval(run.timer);
     run.stopTimer = setTimeout(() => {
       run.failure = new Error(
-        "The recorder did not finish. The incomplete recording was discarded.",
+        run.file?.preserve
+          ? "The recorder did not finish. Recover the available chunks in Saved recordings."
+          : "The recorder did not finish. The incomplete recording was discarded.",
       );
       void this.finish(run);
     }, 10_000);
     if (run.recorder.state !== "inactive") run.recorder.stop();
-    for (const input of run.streams) for (const track of input.getTracks()) track.stop();
+    // Release tracks in finalize, after the recorder has flushed its last frame.
   }
   private finish(run: Run) {
     run.completion ??= this.finalize(run);
@@ -257,7 +249,8 @@ export class BrowserRecording {
       const file = await run.file.finish();
       if (!run.cancelled && this.run === run) this.publish({ status: "ready", file });
     } catch (error) {
-      await run.file?.remove().catch(() => {});
+      if (run.file?.preserve) await run.file.preserve().catch(() => {});
+      else await run.file?.remove().catch(() => {});
       if (this.run === run) {
         this.run = undefined;
         this.publish({
@@ -278,5 +271,22 @@ export class BrowserRecording {
     await run.writes;
     await run.completion;
     await run.file?.remove();
+  }
+  async close() {
+    const run = this.run;
+    if (!run?.file?.preserve) return this.discard();
+    run.cancelled = true;
+    this.release(run);
+    if (run.recorder?.state !== "inactive") run.recorder?.stop();
+    await run.writes;
+    await run.completion;
+    try {
+      await run.file.preserve();
+    } finally {
+      if (this.run === run) {
+        this.run = undefined;
+        this.publish({ status: "idle" });
+      }
+    }
   }
 }

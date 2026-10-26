@@ -6,6 +6,10 @@ camera or microphone, then stop and add the recording to Project media. Complete
 files can also be downloaded before import. Capture is limited to five minutes
 or 128 MiB and excludes system audio. Desktop capture remains a later phase.
 See [recording verification and remaining acceptance](docs/verification/lawn-videorc-capture.md).
+**Project media → Saved recordings** now recovers completed and interrupted
+captures after restart. Save available chunks to a chosen folder; larger-file
+storage and native capture measurements are covered in the
+[LV003–LV005 report](docs/verification/lawn-videorc-storage-native.md).
 
 Current browser, keyboard and marked-range export fixes are recorded in the
 [continuation follow-up](docs/verification/continuation-2026-10-25-followup.md).

@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./recordings": "./src/recordings.ts",
     "./service-sync": "./src/service-sync.ts",
     "./query-state": "./src/query-state.ts",
     "./media-role": "./src/media-role.ts",

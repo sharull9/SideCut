@@ -1,5 +1,7 @@
 # Browser recording into SideCut
 
+Historical LV001/LV002 baseline. The [LV003–LV005 report](lawn-videorc-storage-native.md) supersedes the single-file staging, teardown cleanup and Chromium-only limitations below with durable chunk recovery and additional Firefox verification.
+
 Verified on 2026-10-26 on Windows with production Chromium 156.0.8078.4. This implements LV001/LV002 of the [integration phases](../lawn-videorc-phases.md). LV003 platform acceptance is in progress.
 
 ## Implemented behavior

@@ -3,6 +3,8 @@ export const rendererHost = "app";
 export const rendererOrigin = `${rendererScheme}://${rendererHost}`;
 
 export const bridgeChannels = {
+  recordingDirectory: "sidecut:recording-directory",
+  recordingExport: "sidecut:recording-export",
   storageRequest: "sidecut:storage-request",
   storagePutFile: "sidecut:storage-put-file",
   storageGetFile: "sidecut:storage-get-file",

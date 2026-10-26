@@ -10,6 +10,7 @@ import {
   type DesktopAppInfo,
 } from "../shared/bridge.ts";
 import { resolveRendererPath } from "./renderer-path.ts";
+import { registerRecordingStorage } from "./recording-ipc.ts";
 import { DesktopAssetProviders } from "./asset-providers.ts";
 import { HostProjectService } from "./project-service.ts";
 import { NativeProjectStore } from "./project-store.ts";
@@ -128,6 +129,7 @@ void app
   .then(async () => {
     await mkdir(sharedStorage || app.getPath("userData"), { recursive: true });
     const storage = new NativeStorage(sharedStorage || app.getPath("userData"));
+    registerRecordingStorage(storage, isTrusted);
     for (const [channel, handler] of [
       [bridgeChannels.storageRequest, (value: unknown) => storage.request(value)],
       [bridgeChannels.storagePutFile, (value: unknown) => storage.putFile(value)],

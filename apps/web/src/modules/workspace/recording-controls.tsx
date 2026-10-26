@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { RiRecordCircleLine } from "@remixicon/react";
 import { recordingSupport, type RecordingSource } from "@sidecut/platform-browser/recording";
-import { Button } from "@sidecut/ui/components/button";
+import { Button, buttonVariants } from "@sidecut/ui/components/button";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@sidecut/ui/components/field";
 import { MediaSection } from "./media-section";
 import { useEditorSession } from "./editor-session";
@@ -176,14 +176,13 @@ export function RecordingControls() {
                 {importing ? "Adding…" : "Add recording to project"}
               </Button>
               {download && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  nativeButton={false}
-                  render={<a href={download} download={state.file.name} />}
+                <a
+                  className={buttonVariants({ size: "sm", variant: "outline" })}
+                  href={download}
+                  download={state.file.name}
                 >
                   Download recording
-                </Button>
+                </a>
               )}
             </>
           )}

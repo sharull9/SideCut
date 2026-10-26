@@ -1,0 +1,20 @@
+{
+  "testedAt": "2026-10-26T16:50:12.163Z",
+  "platform": "win32",
+  "production": true,
+  "checks": {
+    "saved": {
+      "name": "Recording-3845c414-8801-433e-bada-4cceb39e7970.webm",
+      "bytes": 4
+    },
+    "missingFolder": true,
+    "invalidID": true,
+    "overwrite": true,
+    "isolation": true,
+    "actualNamedPreloadCalls": true,
+    "outputBytesVerified": true,
+    "untrustedOriginRejected": true
+  },
+  "errors": [],
+  "accepted": true
+}

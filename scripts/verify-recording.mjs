@@ -1,4 +1,4 @@
-import { chromium } from "playwright";
+import { chromium, firefox } from "playwright";
 import { createServer } from "node:http";
 import { readFile, writeFile, mkdtemp, rm } from "node:fs/promises";
 import { resolve, join, relative, extname, isAbsolute } from "node:path";
@@ -22,6 +22,9 @@ const result = {
   errors: [],
   accepted: false,
 };
+const engineName = process.env.SIDECUT_RECORDING_ENGINE ?? "chromium";
+assert.ok(["chromium", "firefox"].includes(engineName));
+result.engine = engineName;
 const mime = {
   ".html": "text/html",
   ".js": "text/javascript",
@@ -57,18 +60,30 @@ const server = createServer(async (req, res) => {
 });
 await new Promise((done) => server.listen(0, "127.0.0.1", done));
 const url = `http://127.0.0.1:${server.address().port}`;
-let browser;
+let browser, page, browserServer;
 try {
-  browser = await chromium.launch({
-    headless: true,
-    args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"],
-  });
+  browserServer =
+    engineName === "firefox"
+      ? await firefox.launchServer({
+          headless: true,
+          firefoxUserPrefs: {
+            "media.navigator.streams.fake": true,
+            "media.navigator.permission.disabled": true,
+          },
+        })
+      : await chromium.launchServer({
+          headless: true,
+          args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"],
+        });
+  browser = await (engineName === "firefox" ? firefox : chromium).connect(
+    browserServer.wsEndpoint(),
+  );
   result.browser = browser.version();
   const context = await browser.newContext({
     acceptDownloads: true,
     viewport: { width: 1440, height: 1000 },
   });
-  const page = await context.newPage();
+  page = await context.newPage();
   page.setDefaultTimeout(30_000);
   page.on("pageerror", (error) => result.errors.push(error.message));
   await page.goto(url);
@@ -117,6 +132,7 @@ try {
   result.checks.readOnlyCannotStart = true;
 
   for (const source of ["camera", "microphone", "screen"]) {
+    result.step = `record ${source}`;
     await page.locator("#recording-source").selectOption(source);
     if (source === "camera") await page.getByLabel("Include microphone", { exact: true }).check();
     if (source === "screen") {
@@ -151,7 +167,7 @@ try {
       result.checks.survivesPanelSwitch = true;
     }
     await page.waitForFunction(() => document.body.textContent.includes("Recording · 0:02"));
-    if (source === "screen") {
+    if (source === "screen" && engineName === "chromium") {
       await page.evaluate(() => {
         const track = globalThis.captureTestScreen.getVideoTracks()[0];
         track.stop();
@@ -161,6 +177,7 @@ try {
     } else await page.getByRole("button", { name: "Stop recording", exact: true }).click();
     await page.getByRole("button", { name: "Add recording to project", exact: true }).waitFor();
     const downloadEvent = page.waitForEvent("download");
+    void downloadEvent.catch(() => {});
     await page.getByRole("link", { name: "Download recording", exact: true }).click();
     const download = await downloadEvent;
     const path = join(temporary, `${source}.webm`);
@@ -241,9 +258,66 @@ try {
   await openRecording();
   await page.locator("#recording-source").selectOption("microphone");
   await page.getByRole("button", { name: "Start recording", exact: true }).click();
+  await page.waitForFunction(() => document.body.textContent.includes("Recording · 0:02"));
+  await page.getByRole("button", { name: "Stop recording", exact: true }).click();
+  await page.getByRole("button", { name: "Add recording to project", exact: true }).waitFor();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.reload();
+  await page
+    .locator("summary")
+    .filter({ hasText: /^Saved recordings/ })
+    .evaluate((element) => {
+      element.parentElement.open = true;
+    });
+  await page.getByRole("button", { name: "Refresh saved recordings", exact: true }).click();
+  const recovered = page.getByTestId("saved-recording");
+  await recovered.waitFor();
+  await recovered.getByRole("button", { name: "Import saved recording", exact: true }).click();
+  await recovered.waitFor({ state: "detached" });
+  await page.waitForFunction(
+    () => document.querySelectorAll('[data-testid="media-item"]').length === 4,
+  );
+  result.checks.completedCaptureSurvivesAcceptedReload = true;
+  await openRecording();
+  await page.locator("#recording-source").selectOption("microphone");
+  await page.getByRole("button", { name: "Start recording", exact: true }).click();
+  await page.waitForFunction(() => document.body.textContent.includes("Recording · 0:02"));
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.reload();
+  await page
+    .locator("summary")
+    .filter({ hasText: /^Saved recordings/ })
+    .evaluate((element) => {
+      element.parentElement.open = true;
+    });
+  await page.getByRole("button", { name: "Refresh saved recordings", exact: true }).click();
+  await page.getByTestId("saved-recording").waitFor();
+  assert.equal(
+    await page.getByRole("button", { name: "Import saved recording", exact: true }).isDisabled(),
+    true,
+  );
+  await page.evaluate(() => {
+    window.showDirectoryPicker = async () =>
+      (await navigator.storage.getDirectory()).getDirectoryHandle("capture-output", {
+        create: true,
+      });
+  });
+  await page.getByRole("button", { name: "Choose recording output folder", exact: true }).click();
+  await page.getByText("Output folder selected for this session.", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Save recording to folder", exact: true }).click();
+  await page
+    .getByRole("status")
+    .filter({ hasText: /Saved Recording-.*-partial.webm/ })
+    .waitFor();
+  result.checks.activeCaptureRetainsExportablePrefixAfterNavigation = true;
+  await page.getByRole("button", { name: "Remove saved recording", exact: true }).click();
+  await page.getByTestId("saved-recording").waitFor({ state: "detached" });
+  await openRecording();
+  await page.locator("#recording-source").selectOption("microphone");
+  await page.getByRole("button", { name: "Start recording", exact: true }).click();
   await page.getByRole("button", { name: "Cancel recording", exact: true }).click();
   await page.getByRole("button", { name: "Start recording", exact: true }).waitFor();
-  assert.equal(await page.getByTestId("media-item").count(), 3);
+  assert.equal(await page.getByTestId("media-item").count(), 4);
   result.checks.cancelAddsNoMedia = true;
   await page.getByRole("button", { name: "Start recording", exact: true }).click();
   await page.waitForFunction(() => document.body.textContent.includes("Recording · 0:01"));
@@ -282,35 +356,52 @@ try {
     true,
   );
   result.checks.permissionFailureAllowsRetry = true;
-  await page.waitForFunction(async () => {
-    const directory = await (
-      await navigator.storage.getDirectory()
-    ).getDirectoryHandle("sidecut-recordings");
-    for await (const name of directory.keys()) if (name.length) return false;
-    return true;
-  });
-  const staged = await page.evaluate(async () => {
-    const directory = await (
-      await navigator.storage.getDirectory()
-    ).getDirectoryHandle("sidecut-recordings");
-    const entries = [];
-    for await (const name of directory.keys()) entries.push(name);
-    return entries;
-  });
-  assert.deepEqual(staged, []);
+  await page
+    .locator("summary")
+    .filter({ hasText: /^Saved recordings/ })
+    .evaluate((element) => {
+      element.parentElement.open = true;
+    });
+  await page.getByRole("button", { name: "Refresh saved recordings", exact: true }).click();
+  await page.getByText("No saved recordings.", { exact: true }).waitFor();
   result.checks.stagedFilesCleaned = true;
   assert.deepEqual(result.errors, []);
   result.accepted = true;
 } catch (error) {
   result.errors.push(error.stack ?? error.message);
+  result.alerts = await page
+    ?.locator('[role="alert"]')
+    .allTextContents()
+    .catch(() => []);
+  result.downloadLinks = await page
+    ?.getByRole("link")
+    .evaluateAll((links) =>
+      links.map((link) => ({ text: link.textContent, href: link.getAttribute("href") })),
+    )
+    .catch(() => []);
+  await page
+    ?.screenshot({ path: join(root, `docs/verification/capture-${engineName}-debug.png`) })
+    .catch(() => {});
   process.exitCode = 1;
 } finally {
-  await browser?.close();
+  const shutdown = setTimeout(() => {
+    void browserServer?.kill();
+  }, 10000);
+  try {
+    await browserServer?.close();
+  } finally {
+    clearTimeout(shutdown);
+  }
   await new Promise((done) => server.close(done));
   assert.ok(temporary.startsWith(join(tmpdir(), "sidecut-recording-")));
   await rm(temporary, { recursive: true, force: true });
   await writeFile(
-    join(root, "docs/verification/lawn-videorc-capture-runtime.json"),
+    join(
+      root,
+      engineName === "chromium"
+        ? "docs/verification/lawn-videorc-capture-runtime.json"
+        : "docs/verification/lawn-videorc-capture-firefox.json",
+    ),
     JSON.stringify(result, null, 2) + "\n",
   );
   process.stdout.write(JSON.stringify(result) + "\n");

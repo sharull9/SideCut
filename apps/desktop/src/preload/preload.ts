@@ -2,6 +2,8 @@ import { contextBridge, ipcRenderer } from "electron";
 import { bridgeChannels, type DesktopAppInfo, type DesktopBridge } from "../shared/bridge.ts";
 
 const bridge: DesktopBridge = {
+  recordingDirectory: () => ipcRenderer.invoke(bridgeChannels.recordingDirectory),
+  recordingExport: (id) => ipcRenderer.invoke(bridgeChannels.recordingExport, id),
   storageRequest: (request) => ipcRenderer.invoke(bridgeChannels.storageRequest, request),
   storagePutFile: (bytes) => ipcRenderer.invoke(bridgeChannels.storagePutFile, bytes),
   storageGetFile: (id) => ipcRenderer.invoke(bridgeChannels.storageGetFile, id),

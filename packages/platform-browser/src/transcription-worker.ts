@@ -30,6 +30,8 @@ self.onmessage = async (event: MessageEvent<{ samples: Float32Array; language: s
       return_timestamps: "word",
       chunk_length_s: 30,
       stride_length_s: 5,
+      // Repeated phrase loops can corrupt word timestamps in long recordings.
+      no_repeat_ngram_size: 4,
       language,
       task: "transcribe",
     });

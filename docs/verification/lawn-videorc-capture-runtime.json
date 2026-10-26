@@ -1,28 +1,28 @@
 {
-  "testedAt": "2026-10-26T15:59:21.519Z",
+  "testedAt": "2026-10-26T16:50:11.677Z",
   "platform": "win32",
   "production": true,
   "syntheticDevices": true,
   "recordings": [
     {
       "source": "camera",
-      "bytes": 114337,
+      "bytes": 134558,
       "streams": [
         {
-          "codec": "opus",
-          "packets": "36"
-        },
-        {
           "codec": "vp8",
-          "packets": "42",
+          "packets": "49",
           "width": 640,
           "height": 480
+        },
+        {
+          "codec": "opus",
+          "packets": "41"
         }
       ]
     },
     {
       "source": "microphone",
-      "bytes": 25405,
+      "bytes": 26043,
       "streams": [
         {
           "codec": "opus",
@@ -32,11 +32,11 @@
     },
     {
       "source": "screen",
-      "bytes": 30415,
+      "bytes": 46058,
       "streams": [
         {
           "codec": "vp8",
-          "packets": "60",
+          "packets": "62",
           "width": 320,
           "height": 180
         }
@@ -49,9 +49,11 @@
     "syntheticScreenEndedSaves": true,
     "recordImportPlaceReload": true,
     "editableRecordingExport": {
-      "bytes": 193158,
+      "bytes": 186059,
       "codecs": ["vp8", "opus"]
     },
+    "completedCaptureSurvivesAcceptedReload": true,
+    "activeCaptureRetainsExportablePrefixAfterNavigation": true,
     "cancelAddsNoMedia": true,
     "replacementProjectPreservesDownloadAndBlocksImport": true,
     "permissionFailureAllowsRetry": true,
@@ -59,5 +61,7 @@
   },
   "errors": [],
   "accepted": true,
-  "browser": "156.0.8078.4"
+  "engine": "chromium",
+  "browser": "156.0.8078.4",
+  "step": "record screen"
 }

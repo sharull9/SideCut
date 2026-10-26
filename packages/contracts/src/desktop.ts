@@ -43,6 +43,8 @@ export interface FolderMedia {
   shortAudioFallback: boolean;
 }
 export interface NativeBridge {
+  recordingDirectory?: () => Promise<boolean>;
+  recordingExport?: (id: string) => Promise<{ name: string; bytes: number }>;
   storageRequest?: (request: unknown) => Promise<unknown>;
   storagePutFile?: (bytes: Uint8Array) => Promise<string>;
   storageGetFile?: (id: string) => Promise<Uint8Array>;

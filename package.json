@@ -10,6 +10,8 @@
     "dev:desktop": "vp run --filter @sidecut/web build && vp run --filter @sidecut/desktop start",
     "build": "vp run --filter @sidecut/web build",
     "build:web": "vp run --filter @sidecut/web build",
+    "dev:landing": "vp run --filter @sidecut/landing dev",
+    "build:landing": "vp run --filter @sidecut/landing build",
     "build:desktop": "vp run --filter @sidecut/web build && vp run --filter @sidecut/desktop build",
     "preview": "vp run --filter @sidecut/web preview",
     "typecheck": "vp exec tsc --noEmit && vp run -r typecheck",

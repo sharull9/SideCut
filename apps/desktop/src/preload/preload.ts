@@ -2,12 +2,20 @@ import { contextBridge, ipcRenderer } from "electron";
 import { bridgeChannels, type DesktopAppInfo, type DesktopBridge } from "../shared/bridge.ts";
 
 const bridge: DesktopBridge = {
+  deliveryEncode: (requestID, inputID, request) =>
+    ipcRenderer.invoke(bridgeChannels.deliveryEncode, requestID, inputID, request),
+  deliveryCancel: (requestID) => ipcRenderer.invoke(bridgeChannels.deliveryCancel, requestID),
   nativeRecordingDevices: () => ipcRenderer.invoke(bridgeChannels.nativeRecordingDevices),
   nativeRecordingStart: (request) =>
     ipcRenderer.invoke(bridgeChannels.nativeRecordingStart, request),
   nativeRecordingStop: () => ipcRenderer.invoke(bridgeChannels.nativeRecordingStop),
   nativeRecordingList: () => ipcRenderer.invoke(bridgeChannels.nativeRecordingList),
   nativeRecordingRetry: (id) => ipcRenderer.invoke(bridgeChannels.nativeRecordingRetry, id),
+  nativeRecordingPoster: (id) => ipcRenderer.invoke(bridgeChannels.nativeRecordingPoster, id),
+  nativeRecordingAdopt: (id) => ipcRenderer.invoke(bridgeChannels.nativeRecordingAdopt, id),
+  nativeRecordingRead: (id) => ipcRenderer.invoke(bridgeChannels.nativeRecordingRead, id),
+  nativeRecordingDelete: (id) => ipcRenderer.invoke(bridgeChannels.nativeRecordingDelete, id),
+  nativeRecordingReveal: (id) => ipcRenderer.invoke(bridgeChannels.nativeRecordingReveal, id),
   capturePrepare: (id, request) => ipcRenderer.invoke(bridgeChannels.capturePrepare, id, request),
   captureRelease: (id) => ipcRenderer.invoke(bridgeChannels.captureRelease, id),
   recordingDirectory: () => ipcRenderer.invoke(bridgeChannels.recordingDirectory),
@@ -15,6 +23,14 @@ const bridge: DesktopBridge = {
   storageRequest: (request) => ipcRenderer.invoke(bridgeChannels.storageRequest, request),
   storagePutFile: (bytes) => ipcRenderer.invoke(bridgeChannels.storagePutFile, bytes),
   storageGetFile: (id) => ipcRenderer.invoke(bridgeChannels.storageGetFile, id),
+  storageFileBegin: () => ipcRenderer.invoke(bridgeChannels.storageFileBegin),
+  storageFileAppend: (id, bytes) => ipcRenderer.invoke(bridgeChannels.storageFileAppend, id, bytes),
+  storageFileSeal: (id) => ipcRenderer.invoke(bridgeChannels.storageFileSeal, id),
+  storageFileAbort: (id) => ipcRenderer.invoke(bridgeChannels.storageFileAbort, id),
+  storageFileSize: (id) => ipcRenderer.invoke(bridgeChannels.storageFileSize, id),
+  storageFileRead: (id, offset, length) =>
+    ipcRenderer.invoke(bridgeChannels.storageFileRead, id, offset, length),
+  storageFileDigest: (id) => ipcRenderer.invoke(bridgeChannels.storageFileDigest, id),
   storageRemoveFile: (id) => ipcRenderer.invoke(bridgeChannels.storageRemoveFile, id),
   serviceSubscribe: (listener) => {
     const handler = (_event: Electron.IpcRendererEvent, request: Parameters<typeof listener>[0]) =>

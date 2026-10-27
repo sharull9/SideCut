@@ -4,8 +4,11 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./wav-export": "./src/wav-export.ts",
+    "./durable-delivery": "./src/durable-delivery.ts",
     "./recording-storage": "./src/recording-storage.ts",
     "./recording": "./src/recording.ts",
+    "./sqlite-client": "./src/sqlite-client.ts",
     "./storage-codec": "./src/storage-codec.ts",
     "./export-queue": "./src/export-queue.ts",
     "./export-output": "./src/export-output.ts",
@@ -36,7 +39,8 @@
     "./transcription": "./src/transcription.ts",
     "./transcription-config": "./src/transcription-config.ts",
     "./text": "./src/text.ts",
-    "./preferences": "./src/preferences.ts"
+    "./preferences": "./src/preferences.ts",
+    "./review-store": "./src/review-store.ts"
   },
   "scripts": {
     "typecheck": "vp exec tsc --noEmit"

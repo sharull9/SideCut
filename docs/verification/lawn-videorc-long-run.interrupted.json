@@ -1,0 +1,80 @@
+{
+  "testedAt": "2026-10-26T20:59:03.938Z",
+  "platform": "win32",
+  "production": false,
+  "syntheticInputs": true,
+  "profile": "real-time lavfi tone first + 1080p30 test pattern",
+  "requestedWallSeconds": 3600,
+  "status": "interrupted",
+  "accepted": false,
+  "samples": [
+    {
+      "wallSeconds": 0.008,
+      "encodedSeconds": 0,
+      "diskBytes": 0,
+      "encoder": {
+        "pid": 16576,
+        "cpuSeconds": 0.28125,
+        "workingSetBytes": 225361920,
+        "privateBytes": 270028800
+      },
+      "node": {
+        "rssBytes": 42795008,
+        "heapUsedBytes": 5941928
+      }
+    },
+    {
+      "wallSeconds": 60.578,
+      "encodedSeconds": 60.907,
+      "diskBytes": 41202073,
+      "encoder": {
+        "pid": 16576,
+        "cpuSeconds": 32.5625,
+        "workingSetBytes": 230313984,
+        "privateBytes": 271368192
+      },
+      "node": {
+        "rssBytes": 43745280,
+        "heapUsedBytes": 5787848
+      }
+    },
+    {
+      "wallSeconds": 120.589,
+      "encodedSeconds": 120.384,
+      "diskBytes": 82474235,
+      "encoder": {
+        "pid": 16576,
+        "cpuSeconds": 68.265625,
+        "workingSetBytes": 230326272,
+        "privateBytes": 271368192
+      },
+      "node": {
+        "rssBytes": 42942464,
+        "heapUsedBytes": 5628448
+      }
+    },
+    {
+      "wallSeconds": 180.594,
+      "encodedSeconds": 180.779,
+      "diskBytes": 123664970,
+      "encoder": {
+        "pid": 16576,
+        "cpuSeconds": 101.15625,
+        "workingSetBytes": 230326272,
+        "privateBytes": 271368192
+      },
+      "node": {
+        "rssBytes": 43163648,
+        "heapUsedBytes": 5865080
+      }
+    }
+  ],
+  "checks": {},
+  "errors": [
+    "Previous run stopped after the last recorded sample; encoder process was no longer running. Completion is unverified."
+  ],
+  "limits": [
+    "Synthetic inputs do not establish physical-device cadence, device loss, or calibrated A/V sync.",
+    "This direct FFmpeg run uses NativeRecorder's codec, queue, muxer and flush settings. It does not exercise Electron IPC or the recorder journal."
+  ]
+}

@@ -1,7 +1,18 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, rename, stat, writeFile, link, rm } from "node:fs/promises";
-import { join } from "node:path";
+import {
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  stat,
+  writeFile,
+  link,
+  rm,
+  lstat,
+  realpath,
+} from "node:fs/promises";
+import { join, relative, isAbsolute } from "node:path";
 import type {
   NativeCaptureDevice,
   NativeRecording,
@@ -88,6 +99,32 @@ export class NativeRecorder {
     );
     if (item.id !== id) throw new Error("Recording journal ID does not match its folder");
     return { ...item, tracks: [...item.tracks] };
+  }
+  async withSavedRecording<T>(
+    id: string,
+    action: (recording: NativeRecording, folder: string) => Promise<T>,
+  ): Promise<T> {
+    if (this.closed || this.busy || this.session)
+      throw new Error("A recording operation is already active or closed");
+    this.busy = true;
+    try {
+      const folder = this.folder(id);
+      const root = await realpath(this.root);
+      if ((await lstat(folder)).isSymbolicLink()) throw new Error("Unsafe recording folder");
+      const resolved = await realpath(folder);
+      const rel = relative(root, resolved);
+      if (!rel || rel.startsWith("..") || isAbsolute(rel))
+        throw new Error("Unsafe recording folder");
+      const journal = join(resolved, "metadata.json");
+      if (!(await lstat(journal)).isFile() || (await realpath(journal)) !== journal)
+        throw new Error("Unsafe recording journal");
+      const item = await this.load(id);
+      if (item.status === "recording" || item.status === "stopping")
+        throw new Error("Recording is active or stopping");
+      return await action(item, resolved);
+    } finally {
+      this.busy = false;
+    }
   }
   private init(): Promise<void> {
     return (this.initialized ??= (async () => {

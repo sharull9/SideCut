@@ -1,0 +1,1007 @@
+{
+  "testedAt": "2026-10-27T12:08:31.574Z",
+  "platform": "win32",
+  "production": false,
+  "syntheticInputs": true,
+  "profile": "real-time lavfi tone first + 1080p30 test pattern",
+  "requestedWallSeconds": 3600,
+  "targetMediaSeconds": 3605,
+  "status": "completed",
+  "accepted": true,
+  "samples": [
+    {
+      "wallSeconds": 0.007,
+      "encodedSeconds": 0,
+      "diskBytes": 0,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 0.296875,
+        "workingSetBytes": 213135360,
+        "privateBytes": 269406208
+      },
+      "node": {
+        "rssBytes": 45379584,
+        "heapUsedBytes": 5815568
+      }
+    },
+    {
+      "wallSeconds": 60.268,
+      "encodedSeconds": 59.925,
+      "diskBytes": 41202073,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 28.84375,
+        "workingSetBytes": 228855808,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 44904448,
+        "heapUsedBytes": 5487496
+      }
+    },
+    {
+      "wallSeconds": 120.272,
+      "encodedSeconds": 120.405,
+      "diskBytes": 82474235,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 63.0625,
+        "workingSetBytes": 228880384,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 45494272,
+        "heapUsedBytes": 5893736
+      }
+    },
+    {
+      "wallSeconds": 180.28,
+      "encodedSeconds": 179.947,
+      "diskBytes": 123664970,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 93.71875,
+        "workingSetBytes": 228892672,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 45805568,
+        "heapUsedBytes": 6232216
+      }
+    },
+    {
+      "wallSeconds": 240.281,
+      "encodedSeconds": 240.405,
+      "diskBytes": 164925382,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 123.703125,
+        "workingSetBytes": 228892672,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 46407680,
+        "heapUsedBytes": 5759664
+      }
+    },
+    {
+      "wallSeconds": 300.294,
+      "encodedSeconds": 299.84,
+      "diskBytes": 206123883,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 159.1875,
+        "workingSetBytes": 229015552,
+        "privateBytes": 270508032
+      },
+      "node": {
+        "rssBytes": 46985216,
+        "heapUsedBytes": 6121608
+      }
+    },
+    {
+      "wallSeconds": 360.297,
+      "encodedSeconds": 360.363,
+      "diskBytes": 247413599,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 195.453125,
+        "workingSetBytes": 229015552,
+        "privateBytes": 270508032
+      },
+      "node": {
+        "rssBytes": 47271936,
+        "heapUsedBytes": 5648152
+      }
+    },
+    {
+      "wallSeconds": 420.308,
+      "encodedSeconds": 419.797,
+      "diskBytes": 288636863,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 228.34375,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47149056,
+        "heapUsedBytes": 5985752
+      }
+    },
+    {
+      "wallSeconds": 480.309,
+      "encodedSeconds": 480.427,
+      "diskBytes": 329837987,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 254.296875,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47267840,
+        "heapUsedBytes": 6345984
+      }
+    },
+    {
+      "wallSeconds": 540.323,
+      "encodedSeconds": 539.904,
+      "diskBytes": 371014217,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 280.46875,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47386624,
+        "heapUsedBytes": 5905984
+      }
+    },
+    {
+      "wallSeconds": 600.327,
+      "encodedSeconds": 600.405,
+      "diskBytes": 412244704,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 312.65625,
+        "workingSetBytes": 229031936,
+        "privateBytes": 270495744
+      },
+      "node": {
+        "rssBytes": 47558656,
+        "heapUsedBytes": 6239200
+      }
+    },
+    {
+      "wallSeconds": 660.33,
+      "encodedSeconds": 659.84,
+      "diskBytes": 453488394,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 342.65625,
+        "workingSetBytes": 229031936,
+        "privateBytes": 270495744
+      },
+      "node": {
+        "rssBytes": 47620096,
+        "heapUsedBytes": 6537272
+      }
+    },
+    {
+      "wallSeconds": 720.332,
+      "encodedSeconds": 720.341,
+      "diskBytes": 494707649,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 376.453125,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47755264,
+        "heapUsedBytes": 6024536
+      }
+    },
+    {
+      "wallSeconds": 780.339,
+      "encodedSeconds": 779.883,
+      "diskBytes": 535943021,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 397.734375,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47767552,
+        "heapUsedBytes": 6322928
+      }
+    },
+    {
+      "wallSeconds": 840.352,
+      "encodedSeconds": 840.341,
+      "diskBytes": 577178262,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 426.75,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47910912,
+        "heapUsedBytes": 6631584
+      }
+    },
+    {
+      "wallSeconds": 900.366,
+      "encodedSeconds": 899.883,
+      "diskBytes": 618446407,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 461.265625,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47988736,
+        "heapUsedBytes": 6058792
+      }
+    },
+    {
+      "wallSeconds": 960.367,
+      "encodedSeconds": 960.469,
+      "diskBytes": 659669637,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 491.375,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47996928,
+        "heapUsedBytes": 6361768
+      }
+    },
+    {
+      "wallSeconds": 1020.375,
+      "encodedSeconds": 1019.968,
+      "diskBytes": 700884144,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 523.71875,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 48009216,
+        "heapUsedBytes": 6664368
+      }
+    },
+    {
+      "wallSeconds": 1080.385,
+      "encodedSeconds": 1080.576,
+      "diskBytes": 742094780,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 554.5,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 48078848,
+        "heapUsedBytes": 6084888
+      }
+    },
+    {
+      "wallSeconds": 1140.39,
+      "encodedSeconds": 1140.075,
+      "diskBytes": 783300232,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 582.171875,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 48087040,
+        "heapUsedBytes": 6386632
+      }
+    },
+    {
+      "wallSeconds": 1200.398,
+      "encodedSeconds": 1200.512,
+      "diskBytes": 824522368,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 607.4375,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 48152576,
+        "heapUsedBytes": 5907240
+      }
+    },
+    {
+      "wallSeconds": 1260.404,
+      "encodedSeconds": 1260.075,
+      "diskBytes": 865751260,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 638.109375,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 48152576,
+        "heapUsedBytes": 6210328
+      }
+    },
+    {
+      "wallSeconds": 1320.407,
+      "encodedSeconds": 1320.555,
+      "diskBytes": 907060745,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 678.375,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 48152576,
+        "heapUsedBytes": 6517144
+      }
+    },
+    {
+      "wallSeconds": 1380.407,
+      "encodedSeconds": 1380.075,
+      "diskBytes": 948306761,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 711.765625,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 48156672,
+        "heapUsedBytes": 6028200
+      }
+    },
+    {
+      "wallSeconds": 1440.414,
+      "encodedSeconds": 1440.619,
+      "diskBytes": 989495982,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 742.296875,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47910912,
+        "heapUsedBytes": 6336416
+      }
+    },
+    {
+      "wallSeconds": 1500.425,
+      "encodedSeconds": 1500.181,
+      "diskBytes": 1030719264,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 773.390625,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47939584,
+        "heapUsedBytes": 6642688
+      }
+    },
+    {
+      "wallSeconds": 1560.426,
+      "encodedSeconds": 1560.661,
+      "diskBytes": 1071949138,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 801.359375,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47955968,
+        "heapUsedBytes": 6141432
+      }
+    },
+    {
+      "wallSeconds": 1620.434,
+      "encodedSeconds": 1620.096,
+      "diskBytes": 1113219361,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 834.203125,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47964160,
+        "heapUsedBytes": 6451288
+      }
+    },
+    {
+      "wallSeconds": 1680.447,
+      "encodedSeconds": 1680.619,
+      "diskBytes": 1154425355,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 867.21875,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 48037888,
+        "heapUsedBytes": 5969072
+      }
+    },
+    {
+      "wallSeconds": 1740.457,
+      "encodedSeconds": 1740.075,
+      "diskBytes": 1195582995,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 899.28125,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 48140288,
+        "heapUsedBytes": 6279696
+      }
+    },
+    {
+      "wallSeconds": 1800.468,
+      "encodedSeconds": 1800.491,
+      "diskBytes": 1236867575,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 931.53125,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 48152576,
+        "heapUsedBytes": 6592104
+      }
+    },
+    {
+      "wallSeconds": 1860.476,
+      "encodedSeconds": 1860.075,
+      "diskBytes": 1278081128,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 964.21875,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 48168960,
+        "heapUsedBytes": 6122664
+      }
+    },
+    {
+      "wallSeconds": 1920.476,
+      "encodedSeconds": 1920.533,
+      "diskBytes": 1319303504,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1001.359375,
+        "workingSetBytes": 229007360,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 46702592,
+        "heapUsedBytes": 6436512
+      }
+    },
+    {
+      "wallSeconds": 1980.49,
+      "encodedSeconds": 1980.032,
+      "diskBytes": 1360551548,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1036.40625,
+        "workingSetBytes": 228954112,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 45916160,
+        "heapUsedBytes": 6750816
+      }
+    },
+    {
+      "wallSeconds": 2040.503,
+      "encodedSeconds": 2040.576,
+      "diskBytes": 1401827919,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1067.484375,
+        "workingSetBytes": 228954112,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 45940736,
+        "heapUsedBytes": 6211440
+      }
+    },
+    {
+      "wallSeconds": 2100.517,
+      "encodedSeconds": 2100.139,
+      "diskBytes": 1443072348,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1100.0625,
+        "workingSetBytes": 228954112,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 45948928,
+        "heapUsedBytes": 6524376
+      }
+    },
+    {
+      "wallSeconds": 2160.524,
+      "encodedSeconds": 2160.597,
+      "diskBytes": 1484279649,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1132.421875,
+        "workingSetBytes": 228954112,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 45977600,
+        "heapUsedBytes": 6029808
+      }
+    },
+    {
+      "wallSeconds": 2220.524,
+      "encodedSeconds": 2220.075,
+      "diskBytes": 1525538916,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1165.59375,
+        "workingSetBytes": 228954112,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47726592,
+        "heapUsedBytes": 6315464
+      }
+    },
+    {
+      "wallSeconds": 2280.53,
+      "encodedSeconds": 2280.533,
+      "diskBytes": 1566817421,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1198.1875,
+        "workingSetBytes": 228954112,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47771648,
+        "heapUsedBytes": 6600544
+      }
+    },
+    {
+      "wallSeconds": 2340.53,
+      "encodedSeconds": 2340.139,
+      "diskBytes": 1608042478,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1228.96875,
+        "workingSetBytes": 228954112,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47833088,
+        "heapUsedBytes": 6074144
+      }
+    },
+    {
+      "wallSeconds": 2400.534,
+      "encodedSeconds": 2400.64,
+      "diskBytes": 1649272798,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1260.15625,
+        "workingSetBytes": 228962304,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47845376,
+        "heapUsedBytes": 6358520
+      }
+    },
+    {
+      "wallSeconds": 2460.545,
+      "encodedSeconds": 2460.139,
+      "diskBytes": 1690547615,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1290.3125,
+        "workingSetBytes": 228962304,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47861760,
+        "heapUsedBytes": 6641208
+      }
+    },
+    {
+      "wallSeconds": 2520.56,
+      "encodedSeconds": 2520.704,
+      "diskBytes": 1731759098,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1319.734375,
+        "workingSetBytes": 228962304,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47890432,
+        "heapUsedBytes": 6138664
+      }
+    },
+    {
+      "wallSeconds": 2580.57,
+      "encodedSeconds": 2580.16,
+      "diskBytes": 1772951561,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1350.546875,
+        "workingSetBytes": 228962304,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47906816,
+        "heapUsedBytes": 6422840
+      }
+    },
+    {
+      "wallSeconds": 2640.582,
+      "encodedSeconds": 2640.704,
+      "diskBytes": 1814179878,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1380.546875,
+        "workingSetBytes": 228962304,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47919104,
+        "heapUsedBytes": 6721288
+      }
+    },
+    {
+      "wallSeconds": 2700.594,
+      "encodedSeconds": 2700.096,
+      "diskBytes": 1855398188,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1412.859375,
+        "workingSetBytes": 228962304,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47984640,
+        "heapUsedBytes": 6195040
+      }
+    },
+    {
+      "wallSeconds": 2760.599,
+      "encodedSeconds": 2760.512,
+      "diskBytes": 1896601444,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1445.125,
+        "workingSetBytes": 228962304,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 47984640,
+        "heapUsedBytes": 6483888
+      }
+    },
+    {
+      "wallSeconds": 2820.606,
+      "encodedSeconds": 2820.949,
+      "diskBytes": 1937845778,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1477.421875,
+        "workingSetBytes": 217800704,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 31272960,
+        "heapUsedBytes": 6773320
+      }
+    },
+    {
+      "wallSeconds": 2880.61,
+      "encodedSeconds": 2880.384,
+      "diskBytes": 1979075233,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1513.140625,
+        "workingSetBytes": 217812992,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 31313920,
+        "heapUsedBytes": 6254976
+      }
+    },
+    {
+      "wallSeconds": 2940.619,
+      "encodedSeconds": 2940.885,
+      "diskBytes": 2020304585,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1546.5625,
+        "workingSetBytes": 217821184,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 31887360,
+        "heapUsedBytes": 6575224
+      }
+    },
+    {
+      "wallSeconds": 3000.625,
+      "encodedSeconds": 3000.405,
+      "diskBytes": 2061578917,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1577.375,
+        "workingSetBytes": 217821184,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 31928320,
+        "heapUsedBytes": 6864288
+      }
+    },
+    {
+      "wallSeconds": 3060.634,
+      "encodedSeconds": 3060.949,
+      "diskBytes": 2102789446,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1610.890625,
+        "workingSetBytes": 208322560,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 31707136,
+        "heapUsedBytes": 6346368
+      }
+    },
+    {
+      "wallSeconds": 3120.646,
+      "encodedSeconds": 3120.405,
+      "diskBytes": 2143970816,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1644.515625,
+        "workingSetBytes": 208326656,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 31907840,
+        "heapUsedBytes": 6640008
+      }
+    },
+    {
+      "wallSeconds": 3180.658,
+      "encodedSeconds": 3180.907,
+      "diskBytes": 2185205409,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1674.484375,
+        "workingSetBytes": 208326656,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 31920128,
+        "heapUsedBytes": 6933456
+      }
+    },
+    {
+      "wallSeconds": 3240.658,
+      "encodedSeconds": 3240.469,
+      "diskBytes": 2226495207,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1708.75,
+        "workingSetBytes": 208330752,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 31940608,
+        "heapUsedBytes": 6350200
+      }
+    },
+    {
+      "wallSeconds": 3300.67,
+      "encodedSeconds": 3300.907,
+      "diskBytes": 2267714281,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1741.171875,
+        "workingSetBytes": 208338944,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 31956992,
+        "heapUsedBytes": 6645416
+      }
+    },
+    {
+      "wallSeconds": 3360.673,
+      "encodedSeconds": 3360.363,
+      "diskBytes": 2308872903,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1773.625,
+        "workingSetBytes": 208338944,
+        "privateBytes": 270438400
+      },
+      "node": {
+        "rssBytes": 32067584,
+        "heapUsedBytes": 6942592
+      }
+    },
+    {
+      "wallSeconds": 3420.673,
+      "encodedSeconds": 3420.779,
+      "diskBytes": 2350040536,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1806.109375,
+        "workingSetBytes": 214994944,
+        "privateBytes": 277540864
+      },
+      "node": {
+        "rssBytes": 32112640,
+        "heapUsedBytes": 6387832
+      }
+    },
+    {
+      "wallSeconds": 3480.678,
+      "encodedSeconds": 3480.213,
+      "diskBytes": 2391254591,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1840.578125,
+        "workingSetBytes": 218112000,
+        "privateBytes": 277540864
+      },
+      "node": {
+        "rssBytes": 32112640,
+        "heapUsedBytes": 6684120
+      }
+    },
+    {
+      "wallSeconds": 3540.693,
+      "encodedSeconds": 3540.672,
+      "diskBytes": 2432460297,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1874.734375,
+        "workingSetBytes": 218120192,
+        "privateBytes": 277540864
+      },
+      "node": {
+        "rssBytes": 32133120,
+        "heapUsedBytes": 6201904
+      }
+    },
+    {
+      "wallSeconds": 3600.695,
+      "encodedSeconds": 3600.171,
+      "diskBytes": 2473657175,
+      "encoder": {
+        "pid": 20720,
+        "cpuSeconds": 1907.0625,
+        "workingSetBytes": 218128384,
+        "privateBytes": 277540864
+      },
+      "node": {
+        "rssBytes": 32133120,
+        "heapUsedBytes": 6497888
+      }
+    }
+  ],
+  "checks": {
+    "captureWallSeconds": 3604.7023421,
+    "mediaDuration": 3605.035,
+    "timestampDriftSeconds": 0.03499999999985448,
+    "realtimeDriftSeconds": 0.29765790000010384,
+    "avStartDifferenceSeconds": 0.021,
+    "avEndDifferenceSeconds": 0.007000000000516593,
+    "sizeBytes": 2479536157,
+    "streams": [
+      {
+        "index": 0,
+        "codec_name": "h264",
+        "codec_type": "video",
+        "width": 1920,
+        "height": 1080,
+        "avg_frame_rate": "30/1",
+        "start_time": "0.021000",
+        "duration": "3605.021000",
+        "nb_read_packets": "108150"
+      },
+      {
+        "index": 1,
+        "codec_name": "aac",
+        "codec_type": "audio",
+        "avg_frame_rate": "0/0",
+        "start_time": "0.000000",
+        "duration": "3605.035000",
+        "nb_read_packets": "168986"
+      }
+    ],
+    "sampleCount": 61,
+    "maxEncoderWorkingSetBytes": 229031936,
+    "maxEncoderPrivateBytes": 277540864,
+    "maxNodeRssBytes": 48168960,
+    "maxNodeHeapUsedBytes": 6942592
+  },
+  "errors": [],
+  "limits": [
+    "Synthetic inputs do not establish physical-device cadence, device loss, or calibrated A/V sync.",
+    "This direct FFmpeg run uses NativeRecorder's codec, queue, muxer and flush settings. It does not exercise Electron IPC or the recorder journal."
+  ],
+  "encoderPid": 20720,
+  "captureWallSeconds": 3604.7023421,
+  "captureExit": {
+    "code": 0,
+    "signal": null,
+    "stderr": ""
+  },
+  "probe": {
+    "programs": [],
+    "streams": [
+      {
+        "index": 0,
+        "codec_name": "h264",
+        "codec_type": "video",
+        "width": 1920,
+        "height": 1080,
+        "avg_frame_rate": "30/1",
+        "start_time": "0.021000",
+        "duration": "3605.021000",
+        "nb_read_packets": "108150"
+      },
+      {
+        "index": 1,
+        "codec_name": "aac",
+        "codec_type": "audio",
+        "avg_frame_rate": "0/0",
+        "start_time": "0.000000",
+        "duration": "3605.035000",
+        "nb_read_packets": "168986"
+      }
+    ],
+    "format": {
+      "start_time": "0.000000",
+      "duration": "3605.035000",
+      "size": "2479536157"
+    }
+  },
+  "qualifiesForHourAcceptance": true
+}

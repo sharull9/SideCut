@@ -178,3 +178,26 @@ describe("SQLite durability and legacy migration", () => {
     }
   });
 });
+
+it("streams files larger than 256 MiB, seals them, and aborts failed writes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "sidecut-storage-"));
+  const storage = new NativeStorage(root);
+  try {
+    const id = await storage.begin();
+    const chunk = new Uint8Array(4 * 1024 * 1024);
+    chunk[0] = 42;
+    for (let i = 0; i < 65; i++) await storage.append(id, chunk);
+    await expect(storage.size(id)).rejects.toThrow();
+    await storage.seal(id);
+    expect(await storage.size(id)).toBe(65 * chunk.length);
+    expect((await storage.readRange(id, 64 * chunk.length, 1))[0]).toBe(42);
+    await expect(storage.readRange(id, 0, chunk.length + 1)).rejects.toThrow();
+    const abandoned = await storage.begin();
+    await expect(storage.append(abandoned, new Uint8Array(chunk.length + 1))).rejects.toThrow();
+    await storage.abort(abandoned);
+    await expect(storage.size(abandoned)).rejects.toThrow();
+  } finally {
+    storage.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});

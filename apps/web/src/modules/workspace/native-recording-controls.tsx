@@ -110,7 +110,7 @@ export function NativeRecordingControls() {
             </select>
             <FieldDescription>
               Native recordings stay on local disk. Screen capture records the entire desktop;
-              system audio is excluded. Import and library controls are coming later.
+              system audio is excluded.
             </FieldDescription>
           </Field>
           {source !== "screen" && (

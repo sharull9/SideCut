@@ -21,6 +21,10 @@ import { ProjectAPI } from "./project-api.ts";
 import { LocalHTTPService } from "./http-service.ts";
 import { NativeRecorder } from "./native-recorder.ts";
 import { registerNativeRecorder } from "./native-recorder-ipc.ts";
+import { NativeDeliveryService } from "./delivery-service.ts";
+import { registerNativeDelivery } from "./delivery-ipc.ts";
+import { NativeRecordingLibrary } from "./native-recording-library.ts";
+import { registerNativeRecordingLibrary } from "./native-recording-library-ipc.ts";
 import { NativeMedia } from "./native-media.ts";
 import { mediaBinaries } from "./media-binaries.ts";
 import { rendererService } from "./renderer-service.ts";
@@ -148,6 +152,30 @@ void app
           throw new Error("Untrusted storage sender.");
         return handler(value);
       });
+    for (const [channel, handler] of [
+      [bridgeChannels.storageFileBegin, () => storage.begin()],
+      [
+        bridgeChannels.storageFileAppend,
+        (id: unknown, bytes: unknown) => storage.append(id, bytes),
+      ],
+      [bridgeChannels.storageFileSeal, (id: unknown) => storage.seal(id)],
+      [bridgeChannels.storageFileAbort, (id: unknown) => storage.abort(id)],
+      [bridgeChannels.storageFileSize, (id: unknown) => storage.size(id)],
+      [
+        bridgeChannels.storageFileRead,
+        (id: unknown, offset: unknown, length: unknown) => storage.readRange(id, offset, length),
+      ],
+      [bridgeChannels.storageFileDigest, (id: unknown) => storage.digest(id)],
+    ] as const)
+      ipcMain.handle(channel, (event, ...args: unknown[]) => {
+        if (
+          !event.senderFrame ||
+          event.senderFrame !== event.sender.mainFrame ||
+          !isTrusted(event.senderFrame.url)
+        )
+          throw new Error("Untrusted storage sender.");
+        return (handler as (...args: unknown[]) => unknown)(...args);
+      });
     app.once("will-quit", () => storage.close());
     const providers = new DesktopAssetProviders(
         join(sharedStorage || app.getPath("userData"), "assets"),
@@ -226,12 +254,23 @@ void app
           process.env,
           app.isPackaged ? process.resourcesPath : undefined,
         );
+        const recordingRoot = join(app.getPath("userData"), "native-recordings");
+        const closeDelivery = registerNativeDelivery(
+          new NativeDeliveryService({
+            directory: sharedStorage || app.getPath("userData"),
+            ...binaries,
+          }),
+          isTrusted,
+          Boolean(headlessProject || smoke),
+        );
+        const recorder = new NativeRecorder(binaries.ffmpeg, binaries.ffprobe, recordingRoot);
         const closeRecorder = registerNativeRecorder(
-          new NativeRecorder(
-            binaries.ffmpeg,
-            binaries.ffprobe,
-            join(app.getPath("userData"), "native-recordings"),
-          ),
+          recorder,
+          isTrusted,
+          Boolean(headlessProject || smoke),
+        );
+        registerNativeRecordingLibrary(
+          new NativeRecordingLibrary(recordingRoot, recorder, binaries.ffmpeg, storage),
           isTrusted,
           Boolean(headlessProject || smoke),
         );
@@ -282,6 +321,7 @@ void app
         }
         const closeNative = registerNativeIPC(project, isTrusted, api);
         const close = async () => {
+          await closeDelivery();
           await closeRecorder();
           await http.close();
           renderer.close();

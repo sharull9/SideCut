@@ -1,6 +1,9 @@
+import type { NativeDeliveryRequest } from "./native-delivery.ts";
 import type {
   NativeCaptureDevice,
+  NativeFileReference,
   NativeRecording,
+  NativeRecordingAsset,
   NativeRecordingRequest,
 } from "./native-recording.ts";
 interface CommitResult {
@@ -48,11 +51,22 @@ export interface FolderMedia {
   shortAudioFallback: boolean;
 }
 export interface NativeBridge {
+  deliveryEncode?: (
+    requestID: string,
+    inputID: string,
+    request: NativeDeliveryRequest,
+  ) => Promise<NativeFileReference>;
+  deliveryCancel?: (requestID: string) => Promise<void>;
   nativeRecordingDevices?: () => Promise<NativeCaptureDevice[]>;
   nativeRecordingStart?: (request: NativeRecordingRequest) => Promise<NativeRecording>;
   nativeRecordingStop?: () => Promise<NativeRecording>;
   nativeRecordingList?: () => Promise<NativeRecording[]>;
   nativeRecordingRetry?: (id: string) => Promise<NativeRecording>;
+  nativeRecordingPoster?: (id: string) => Promise<string | null>;
+  nativeRecordingAdopt?: (id: string) => Promise<NativeFileReference>;
+  nativeRecordingRead?: (id: string) => Promise<NativeRecordingAsset>;
+  nativeRecordingDelete?: (id: string) => Promise<void>;
+  nativeRecordingReveal?: (id: string) => Promise<void>;
   capturePrepare?: (
     id: string,
     request: { source: "screen" | "camera" | "microphone"; microphone: boolean },
@@ -63,6 +77,13 @@ export interface NativeBridge {
   storageRequest?: (request: unknown) => Promise<unknown>;
   storagePutFile?: (bytes: Uint8Array) => Promise<string>;
   storageGetFile?: (id: string) => Promise<Uint8Array>;
+  storageFileBegin?: () => Promise<string>;
+  storageFileAppend?: (id: string, bytes: Uint8Array) => Promise<void>;
+  storageFileSeal?: (id: string) => Promise<void>;
+  storageFileAbort?: (id: string) => Promise<void>;
+  storageFileSize?: (id: string) => Promise<number>;
+  storageFileRead?: (id: string, offset: number, length: number) => Promise<Uint8Array>;
+  storageFileDigest?: (id: string) => Promise<string>;
   storageRemoveFile?: (id: string) => Promise<void>;
   serviceSubscribe?: (listener: (request: RendererServiceRequest) => void) => () => void;
   serviceReply?: (id: string, result: unknown, error?: string) => Promise<void>;

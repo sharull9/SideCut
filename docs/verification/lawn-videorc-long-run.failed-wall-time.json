@@ -1,0 +1,921 @@
+{
+  "testedAt": "2026-10-27T11:03:45.266Z",
+  "platform": "win32",
+  "production": false,
+  "syntheticInputs": true,
+  "profile": "real-time lavfi tone first + 1080p30 test pattern",
+  "requestedWallSeconds": 3600,
+  "status": "failed",
+  "accepted": false,
+  "samples": [
+    {
+      "wallSeconds": 0.013,
+      "encodedSeconds": 0,
+      "diskBytes": 0,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 0.578125,
+        "workingSetBytes": 225505280,
+        "privateBytes": 269647872
+      },
+      "node": {
+        "rssBytes": 43651072,
+        "heapUsedBytes": 5792336
+      }
+    },
+    {
+      "wallSeconds": 60.835,
+      "encodedSeconds": 60.885,
+      "diskBytes": 41202073,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 36.90625,
+        "workingSetBytes": 235511808,
+        "privateBytes": 277508096
+      },
+      "node": {
+        "rssBytes": 43298816,
+        "heapUsedBytes": 5466896
+      }
+    },
+    {
+      "wallSeconds": 120.848,
+      "encodedSeconds": 120.405,
+      "diskBytes": 82474235,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 72.546875,
+        "workingSetBytes": 235544576,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 44027904,
+        "heapUsedBytes": 5869792
+      }
+    },
+    {
+      "wallSeconds": 180.856,
+      "encodedSeconds": 180.779,
+      "diskBytes": 123664970,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 109.984375,
+        "workingSetBytes": 235544576,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 44359680,
+        "heapUsedBytes": 6211576
+      }
+    },
+    {
+      "wallSeconds": 240.867,
+      "encodedSeconds": 240.235,
+      "diskBytes": 164925382,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 145.796875,
+        "workingSetBytes": 235544576,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 44875776,
+        "heapUsedBytes": 5771280
+      }
+    },
+    {
+      "wallSeconds": 300.88,
+      "encodedSeconds": 300.736,
+      "diskBytes": 206123883,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 186.03125,
+        "workingSetBytes": 235700224,
+        "privateBytes": 277581824
+      },
+      "node": {
+        "rssBytes": 45379584,
+        "heapUsedBytes": 6136496
+      }
+    },
+    {
+      "wallSeconds": 360.881,
+      "encodedSeconds": 360.299,
+      "diskBytes": 247413599,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 225.125,
+        "workingSetBytes": 235700224,
+        "privateBytes": 277581824
+      },
+      "node": {
+        "rssBytes": 30982144,
+        "heapUsedBytes": 5659936
+      }
+    },
+    {
+      "wallSeconds": 420.897,
+      "encodedSeconds": 420.757,
+      "diskBytes": 288636863,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 257.609375,
+        "workingSetBytes": 235692032,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 19767296,
+        "heapUsedBytes": 6009352
+      }
+    },
+    {
+      "wallSeconds": 480.901,
+      "encodedSeconds": 480.235,
+      "diskBytes": 329837987,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 295.71875,
+        "workingSetBytes": 205422592,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 12587008,
+        "heapUsedBytes": 6361952
+      }
+    },
+    {
+      "wallSeconds": 540.906,
+      "encodedSeconds": 540.821,
+      "diskBytes": 371014217,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 341.734375,
+        "workingSetBytes": 211673088,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13910016,
+        "heapUsedBytes": 5921640
+      }
+    },
+    {
+      "wallSeconds": 600.918,
+      "encodedSeconds": 600.341,
+      "diskBytes": 412244704,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 380.796875,
+        "workingSetBytes": 214839296,
+        "privateBytes": 277544960
+      },
+      "node": {
+        "rssBytes": 14675968,
+        "heapUsedBytes": 6246752
+      }
+    },
+    {
+      "wallSeconds": 660.923,
+      "encodedSeconds": 660.8,
+      "diskBytes": 453488394,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 419.640625,
+        "workingSetBytes": 214847488,
+        "privateBytes": 277544960
+      },
+      "node": {
+        "rssBytes": 15044608,
+        "heapUsedBytes": 6556480
+      }
+    },
+    {
+      "wallSeconds": 720.931,
+      "encodedSeconds": 720.299,
+      "diskBytes": 494707649,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 459.140625,
+        "workingSetBytes": 214859776,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 15204352,
+        "heapUsedBytes": 6042536
+      }
+    },
+    {
+      "wallSeconds": 780.942,
+      "encodedSeconds": 780.843,
+      "diskBytes": 535943021,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 499.390625,
+        "workingSetBytes": 217989120,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 15208448,
+        "heapUsedBytes": 6343480
+      }
+    },
+    {
+      "wallSeconds": 841.013,
+      "encodedSeconds": 840.341,
+      "diskBytes": 577178262,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 541.796875,
+        "workingSetBytes": 214773760,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 9637888,
+        "heapUsedBytes": 5875656
+      }
+    },
+    {
+      "wallSeconds": 900.958,
+      "encodedSeconds": 900.8,
+      "diskBytes": 618446407,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 586.203125,
+        "workingSetBytes": 214781952,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 12386304,
+        "heapUsedBytes": 6187040
+      }
+    },
+    {
+      "wallSeconds": 960.969,
+      "encodedSeconds": 960.299,
+      "diskBytes": 659669637,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 625.234375,
+        "workingSetBytes": 214781952,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 12750848,
+        "heapUsedBytes": 6487008
+      }
+    },
+    {
+      "wallSeconds": 1020.969,
+      "encodedSeconds": 1020.736,
+      "diskBytes": 700884144,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 661.65625,
+        "workingSetBytes": 214781952,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13094912,
+        "heapUsedBytes": 5982000
+      }
+    },
+    {
+      "wallSeconds": 1080.974,
+      "encodedSeconds": 1081.237,
+      "diskBytes": 742094780,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 696.671875,
+        "workingSetBytes": 214786048,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13107200,
+        "heapUsedBytes": 6286304
+      }
+    },
+    {
+      "wallSeconds": 1140.977,
+      "encodedSeconds": 1140.8,
+      "diskBytes": 783300232,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 732.9375,
+        "workingSetBytes": 214790144,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13119488,
+        "heapUsedBytes": 6588032
+      }
+    },
+    {
+      "wallSeconds": 1200.983,
+      "encodedSeconds": 1200.363,
+      "diskBytes": 824522368,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 775.421875,
+        "workingSetBytes": 217038848,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13295616,
+        "heapUsedBytes": 6100168
+      }
+    },
+    {
+      "wallSeconds": 1260.996,
+      "encodedSeconds": 1261.035,
+      "diskBytes": 865751260,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 821.1875,
+        "workingSetBytes": 217038848,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13299712,
+        "heapUsedBytes": 6406352
+      }
+    },
+    {
+      "wallSeconds": 1321.01,
+      "encodedSeconds": 1320.576,
+      "diskBytes": 907060745,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 856.78125,
+        "workingSetBytes": 217038848,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13381632,
+        "heapUsedBytes": 5930808
+      }
+    },
+    {
+      "wallSeconds": 1381.017,
+      "encodedSeconds": 1381.056,
+      "diskBytes": 948306761,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 894.421875,
+        "workingSetBytes": 217042944,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13455360,
+        "heapUsedBytes": 6238264
+      }
+    },
+    {
+      "wallSeconds": 1441.018,
+      "encodedSeconds": 1440.576,
+      "diskBytes": 990106158,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 923.640625,
+        "workingSetBytes": 217382912,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13463552,
+        "heapUsedBytes": 6543424
+      }
+    },
+    {
+      "wallSeconds": 1501.028,
+      "encodedSeconds": 1501.12,
+      "diskBytes": 1031334064,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 953.421875,
+        "workingSetBytes": 217382912,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13475840,
+        "heapUsedBytes": 6057728
+      }
+    },
+    {
+      "wallSeconds": 1561.043,
+      "encodedSeconds": 1560.704,
+      "diskBytes": 1072585315,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 991.015625,
+        "workingSetBytes": 217382912,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13475840,
+        "heapUsedBytes": 6365552
+      }
+    },
+    {
+      "wallSeconds": 1621.051,
+      "encodedSeconds": 1621.184,
+      "diskBytes": 1113852843,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1024.25,
+        "workingSetBytes": 217382912,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13500416,
+        "heapUsedBytes": 6676240
+      }
+    },
+    {
+      "wallSeconds": 1681.064,
+      "encodedSeconds": 1680.725,
+      "diskBytes": 1155057492,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1054.46875,
+        "workingSetBytes": 217382912,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13643776,
+        "heapUsedBytes": 6176088
+      }
+    },
+    {
+      "wallSeconds": 1741.068,
+      "encodedSeconds": 1741.077,
+      "diskBytes": 1196208818,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1090.046875,
+        "workingSetBytes": 217382912,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13709312,
+        "heapUsedBytes": 6489680
+      }
+    },
+    {
+      "wallSeconds": 1801.083,
+      "encodedSeconds": 1800.619,
+      "diskBytes": 1237499955,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1116.328125,
+        "workingSetBytes": 217382912,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13746176,
+        "heapUsedBytes": 6009248
+      }
+    },
+    {
+      "wallSeconds": 1861.086,
+      "encodedSeconds": 1861.227,
+      "diskBytes": 1278735004,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1145.09375,
+        "workingSetBytes": 217382912,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13758464,
+        "heapUsedBytes": 6322344
+      }
+    },
+    {
+      "wallSeconds": 1921.097,
+      "encodedSeconds": 1920.704,
+      "diskBytes": 1319928717,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1179.34375,
+        "workingSetBytes": 217387008,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13778944,
+        "heapUsedBytes": 6633176
+      }
+    },
+    {
+      "wallSeconds": 1981.099,
+      "encodedSeconds": 1981.333,
+      "diskBytes": 1361204144,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1205.09375,
+        "workingSetBytes": 217395200,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13811712,
+        "heapUsedBytes": 6138720
+      }
+    },
+    {
+      "wallSeconds": 2041.101,
+      "encodedSeconds": 2040.811,
+      "diskBytes": 1402428812,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1237.890625,
+        "workingSetBytes": 217399296,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13811712,
+        "heapUsedBytes": 6450936
+      }
+    },
+    {
+      "wallSeconds": 2101.113,
+      "encodedSeconds": 2101.333,
+      "diskBytes": 1443697151,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1275.625,
+        "workingSetBytes": 217399296,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13811712,
+        "heapUsedBytes": 6767160
+      }
+    },
+    {
+      "wallSeconds": 2161.118,
+      "encodedSeconds": 2160.896,
+      "diskBytes": 1484894737,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1307.078125,
+        "workingSetBytes": 217399296,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 13901824,
+        "heapUsedBytes": 6221344
+      }
+    },
+    {
+      "wallSeconds": 2221.121,
+      "encodedSeconds": 2221.333,
+      "diskBytes": 1526211515,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1337.65625,
+        "workingSetBytes": 217399296,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 17330176,
+        "heapUsedBytes": 6509384
+      }
+    },
+    {
+      "wallSeconds": 2281.131,
+      "encodedSeconds": 2280.832,
+      "diskBytes": 1567438086,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1371.875,
+        "workingSetBytes": 206221312,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 16142336,
+        "heapUsedBytes": 6790280
+      }
+    },
+    {
+      "wallSeconds": 2341.137,
+      "encodedSeconds": 2341.376,
+      "diskBytes": 1608691212,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1405.1875,
+        "workingSetBytes": 209338368,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 16617472,
+        "heapUsedBytes": 6223416
+      }
+    },
+    {
+      "wallSeconds": 2401.14,
+      "encodedSeconds": 2400.939,
+      "diskBytes": 1649902836,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1436.359375,
+        "workingSetBytes": 209354752,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 16683008,
+        "heapUsedBytes": 6505480
+      }
+    },
+    {
+      "wallSeconds": 2461.142,
+      "encodedSeconds": 2461.44,
+      "diskBytes": 1691177320,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1457.328125,
+        "workingSetBytes": 209473536,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 16699392,
+        "heapUsedBytes": 6791000
+      }
+    },
+    {
+      "wallSeconds": 2521.149,
+      "encodedSeconds": 2520.96,
+      "diskBytes": 1732411276,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1485.890625,
+        "workingSetBytes": 210477056,
+        "privateBytes": 277577728
+      },
+      "node": {
+        "rssBytes": 17502208,
+        "heapUsedBytes": 6247856
+      }
+    },
+    {
+      "wallSeconds": 2581.159,
+      "encodedSeconds": 2580.608,
+      "diskBytes": 1773630510,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1519.265625,
+        "workingSetBytes": 210477056,
+        "privateBytes": 277577728
+      },
+      "node": {
+        "rssBytes": 17522688,
+        "heapUsedBytes": 6533840
+      }
+    },
+    {
+      "wallSeconds": 2641.168,
+      "encodedSeconds": 2641.131,
+      "diskBytes": 1814811313,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1547.3125,
+        "workingSetBytes": 210563072,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 17633280,
+        "heapUsedBytes": 6821712
+      }
+    },
+    {
+      "wallSeconds": 2701.169,
+      "encodedSeconds": 2700.608,
+      "diskBytes": 1856022104,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1582.234375,
+        "workingSetBytes": 210563072,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 17965056,
+        "heapUsedBytes": 6245832
+      }
+    },
+    {
+      "wallSeconds": 2761.183,
+      "encodedSeconds": 2761.259,
+      "diskBytes": 1897250867,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1616.953125,
+        "workingSetBytes": 210563072,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 17973248,
+        "heapUsedBytes": 6536328
+      }
+    },
+    {
+      "wallSeconds": 2821.19,
+      "encodedSeconds": 2820.843,
+      "diskBytes": 1938498856,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1649.75,
+        "workingSetBytes": 210894848,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 17977344,
+        "heapUsedBytes": 6823416
+      }
+    },
+    {
+      "wallSeconds": 2881.199,
+      "encodedSeconds": 2881.387,
+      "diskBytes": 1979694313,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1678.921875,
+        "workingSetBytes": 210898944,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 18006016,
+        "heapUsedBytes": 6292248
+      }
+    },
+    {
+      "wallSeconds": 2941.203,
+      "encodedSeconds": 2940.864,
+      "diskBytes": 2020961131,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1704.328125,
+        "workingSetBytes": 210903040,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 18505728,
+        "heapUsedBytes": 6610368
+      }
+    },
+    {
+      "wallSeconds": 3001.205,
+      "encodedSeconds": 3001.365,
+      "diskBytes": 2062183581,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1730.34375,
+        "workingSetBytes": 210903040,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 18526208,
+        "heapUsedBytes": 6901616
+      }
+    },
+    {
+      "wallSeconds": 3061.211,
+      "encodedSeconds": 3060.864,
+      "diskBytes": 2103415265,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1756.328125,
+        "workingSetBytes": 210903040,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 18599936,
+        "heapUsedBytes": 6315720
+      }
+    },
+    {
+      "wallSeconds": 3121.218,
+      "encodedSeconds": 3121.301,
+      "diskBytes": 2144580231,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1782.0625,
+        "workingSetBytes": 210911232,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 18731008,
+        "heapUsedBytes": 6609504
+      }
+    },
+    {
+      "wallSeconds": 3181.224,
+      "encodedSeconds": 3180.907,
+      "diskBytes": 2185834806,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1812.28125,
+        "workingSetBytes": 210911232,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 18735104,
+        "heapUsedBytes": 6901208
+      }
+    },
+    {
+      "wallSeconds": 3241.234,
+      "encodedSeconds": 3241.344,
+      "diskBytes": 2227099971,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1838.515625,
+        "workingSetBytes": 210911232,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 18771968,
+        "heapUsedBytes": 6352168
+      }
+    },
+    {
+      "wallSeconds": 3301.242,
+      "encodedSeconds": 3300.736,
+      "diskBytes": 2268387089,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1872.234375,
+        "workingSetBytes": 210915328,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 18771968,
+        "heapUsedBytes": 6646136
+      }
+    },
+    {
+      "wallSeconds": 3361.257,
+      "encodedSeconds": 3361.259,
+      "diskBytes": 2309481371,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1902.15625,
+        "workingSetBytes": 210915328,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 18800640,
+        "heapUsedBytes": 6945696
+      }
+    },
+    {
+      "wallSeconds": 3421.263,
+      "encodedSeconds": 3420.757,
+      "diskBytes": 2350650603,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1936.0625,
+        "workingSetBytes": 210915328,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 18829312,
+        "heapUsedBytes": 6373184
+      }
+    },
+    {
+      "wallSeconds": 3481.267,
+      "encodedSeconds": 3481.259,
+      "diskBytes": 2391909585,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 1966.109375,
+        "workingSetBytes": 210915328,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 18829312,
+        "heapUsedBytes": 6672280
+      }
+    },
+    {
+      "wallSeconds": 3541.277,
+      "encodedSeconds": 3540.672,
+      "diskBytes": 2433084280,
+      "encoder": {
+        "pid": 36096,
+        "cpuSeconds": 2000.125,
+        "workingSetBytes": 210919424,
+        "privateBytes": 277512192
+      },
+      "node": {
+        "rssBytes": 18829312,
+        "heapUsedBytes": 6967520
+      }
+    }
+  ],
+  "checks": {},
+  "errors": [
+    "AssertionError [ERR_ASSERTION]: Capture ended before 3600 wall seconds\n    at file:///C:/Users/Arafa/.t3/worktrees/side-cut/t3-86ca0f87/scripts/verify-native-long-run.mjs:195:10\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)"
+  ],
+  "limits": [
+    "Synthetic inputs do not establish physical-device cadence, device loss, or calibrated A/V sync.",
+    "This direct FFmpeg run uses NativeRecorder's codec, queue, muxer and flush settings. It does not exercise Electron IPC or the recorder journal."
+  ],
+  "encoderPid": 36096
+}

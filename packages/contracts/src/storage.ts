@@ -10,6 +10,9 @@ export const Collection = Schema.Literals([
   "cache",
   "migrations",
   "recordings",
+  "deliveries",
+  "reviewVersions",
+  "reviewThreads",
 ]);
 const entry = Schema.Struct({
   collection: Collection,

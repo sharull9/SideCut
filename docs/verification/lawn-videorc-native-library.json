@@ -1,0 +1,41 @@
+{
+  "testedAt": "2026-10-26T20:55:50.497Z",
+  "platform": "win32",
+  "production": true,
+  "syntheticInputs": true,
+  "simulatedConfirmation": true,
+  "simulatedShellReveal": true,
+  "checks": {
+    "fixture": {
+      "bytes": 81434,
+      "tracks": [
+        {
+          "kind": "video",
+          "startSeconds": 0.266016,
+          "durationSeconds": 2.266016
+        },
+        {
+          "kind": "audio",
+          "startSeconds": 0.528,
+          "durationSeconds": 2.55
+        }
+      ]
+    },
+    "poster": {
+      "width": 320,
+      "height": 180
+    },
+    "posterRows": 2,
+    "revealScoped": true,
+    "currentImportReload": {
+      "mediaID": "med_94ca09b9-81ab-4ca5-8310-a4038f9086c2",
+      "bytes": 81434,
+      "playable": true
+    },
+    "newProjectOffsets": true,
+    "newProjectReload": true,
+    "deletionPreservesImportedPlayback": true
+  },
+  "errors": [],
+  "accepted": true
+}

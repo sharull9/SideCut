@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./delivery": "./src/delivery.ts",
+    "./native-delivery": "./src/native-delivery.ts",
     "./native-recording": "./src/native-recording.ts",
     "./recordings": "./src/recordings.ts",
     "./providers": "./src/providers.ts",
@@ -12,7 +14,8 @@
     "./commands": "./src/commands.ts",
     "./project": "./src/project.ts",
     "./desktop": "./src/desktop.ts",
-    "./storage": "./src/storage.ts"
+    "./storage": "./src/storage.ts",
+    "./review": "./src/review.ts"
   },
   "scripts": {
     "typecheck": "vp exec tsc --noEmit"

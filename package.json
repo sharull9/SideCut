@@ -26,10 +26,17 @@
     "verify:recording-desktop": "vp exec node scripts/verify-recording-desktop.mjs",
     "verify:capture-desktop": "vp exec node scripts/verify-capture-desktop.mjs",
     "verify:native-recording": "vp exec node scripts/verify-native-recording.mjs",
+    "verify:native-library": "vp exec node scripts/verify-native-library.mjs",
     "verify:windows-install": "pwsh -NoProfile -File scripts/verify-windows-install.ps1",
     "verify:sqlite": "vp exec node scripts/verify-sqlite.mjs",
     "verify:filmora": "vp exec node scripts/verify-filmora.mjs",
-    "verify:finishing": "vp exec node scripts/verify-finishing.mjs"
+    "verify:finishing": "vp exec node scripts/verify-finishing.mjs",
+    "verify:delivery": "vp exec node scripts/verify-delivery.mjs",
+    "verify:review-handoff": "vp exec node scripts/verify-review-handoff.mjs",
+    "verify:rendered-review": "vp exec node scripts/verify-rendered-review.mjs",
+    "verify:native-long-run": "vp exec node scripts/verify-native-long-run.mjs",
+    "verify:delivery-recovery": "vp exec node scripts/verify-delivery-recovery.mjs",
+    "verify:long-delivery": "vp exec node scripts/verify-long-delivery.mjs"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",

@@ -35,8 +35,10 @@ import { MediaThumb } from "./source-samples";
 import { LocalAssetLibrary } from "./asset-library";
 import { SavedSegments } from "./saved-segments";
 import { NativeRecordingControls } from "./native-recording-controls";
+import { NativeRecordingLibrary } from "./native-recording-library";
 import { RecordingControls } from "./recording-controls";
 import { SavedRecordings } from "./saved-recordings";
+import { RenderedReview } from "./rendered-review";
 import "./media-panel.css";
 
 type View = "list" | "grid";
@@ -409,9 +411,11 @@ export function MediaBin({
         <div className="editor-media-sections">
           <RecordingControls />
           <NativeRecordingControls />
+          <NativeRecordingLibrary />
           <SavedRecordings />
           <LocalAssetLibrary />
           <SavedSegments />
+          <RenderedReview key={snapshot.project.id} />
         </div>
       </div>
       {dragging && (

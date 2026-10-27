@@ -1,3 +1,11 @@
+import {
+  DurableStorage,
+  nativeFile,
+  discardNativeFile,
+} from "@sidecut/platform-browser/sqlite-client";
+import { DeliveryStore } from "@sidecut/core/delivery-store";
+import type { Delivery } from "@sidecut/contracts/delivery";
+import { decodeNativeRecording } from "@sidecut/contracts/native-recording";
 import type { FolderMedia } from "@sidecut/contracts/desktop";
 import { createArchive, openArchive, type ArchiveResource } from "@sidecut/core/archive";
 import { importEDL, importFilmora, object } from "@sidecut/core/interchange";
@@ -18,6 +26,7 @@ import { acquireProjectWriter } from "@sidecut/platform-browser/writer-lock";
 import { SaveQueue } from "@sidecut/platform-browser/save-queue";
 import { BrowserJobs } from "@sidecut/platform-browser/jobs";
 import { BrowserRecording, type RecordingRequest } from "@sidecut/platform-browser/recording";
+import { releaseExport } from "@sidecut/platform-browser/export-output";
 import { ExportQueue } from "@sidecut/platform-browser/export-queue";
 import { exportPresetPlan, type ExportPreset } from "@sidecut/core/export-presets";
 import { projectDuration } from "@sidecut/core/render-plan";
@@ -98,9 +107,14 @@ export class BrowserProjectSession {
     format: string | null = null,
     preset: ExportPreset | "wav" = "webm",
     range: { from: number; to: number } | null = null,
+    encoding: "webm" | "h264" | "hevc" = "webm",
   ) {
+    this.exports.assertAvailable();
+    if (preset === "wav") encoding = "webm";
     format = preset === "short" ? "portrait" : preset === "wav" ? null : format;
-    const { project, revision } = this.state;
+    const file = this.projectFile();
+    const snapshotJSON = encodeProjectFile(file);
+    const project = decodeProjectFile(JSON.parse(snapshotJSON)).project;
     const bounds = range ? { ...range } : null;
     if (
       bounds &&
@@ -111,45 +125,131 @@ export class BrowserProjectSession {
         bounds.to > projectDuration(project).seconds)
     )
       throw new Error("Choose a non-empty export range inside the sequence.");
-    const name = `${project.name.replace(/[\\/:*?"<>|]/g, "_") || "SideCut"}${format ? ` ${format}` : ""}${preset === "webm" ? "" : ` ${preset}`}${bounds ? ` ${bounds.from.toFixed(3)}-${bounds.to.toFixed(3)}s` : ""}.${preset === "wav" ? "wav" : "webm"}`;
+    const name = `${project.name.replace(/[\\/:*?"<>|]/g, "_") || "SideCut"}${format ? ` ${format}` : ""}${preset === "webm" ? "" : ` ${preset}`}${bounds ? ` ${bounds.from.toFixed(3)}-${bounds.to.toFixed(3)}s` : ""}.${preset === "wav" ? "wav" : encoding === "webm" ? "webm" : "mp4"}`;
     return this.exports.enqueue(
       name,
-      async (signal, progress) => {
-        if (this.state.project.id !== project.id || this.state.revision !== revision)
-          throw new Error("Project changed after this export was queued. Queue it again.");
-        if (preset === "wav") {
-          if (!this.store || this.state.busy || this.state.saveState === "loading")
-            throw new Error("Wait for the current project operation to finish.");
-          const epoch = this.epoch;
-          this.update({ busy: true });
-          try {
-            const { renderService } = await import("./service-render");
-            return await this.jobs.run("export", "Export audio", 10, signal, async (jobSignal) => {
-              const result = await renderService(
-                this,
-                "clip",
-                {
-                  start: bounds?.from ?? 0,
-                  end: bounds?.to ?? projectDuration(project).seconds,
-                  audioOnly: true,
-                  format,
-                },
-                jobSignal,
-              );
-              if (!("data" in result) || typeof result.data !== "string")
-                throw new Error("Audio export returned no data.");
-              return new Blob([Uint8Array.from(atob(result.data), (c) => c.charCodeAt(0))], {
-                type: "audio/wav",
-              });
-            });
-          } finally {
-            if (this.epoch === epoch) this.update({ busy: false });
-          }
-        }
-        return this.exportWebM(signal, progress, format, preset, bounds);
-      },
+      async (signal, progress) =>
+        preset === "wav"
+          ? this.exportWAV(signal, progress, project, bounds)
+          : this.exportWebM(signal, progress, format, preset, bounds, project),
       preset,
+      {
+        snapshotJSON,
+        startSeconds: bounds?.from ?? 0,
+        durationSeconds: bounds ? bounds.to - bounds.from : projectDuration(project).seconds,
+      },
+      this.deliveryRecipe(file, snapshotJSON, format, preset, bounds, encoding),
     );
+  }
+  private async deliveryRecipe(
+    file: ProjectFile,
+    snapshotJSON: string,
+    format: string | null,
+    preset: ExportPreset | "wav",
+    bounds: { from: number; to: number } | null,
+    encoding: "webm" | "h264" | "hevc",
+  ): Promise<Delivery["recipe"]> {
+    if (!this.store) throw new Error("Project storage is unavailable.");
+    const store = this.store;
+    const resources = await store.resources(file.project.id);
+    const storage = await DurableStorage.open();
+    const saved: Array<Delivery["recipe"]["resources"][number]> = [];
+    try {
+      for (const { key, resource } of resources) {
+        const fileID = await storage.putBlob(
+          resource.file.slice(0, resource.file.size, resource.file.type),
+        );
+        saved.push({
+          id: key,
+          fileID,
+          name: resource.file.name,
+          type: resource.file.type,
+          lastModified: resource.file.lastModified,
+          state: resource.state,
+          detail: resource.detail,
+        });
+      }
+    } catch (error) {
+      await Promise.allSettled(saved.map((item) => storage.removeFile(item.fileID)));
+      throw error;
+    }
+    return {
+      snapshotJSON,
+      projectID: file.project.id,
+      revision: file.revision,
+      resourceIDs: saved.map((item) => item.id),
+      resources: saved,
+      format,
+      preset,
+      encoding,
+      startSeconds: bounds?.from ?? 0,
+      durationSeconds: bounds ? bounds.to - bounds.from : projectDuration(file.project).seconds,
+    };
+  }
+  private async configureExports() {
+    const storage = await DurableStorage.open();
+    await this.exports.configure({
+      store: new DeliveryStore(storage),
+      putBlob: storage.putBlob,
+      getBlob: storage.getBlob,
+      removeFile: storage.removeFile,
+      run: async (recipe, signal, progress) => {
+        const project = decodeProjectFile(JSON.parse(recipe.snapshotJSON)).project;
+        const resources = new Map(recipe.resources.map((resource) => [resource.id, resource]));
+        const resource = async (id: string) => {
+          const item = resources.get(id);
+          if (!item) return null;
+          const file = await storage.getBlob(item.fileID, item.type, item.name, item.lastModified);
+          if (!(file instanceof File)) throw new Error("Stored export resource is invalid.");
+          return { file, state: item.state, detail: item.detail };
+        };
+        const range = {
+          from: recipe.startSeconds,
+          to: recipe.startSeconds + recipe.durationSeconds,
+        };
+        if (recipe.preset === "wav")
+          return this.exportWAV(signal, progress, project, range, resource);
+        const encoding = recipe.encoding ?? "webm";
+        const blob = await this.exportWebM(
+          signal,
+          (value) => progress(value * (encoding === "webm" ? 1 : 0.7)),
+          recipe.format,
+          recipe.preset,
+          range,
+          project,
+          resource,
+        );
+        if (encoding === "webm") return blob;
+        if (!this.native?.deliveryEncode || !this.native.deliveryCancel) {
+          await releaseExport(blob);
+          throw new Error("Native MP4 delivery requires the desktop application.");
+        }
+        const inputID = await storage.putBlob(blob),
+          requestID = crypto.randomUUID();
+        const abort = () => {
+          void this.native?.deliveryCancel?.(requestID).catch(() => {});
+        };
+        signal.addEventListener("abort", abort, { once: true });
+        try {
+          signal.throwIfAborted();
+          const settings = exportPresetPlan(project, recipe.preset, recipe.format);
+          const output = await this.native.deliveryEncode(requestID, inputID, {
+            codec: encoding,
+            videoBitrate: settings.videoBitrate,
+            audioBitrate: 192000,
+            name: `${project.name.replace(/[\\/:*?"<>|]/g, "_") || "SideCut"}.mp4`,
+          });
+          signal.throwIfAborted();
+          const file = await nativeFile(output);
+          progress(1);
+          await storage.removeFile(inputID);
+          return file;
+        } finally {
+          signal.removeEventListener("abort", abort);
+          await releaseExport(blob);
+        }
+      },
+    });
   }
   readonly analysis = new MediaAnalysis(this);
   readonly recording = new BrowserRecording(undefined, nativeBridge());
@@ -173,6 +273,155 @@ export class BrowserProjectSession {
     if (this.state.saveState === "error") await this.retrySave();
     await this.importFiles([capture.file]);
     await this.recording.discard();
+  }
+  async importNativeRecording(id: string, mode: "media" | "new-project"): Promise<void> {
+    this.assertWritable();
+    const bridge = this.native;
+    if (
+      (!(bridge?.nativeRecordingAdopt && bridge.nativeRecordingList) &&
+        !bridge?.nativeRecordingRead) ||
+      !this.store
+    )
+      throw new Error("Native recording import is unavailable.");
+    const epoch = this.epoch,
+      projectID = this.state.project.id,
+      revision = this.state.revision;
+    const check = () => {
+      this.assertOpen(epoch);
+      if (
+        this.state.project.id !== projectID ||
+        this.state.revision !== revision ||
+        this.state.readOnly ||
+        !this.state.busy
+      )
+        throw new Error("The project changed while importing the recording.");
+    };
+    let adoptedFileID: string | undefined;
+    let resourceCommitted = false;
+    this.update({ busy: true, error: null });
+    try {
+      if (this.state.saveState === "error") {
+        if (this.native) await this.native.projectFlush();
+        else {
+          this.queue?.enqueue(this.projectFile());
+          await this.queue?.flush();
+        }
+        check();
+      }
+      let recording;
+      let file: File;
+      if (bridge.nativeRecordingAdopt && bridge.nativeRecordingList) {
+        const recordings = await bridge.nativeRecordingList();
+        recording = decodeNativeRecording(recordings.find((entry) => entry.id === id));
+        if (recording.id !== id || recording.status !== "ready")
+          throw new Error("Recording is not ready.");
+        const reference = await bridge.nativeRecordingAdopt(id);
+        adoptedFileID = reference.id;
+        check();
+        file = await nativeFile(reference);
+      } else {
+        const asset = await bridge.nativeRecordingRead!(id);
+        check();
+        recording = decodeNativeRecording(asset.recording);
+        if (
+          recording.id !== id ||
+          recording.status !== "ready" ||
+          !(asset.bytes instanceof Uint8Array) ||
+          !asset.bytes.length ||
+          asset.bytes.length > 128 * 1024 * 1024 ||
+          (asset.type !== "video/mp4" && asset.type !== "audio/mp4") ||
+          !asset.name
+        )
+          throw new Error("Invalid native recording asset.");
+        file = new File([asset.bytes.slice().buffer], asset.name, { type: asset.type });
+      }
+      const { item, resource } = await probeLocalFile(file);
+      check();
+      if (resource.state !== "available")
+        throw new Error(`Cannot read recording: ${resource.detail}`);
+      const tracks = recording.tracks;
+      if (
+        !tracks.length ||
+        tracks.some((track) => track.durationSeconds <= 0 || track.startSeconds < 0) ||
+        tracks.some((track) => (track.kind === "video" ? !item.hasVideo : !item.hasAudio))
+      )
+        throw new Error("Recording tracks do not match the media.");
+      const media = {
+        ...item,
+        nativeRecording: {
+          id: recording.id,
+          projectID: recording.projectID,
+          source: recording.source,
+          tracks,
+        },
+      };
+      if (mode === "media") {
+        const existing = this.state.project.media.find(
+          (entry) =>
+            mediaIdentity(entry.path, entry.fingerprint) ===
+            mediaIdentity(item.path, item.fingerprint),
+        );
+        await this.store.putResource(projectID, existing?.id ?? item.id, resource);
+        resourceCommitted = true;
+        check();
+        this.coordinator.apply({
+          label: "Import native recording",
+          expectedRevision: this.state.revision,
+          commands: [
+            existing
+              ? {
+                  updateMedia: {
+                    mediaID: existing.id,
+                    patch: { nativeRecording: media.nativeRecording },
+                  },
+                }
+              : { addMedia: { item: media } },
+          ],
+        });
+        if (this.native) await this.native.projectFlush();
+        else await this.queue?.flush();
+        this.assertOpen(epoch);
+        await this.refreshMedia();
+        return;
+      }
+      if (mode !== "new-project") throw new Error("Unknown recording import mode.");
+      const base = standardProject(`prj_${crypto.randomUUID()}`);
+      const raw = JSON.parse(encodeProjectFile(base));
+      raw.project.media = [media];
+      const linkGroup = tracks.length > 1 ? `link_${crypto.randomUUID()}` : undefined;
+      const origin = Math.min(...tracks.map((track) => track.startSeconds));
+      for (const track of tracks) {
+        const offset = track.startSeconds;
+        // Older probe versions can include the initial timestamp gap in stream duration.
+        const duration = Math.min(track.durationSeconds, (item.duration ?? Infinity) - offset);
+        if (duration <= 0) throw new Error("Recording track starts beyond the playable media.");
+        const clip = {
+          id: `clip_${crypto.randomUUID()}`,
+          content: { media: { mediaID: item.id } },
+          start: offset - origin,
+          sourceStart: offset,
+          duration,
+          ...(linkGroup ? { linkGroup } : {}),
+        };
+        const target =
+          track.kind === "video"
+            ? raw.project.videoTracks[recording.source === "camera" ? 1 : 0]
+            : raw.project.audioTracks[0];
+        target.clips = [...(target.clips ?? []), clip];
+      }
+      const candidate = decodeProjectFile(raw);
+      new ProjectCoordinator(candidate).getSnapshot();
+      await this.store.putResource(candidate.project.id, item.id, resource);
+      resourceCommitted = true;
+      check();
+      const json = encodeProjectFile(candidate);
+      this.update({ busy: false });
+      await this.openProject(new File([json], "Recording.tandem", { type: "application/json" }));
+    } finally {
+      if (adoptedFileID && !resourceCommitted)
+        await discardNativeFile(adoptedFileID).catch(() => {});
+      if (this.epoch === epoch) this.update({ busy: false });
+    }
   }
   private archivedRaw: string | null = null;
   private envelope = standardProject("prj_loading");
@@ -264,6 +513,7 @@ export class BrowserProjectSession {
             });
         });
         await this.refreshMedia();
+        await this.configureExports();
         return;
       }
       const file = await store.ensureCurrent(() => standardProject(`prj_${crypto.randomUUID()}`));
@@ -292,6 +542,7 @@ export class BrowserProjectSession {
       }
       this.attach(latest, release === null);
       await this.refreshMedia();
+      await this.configureExports();
     } catch (error) {
       release?.();
       store?.close();
@@ -322,7 +573,6 @@ export class BrowserProjectSession {
       ) {
         this.hostGeneration = this.coordinator.generation;
         ++this.epoch;
-        this.exports.clear();
         this.jobs.cancelAll();
         this.analysis.reset();
         this.exportController?.abort();
@@ -410,7 +660,6 @@ export class BrowserProjectSession {
   }
 
   private attach(file: ProjectFile, readOnly: boolean) {
-    this.exports.clear();
     this.jobs.cancelAll();
     this.analysis.reset();
     this.unsubscribe?.();
@@ -547,17 +796,48 @@ export class BrowserProjectSession {
     }
   }
 
+  async exportWAV(
+    signal: AbortSignal,
+    progress: (value: number) => void,
+    project: ProjectFile["project"],
+    range: { from: number; to: number } | null,
+    resolve?: (id: string) => ReturnType<BrowserProjectStore["resource"]>,
+  ) {
+    if (!this.store || this.state.busy || this.state.saveState === "loading")
+      throw new Error("Wait for the current project operation to finish.");
+    const store = this.store,
+      epoch = this.epoch;
+    this.update({ busy: true });
+    try {
+      const { renderWAV } = await import("@sidecut/platform-browser/wav-export");
+      return await this.jobs.run("export", "Export audio", 10, signal, (jobSignal) =>
+        renderWAV(
+          project,
+          resolve ?? ((id) => store.resource(project.id, id)),
+          jobSignal,
+          progress,
+          range?.from ?? 0,
+          range?.to ?? projectDuration(project).seconds,
+        ),
+      );
+    } finally {
+      if (this.epoch === epoch) this.update({ busy: false });
+    }
+  }
+
   async exportWebM(
     signal: AbortSignal,
     onProgress: (progress: number) => void,
     format: string | null = null,
     preset: ExportPreset = "webm",
     range: { from: number; to: number } | null = null,
+    snapshotProject: ProjectFile["project"] = this.state.project,
+    snapshotResource?: (id: string) => ReturnType<BrowserProjectStore["resource"]>,
   ) {
     if (!this.store || this.state.busy || this.state.saveState === "loading")
       throw new Error("Wait for the current project operation to finish.");
     const store = this.store,
-      settings = exportPresetPlan(this.state.project, preset, format),
+      settings = exportPresetPlan(snapshotProject, preset, format),
       project = settings.project,
       epoch = this.epoch,
       controller = new AbortController();
@@ -573,7 +853,7 @@ export class BrowserProjectSession {
         async (jobSignal, progress) => {
           return renderWebM(
             project,
-            (id) => store.resource(project.id, id),
+            snapshotResource ?? ((id) => store.resource(project.id, id)),
             jobSignal,
             (value) => {
               progress(value);
@@ -674,7 +954,6 @@ export class BrowserProjectSession {
   async openProject(file: File) {
     if (!this.store || this.state.busy || this.state.saveState === "loading")
       throw new Error("Wait for browser storage to finish opening.");
-    this.exports.clear();
     this.jobs.cancelAll();
     const epoch = this.epoch;
     this.update({ busy: true, error: null });
@@ -1336,7 +1615,7 @@ export class BrowserProjectSession {
 
   async close() {
     const discardRecording = this.recording.close().catch(() => {});
-    this.exports.clear();
+    this.exports.stop();
     this.jobs.cancelAll();
     this.analysis.reset();
     this.exportController?.abort();

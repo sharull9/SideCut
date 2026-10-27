@@ -10,6 +10,13 @@ export type NativeRecordingRequest = {
 
 export type NativeCaptureDevice = { id: string; name: string; kind: "camera" | "microphone" };
 
+export type NativeRecordingAsset = {
+  recording: NativeRecording;
+  name: string;
+  type: "video/mp4" | "audio/mp4";
+  bytes: Uint8Array;
+};
+
 /** Wire metadata never contains host paths or executable arguments. */
 export type NativeRecording = {
   id: string;
@@ -47,3 +54,11 @@ const NativeRecordingSchema = Schema.Struct({
 });
 
 export const decodeNativeRecording = Schema.decodeUnknownSync(NativeRecordingSchema);
+
+export interface NativeFileReference {
+  id: string;
+  name: string;
+  type: string;
+  bytes: number;
+  lastModified: number;
+}

@@ -1,0 +1,49 @@
+{
+  "testedAt": "2026-10-27T11:26:47.184Z",
+  "production": true,
+  "syntheticInputs": true,
+  "physicalCapture": false,
+  "accepted": true,
+  "checks": {
+    "rendering": {
+      "status": "pass",
+      "deliveryID": "05dc2367-e6c3-4e7b-94bc-58bf340dda4b",
+      "sourceRevision": 1,
+      "outputFileID": "9efbe894-b0be-4f10-ae65-b5c25e50da0a",
+      "bytes": 53799,
+      "sha256": "c9d71a37ea132575f9dbcac2e9f9046d0a145cb560b794c028c3f0b64efde4e2",
+      "decoded": {
+        "time": 0.2544,
+        "width": 640,
+        "height": 360
+      },
+      "frozenRecipeRetained": true
+    },
+    "nativeEncoding": {
+      "status": "pass",
+      "classification": "observed process-tree termination during native FFmpeg encoding",
+      "interruptedOutputID": "140ffdb6-8b38-4147-9e8f-5220f65dc0a2",
+      "partialBytesObserved": 44,
+      "reconciledState": "failed",
+      "inputID": "9efbe894-b0be-4f10-ae65-b5c25e50da0a",
+      "inputSha256": "c9d71a37ea132575f9dbcac2e9f9046d0a145cb560b794c028c3f0b64efde4e2",
+      "readyOutputUnchangedAfterRestartAndFailure": true,
+      "subsequentOutputID": "16283e9a-dcd7-4aca-a439-527324cb682a",
+      "subsequentOutputBytes": 64989
+    },
+    "publication": {
+      "status": "pass",
+      "classification": "fixture-only filesystem barrier after durable verification, followed by real process-tree termination and fresh-process reconciliation",
+      "outputID": "16283e9a-dcd7-4aca-a439-527324cb682a",
+      "bytes": 64989,
+      "sha256": "c15a9e586638537cf3a01d53ce71aec7150c7aeea3d5da4f7192cf700094bc66",
+      "decoded": {
+        "time": 0.2498,
+        "width": 640,
+        "height": 360
+      },
+      "readyOutputUnchanged": true
+    }
+  },
+  "errors": []
+}

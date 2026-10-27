@@ -30,6 +30,7 @@ export function ExportDialog({
   const { session, snapshot, editor } = useEditorSession();
   const range = useEditorView((state) => state.range);
   const rangeSelect = useRef<HTMLSelectElement>(null);
+  const [encoding, setEncoding] = useState<"webm" | "h264" | "hevc">("webm");
   const [formatID, setFormatID] = useState(""),
     [useRange, setUseRange] = useState(false),
     [preset, setPreset] = useState<ExportPreset | "wav">("webm"),
@@ -59,10 +60,8 @@ export function ExportDialog({
     if (preset === "wav") {
       const duration =
         useRange && range ? range.to - range.from : projectDuration(rendered).seconds;
-      if (duration <= 0 || Math.round(duration * 48000) * 4 + 44 > 256 * 1024 * 1024)
-        throw new Error(
-          "Audio export needs a nonempty range producing at most 256 MiB of PCM audio.",
-        );
+      if (duration <= 0 || Math.round(duration * 48000) * 4 > 0xffffffff - 36)
+        throw new Error("WAV export needs a nonempty range below the 4 GiB PCM format limit.");
     } else {
       const settings = exportPresetPlan(
         snapshot.project,
@@ -93,8 +92,8 @@ export function ExportDialog({
         <DialogHeader>
           <DialogTitle>Export video or audio</DialogTitle>
           <DialogDescription>
-            Render WebM video or WAV audio locally. Queue up to five exports. Downloads stay
-            available here until removed or the project closes.
+            Render video or WAV audio locally. Queue up to five exports. Jobs and completed outputs
+            stay available after restart until removed.
           </DialogDescription>
         </DialogHeader>
         {plan && (
@@ -142,6 +141,23 @@ export function ExportDialog({
             </option>
           </select>
         </label>
+        {session.native?.deliveryEncode && preset !== "wav" && (
+          <label>
+            Video encoding
+            <select
+              aria-label="Video encoding"
+              value={encoding}
+              onChange={(event) => {
+                const next = event.target.value;
+                if (next === "webm" || next === "h264" || next === "hevc") setEncoding(next);
+              }}
+            >
+              <option value="webm">WebM · VP8</option>
+              <option value="h264">MP4 · H.264</option>
+              <option value="hevc">MP4 · HEVC</option>
+            </select>
+          </label>
+        )}
         <label>
           Preset
           <select
@@ -214,7 +230,19 @@ export function ExportDialog({
                   variant="outline"
                   size="sm"
                 >
-                  Download {entry.name.endsWith(".wav") ? "WAV" : "WebM"}
+                  Download{" "}
+                  {entry.name.endsWith(".wav")
+                    ? "WAV"
+                    : entry.name.endsWith(".mp4")
+                      ? "MP4"
+                      : "WebM"}
+                </Button>
+              )}
+              {(entry.status === "failed" ||
+                entry.status === "cancelled" ||
+                entry.status === "interrupted") && (
+                <Button size="sm" variant="outline" onClick={() => session.exports.retry(entry.id)}>
+                  Retry from beginning
                 </Button>
               )}
               {entry.status === "queued" || entry.status === "running" ? (
@@ -234,8 +262,7 @@ export function ExportDialog({
           ))}
         </ol>
         <p role="status">
-          Exports run in order. If the project changes before a queued export starts, queue it
-          again. Video dimensions follow the selected canvas, format or preset.
+          Exports run in order. Video dimensions follow the selected canvas, format or preset.
         </p>
         <DialogFooter>
           <Button
@@ -244,7 +271,7 @@ export function ExportDialog({
               try {
                 setError(null);
                 editor.getState().setPlaying(false);
-                session.queueExport(format?.id ?? null, preset, useRange ? range : null);
+                session.queueExport(format?.id ?? null, preset, useRange ? range : null, encoding);
               } catch (cause) {
                 setError(cause instanceof Error ? cause.message : String(cause));
               }

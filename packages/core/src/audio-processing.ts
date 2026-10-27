@@ -84,12 +84,28 @@ export function audioParams(effect: ClipEffect) {
     ]),
   );
 }
+export interface VoiceCleanupState {
+  filters: { x1: number; x2: number; y1: number; y2: number }[];
+  energy: number;
+  reduction: number;
+}
+export const voiceCleanupState = (): VoiceCleanupState => ({
+  filters: [],
+  energy: 0,
+  reduction: 0,
+});
+export interface CompressorState {
+  energy: number;
+  reduction: number;
+}
+export const compressorState = (): CompressorState => ({ energy: 0, reduction: 0 });
 // Tandem's rumble filter and downward expander, at the clip's normalized playback level.
 export async function cleanVoice(
   channels: Float32Array[],
   rate: number,
   params: Record<string, number>,
   checkpoint?: () => Promise<void>,
+  state: VoiceCleanupState = voiceCleanupState(),
 ) {
   const { highPass = 80, expanderThreshold = -40, expanderRange = 10 } = params;
   if (highPass > 0) {
@@ -100,11 +116,9 @@ export async function cleanVoice(
       b1 = -(1 + Math.cos(w)) / a0,
       a1 = (-2 * Math.cos(w)) / a0,
       a2 = (1 - alpha) / a0;
-    for (const channel of channels) {
-      let x1 = 0,
-        x2 = 0,
-        y1 = 0,
-        y2 = 0;
+    for (const [index, channel] of channels.entries()) {
+      const filter = (state.filters[index] ??= { x1: 0, x2: 0, y1: 0, y2: 0 });
+      let { x1, x2, y1, y2 } = filter;
       for (let i = 0; i < channel.length; i++) {
         if (i % 32768 === 0) await checkpoint?.();
         const x = channel[i]!,
@@ -115,14 +129,14 @@ export async function cleanVoice(
         y2 = y1;
         y1 = y;
       }
+      Object.assign(filter, { x1, x2, y1, y2 });
     }
   }
   if (expanderRange <= 0) return;
   const detector = 1 - Math.exp(-1 / (0.01 * rate)),
     down = 1 - Math.exp(-1 / (0.15 * rate)),
     up = 1 - Math.exp(-1 / (0.002 * rate));
-  let energy = 0,
-    reduction = 0;
+  let { energy, reduction } = state;
   for (let i = 0; i < channels[0]!.length; i++) {
     if (i % 32768 === 0) await checkpoint?.();
     let peak = 0;
@@ -133,19 +147,20 @@ export async function cleanVoice(
     reduction += (target < reduction ? down : up) * (target - reduction);
     for (const channel of channels) channel[i]! *= gain(reduction);
   }
+  Object.assign(state, { energy, reduction });
 }
 export async function compress(
   channels: Float32Array[],
   rate: number,
   params: Record<string, number>,
   checkpoint?: () => Promise<void>,
+  state: CompressorState = compressorState(),
 ) {
   const { threshold = -14, ratio = 3, knee = 6, makeup = 0, attack = 10, release = 200 } = params;
   const detector = 1 - Math.exp(-1 / (0.01 * rate)),
     down = 1 - Math.exp(-1 / (attack * 0.001 * rate)),
     up = 1 - Math.exp(-1 / (release * 0.001 * rate));
-  let energy = 0,
-    reduction = 0;
+  let { energy, reduction } = state;
   for (let i = 0; i < channels[0]!.length; i++) {
     if (i % 32768 === 0) {
       await checkpoint?.();
@@ -165,6 +180,7 @@ export async function compress(
     const level = gain(reduction + makeup);
     for (const channel of channels) channel[i]! *= level;
   }
+  Object.assign(state, { energy, reduction });
 }
 // Full-buffer form of Tandem's delayed limiter; lookahead compensation preserves sample positions.
 export async function limit(

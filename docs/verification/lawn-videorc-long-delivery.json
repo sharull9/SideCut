@@ -1,0 +1,162 @@
+{
+  "testedAt": "2026-10-27T11:22:19.922Z",
+  "production": true,
+  "syntheticInputs": true,
+  "physicalCapture": false,
+  "accepted": true,
+  "checks": {
+    "source": {
+      "status": "pass",
+      "durationSeconds": 612,
+      "bytes": 3241295,
+      "paddingBytes": 0
+    },
+    "project": {
+      "status": "pass",
+      "mediaID": "med_633f7e81-344b-4f4a-8712-845e6fd8c212",
+      "clips": 6,
+      "overlay": "text",
+      "effects": ["compressor", "voiceCleanup", "limiter"],
+      "fadesSeconds": 2,
+      "frameRate": {
+        "numerator": 2,
+        "denominator": 1
+      }
+    },
+    "range": {
+      "status": "pass",
+      "startSeconds": 1,
+      "durationSeconds": 610,
+      "sourceOrder": [408, 0, 204]
+    },
+    "queue": {
+      "status": "pass",
+      "elapsedSeconds": 139.003
+    },
+    "output": {
+      "status": "pass",
+      "durationSeconds": 610.021,
+      "bytes": 19636197,
+      "streams": [
+        {
+          "type": "video",
+          "codec": "h264",
+          "start": 0,
+          "duration": 610
+        },
+        {
+          "type": "audio",
+          "codec": "aac",
+          "start": 0,
+          "duration": 610.02
+        }
+      ]
+    },
+    "samples": {
+      "status": "pass",
+      "samples": [
+        {
+          "time": 5,
+          "frameHash": "0ce8d922218e8e964a00ad3363e5071f245c051295f12bc5868dbf959dfa3bbe",
+          "audioRms": 4744.109430651869
+        },
+        {
+          "time": 100,
+          "frameHash": "547ab551ef816f8ac25f03b5861dec6b377e7979d05962cef07c9c4c5185f3c9",
+          "audioRms": 4755.571604602332
+        },
+        {
+          "time": 210,
+          "frameHash": "145cd3e353f7a505ae5daa75f867bf84777384ea8056e42081e8d2ab8ba572fe",
+          "audioRms": 4958.61014894799
+        },
+        {
+          "time": 306,
+          "frameHash": "6ac2b063d4bd4b444fb8a61dac51102f78eb8ae1a5bedc75c6a334d3620b15e9",
+          "audioRms": 4958.594337208882
+        },
+        {
+          "time": 420,
+          "frameHash": "237bdd3a44f49ae4ab12bdc493f120b782e0a5aeaa8b5983af50de6c6ee11313",
+          "audioRms": 4884.957041469249
+        },
+        {
+          "time": 510,
+          "frameHash": "e97c26e531c43af90ef5fae922aecbdc0ac1871eda22a248451fcf796cac7778",
+          "audioRms": 4894.449386013712
+        },
+        {
+          "time": 605,
+          "frameHash": "f95188d1444eaa59924a10de32980d47f067abda9a51848ff7cfdd45eb31f630",
+          "audioRms": 4893.942863939055
+        }
+      ]
+    },
+    "timingComparison": {
+      "status": "pass",
+      "comparisons": [
+        {
+          "projectTime": 12,
+          "outputTime": 11,
+          "expectedFrequency": 990,
+          "pixel": [2, 13, 255],
+          "tonePowerRatio": 51369.478126447466
+        },
+        {
+          "projectTime": 240,
+          "outputTime": 239,
+          "expectedFrequency": 330,
+          "pixel": [253, 23, 1],
+          "tonePowerRatio": 39314.75572739388
+        },
+        {
+          "projectTime": 450,
+          "outputTime": 449,
+          "expectedFrequency": 660,
+          "pixel": [0, 213, 0],
+          "tonePowerRatio": 66389.63971623528
+        }
+      ],
+      "fades": [
+        {
+          "projectBoundary": 204,
+          "outputBoundary": 203,
+          "beforeRms": 335.00001166044757,
+          "afterRms": 285.76737151921316,
+          "baselineRms": 4963.295856635991
+        },
+        {
+          "projectBoundary": 408,
+          "outputBoundary": 407,
+          "beforeRms": 350.59900081859905,
+          "afterRms": 290.16948980294256,
+          "baselineRms": 4880.335796899635
+        }
+      ],
+      "durationToleranceSeconds": 0.1
+    },
+    "resourceBounds": {
+      "status": "pass",
+      "workingSetLimitKB": 4194304,
+      "profileLimitBytes": 4294967296,
+      "samples": 631,
+      "peakWorkingSetKB": 1119436,
+      "peakProfileBytes": 75309868,
+      "first": {
+        "elapsedSeconds": 0.001,
+        "processWorkingSetKB": 787236,
+        "profileBytes": 20651017
+      },
+      "last": {
+        "elapsedSeconds": 138.996,
+        "processWorkingSetKB": 390484,
+        "profileBytes": 64162434
+      }
+    }
+  },
+  "errors": [],
+  "limits": [
+    "Synthetic accelerated media is not a physical capture or a measured 60-minute session.",
+    "Resource observations are sampled process memory and profile disk use, not system-wide peaks."
+  ]
+}

@@ -6,6 +6,9 @@ import {
   gain,
   normalizeGain,
   compress,
+  cleanVoice,
+  compressorState,
+  voiceCleanupState,
   limit,
   StreamingLimiter,
   pitchAndSpeed,
@@ -254,4 +257,41 @@ describe("speech normalization command", () => {
     ).toThrow();
     expect(c.getSnapshot()).toBe(before);
   });
+});
+
+it("retains compressor and voice-cleanup state across arbitrary block boundaries", async () => {
+  const input = Array.from({ length: 2 }, (_, channel) =>
+    Float32Array.from(
+      { length: 12013 },
+      (_sample, i) => (i % 1700 < 400 ? 0.3 : 0.002) * Math.sin(i * (channel ? 0.13 : 0.07)),
+    ),
+  );
+  for (const kind of ["compressor", "cleanup"] as const) {
+    const bulk = input.map((channel) => channel.slice());
+    const streamed = input.map((channel) => channel.slice());
+    if (kind === "compressor") {
+      await compress(bulk, rate, {});
+      const state = compressorState();
+      for (let i = 0; i < input[0]!.length; i += 317)
+        await compress(
+          streamed.map((channel) => channel.subarray(i, i + 317)),
+          rate,
+          {},
+          undefined,
+          state,
+        );
+    } else {
+      await cleanVoice(bulk, rate, {});
+      const state = voiceCleanupState();
+      for (let i = 0; i < input[0]!.length; i += 317)
+        await cleanVoice(
+          streamed.map((channel) => channel.subarray(i, i + 317)),
+          rate,
+          {},
+          undefined,
+          state,
+        );
+    }
+    expect(streamed).toEqual(bulk);
+  }
 });

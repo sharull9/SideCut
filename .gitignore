@@ -24,3 +24,7 @@ coverage
 apps/desktop/.package/
 apps/desktop/release/
 .vitest/
+
+# Local execution logs
+/logs/
+apps/web/.cloudflare/

@@ -4,8 +4,10 @@ import type {
   NativeCaptureDevice,
   NativeRecording,
   NativeRecordingRequest,
+  NativeStreamStatus,
 } from "@sidecut/contracts/native-recording";
 import { Button } from "@sidecut/ui/components/button";
+import { Input } from "@sidecut/ui/components/input";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@sidecut/ui/components/field";
 import { useEditorSession } from "./editor-session";
 import { nativeBridge } from "./host-coordinator";
@@ -23,6 +25,8 @@ export function NativeRecordingControls() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [open, setOpen] = useState(false);
+  const [streamURL, setStreamURL] = useState("");
+  const [streamStatus, setStreamStatus] = useState<NativeStreamStatus>({ state: "off" });
   useEffect(() => {
     if (!open || !bridge?.nativeRecordingList || !bridge.nativeRecordingDevices) return;
     let alive = true;
@@ -31,6 +35,16 @@ export function NativeRecordingControls() {
         .nativeRecordingList?.()
         .then((items) => {
           if (alive) setRecordings(items);
+          if (items.some((item) => item.status === "recording" || item.status === "stopping"))
+            void bridge
+              .nativeRecordingStreamStatus?.()
+              .then((status) => {
+                if (alive) setStreamStatus(status);
+              })
+              .catch(() => {
+                if (alive) setStreamStatus({ state: "off" });
+              });
+          else if (alive) setStreamStatus({ state: "off" });
         })
         .catch((cause: unknown) => {
           if (alive)
@@ -63,6 +77,11 @@ export function NativeRecordingControls() {
     try {
       await action();
       setRecordings(await bridge.nativeRecordingList!());
+      setStreamStatus(
+        (await bridge
+          .nativeRecordingStreamStatus?.()
+          .catch(() => ({ state: "off" }) satisfies NativeStreamStatus)) ?? { state: "off" },
+      );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Native recording failed.");
     } finally {
@@ -109,10 +128,31 @@ export function NativeRecordingControls() {
               <option value="microphone">Microphone</option>
             </select>
             <FieldDescription>
-              Native recordings stay on local disk. Screen capture records the entire desktop;
+              A recording copy stays on local disk. Screen capture records the entire desktop;
               system audio is excluded.
             </FieldDescription>
           </Field>
+          {bridge.nativeRecordingStreamStatus && (
+            <Field>
+              <FieldLabel htmlFor="native-stream-url">Streaming destination (optional)</FieldLabel>
+              <Input
+                id="native-stream-url"
+                type="password"
+                value={streamURL}
+                autoComplete="off"
+                spellCheck={false}
+                maxLength={2048}
+                aria-describedby="native-stream-description"
+                disabled={blocked || !!active}
+                onChange={(event) => setStreamURL(event.target.value)}
+              />
+              <FieldDescription id="native-stream-description">
+                Paste the full RTMP or RTMPS URL, including the stream key. Leave blank to record
+                locally. Streaming sends your capture live and stops with recording. The URL is not
+                saved.
+              </FieldDescription>
+            </Field>
+          )}
           {source !== "screen" && (
             <Field>
               <FieldLabel htmlFor="native-device">
@@ -166,12 +206,18 @@ export function NativeRecordingControls() {
                   ? "Finishing recording…"
                   : `Recording · ${Math.floor(active.elapsedSeconds)} seconds`}
               </p>
+              {streamStatus.state === "requested" && (
+                <p role="status">Stream requested. Delivery is not confirmed.</p>
+              )}
+              {streamStatus.state === "failed" && (
+                <p role="alert">Streaming failed. Local recording continues.</p>
+              )}
               <Button
                 size="sm"
                 disabled={pending || active.status !== "recording"}
                 onClick={() => void run(() => bridge.nativeRecordingStop!())}
               >
-                Stop recording
+                {streamStatus.state === "off" ? "Stop recording" : "Stop streaming and recording"}
               </Button>
             </>
           ) : (
@@ -186,11 +232,15 @@ export function NativeRecordingControls() {
                     encoder,
                     ...(deviceID && source !== "screen" ? { deviceID } : {}),
                     ...(microphoneID && source !== "microphone" ? { microphoneID } : {}),
+                    ...(streamURL.trim() ? { streamURL: streamURL.trim() } : {}),
+                  }).then((item) => {
+                    setStreamURL("");
+                    return item;
                   }),
                 )
               }
             >
-              Start recording
+              {streamURL.trim() ? "Start streaming and recording" : "Start recording"}
             </Button>
           )}
           {recordings

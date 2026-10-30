@@ -32,6 +32,7 @@ beforeEach(() => {
     list: vi.fn().mockResolvedValue([]),
     retry: vi.fn(),
     close: vi.fn(),
+    streamStatus: vi.fn().mockReturnValue({ state: "requested" }),
   };
   registerNativeRecorder(recorder, (url) => url === "trusted", false);
 });
@@ -75,4 +76,43 @@ it("stops an owned recording when its renderer is destroyed", async () => {
   );
   sender.emit("destroyed");
   await vi.waitFor(() => expect(recorder.stop).toHaveBeenCalledOnce());
+});
+it("confirms the streaming host without exposing its key and restricts status to its owner", async () => {
+  mock.dialog.mockResolvedValue({ response: 1 });
+  const event = { sender, senderFrame: sender.mainFrame };
+  const streamURL = "rtmps://example.test/live/private-stream-key";
+  await mock.handlers.get(bridgeChannels.nativeRecordingStart)!(event, {
+    projectID: "project",
+    source: "screen",
+    encoder: "software",
+    streamURL,
+  });
+  const confirmation = mock.dialog.mock.calls[0]?.[1];
+  expect(confirmation.message).toContain("rtmps://example.test");
+  expect(JSON.stringify(confirmation)).not.toContain("private-stream-key");
+  expect(recorder.start).toHaveBeenCalledWith(expect.objectContaining({ streamURL }));
+  const status = mock.handlers.get(bridgeChannels.nativeRecordingStreamStatus)!;
+  expect(status(event)).toEqual({ state: "requested" });
+  expect(() =>
+    status({
+      sender: Object.assign(new EventEmitter(), { mainFrame: sender.mainFrame }),
+      senderFrame: sender.mainFrame,
+    }),
+  ).toThrow("owned");
+});
+it("rejects stream destination injection before requesting confirmation or devices", async () => {
+  await expect(
+    mock.handlers.get(bridgeChannels.nativeRecordingStart)!(
+      { sender, senderFrame: sender.mainFrame },
+      {
+        projectID: "project",
+        source: "screen",
+        encoder: "software",
+        streamURL: "rtmp://host/live/key|file.mkv",
+      },
+    ),
+  ).rejects.toThrow("destination");
+  expect(mock.dialog).not.toHaveBeenCalled();
+  expect(recorder.devices).not.toHaveBeenCalled();
+  expect(recorder.start).not.toHaveBeenCalled();
 });

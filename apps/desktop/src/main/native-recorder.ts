@@ -17,9 +17,11 @@ import type {
   NativeCaptureDevice,
   NativeRecording,
   NativeRecordingRequest,
+  NativeStreamStatus,
 } from "@sidecut/contracts/native-recording";
 import { nativeDevices, nativeInputs, type NativeInput } from "./native-recording-inputs.ts";
 import { decodeNativeRecording } from "@sidecut/contracts/native-recording";
+import { streamingOutputs, streamDestination } from "./native-streaming.ts";
 
 type Session = {
   recording: NativeRecording;
@@ -27,10 +29,12 @@ type Session = {
   done?: Promise<number | null>;
   started: number;
   stopping: boolean;
+  stream: NativeStreamStatus;
 };
 type Options = {
   inputProvider?: (request: NativeRecordingRequest) => Promise<NativeInput>;
   encoderCandidates?: readonly string[];
+  streamingCAFile?: string;
 };
 const idPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 // Processes never accumulate unbounded stderr or stdout; probe output has a small fixed ceiling.
@@ -77,6 +81,9 @@ export class NativeRecorder {
 
   devices(): Promise<NativeCaptureDevice[]> {
     return nativeDevices(this.ffmpeg);
+  }
+  streamStatus(): NativeStreamStatus {
+    return { state: this.session?.stream.state ?? "off" };
   }
   private folder(id: string): string {
     if (!idPattern.test(id)) throw new Error("Invalid recording ID");
@@ -204,6 +211,11 @@ export class NativeRecorder {
     this.busy = true;
     let session: Session | undefined;
     try {
+      if (request.streamURL !== undefined && streamDestination(request.streamURL).secure) {
+        const version = await run(this.ffmpeg, ["-version"], 5000);
+        if (!version.includes("--enable-gnutls"))
+          throw new Error("RTMPS requires a verified GnuTLS FFmpeg build.");
+      }
       await this.init();
       const input = await (this.options.inputProvider
         ? this.options.inputProvider(request)
@@ -226,7 +238,12 @@ export class NativeRecorder {
         ],
         error: null,
       };
-      session = { recording, started: Date.now(), stopping: false };
+      session = {
+        recording,
+        started: Date.now(),
+        stopping: false,
+        stream: { state: request.streamURL ? "requested" : "off" },
+      };
       this.session = session;
       await this.save(recording);
       const args = [
@@ -252,16 +269,38 @@ export class NativeRecorder {
             ]
           : ["-vn"]),
         ...(input.audio ? ["-c:a", "aac"] : ["-an"]),
-        "-cluster_time_limit",
-        "1000",
-        "-flush_packets",
-        "1",
-        "-n",
-        join(this.folder(recording.id), "recording.mkv"),
+        ...(request.streamURL
+          ? [
+              ...(!input.args.includes("-map")
+                ? input.args
+                    .filter((arg) => arg === "-i")
+                    .flatMap((_, index) => ["-map", `${index}:v?`, "-map", `${index}:a?`])
+                : []),
+              ...(input.video ? ["-b:v", "4000k", "-maxrate", "4000k", "-bufsize", "8000k"] : []),
+              ...streamingOutputs(
+                join(this.folder(recording.id), "recording.mkv"),
+                request.streamURL,
+                this.options.streamingCAFile,
+              ),
+            ]
+          : [
+              "-cluster_time_limit",
+              "1000",
+              "-flush_packets",
+              "1",
+              "-n",
+              join(this.folder(recording.id), "recording.mkv"),
+            ]),
       ];
       const child = spawn(this.ffmpeg, args, { windowsHide: true, stdio: "pipe" });
       session.child = child;
-      child.stderr.resume();
+      let diagnostics = "";
+      const ownedStream = session.stream;
+      child.stderr.on("data", (chunk: Buffer) => {
+        diagnostics = (diagnostics + chunk.toString()).slice(-4096);
+        if (/Slave muxer #1 failed|\[fifo @ [^\]]+\] Error/.test(diagnostics))
+          ownedStream.state = "failed";
+      });
       child.stdin.on("error", () => {});
       session.done = new Promise((resolve) => {
         child.on("error", () => {});

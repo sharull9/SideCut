@@ -10,6 +10,7 @@ const bridge: DesktopBridge = {
     ipcRenderer.invoke(bridgeChannels.nativeRecordingStart, request),
   nativeRecordingStop: () => ipcRenderer.invoke(bridgeChannels.nativeRecordingStop),
   nativeRecordingList: () => ipcRenderer.invoke(bridgeChannels.nativeRecordingList),
+  nativeRecordingStreamStatus: () => ipcRenderer.invoke(bridgeChannels.nativeRecordingStreamStatus),
   nativeRecordingRetry: (id) => ipcRenderer.invoke(bridgeChannels.nativeRecordingRetry, id),
   nativeRecordingPoster: (id) => ipcRenderer.invoke(bridgeChannels.nativeRecordingPoster, id),
   nativeRecordingAdopt: (id) => ipcRenderer.invoke(bridgeChannels.nativeRecordingAdopt, id),

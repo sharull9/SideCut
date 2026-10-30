@@ -6,7 +6,10 @@ export type NativeRecordingRequest = {
   deviceID?: string;
   microphoneID?: string;
   encoder: "auto" | "software";
+  streamURL?: string;
 };
+
+export type NativeStreamStatus = { state: "off" | "requested" | "failed" };
 
 export type NativeCaptureDevice = { id: string; name: string; kind: "camera" | "microphone" };
 

@@ -5,6 +5,7 @@ import type {
   NativeRecording,
   NativeRecordingAsset,
   NativeRecordingRequest,
+  NativeStreamStatus,
 } from "./native-recording.ts";
 interface CommitResult {
   readonly revision: number;
@@ -61,6 +62,7 @@ export interface NativeBridge {
   nativeRecordingStart?: (request: NativeRecordingRequest) => Promise<NativeRecording>;
   nativeRecordingStop?: () => Promise<NativeRecording>;
   nativeRecordingList?: () => Promise<NativeRecording[]>;
+  nativeRecordingStreamStatus?: () => Promise<NativeStreamStatus>;
   nativeRecordingRetry?: (id: string) => Promise<NativeRecording>;
   nativeRecordingPoster?: (id: string) => Promise<string | null>;
   nativeRecordingAdopt?: (id: string) => Promise<NativeFileReference>;

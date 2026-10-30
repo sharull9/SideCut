@@ -25,6 +25,7 @@ import { Button } from "@sidecut/ui/components/button";
 import { Alert, AlertTitle, AlertDescription } from "@sidecut/ui/components/alert";
 import { Tip, TooltipProvider } from "@sidecut/ui/components/tooltip";
 import { ExportDialog } from "./export-dialog";
+import { TeamsDialog } from "@/modules/cloud/teams-dialog";
 import { Timeline } from "./timeline";
 import { Viewer } from "./viewer";
 import { ClipInspector } from "./clip-inspector";
@@ -257,6 +258,7 @@ export function WorkspaceHome() {
             </span>
           </div>
           <div className="editor-topbar-actions">
+            <TeamsDialog />
             <div className="editor-toolbar-group">
               <Tip
                 label={snapshot.undoLabel ? `Undo ${snapshot.undoLabel}` : "Nothing to undo"}

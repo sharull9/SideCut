@@ -1,6 +1,7 @@
 import { BrowserWindow, dialog, ipcMain, systemPreferences } from "electron";
 import type { IpcMainInvokeEvent } from "electron";
 import type { NativeRecordingRequest } from "@sidecut/contracts/native-recording";
+import { streamDestination } from "./native-streaming.ts";
 import { bridgeChannels } from "../shared/bridge.ts";
 import type { NativeRecorder } from "./native-recorder.ts";
 
@@ -38,7 +39,10 @@ export function registerNativeRecorder(
     const input = value as Record<string, unknown>;
     if (
       Object.keys(input).some(
-        (key) => !["projectID", "source", "deviceID", "microphoneID", "encoder"].includes(key),
+        (key) =>
+          !["projectID", "source", "deviceID", "microphoneID", "encoder", "streamURL"].includes(
+            key,
+          ),
       ) ||
       typeof input.projectID !== "string" ||
       !input.projectID.trim() ||
@@ -62,6 +66,9 @@ export function registerNativeRecorder(
       encoder: input.encoder,
       ...(typeof input.deviceID === "string" ? { deviceID: input.deviceID } : {}),
       ...(typeof input.microphoneID === "string" ? { microphoneID: input.microphoneID } : {}),
+      ...(input.streamURL !== undefined
+        ? { streamURL: streamDestination(input.streamURL).url }
+        : {}),
     };
   };
   ipcMain.handle(bridgeChannels.nativeRecordingDevices, (event) => {
@@ -100,6 +107,12 @@ export function registerNativeRecorder(
     } finally {
       current.dispose();
     }
+  });
+  ipcMain.handle(bridgeChannels.nativeRecordingStreamStatus, (event) => {
+    const frame = check(event);
+    if (!owner || owner.sender !== event.sender || owner.frame !== frame || !owner.started)
+      throw new Error("No native recording owned by this document.");
+    return recorder.streamStatus();
   });
   ipcMain.handle(bridgeChannels.nativeRecordingStart, async (event, input: unknown) => {
     const frame = check(event);
@@ -166,11 +179,17 @@ export function registerNativeRecorder(
           : `the selected ${request.source} (${selected?.name})`;
       const choice = await dialog.showMessageBox(window, {
         type: "question",
-        title: "Start native recording",
-        message: `Record ${description}${mic ? ` and microphone (${mic.name})` : ""}?`,
+        title: request.streamURL ? "Start streaming and recording" : "Start native recording",
+        message: `Record ${description}${mic ? ` and microphone (${mic.name})` : ""}${request.streamURL ? ` and send live to ${streamDestination(request.streamURL).label}` : ""}?`,
         detail:
-          "Recording is saved on this device until you remove it. System audio is not recorded.",
-        buttons: ["Cancel", "Start recording"],
+          "Recording is saved on this device until you remove it. System audio is not recorded." +
+          (request.streamURL
+            ? " The destination receives the capture live. Streaming stops with recording. RTMP is unencrypted; RTMPS verifies TLS certificates."
+            : ""),
+        buttons: [
+          "Cancel",
+          request.streamURL ? "Start streaming and recording" : "Start recording",
+        ],
         defaultId: 0,
         cancelId: 0,
       });

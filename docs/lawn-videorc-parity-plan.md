@@ -165,7 +165,7 @@ Review feedback stays pinned to its original rendered version. “Create timelin
 
 ### Cloud proposal
 
-Use Convex for the first cloud metadata/subscription implementation, an auth integration that supplies server-verified identity, S3-compatible object storage for originals, and Mux for hosted playback/transcoding. This follows Lawn's working separation while keeping provider choices behind cloud APIs. The auth vendor, regions, retention, budget and playback costs remain decisions for M5; no accounts or paid resources are needed to accept this plan.
+Provider selection updated by the user on 2026-10-29: use Convex for cloud metadata and team authorization, WorkOS AuthKit for server-verified identity, and Cloudflare for hosting and storage. Use Workers Static Assets for the existing SPA and private R2 storage for originals. Assess Cloudflare hosted playback/transcoding in LV014; R2 alone does not provide transcoding. Regions, retention, budget and playback costs remain deployment decisions. See [cloud setup and current acceptance limits](cloud-setup.md).
 
 Use resumable multipart uploads, retry-safe finalize operations and webhook deduplication. A version is publishable only after its bytes and processing status are verified. Keep the prior ready version available during replacement. Enforce tenant access and scoped viewer grants on metadata, comments, downloads and playback authorization. Test the generated media URLs, not just the viewer route. Revoked grants stop new authorization; document the maximum lifetime of already-issued URLs.
 

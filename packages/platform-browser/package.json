@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./recent-clips": "./src/recent-clips.ts",
+    "./live-assets": "./src/live-assets.ts",
+    "./live-audio": "./src/live-audio.ts",
+    "./live-studio": "./src/live-studio.ts",
     "./wav-export": "./src/wav-export.ts",
     "./durable-delivery": "./src/durable-delivery.ts",
     "./recording-storage": "./src/recording-storage.ts",

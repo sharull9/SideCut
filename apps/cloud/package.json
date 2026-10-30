@@ -1,0 +1,23 @@
+{
+  "name": "@sidecut/cloud",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./api": "./src/api.ts"
+  },
+  "scripts": {
+    "typecheck": "vp exec tsc --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1159.0",
+    "@aws-sdk/s3-request-presigner": "^3.1159.0",
+    "convex": "^1.48.0"
+  },
+  "devDependencies": {
+    "@sidecut/config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "runtime": "Windows Node host; FFmpeg synthetic video/audio and loopback RTMP/TLS listeners",
+  "rtmp": {
+    "local": {
+      "codecs": ["h264", "aac"],
+      "duration": 4.287,
+      "bytes": 123186
+    },
+    "received": {
+      "codecs": ["h264", "aac"],
+      "duration": 4.287,
+      "bytes": 119502
+    },
+    "metadataHasStreamKey": false
+  },
+  "refusedDestination": {
+    "local": {
+      "codecs": ["h264", "aac"],
+      "duration": 6.187,
+      "bytes": 179220
+    },
+    "failureDetected": true
+  },
+  "rtmps": {
+    "local": {
+      "codecs": ["h264", "aac"],
+      "duration": 3.321,
+      "bytes": 93490
+    },
+    "received": {
+      "codecs": ["h264", "aac"],
+      "duration": 3.321,
+      "bytes": 90457
+    },
+    "certificateVerified": true
+  },
+  "untrusted": {
+    "rejected": true,
+    "local": {
+      "codecs": ["h264", "aac"],
+      "duration": 1.195,
+      "bytes": 33532
+    }
+  },
+  "hostname-mismatch": {
+    "rejected": true,
+    "local": {
+      "codecs": ["h264", "aac"],
+      "duration": 1.087,
+      "bytes": 30673
+    }
+  }
+}

@@ -9,6 +9,7 @@ export const bridgeChannels = {
   nativeRecordingStart: "sidecut:native-recording-start",
   nativeRecordingStop: "sidecut:native-recording-stop",
   nativeRecordingList: "sidecut:native-recording-list",
+  nativeRecordingStreamStatus: "sidecut:native-recording-stream-status",
   nativeRecordingRetry: "sidecut:native-recording-retry",
   nativeRecordingPoster: "sidecut:native-recording-poster",
   nativeRecordingAdopt: "sidecut:native-recording-adopt",

@@ -56,7 +56,14 @@
     "./quality-check": "./src/quality-check.ts",
     "./cut-audit": "./src/cut-audit.ts",
     "./quality-notes": "./src/quality-notes.ts",
-    "./review-library": "./src/review-library.ts"
+    "./review-library": "./src/review-library.ts",
+    "./live-chat": "./src/live-chat.ts",
+    "./live-captions": "./src/live-captions.ts",
+    "./live-companion": "./src/live-companion.ts",
+    "./companion-behavior": "./src/companion-behavior.ts",
+    "./derived-edits": "./src/derived-edits.ts",
+    "./remote-control": "./src/remote-control.ts",
+    "./obs-import": "./src/obs-import.ts"
   },
   "scripts": {
     "typecheck": "vp exec tsc --noEmit"

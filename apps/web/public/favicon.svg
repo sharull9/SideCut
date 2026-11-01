@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <style>
+    .frame { stroke: #121210; }
+    .lens { stroke: #009b44; }
+    @media (prefers-color-scheme: dark) {
+      .frame { stroke: #ffffff; }
+      .lens { stroke: #19c463; }
+    }
+  </style>
+  <path class="frame" d="M13 4H8a4 4 0 0 0-4 4v16a4 4 0 0 0 4 4h5M19 4h5a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4h-5M7.25 16h1.5M23.25 16h1.5" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle class="lens" cx="16" cy="16" r="3.75" stroke-width="2.25"/>
+</svg>

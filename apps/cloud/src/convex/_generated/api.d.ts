@@ -9,8 +9,11 @@
  */
 
 import type * as access from "../access.js";
+import type * as accounts from "../accounts.js";
 import type * as library from "../library.js";
 import type * as model from "../model.js";
+import type * as publishJobs from "../publishJobs.js";
+import type * as publishPack from "../publishPack.js";
 import type * as shareAccess from "../shareAccess.js";
 import type * as shares from "../shares.js";
 import type * as storage from "../storage.js";
@@ -25,8 +28,11 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   access: typeof access;
+  accounts: typeof accounts;
   library: typeof library;
   model: typeof model;
+  publishJobs: typeof publishJobs;
+  publishPack: typeof publishPack;
   shareAccess: typeof shareAccess;
   shares: typeof shares;
   storage: typeof storage;

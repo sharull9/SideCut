@@ -1,5 +1,7 @@
 import { makeFunctionReference } from "convex/server";
 import type { ApiFromModules, FilterApi, FunctionReference } from "convex/server";
+import type * as publishJobs from "./convex/publishJobs";
+import type * as accounts from "./convex/accounts";
 import type * as teams from "./convex/teams";
 import type * as library from "./convex/library";
 import type * as versions from "./convex/versions";
@@ -10,6 +12,8 @@ import type * as shareAccess from "./convex/shareAccess";
 // Typed public references also work before a hosted deployment generates bindings.
 export const api: FilterApi<
   ApiFromModules<{
+    publishJobs: typeof publishJobs;
+    accounts: typeof accounts;
     teams: typeof teams;
     library: typeof library;
     versions: typeof versions;
@@ -19,6 +23,19 @@ export const api: FilterApi<
   }>,
   FunctionReference<"query" | "mutation" | "action", "public">
 > = {
+  publishJobs: {
+    capabilities: makeFunctionReference("publishJobs:capabilities"),
+    consent: makeFunctionReference("publishJobs:consent"),
+    start: makeFunctionReference("publishJobs:start"),
+    get: makeFunctionReference("publishJobs:get"),
+    resume: makeFunctionReference("publishJobs:resume"),
+    cancel: makeFunctionReference("publishJobs:cancel"),
+  },
+  accounts: {
+    status: makeFunctionReference("accounts:status"),
+    exportData: makeFunctionReference("accounts:exportData"),
+    deleteJob: makeFunctionReference("accounts:deleteJob"),
+  },
   shares: {
     list: makeFunctionReference("shares:list"),
     revoke: makeFunctionReference("shares:revoke"),
@@ -37,6 +54,7 @@ export const api: FilterApi<
     folders: makeFunctionReference("library:folders"),
     create: makeFunctionReference("library:create"),
     list: makeFunctionReference("library:list"),
+    page: makeFunctionReference("library:page"),
     bulk: makeFunctionReference("library:bulk"),
   },
   versions: {

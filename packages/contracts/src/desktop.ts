@@ -52,6 +52,7 @@ export interface FolderMedia {
   shortAudioFallback: boolean;
 }
 export interface NativeBridge {
+  supportReport?: () => Promise<string>;
   deliveryEncode?: (
     requestID: string,
     inputID: string,

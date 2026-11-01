@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import { bridgeChannels, type DesktopAppInfo, type DesktopBridge } from "../shared/bridge.ts";
 
 const bridge: DesktopBridge = {
+  supportReport: () => ipcRenderer.invoke(bridgeChannels.supportReport),
   deliveryEncode: (requestID, inputID, request) =>
     ipcRenderer.invoke(bridgeChannels.deliveryEncode, requestID, inputID, request),
   deliveryCancel: (requestID) => ipcRenderer.invoke(bridgeChannels.deliveryCancel, requestID),

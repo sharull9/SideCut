@@ -24,7 +24,11 @@ export default defineConfig({
     ignorePatterns: ignored,
     overrides: [
       {
-        files: ["apps/cloud/src/**/*.ts", "apps/web/src/modules/cloud/**/*.{ts,tsx}"],
+        files: [
+          "apps/cloud/src/**/*.ts",
+          "apps/web/src/modules/cloud/**/*.{ts,tsx}",
+          "tests/browser/cloud-library-server.ts",
+        ],
         rules: { "eslint/no-underscore-dangle": ["error", { allow: ["_id", "_creationTime"] }] },
       },
       {

@@ -30,19 +30,46 @@ export function streamDestination(value: unknown): { url: string; label: string;
   };
 }
 
-export function streamingOutputs(file: string, destination: string, caFile?: string) {
-  const target = streamDestination(destination);
+export function streamDestinations(single: unknown, multiple: unknown): string[] {
+  if (single !== undefined && multiple !== undefined)
+    throw new Error("Use one destination field, not both.");
+  if (
+    multiple !== undefined &&
+    (!Array.isArray(multiple) || multiple.length < 1 || multiple.length > 4)
+  )
+    throw new Error("Streaming supports one to four destinations.");
+  const values: unknown[] = Array.isArray(multiple)
+    ? multiple
+    : single === undefined
+      ? []
+      : [single];
+  const urls = values.map((value) => streamDestination(value).url);
+  if (new Set(urls.map((url) => new URL(url).href)).size !== urls.length)
+    throw new Error("Duplicate streaming destination.");
+  return urls;
+}
+
+export function streamingOutputs(file: string, destination: string | string[], caFile?: string) {
+  const targets = streamDestinations(
+    undefined,
+    typeof destination === "string" ? [destination] : destination,
+  ).map(streamDestination);
   const escape = (value: string) => value.replace(/[\\'|]/g, "\\$&");
   // Each slave option list has its own escaping level inside tee's output list.
   const option = (value: string) => value.replace(/[\\':]/g, "\\$&");
-  const fifo = option("queue_size=120:drop_pkts_on_overflow=1:attempt_recovery=0");
-  const network = `[f=flv:onfail=ignore:use_fifo=1:fifo_options=${fifo}:rw_timeout=3000000${target.secure ? `:tls_verify=1${caFile ? `:ca_file=${option(caFile)}` : ""}` : ""}]${target.url}`;
+  const fifo = option(
+    "queue_size=120:drop_pkts_on_overflow=1:attempt_recovery=1:max_recovery_attempts=3:recovery_wait_time=1:restart_with_keyframe=1",
+  );
+  const networks = targets.map(
+    (target) =>
+      `[f=flv:onfail=ignore:use_fifo=1:fifo_options=${fifo}:rw_timeout=3000000${target.secure ? `:tls_verify=1${caFile ? `:ca_file=${option(caFile)}` : ""}` : ""}]${target.url}`,
+  );
   return [
     "-flags",
     "+global_header",
     "-f",
     "tee",
     "-n",
-    `[f=matroska:cluster_time_limit=1000:flush_packets=1]${escape(file)}|${escape(network)}`,
+    `[f=matroska:cluster_time_limit=1000:flush_packets=1]${escape(file)}|${networks.map(escape).join("|")}`,
   ];
 }

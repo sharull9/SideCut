@@ -11,46 +11,39 @@ import { api } from "@sidecut/cloud/api";
 import type { FunctionReturnType } from "convex/server";
 import { Button } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
-import { cloudConfig } from "./config";
+import { browserCloudConfig } from "./config";
+import { CloudLibrary } from "./library-panel";
 
 type Team = NonNullable<FunctionReturnType<typeof api.teams.list>[number]["team"]>;
 const roles = ["owner", "admin", "member", "viewer"] as const;
 
 function useWorkOSAuth() {
   const { isLoading, user, getAccessToken } = useAuth();
-  const fetchAccessToken = useCallback(async () => {
-    try {
-      return await getAccessToken();
-    } catch {
-      return null;
-    }
-  }, [getAccessToken]);
+  const fetchAccessToken = useCallback(
+    async ({ forceRefreshToken }: { forceRefreshToken: boolean }) => {
+      try {
+        return await getAccessToken({ forceRefresh: forceRefreshToken });
+      } catch {
+        return null;
+      }
+    },
+    [getAccessToken],
+  );
   return { isLoading, isAuthenticated: !!user, fetchAccessToken };
 }
 
 export default function CloudTeams() {
-  const [configuration] = useState(() => {
-    try {
-      return cloudConfig(
-        {
-          url: import.meta.env.VITE_CONVEX_URL,
-          clientId: import.meta.env.VITE_WORKOS_CLIENT_ID,
-          apiHostname: import.meta.env.VITE_WORKOS_API_HOSTNAME,
-          devMode: import.meta.env.VITE_WORKOS_DEV_MODE,
-        },
-        window.location.origin,
-      );
-    } catch {
-      return null;
-    }
-  });
+  const [configuration] = useState(browserCloudConfig);
   const [client, setClient] = useState<ConvexReactClient | null>(null);
   useEffect(() => {
     if (!configuration) return;
-    const connection = new ConvexReactClient(configuration.url, { unsavedChangesWarning: false });
+    const connection = new ConvexReactClient(configuration.url, {
+      unsavedChangesWarning: false,
+    });
     setClient(connection);
     return () => {
-      void connection.close();
+      // Parent cleanups run before children unsubscribe; closing now throws in their cleanups.
+      setTimeout(() => void connection.close());
     };
   }, [configuration]);
   if (!configuration)
@@ -205,7 +198,14 @@ function TeamManager() {
         </label>
       )}
       {current?.team && (
-        <TeamDetails key={current.team._id} team={current.team} role={current.role} />
+        <>
+          <TeamDetails key={current.team._id} team={current.team} role={current.role} />
+          <CloudLibrary
+            key={current.team._id}
+            teamId={current.team._id}
+            readOnly={current.role === "viewer"}
+          />
+        </>
       )}
       <p className="text-xs text-muted-foreground">
         Team selection does not upload or move your local project.

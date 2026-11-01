@@ -36,6 +36,7 @@ import { checkRanges } from "@sidecut/core/quality-check";
 import { reviewQuery } from "@sidecut/core/service-review";
 import { effectsCatalog } from "@sidecut/core/effects";
 import { importEDL, object } from "@sidecut/core/interchange";
+import { readOBSSource } from "./obs-import.ts";
 import { readFilmoraSource } from "./filmora-import.ts";
 import { analysisKinds, decodeQueryState } from "@sidecut/core/query-state";
 import { serviceExportPlan } from "@sidecut/core/service-export";
@@ -45,6 +46,8 @@ import { folderArchive } from "./service-archive.ts";
 import { writeProjectCommandOutput } from "./project-command-output.ts";
 import { relinkPlan, fileFingerprint } from "./service-relink.ts";
 import { ServiceEvents } from "./service-events.ts";
+import { studioOperation, type StudioRecorder } from "./studio-automation.ts";
+import { supportReport } from "./support-report.ts";
 type RendererOperations = {
   ready?: () => boolean;
   activate?: () => void;
@@ -150,6 +153,7 @@ export class ProjectAPI {
     readonly project: HostProjectService,
     private readonly native?: Pick<NativeMedia, "run">,
     private readonly renderer?: RendererOperations,
+    private readonly studioRecorder?: StudioRecorder,
   ) {}
   setMediaRoot(root: string | null) {
     this.mediaRoot = root;
@@ -641,6 +645,44 @@ export class ProjectAPI {
     }
     if (Object.hasOwn(serviceFields, operation)) {
       const request = serviceRequest(operation, input);
+      if (operation === "diagnostics") {
+        const report = await supportReport(
+          this.project.snapshot(),
+          Boolean(this.renderer && this.ready()),
+          Boolean(this.native),
+          this.studioRecorder,
+          signal,
+        );
+        const output =
+          typeof request.output === "string"
+            ? await serviceOutput(
+                this.project.store.path,
+                request.output,
+                new TextEncoder().encode(JSON.stringify(report, null, 2) + "\n"),
+                signal,
+              )
+            : undefined;
+        return { report, ...(output ? { output } : {}) };
+      }
+      if (operation === "studio") {
+        const generation = this.project.snapshot().generation;
+        const file = this.file();
+        const result = await studioOperation(
+          file,
+          request,
+          (batch) => this.apply(batch, file, generation),
+          this.studioRecorder,
+          signal,
+        );
+        if (request.action === "recording-stop")
+          this.events.publish({
+            kind: "studio",
+            revision: file.revision,
+            author: typeof request.author === "string" ? request.author : "agent",
+            studio: { action: "recording-stop", id: String(request.id) },
+          });
+        return result;
+      }
       if (operation === "app") {
         if (!this.renderer?.activate)
           throw new QueryError(
@@ -650,7 +692,7 @@ export class ProjectAPI {
         this.renderer.activate();
         return { opened: true, projectID: this.file().project.id };
       }
-      if (["new", "open", "import-edl", "import-filmora"].includes(operation)) {
+      if (["new", "open", "import-edl", "import-filmora", "import-obs"].includes(operation)) {
         const before = this.project.snapshot();
         if (request.expectedRevision == null)
           throw new QueryError(
@@ -683,7 +725,25 @@ export class ProjectAPI {
           if (typeof request.path !== "string")
             throw new QueryError("badRequest", "A source path is required.");
           const path = await this.source(request.path);
-          if (operation === "import-filmora") {
+          if (operation === "import-obs") {
+            const imported = await readOBSSource(
+              path,
+              {
+                projectRoot: dirname(this.project.store.path),
+                ...(typeof request.profile === "string"
+                  ? { profile: await this.source(request.profile) }
+                  : {}),
+                ...(typeof request.assetRoot === "string"
+                  ? { assetRoot: await this.source(request.assetRoot) }
+                  : {}),
+                ...(typeof request.scene === "string" ? { scene: request.scene } : {}),
+                ...(typeof request.duration === "number" ? { duration: request.duration } : {}),
+              },
+              signal,
+            );
+            next = imported.file;
+            report = imported.report;
+          } else if (operation === "import-filmora") {
             const imported = await readFilmoraSource(path, request.keepLevels === true, signal);
             next = imported.file;
             report = imported.report;

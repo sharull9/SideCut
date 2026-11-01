@@ -3,9 +3,9 @@
   "authKit": {
     "dev": {
       "configure": {
-        "redirectUris": ["http://localhost:5173/"],
-        "appHomepageUrl": "http://localhost:5173",
-        "corsOrigins": ["http://localhost:5173"]
+        "redirectUris": ["http://localhost:3000/callback"],
+        "appHomepageUrl": "http://localhost:3000",
+        "corsOrigins": ["http://localhost:3000"]
       },
       "localEnvVars": {
         "VITE_WORKOS_CLIENT_ID": "${authEnv.WORKOS_CLIENT_ID}"

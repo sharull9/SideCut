@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { defineTestApp } from "convex-test";
+import type { FunctionArgs, FunctionReturnType } from "convex/server";
 import schema from "./schema";
 import * as teams from "./teams";
 import * as library from "./library";
@@ -45,6 +46,63 @@ async function setup() {
 }
 
 describe("cloud library and immutable versions", () => {
+  it("pages beyond 1,000 records without losing matches or tenant/archive/folder scope", async () => {
+    const { t, a, b, teamId } = await setup();
+    const folderId = await a.mutation(api.library.createFolder, { teamId, name: "Page fixture" });
+    await t.run(async (ctx) => {
+      for (let index = 0; index < 1005; index++)
+        await ctx.db.insert("media", {
+          teamId,
+          folderId,
+          name: `Recording ${String(index).padStart(4, "0")}`,
+          archived: false,
+          nextVersion: 1,
+        });
+    });
+    const args = { teamId, folderId, sort: "name" } satisfies Pick<
+      FunctionArgs<typeof api.library.page>,
+      "teamId" | "folderId" | "sort"
+    >;
+    let cursor: string | null = null;
+    const names: string[] = [];
+    for (;;) {
+      const page: FunctionReturnType<typeof api.library.page> = await a.query(api.library.page, {
+        ...args,
+        paginationOpts: { numItems: 100, cursor },
+      });
+      names.push(...page.page.map((item) => item.name));
+      if (page.isDone) break;
+      cursor = page.continueCursor;
+    }
+    expect(names).toHaveLength(1005);
+    expect(new Set(names).size).toBe(1005);
+    expect(names.at(-1)).toBe("Recording 1004");
+    expect(
+      (
+        await a.query(api.library.page, {
+          ...args,
+          sort: "newest",
+          paginationOpts: { numItems: 2, cursor: null },
+        })
+      ).page.map((item) => item.name),
+    ).toEqual(["Recording 1004", "Recording 1003"]);
+    const search = { ...args, search: "1004", paginationOpts: { numItems: 2, cursor: null } };
+    const match = await a.query(api.library.page, search);
+    expect(match.page.map((item) => item.name)).toEqual(["Recording 1004"]);
+    const matchId = match.page[0]?._id;
+    if (!matchId) throw new Error("Missing indexed search match");
+    await a.mutation(api.library.bulk, { teamId, mediaIds: [matchId], operation: "archive" });
+    expect((await a.query(api.library.page, search)).page).toHaveLength(0);
+    expect((await a.query(api.library.page, { ...search, archived: true })).page).toHaveLength(1);
+    const otherTeam = await b.mutation(api.teams.create, { name: "B" });
+    await b.mutation(api.library.create, { teamId: otherTeam, name: "Recording 1004" });
+    expect((await a.query(api.library.page, search)).page).toHaveLength(0);
+    await expect(b.query(api.library.page, search)).rejects.toThrow("access denied");
+    await expect(
+      a.query(api.library.page, { ...search, paginationOpts: { numItems: 101, cursor: null } }),
+    ).rejects.toThrow("Page size");
+  });
+
   it("isolates folders, bulk actions, versions and playback across tenants", async () => {
     const { t, a, b, teamId, mediaId, begin } = await setup();
     await expect(b.query(api.library.list, { teamId, sort: "name" })).rejects.toThrow(
@@ -79,6 +137,15 @@ describe("cloud library and immutable versions", () => {
       role: "viewer",
     });
     await b.mutation(api.teams.accept, { invitationId });
+    expect(
+      (
+        await b.query(api.library.page, {
+          teamId,
+          sort: "name",
+          paginationOpts: { numItems: 25, cursor: null },
+        })
+      ).page,
+    ).toHaveLength(1);
     await expect(b.mutation(api.library.create, { teamId, name: "Bad" })).rejects.toThrow(
       "Editing access",
     );
@@ -87,6 +154,15 @@ describe("cloud library and immutable versions", () => {
     ).rejects.toThrow("Editing access");
     await a.mutation(api.library.bulk, { teamId, mediaIds: [mediaId], operation: "archive" });
     expect(await a.query(api.library.list, { teamId, sort: "newest" })).toHaveLength(0);
+    expect(
+      await a.query(api.library.list, { teamId, sort: "newest", archived: true }),
+    ).toMatchObject([{ _id: mediaId, archived: true }]);
+    expect(
+      await b.query(api.library.list, { teamId, sort: "newest", archived: true }),
+    ).toHaveLength(1);
+    await expect(
+      b.mutation(api.library.bulk, { teamId, mediaIds: [mediaId], operation: "restore" }),
+    ).rejects.toThrow("Editing access");
     await a.mutation(api.library.bulk, { teamId, mediaIds: [mediaId], operation: "restore" });
     expect(await a.query(api.library.list, { teamId, sort: "newest" })).toHaveLength(1);
   });

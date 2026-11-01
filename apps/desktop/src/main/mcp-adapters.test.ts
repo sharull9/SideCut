@@ -24,7 +24,10 @@ it("pins all 43 native tool contracts and documents the portable apply schema", 
   expect(createHash("sha256").update(JSON.stringify(reference)).digest("hex")).toBe(
     contract.sha256,
   );
-  expect(definitions.map((tool) => tool.name).sort()).toEqual([...inventory.tools].sort());
+  expect(definitions.map((tool) => tool.name).sort()).toEqual(
+    [...inventory.tools, "studio"].sort(),
+  );
+  expect(reference.tools.map((tool) => tool.name).sort()).toEqual([...inventory.tools].sort());
   expect(reference.notice).toContain("portable SideCut");
   for (const tool of reference.tools) {
     const captured = contract.tools.find((item) => item.name === tool.name)!;

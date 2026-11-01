@@ -10,6 +10,7 @@
     "dev:cloud": "vp exec convex dev",
     "verify:live-assets-audio": "vp exec node scripts/verify-live-assets-audio.mjs",
     "verify:live-studio": "vp exec node scripts/verify-live-studio.mjs",
+    "verify:studio-ui": "vp exec node scripts/verify-studio-ui.mjs",
     "verify:cloud-teams": "vp exec node scripts/verify-cloud-teams.mjs",
     "mcp": "vp exec node scripts/sidecut-mcp.mjs",
     "cli": "vp exec node scripts/sidecut-cli.mjs",
@@ -45,7 +46,9 @@
     "verify:rendered-review": "vp exec node scripts/verify-rendered-review.mjs",
     "verify:native-long-run": "vp exec node scripts/verify-native-long-run.mjs",
     "verify:delivery-recovery": "vp exec node scripts/verify-delivery-recovery.mjs",
-    "verify:long-delivery": "vp exec node scripts/verify-long-delivery.mjs"
+    "verify:long-delivery": "vp exec node scripts/verify-long-delivery.mjs",
+    "verify:live-engagement": "vp exec node scripts/verify-live-engagement.mjs",
+    "verify:obs-import": "vp exec node scripts/verify-obs-import.mjs"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",

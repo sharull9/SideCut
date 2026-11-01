@@ -1,0 +1,281 @@
+{
+  "name": "OBS fixture",
+  "current_scene": "Main",
+  "scene_order": [
+    {
+      "name": "Other"
+    },
+    {
+      "name": "Main"
+    }
+  ],
+  "sources": [
+    {
+      "name": "Background",
+      "uuid": "red",
+      "id": "color_source",
+      "versioned_id": "color_source_v3",
+      "settings": {
+        "color": 4278190335,
+        "width": 320,
+        "height": 180
+      }
+    },
+    {
+      "name": "Panel",
+      "uuid": "green",
+      "id": "color_source",
+      "versioned_id": "color_source_v3",
+      "settings": {
+        "color": 4278255360,
+        "width": 100,
+        "height": 60
+      }
+    },
+    {
+      "name": "Other background",
+      "uuid": "blue",
+      "id": "color_source",
+      "versioned_id": "color_source_v3",
+      "settings": {
+        "color": 4294901760,
+        "width": 320,
+        "height": 180
+      }
+    },
+    {
+      "name": "Hidden",
+      "uuid": "hidden",
+      "id": "color_source",
+      "versioned_id": "color_source_v3",
+      "settings": {
+        "color": 4278255615,
+        "width": 100,
+        "height": 100
+      }
+    },
+    {
+      "name": "Logo",
+      "uuid": "logo",
+      "id": "image_source",
+      "settings": {
+        "file": "logo.png"
+      }
+    },
+    {
+      "name": "Browser",
+      "uuid": "browser",
+      "id": "browser_source",
+      "settings": {
+        "url": "file:///private/DO_NOT_IMPORT",
+        "password": "PRIVATE_OBS_SECRET"
+      }
+    },
+    {
+      "name": "Filtered",
+      "uuid": "filtered",
+      "id": "color_source",
+      "versioned_id": "color_source_v3",
+      "settings": {
+        "color": 4294967295,
+        "width": 100,
+        "height": 100
+      },
+      "filters": [
+        {
+          "id": "color_filter",
+          "settings": {
+            "secret": "PRIVATE_FILTER_SECRET"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Other",
+      "uuid": "other",
+      "id": "scene",
+      "settings": {
+        "items": [
+          {
+            "name": "Other background",
+            "source_uuid": "blue",
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "align": 5,
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "blend_type": "normal",
+            "blend_method": "default"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Main",
+      "uuid": "main",
+      "id": "scene",
+      "settings": {
+        "items": [
+          {
+            "name": "Background",
+            "source_uuid": "red",
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "align": 5,
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "blend_type": "normal",
+            "blend_method": "default"
+          },
+          {
+            "name": "Panel",
+            "source_uuid": "green",
+            "pos": {
+              "x": 20,
+              "y": 30
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "align": 5,
+            "crop_left": 10,
+            "crop_right": 10,
+            "crop_top": 5,
+            "crop_bottom": 5,
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "blend_type": "normal",
+            "blend_method": "default"
+          },
+          {
+            "name": "Logo",
+            "source_uuid": "logo",
+            "pos": {
+              "x": 200,
+              "y": 20
+            },
+            "scale": {
+              "x": 2,
+              "y": 2
+            },
+            "align": 5,
+            "locked": true,
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "blend_type": "normal",
+            "blend_method": "default"
+          },
+          {
+            "name": "Hidden",
+            "source_uuid": "hidden",
+            "visible": false,
+            "align": 5,
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "blend_type": "normal",
+            "blend_method": "default"
+          },
+          {
+            "name": "Browser",
+            "source_uuid": "browser",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "blend_type": "normal",
+            "blend_method": "default"
+          },
+          {
+            "name": "Filtered",
+            "source_uuid": "filtered",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "blend_type": "normal",
+            "blend_method": "default"
+          },
+          {
+            "name": "Panel",
+            "source_uuid": "green",
+            "scale": {
+              "x": 1,
+              "y": 2
+            },
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "blend_type": "normal",
+            "blend_method": "default"
+          },
+          {
+            "name": "Missing group",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "blend_type": "normal",
+            "blend_method": "default"
+          },
+          {
+            "name": "Background",
+            "source_uuid": "red",
+            "group_item_backup": true,
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "blend_type": "normal",
+            "blend_method": "default"
+          }
+        ]
+      }
+    }
+  ],
+  "DesktopAudioDevice1": {
+    "settings": {
+      "device_id": "PRIVATE_DEVICE"
+    }
+  },
+  "modules": {
+    "plugin": {
+      "credential": "PRIVATE_MODULE_SECRET"
+    }
+  }
+}

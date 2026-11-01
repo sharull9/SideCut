@@ -124,14 +124,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  font-family: var(--font-heading);
   font-size: 15px;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.02em;
 }
-.editor-brand svg {
-  width: 20px;
-  height: 20px;
-  color: var(--accent-live);
+.editor-brand img {
+  width: 24px;
+  height: 24px;
 }
 .editor-project-name {
   display: flex;

@@ -1,4 +1,4 @@
-# SideCut
+# raE.E
 
 The [Lawn/Videorc integration phases](docs/lawn-videorc-phases.md) now include
 short browser recordings. Open **Project media → Record**, choose screen/window,

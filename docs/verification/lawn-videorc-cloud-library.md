@@ -2,6 +2,8 @@
 
 Implemented on 2026-10-30 against the existing LV012 Convex/WorkOS tenant model.
 
+Update 2026-11-01: the Teams library UI and indexed cursor query are now implemented and locally browser-tested; see [current browser verification](lawn-videorc-library-browser.md). The bounded `library.list` endpoint described below remains for compatibility, while production UI uses `library.page`. Upload lifecycle and live R2/processing gaps below remain open. The rest of this report records the original backend acceptance snapshot.
+
 ## LV013: library and transfers (in progress)
 
 Added team-scoped folders and media records, name search, name/newest sorting, folder filtering, and atomic move/archive/restore operations for up to 100 selected IDs. Viewers cannot mutate. Archive retains versions and blocks transfers and playback. The initial list examines at most 1,000 team records; cursor pagination and indexed search are required before a large-library rollout. Selection is represented by the bulk API's explicit IDs; there is no library UI yet.

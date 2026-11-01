@@ -8,7 +8,7 @@ import { decodeStorageRequest } from "@sidecut/contracts/storage";
 export function openSQLite(path: string) {
   const database = new DatabaseSync(path);
   try {
-    database.exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000;");
+    database.exec("PRAGMA busy_timeout=5000;");
     const repository = new SQLiteRepository({
       exec: (sql, values) => {
         if (values) database.prepare(sql).run(...values);
@@ -16,6 +16,8 @@ export function openSQLite(path: string) {
       },
       rows: (sql, values) => database.prepare(sql).all(...values),
     });
+    // Repository construction rejects newer schemas before persistent pragmas run.
+    database.exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;");
     return { database, repository };
   } catch (error) {
     database.close();

@@ -14,7 +14,7 @@ const read = async (path: string) =>
   });
 const validate = (json: string) => replayJournal(decodeProjectFile(JSON.parse(json)));
 const lockedMessage =
-  "Project is locked by another host. Close it first. An unreadable lock requires manual recovery after checking that no SideCut process is running.";
+  "Project is locked by another host. Close it first. An unreadable lock requires manual recovery after checking that no raE.E process is running.";
 function ownerExited(json: string) {
   let owner: unknown;
   try {
@@ -163,7 +163,7 @@ export class NativeProjectStore {
   private async publishPortable(json: string) {
     if (!this.options.portable || json === this.portableBaseline) return;
     if ((await read(this.path)) !== this.portableOriginal)
-      throw new Error("Project file changed outside SideCut. No file was replaced.");
+      throw new Error("Project file changed outside raE.E. No file was replaced.");
     const temporary = `${this.path}.${randomUUID()}.tmp`;
     const file = await open(temporary, "wx", 0o600);
     try {
@@ -174,7 +174,7 @@ export class NativeProjectStore {
     }
     try {
       if ((await read(this.path)) !== this.portableOriginal)
-        throw new Error("Project file changed outside SideCut. No file was replaced.");
+        throw new Error("Project file changed outside raE.E. No file was replaced.");
       await rename(temporary, this.path);
       this.portableOriginal = json;
       this.portableBaseline = json;
@@ -189,7 +189,7 @@ export class NativeProjectStore {
     const current = this.current();
     if (current !== this.expected)
       throw new Error(
-        "Project changed outside SideCut. Reload the disk version or recover the backup.",
+        "Project changed outside raE.E. Reload the disk version or recover the backup.",
       );
     if (current === json) {
       await this.publishPortable(json);

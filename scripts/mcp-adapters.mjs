@@ -28,6 +28,40 @@ export const definitions = reference.tools.map((tool) => {
   definition.description = `${tool.title} through the running SideCut desktop host. Returns readable text by default; json:true returns raw service data. Read warnings for adapter capability limits.`;
   return definition;
 });
+definitions.push({
+  name: "studio",
+  title: "Studio scenes and recording status",
+  operation: "studio",
+  usesProject: true,
+  description:
+    "Manage saved scenes or stop an identified existing recording through the local host. Scene mutations need both revisions and an idempotency key. Recording starts require visible desktop controls.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      action: {
+        type: "string",
+        enum: ["status", "save", "switch", "remove", "recording-status", "recording-stop"],
+      },
+      id: { type: "string" },
+      name: { type: "string" },
+      author: { type: "string" },
+      expectedRevision: { type: "integer", minimum: 0 },
+      studioRevision: { type: "integer", minimum: 0 },
+      idempotencyKey: { type: "string", maxLength: 160 },
+      project: { type: "string" },
+      json: { type: "boolean" },
+    },
+    required: ["action"],
+    additionalProperties: false,
+  },
+  defaults: {},
+  annotations: {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
+});
 const validator = new AjvJsonSchemaValidator();
 const validators = new Map(
   definitions.map((tool) => [tool.name, validator.getValidator(tool.inputSchema)]),

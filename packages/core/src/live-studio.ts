@@ -44,6 +44,21 @@ export class LiveStudio {
   list() {
     return [...this.scenes.values()].map(({ id, name, revision }) => ({ id, name, revision }));
   }
+  /** An editable copy of a saved scene; changes apply only through save and switch. */
+  project(id: string) {
+    const scene = this.scenes.get(id);
+    if (!scene) throw new Error("Scene unavailable.");
+    return sceneProject(scene);
+  }
+  get activeScene() {
+    return this.active
+      ? {
+          id: this.active.scene.id,
+          revision: this.active.scene.revision,
+          commitRevision: this.active.commitRevision,
+        }
+      : null;
+  }
   private check(expected: number) {
     if (
       expected !== this.revision ||
@@ -170,3 +185,29 @@ export class LiveStudio {
     return studio;
   }
 }
+
+/** Each rendition owns its scene revisions and composition; it is encoded separately. */
+export class LiveStudioRenditions {
+  readonly horizontal = new LiveStudio();
+  readonly vertical = new LiveStudio();
+
+  save(args: {
+    output: "horizontal" | "vertical";
+    id: string;
+    name: string;
+    project: Project;
+    expectedRevision: number;
+  }) {
+    const { width, height } = args.project.settings;
+    if (args.output === "horizontal" ? width <= height : height <= width)
+      throw new Error("Composition dimensions do not match the selected output.");
+    if (width > 3840 || height > 3840 || width * height > 3840 * 2160)
+      throw new Error("Studio output exceeds the 4K pixel limit.");
+    return this[args.output].save(args);
+  }
+}
+
+export const liveQualityProfiles = {
+  standard: { framesPerSecond: 30, videoBitsPerSecond: 4_000_000, audioBitsPerSecond: 128_000 },
+  high: { framesPerSecond: 60, videoBitsPerSecond: 8_000_000, audioBitsPerSecond: 192_000 },
+} as const;

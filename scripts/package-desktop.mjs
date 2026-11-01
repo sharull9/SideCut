@@ -55,10 +55,10 @@ await writeFile(
     {
       name: "sidecut",
       version,
-      productName: "SideCut",
+      productName: manifest.productName,
       description: "Local video editor",
       homepage: "https://github.com/sharull9/SideCut",
-      author: "SideCut contributors",
+      author: "raE.E contributors",
       type: "module",
       main: "dist/main.mjs",
     },

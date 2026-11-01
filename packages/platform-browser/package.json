@@ -44,7 +44,8 @@
     "./transcription-config": "./src/transcription-config.ts",
     "./text": "./src/text.ts",
     "./preferences": "./src/preferences.ts",
-    "./review-store": "./src/review-store.ts"
+    "./review-store": "./src/review-store.ts",
+    "./live-engagement": "./src/live-engagement.ts"
   },
   "scripts": {
     "typecheck": "vp exec tsc --noEmit"

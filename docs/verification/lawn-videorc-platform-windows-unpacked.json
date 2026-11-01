@@ -1,0 +1,40 @@
+{
+  "packaged": true,
+  "platform": "win32",
+  "arch": "x64",
+  "version": "0.0.1",
+  "isolation": {
+    "node": "undefined",
+    "require": "undefined",
+    "bridge": "function"
+  },
+  "credentialStorage": "encrypted round-trip",
+  "exclusiveLock": true,
+  "archive": {
+    "bytes": 50562
+  },
+  "media": {
+    "bytes": 4661,
+    "codecs": ["vp8", "opus"],
+    "duration": 0.22,
+    "decoded": "RIFF"
+  },
+  "nativeRecording": {
+    "input": "synthetic lavfi video and tone",
+    "encoder": "libx264",
+    "bytes": 130902,
+    "sha256": "c17350f04ca79c514f8b2caca7aa1b111f330d1e5d87d929377a68d7d33d42fa",
+    "codecs": ["aac", "h264"],
+    "decodedCodecs": ["opus", "vp8"],
+    "duration": 3.1,
+    "reopened": true
+  },
+  "reopened": true,
+  "sqlite": {
+    "format": "SQLite format 3",
+    "legacyPreserved": true,
+    "reopened": true
+  },
+  "cli": true,
+  "unicodeSpaceProfile": true
+}

@@ -1,5 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { createReadStream } from "node:fs";
 import {
   mkdir,
   readFile,
@@ -21,7 +22,7 @@ import type {
 } from "@sidecut/contracts/native-recording";
 import { nativeDevices, nativeInputs, type NativeInput } from "./native-recording-inputs.ts";
 import { decodeNativeRecording } from "@sidecut/contracts/native-recording";
-import { streamingOutputs, streamDestination } from "./native-streaming.ts";
+import { streamingOutputs, streamDestination, streamDestinations } from "./native-streaming.ts";
 
 type Session = {
   recording: NativeRecording;
@@ -37,6 +38,12 @@ type Options = {
   streamingCAFile?: string;
 };
 const idPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const journalVersion = 1;
+async function fileDigest(file: string): Promise<string> {
+  const hash = createHash("sha256");
+  for await (const chunk of createReadStream(file)) hash.update(chunk);
+  return hash.digest("hex");
+}
 // Processes never accumulate unbounded stderr or stdout; probe output has a small fixed ceiling.
 function run(executable: string, args: string[], timeout: number): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -83,27 +90,56 @@ export class NativeRecorder {
     return nativeDevices(this.ffmpeg);
   }
   streamStatus(): NativeStreamStatus {
-    return { state: this.session?.stream.state ?? "off" };
+    return this.session ? structuredClone(this.session.stream) : { state: "off" };
   }
   private folder(id: string): string {
     if (!idPattern.test(id)) throw new Error("Invalid recording ID");
     return join(this.root, id);
   }
+  private async safeFolder(id: string): Promise<string> {
+    const folder = this.folder(id),
+      root = await realpath(this.root);
+    if ((await lstat(folder)).isSymbolicLink()) throw new Error("Unsafe recording folder");
+    const resolved = await realpath(folder),
+      rel = relative(root, resolved);
+    if (!rel || rel.startsWith("..") || isAbsolute(rel)) throw new Error("Unsafe recording folder");
+    return resolved;
+  }
+  private async safeFile(
+    id: string,
+    name: "metadata.json" | "recording.mkv" | "recording.mp4",
+  ): Promise<string> {
+    const file = join(await this.safeFolder(id), name);
+    if (!(await lstat(file)).isFile() || (await realpath(file)) !== file)
+      throw new Error("Unsafe recording file");
+    return file;
+  }
   private async save(recording: NativeRecording): Promise<void> {
-    const dir = this.folder(recording.id);
-    await mkdir(dir, { recursive: true });
+    await mkdir(this.folder(recording.id), { recursive: true });
+    const dir = await this.safeFolder(recording.id);
     const temp = join(dir, `metadata-${randomUUID()}.tmp`);
     try {
-      await writeFile(temp, JSON.stringify(recording), { flag: "wx", flush: true });
+      await writeFile(temp, JSON.stringify({ ...recording, journalVersion }), {
+        flag: "wx",
+        flush: true,
+      });
       await rename(temp, join(dir, "metadata.json"));
     } finally {
       await rm(temp, { force: true });
     }
   }
   private async load(id: string): Promise<NativeRecording> {
-    const item = decodeNativeRecording(
-      JSON.parse(await readFile(join(this.folder(id), "metadata.json"), "utf8")),
+    const journal: unknown = JSON.parse(
+      await readFile(await this.safeFile(id, "metadata.json"), "utf8"),
     );
+    if (
+      journal &&
+      typeof journal === "object" &&
+      "journalVersion" in journal &&
+      journal.journalVersion !== journalVersion
+    )
+      throw new Error("Unsupported recording journal version");
+    const item = decodeNativeRecording(journal);
     if (item.id !== id) throw new Error("Recording journal ID does not match its folder");
     return { ...item, tracks: [...item.tracks] };
   }
@@ -115,16 +151,7 @@ export class NativeRecorder {
       throw new Error("A recording operation is already active or closed");
     this.busy = true;
     try {
-      const folder = this.folder(id);
-      const root = await realpath(this.root);
-      if ((await lstat(folder)).isSymbolicLink()) throw new Error("Unsafe recording folder");
-      const resolved = await realpath(folder);
-      const rel = relative(root, resolved);
-      if (!rel || rel.startsWith("..") || isAbsolute(rel))
-        throw new Error("Unsafe recording folder");
-      const journal = join(resolved, "metadata.json");
-      if (!(await lstat(journal)).isFile() || (await realpath(journal)) !== journal)
-        throw new Error("Unsafe recording journal");
+      const resolved = await this.safeFolder(id);
       const item = await this.load(id);
       if (item.status === "recording" || item.status === "stopping")
         throw new Error("Recording is active or stopping");
@@ -142,7 +169,8 @@ export class NativeRecorder {
         if (item && (item.status === "recording" || item.status === "stopping")) {
           item.status = "interrupted";
           item.error = "Recording was interrupted";
-          item.bytes = await stat(join(this.folder(id), "recording.mkv"))
+          item.bytes = await this.safeFile(id, "recording.mkv")
+            .then((file) => stat(file))
             .then((s) => s.size)
             .catch(() => 0);
           await this.save(item);
@@ -159,7 +187,8 @@ export class NativeRecorder {
       if (!item) continue;
       if (this.session?.recording.id === id) {
         item.elapsedSeconds = Math.max(0, (Date.now() - this.session.started) / 1000);
-        item.bytes = await stat(join(this.folder(id), "recording.mkv"))
+        item.bytes = await this.safeFile(id, "recording.mkv")
+          .then((file) => stat(file))
           .then((s) => s.size)
           .catch(() => 0);
       }
@@ -211,7 +240,8 @@ export class NativeRecorder {
     this.busy = true;
     let session: Session | undefined;
     try {
-      if (request.streamURL !== undefined && streamDestination(request.streamURL).secure) {
+      const destinations = streamDestinations(request.streamURL, request.streamURLs);
+      if (destinations.some((url) => streamDestination(url).secure)) {
         const version = await run(this.ffmpeg, ["-version"], 5000);
         if (!version.includes("--enable-gnutls"))
           throw new Error("RTMPS requires a verified GnuTLS FFmpeg build.");
@@ -242,7 +272,10 @@ export class NativeRecorder {
         recording,
         started: Date.now(),
         stopping: false,
-        stream: { state: request.streamURL ? "requested" : "off" },
+        stream: {
+          state: destinations.length ? "requested" : "off",
+          targets: destinations.map((_, index) => ({ index, state: "requested" })),
+        },
       };
       this.session = session;
       await this.save(recording);
@@ -269,7 +302,7 @@ export class NativeRecorder {
             ]
           : ["-vn"]),
         ...(input.audio ? ["-c:a", "aac"] : ["-an"]),
-        ...(request.streamURL
+        ...(destinations.length
           ? [
               ...(!input.args.includes("-map")
                 ? input.args
@@ -279,7 +312,7 @@ export class NativeRecorder {
               ...(input.video ? ["-b:v", "4000k", "-maxrate", "4000k", "-bufsize", "8000k"] : []),
               ...streamingOutputs(
                 join(this.folder(recording.id), "recording.mkv"),
-                request.streamURL,
+                destinations,
                 this.options.streamingCAFile,
               ),
             ]
@@ -298,7 +331,15 @@ export class NativeRecorder {
       const ownedStream = session.stream;
       child.stderr.on("data", (chunk: Buffer) => {
         diagnostics = (diagnostics + chunk.toString()).slice(-4096);
-        if (/Slave muxer #1 failed|\[fifo @ [^\]]+\] Error/.test(diagnostics))
+        for (const [index, url] of destinations.entries()) {
+          const target = ownedStream.targets?.[index];
+          if (target && diagnostics.includes(`Error opening ${url}:`)) target.state = "failed";
+        }
+        for (const match of diagnostics.matchAll(/Slave muxer #(\d+) failed/g)) {
+          const target = ownedStream.targets?.[Number(match[1]) - 1];
+          if (target) target.state = "failed";
+        }
+        if (ownedStream.targets?.some((target) => target.state === "failed"))
           ownedStream.state = "failed";
       });
       child.stdin.on("error", () => {});
@@ -340,7 +381,8 @@ export class NativeRecorder {
         owned.recording.status = "error";
         owned.recording.error = "Recording process stopped unexpectedly";
         owned.recording.elapsedSeconds = Math.max(0, (Date.now() - owned.started) / 1000);
-        owned.recording.bytes = await stat(join(this.folder(owned.recording.id), "recording.mkv"))
+        owned.recording.bytes = await this.safeFile(owned.recording.id, "recording.mkv")
+          .then((file) => stat(file))
           .then((s) => s.size)
           .catch(() => 0);
         await this.save(owned.recording).catch(() => {});
@@ -362,7 +404,9 @@ export class NativeRecorder {
       this.busy = false;
     }
   }
-  async stop(): Promise<NativeRecording> {
+  async stop(expectedID?: string): Promise<NativeRecording> {
+    if (expectedID !== undefined && this.session?.recording.id !== expectedID)
+      throw new Error("Recording changed. Refresh before stopping.");
     if (this.busy || !this.session || !this.session.child || !this.session.done)
       throw new Error("No active recording");
     this.busy = true;
@@ -388,7 +432,8 @@ export class NativeRecorder {
       await done;
       session.recording.status = "error";
       session.recording.error = "Recording could not be finalized";
-      session.recording.bytes = await stat(join(this.folder(session.recording.id), "recording.mkv"))
+      session.recording.bytes = await this.safeFile(session.recording.id, "recording.mkv")
+        .then((file) => stat(file))
         .then((s) => s.size)
         .catch(() => 0);
       await this.save(session.recording);
@@ -398,19 +443,46 @@ export class NativeRecorder {
       this.busy = false;
     }
   }
+  private async cleanupPublishedRemuxes(id: string): Promise<void> {
+    const folder = await this.safeFolder(id),
+      published = await stat(await this.safeFile(id, "recording.mp4"), { bigint: true });
+    if (published.ino === 0n || published.nlink < 2n) return;
+    for (const name of await readdir(folder)) {
+      if (
+        !name.startsWith("remux-") ||
+        !name.endsWith(".mp4") ||
+        !idPattern.test(name.slice(6, -4))
+      )
+        continue;
+      const file = join(folder, name),
+        info = await lstat(file, { bigint: true });
+      if (
+        info.isFile() &&
+        info.dev === published.dev &&
+        info.ino === published.ino &&
+        (await realpath(file)) === file
+      )
+        await rm(file);
+    }
+  }
   private async finalize(item: NativeRecording): Promise<NativeRecording> {
-    const dir = this.folder(item.id),
+    const dir = await this.safeFolder(item.id),
       temp = join(dir, `remux-${randomUUID()}.mp4`),
       target = join(dir, "recording.mp4");
     try {
+      const source = await this.safeFile(item.id, "recording.mkv");
       await run(
         this.ffmpeg,
         [
           "-hide_banner",
           "-loglevel",
           "error",
+          "-protocol_whitelist",
+          "file,pipe",
+          "-format_whitelist",
+          "matroska,webm",
           "-i",
-          join(dir, "recording.mkv"),
+          source,
           "-map",
           "0",
           "-c",
@@ -463,10 +535,25 @@ export class NativeRecorder {
       if (item.elapsedSeconds <= 0 || item.tracks.some((track) => track.durationSeconds <= 0))
         throw new Error("Output contains no playable duration");
       item.bytes = (await stat(temp)).size;
-      await link(temp, target);
+      try {
+        await link(temp, target);
+      } catch (error) {
+        if (!(error instanceof Error) || !("code" in error) || error.code !== "EEXIST") throw error;
+        // A crash can publish the output before its ready journal is saved.
+        const published = await this.safeFile(item.id, "recording.mp4");
+        if (
+          (await stat(published)).size !== item.bytes ||
+          (await fileDigest(published)) !== (await fileDigest(temp))
+        )
+          throw new Error("Existing recording output does not match repaired source", {
+            cause: error,
+          });
+      }
       item.status = "ready";
       item.error = null;
       await this.save(item);
+      // Cleanup must not turn a committed recording back into an error.
+      await this.cleanupPublishedRemuxes(item.id).catch(() => {});
       return { ...item };
     } finally {
       await rm(temp, { force: true });

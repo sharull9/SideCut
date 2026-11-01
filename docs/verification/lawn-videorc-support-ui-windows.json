@@ -1,0 +1,127 @@
+{
+  "packaged": true,
+  "platform": "win32",
+  "arch": "x64",
+  "version": "0.0.1",
+  "isolation": {
+    "node": "undefined",
+    "require": "undefined",
+    "bridge": "function"
+  },
+  "credentialStorage": "encrypted round-trip",
+  "exclusiveLock": true,
+  "archive": {
+    "bytes": 50562
+  },
+  "media": {
+    "bytes": 4661,
+    "codecs": ["vp8", "opus"],
+    "duration": 0.22,
+    "decoded": "RIFF"
+  },
+  "nativeRecording": {
+    "input": "synthetic lavfi video and tone",
+    "encoder": "libx264",
+    "bytes": 122196,
+    "sha256": "03638ff8210c88dc273cb2a54d4a98bf5006cd7dccc3c81a840cf014f76bd02e",
+    "diskJournalVersion": 1,
+    "codecs": ["aac", "h264"],
+    "decodedCodecs": ["opus", "vp8"],
+    "duration": 2.9,
+    "repair": {
+      "fixture": "simulated interrupted journals; synthetic intact and damaged sources",
+      "reopened": true,
+      "recovered": true,
+      "sourcePreserved": true,
+      "sourceSHA256": "fc579e6e4219e3e861b680233dd0f84824b3f997c59eb3959b9785d14d6b020f",
+      "publishedRecovered": true,
+      "publishedPreserved": true,
+      "publishedRemuxRemoved": true,
+      "legacyJournalsUpgraded": true,
+      "futureJournalPreserved": true,
+      "futureJournalSHA256": "ab09bd85f38e412b55b7a82cf36a7bf6d17b17d36e294a958497cd1269a57828",
+      "publishedSHA256": "03638ff8210c88dc273cb2a54d4a98bf5006cd7dccc3c81a840cf014f76bd02e",
+      "corruptRejected": true,
+      "corruptSourcePreserved": true,
+      "temporaryFilesRemoved": true,
+      "codecs": ["aac", "h264"],
+      "decodedCodecs": ["opus", "vp8"],
+      "duration": 2.9
+    },
+    "reopened": true
+  },
+  "panelPreferences": {
+    "unreadableCases": 3,
+    "originalPreserved": true,
+    "temporaryResize": true,
+    "resetPersisted": true,
+    "resizePersisted": true,
+    "reloaded": true
+  },
+  "support": {
+    "report": {
+      "format": "sidecut-support",
+      "version": 1,
+      "createdAt": "2026-11-01T16:15:36.236Z",
+      "runtime": {
+        "platform": "win32",
+        "arch": "x64",
+        "node": "24.22.0",
+        "electron": "45.0.0",
+        "chrome": "156.0.8078.48",
+        "rssBytes": 142712832,
+        "heapUsedBytes": 14836492
+      },
+      "services": {
+        "rendererReady": true,
+        "nativeMediaConfigured": true
+      },
+      "project": {
+        "schemaVersion": 2,
+        "revision": 2,
+        "saveState": "saved",
+        "saveError": false,
+        "width": 320,
+        "height": 180,
+        "frameRate": {
+          "numerator": 30,
+          "denominator": 1
+        },
+        "mediaCount": 1,
+        "videoTrackCount": 1,
+        "audioTrackCount": 1,
+        "clipCount": 1,
+        "validation": {
+          "errors": 0,
+          "warnings": 0
+        }
+      },
+      "recordings": {
+        "status": "available",
+        "counts": {
+          "recording": 0,
+          "stopping": 0,
+          "ready": 0,
+          "interrupted": 0,
+          "error": 0
+        }
+      }
+    },
+    "contentExcluded": true
+  },
+  "supportUI": {
+    "downloaded": true,
+    "contentExcluded": true,
+    "replacementRevoked": true,
+    "unmountRevoked": true,
+    "projectUnchanged": true
+  },
+  "reopened": true,
+  "sqlite": {
+    "format": "SQLite format 3",
+    "legacyPreserved": true,
+    "reopened": true
+  },
+  "cli": true,
+  "unicodeSpaceProfile": true
+}

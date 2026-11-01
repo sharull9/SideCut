@@ -21,7 +21,7 @@ export function text(value: unknown): string {
   return value;
 }
 export interface ImportReport {
-  format: "edl" | "filmora";
+  format: "edl" | "filmora" | "obs";
   warnings: string[];
   clips: number;
   media: number;

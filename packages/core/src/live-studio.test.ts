@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { decodeProjectFile } from "@sidecut/contracts/project";
-import { LiveStudio } from "./live-studio";
+import { LiveStudio, LiveStudioRenditions } from "./live-studio";
 import { layerGeometry, sourceCrop } from "./render-plan";
 
 const project = (width = 1920) =>
@@ -77,5 +77,49 @@ describe("saved live scenes", () => {
     expect(() => LiveStudio.restore('{"schemaVersion":2}')).toThrow();
     restored.switch({ id: "a", expectedRevision: 3 });
     expect(restored.frame(0).sceneRevision).toBe(2);
+  });
+});
+
+describe("independent live renditions", () => {
+  it("keeps composition revisions independent and rejects wrong orientation", () => {
+    const outputs = new LiveStudioRenditions();
+    const horizontal = project();
+    const tall = project(1080);
+    const vertical = { ...tall, settings: { ...tall.settings, height: 1920 } };
+    outputs.save({
+      output: "horizontal",
+      id: "h",
+      name: "Wide",
+      project: horizontal,
+      expectedRevision: 0,
+    });
+    outputs.save({
+      output: "vertical",
+      id: "v",
+      name: "Tall",
+      project: vertical,
+      expectedRevision: 0,
+    });
+    outputs.horizontal.switch({ id: "h", expectedRevision: 1 });
+    outputs.vertical.switch({ id: "v", expectedRevision: 1 });
+    expect(outputs.horizontal.frame(0).project.settings.width).toBe(1920);
+    expect(outputs.vertical.frame(0).project.settings.height).toBe(1920);
+    outputs.save({
+      output: "horizontal",
+      id: "h",
+      name: "Changed",
+      project: horizontal,
+      expectedRevision: 2,
+    });
+    expect(outputs.vertical.currentRevision).toBe(2);
+    expect(() =>
+      outputs.save({
+        output: "vertical",
+        id: "bad",
+        name: "Bad",
+        project: horizontal,
+        expectedRevision: 2,
+      }),
+    ).toThrow(/dimensions/);
   });
 });

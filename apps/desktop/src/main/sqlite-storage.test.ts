@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vite-plus/test";
-import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile, rm, readdir } from "node:fs/promises";
+import { DatabaseSync } from "node:sqlite";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NativeStorage, openSQLite } from "./sqlite-storage.ts";
@@ -11,9 +12,64 @@ import {
 } from "../../../../packages/platform-browser/src/storage-codec.ts";
 
 describe("SQLite durability and legacy migration", () => {
+  it.each(["delete", "wal"])("preserves a newer %s database when refusing access", async (mode) => {
+    const root = await mkdtemp(join(tmpdir(), "sidecut-future-sqlite-"));
+    const path = join(root, "sidecut.sqlite");
+    try {
+      const fixture = new DatabaseSync(path);
+      try {
+        fixture.exec(`PRAGMA journal_mode=${mode}; PRAGMA user_version=2;
+          CREATE TABLE future_data(value TEXT);
+          INSERT INTO future_data VALUES('preserve newer settings and library data');`);
+      } finally {
+        fixture.close();
+      }
+      const before = await readFile(path),
+        files = (await readdir(root)).sort();
+      expect(() => openSQLite(path)).toThrow(/newer raE.E/);
+      expect(() => new NativeStorage(root)).toThrow(/newer raE.E/);
+      expect(await readFile(path)).toEqual(before);
+      expect((await readdir(root)).sort()).toEqual(files);
+      const inspect = new DatabaseSync(path, { readOnly: true });
+      try {
+        expect(inspect.prepare("PRAGMA user_version").get()?.user_version).toBe(2);
+        expect(inspect.prepare("PRAGMA journal_mode").get()?.journal_mode).toBe(mode);
+        expect(inspect.prepare("SELECT value FROM future_data").get()?.value).toBe(
+          "preserve newer settings and library data",
+        );
+        expect(
+          inspect
+            .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+            .all()
+            .map((row) => row.name),
+        ).toEqual(["future_data"]);
+      } finally {
+        inspect.close();
+      }
+      const store = new NativeProjectStore(join(root, "current.tandem"));
+      try {
+        await store.acquire();
+        await expect(
+          store.load(() => {
+            throw new Error("must not create a project");
+          }),
+        ).rejects.toThrow(/newer raE.E/);
+      } finally {
+        await store.close();
+      }
+      expect(await readFile(path)).toEqual(before);
+    } finally {
+      expect(root.startsWith(join(tmpdir(), "sidecut-future-sqlite-"))).toBe(true);
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("rolls back the entire write set after a constraint failure and rejects stale writes", async () => {
     const db = openSQLite(":memory:");
     const { repository, database } = db;
+    expect(database.prepare("PRAGMA user_version").get()?.user_version).toBe(1);
+    expect(database.prepare("PRAGMA synchronous").get()?.synchronous).toBe(2);
+    expect(database.prepare("PRAGMA busy_timeout").get()?.timeout).toBe(5000);
     const read = () =>
       repository.request({ type: "read", collection: "projects", key: "test" })[0]?.value;
     try {

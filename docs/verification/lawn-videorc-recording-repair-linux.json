@@ -1,0 +1,104 @@
+{
+  "packaged": true,
+  "platform": "linux",
+  "arch": "x64",
+  "version": "0.0.1",
+  "isolation": {
+    "node": "undefined",
+    "require": "undefined",
+    "bridge": "function"
+  },
+  "credentialStorage": "encrypted round-trip",
+  "exclusiveLock": true,
+  "archive": {
+    "bytes": 50561
+  },
+  "media": {
+    "bytes": 4661,
+    "codecs": ["vp8", "opus"],
+    "duration": 0.22,
+    "decoded": "RIFF"
+  },
+  "nativeRecording": {
+    "input": "synthetic lavfi video and tone",
+    "encoder": "libx264",
+    "bytes": 127681,
+    "sha256": "5ffeb1e4c9ba304f76494fa590ab01512e6c714e13b7fca7493f12b3a53ebbfb",
+    "codecs": ["aac", "h264"],
+    "decodedCodecs": ["opus", "vp8"],
+    "duration": 3.066,
+    "repair": {
+      "fixture": "simulated interrupted journals; synthetic intact and damaged sources",
+      "reopened": true,
+      "recovered": true,
+      "sourcePreserved": true,
+      "sourceSHA256": "031e667ca628fa07b1dd3a3ca11fabde2d96c0ce0737d2388cf41d66bc732f07",
+      "corruptRejected": true,
+      "corruptSourcePreserved": true,
+      "temporaryFilesRemoved": true,
+      "codecs": ["aac", "h264"],
+      "decodedCodecs": ["opus", "vp8"],
+      "duration": 3.066
+    },
+    "reopened": true
+  },
+  "support": {
+    "report": {
+      "format": "sidecut-support",
+      "version": 1,
+      "createdAt": "2026-11-01T11:10:23.875Z",
+      "runtime": {
+        "platform": "linux",
+        "arch": "x64",
+        "node": "24.22.0",
+        "electron": "45.0.0",
+        "chrome": "156.0.8078.48",
+        "rssBytes": 193200128,
+        "heapUsedBytes": 15071540
+      },
+      "services": {
+        "rendererReady": true,
+        "nativeMediaConfigured": true
+      },
+      "project": {
+        "schemaVersion": 2,
+        "revision": 2,
+        "saveState": "saved",
+        "saveError": false,
+        "width": 320,
+        "height": 180,
+        "frameRate": {
+          "numerator": 30,
+          "denominator": 1
+        },
+        "mediaCount": 1,
+        "videoTrackCount": 1,
+        "audioTrackCount": 1,
+        "clipCount": 1,
+        "validation": {
+          "errors": 0,
+          "warnings": 0
+        }
+      },
+      "recordings": {
+        "status": "available",
+        "counts": {
+          "recording": 0,
+          "stopping": 0,
+          "ready": 0,
+          "interrupted": 0,
+          "error": 0
+        }
+      }
+    },
+    "contentExcluded": true
+  },
+  "reopened": true,
+  "sqlite": {
+    "format": "SQLite format 3",
+    "legacyPreserved": true,
+    "reopened": true
+  },
+  "cli": true,
+  "unicodeSpaceProfile": true
+}

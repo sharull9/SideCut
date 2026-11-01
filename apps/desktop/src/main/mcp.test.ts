@@ -14,7 +14,7 @@ const cleanup: (() => Promise<unknown>)[] = [];
 afterEach(async () => {
   for (const close of cleanup.reverse().splice(0)) await close();
 });
-it("speaks MCP over stdio with 43 tools, shared edits, undo, failures and cancellation", async () => {
+it("speaks MCP over stdio with 43 pinned tools and the studio extension, shared edits, undo, failures and cancellation", async () => {
   const root = await mkdtemp(join(tmpdir(), "sidecut-mcp-"));
   cleanup.push(() => rm(root, { recursive: true, force: true }));
   const host = new HostProjectService(new NativeProjectStore(join(root, "current.tandem")));
@@ -43,7 +43,7 @@ it("speaks MCP over stdio with 43 tools, shared edits, undo, failures and cancel
   await client.connect(transport);
   cleanup.push(() => client.close());
   expect((await client.listTools()).tools.map((tool) => tool.name).sort()).toEqual(
-    [...inventory.tools].sort(),
+    [...inventory.tools, "studio"].sort(),
   );
   expect(client.getInstructions()).toContain("expectedRevision");
   const status = CallToolResultSchema.parse(
@@ -60,6 +60,12 @@ it("speaks MCP over stdio with 43 tools, shared edits, undo, failures and cancel
   expect(raw.content[0]?.type === "text" && JSON.parse(raw.content[0].text)).toMatchObject({
     revision: 0,
   });
+  const studioStatus = CallToolResultSchema.parse(
+    await client.callTool({ name: "studio", arguments: { action: "status", json: true } }),
+  );
+  expect(
+    studioStatus.content[0]?.type === "text" && JSON.parse(studioStatus.content[0].text),
+  ).toMatchObject({ revision: 0, studioRevision: 0, scenes: [] });
   const edit = await client.callTool({
     name: "apply",
     arguments: {
@@ -158,7 +164,7 @@ it("initializes and lists contracts offline, keeping malformed discovery credent
     }),
   );
   cleanup.push(() => client.close());
-  expect((await client.listTools()).tools).toHaveLength(43);
+  expect((await client.listTools()).tools).toHaveLength(inventory.tools.length + 1);
   expect(await client.callTool({ name: "status", arguments: {} })).toMatchObject({
     isError: true,
     content: [{ type: "text", text: "Invalid discovery file." }],

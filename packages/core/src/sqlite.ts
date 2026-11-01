@@ -15,7 +15,7 @@ export class SQLiteRepository {
       ),
     )[0]?.value;
     if (version !== "0" && version !== "1")
-      throw new Error("This database needs a newer SideCut version.");
+      throw new Error("This database needs a newer raE.E version.");
     db.exec(
       "CREATE TABLE IF NOT EXISTS documents (collection TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY(collection,key)); PRAGMA user_version=1;",
     );

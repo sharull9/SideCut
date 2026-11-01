@@ -29,8 +29,8 @@ export const RAIL_SIZE = 32;
 export const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value));
 
-export function readPanelSizes(value: string | null): PanelSizes {
-  if (!value) return { ...DEFAULT_PANELS };
+export function readPanelSizes(value: string | null): PanelSizes | null {
+  if (value === null) return { ...DEFAULT_PANELS };
   try {
     const parsed: unknown = JSON.parse(value);
     if (
@@ -42,7 +42,7 @@ export function readPanelSizes(value: string | null): PanelSizes {
       !("inspector" in parsed) ||
       !("workspace" in parsed)
     )
-      return { ...DEFAULT_PANELS };
+      return null;
     if (
       typeof parsed.media !== "number" ||
       !Number.isFinite(parsed.media) ||
@@ -53,7 +53,7 @@ export function readPanelSizes(value: string | null): PanelSizes {
         (typeof parsed.workspace === "number" && Number.isFinite(parsed.workspace))
       )
     )
-      return { ...DEFAULT_PANELS };
+      return null;
     return {
       media: clamp(parsed.media, MEDIA_MIN, 560),
       inspector: clamp(parsed.inspector, INSPECTOR_MIN, 600),
@@ -63,7 +63,7 @@ export function readPanelSizes(value: string | null): PanelSizes {
       inspectorHidden: "inspectorHidden" in parsed && parsed.inspectorHidden === true,
     };
   } catch {
-    return { ...DEFAULT_PANELS };
+    return null;
   }
 }
 

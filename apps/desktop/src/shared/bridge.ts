@@ -3,6 +3,7 @@ export const rendererHost = "app";
 export const rendererOrigin = `${rendererScheme}://${rendererHost}`;
 
 export const bridgeChannels = {
+  supportReport: "sidecut:support-report",
   deliveryEncode: "sidecut:delivery-encode",
   deliveryCancel: "sidecut:delivery-cancel",
   nativeRecordingDevices: "sidecut:native-recording-devices",

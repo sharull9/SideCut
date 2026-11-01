@@ -13,3 +13,7 @@ export {
 } from "../../packages/platform-browser/src/live-assets";
 export { DEFAULT_LIVE_AUDIO } from "../../packages/core/src/live-audio";
 export { LiveAudioChannel, LiveAudioMixer } from "../../packages/platform-browser/src/live-audio";
+
+export { LiveChat } from "../../packages/core/src/live-chat";
+export { LiveCaptions } from "../../packages/core/src/live-captions";
+export { LiveCompanion } from "../../packages/core/src/live-companion";

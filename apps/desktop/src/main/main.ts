@@ -33,6 +33,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 const smoke = app.commandLine.hasSwitch("smoke-test");
 const headlessProject = app.commandLine.getSwitchValue("headless-project");
 const sharedStorage = app.commandLine.getSwitchValue("headless-storage-root");
+// Keep the existing installed profile when changing the displayed product name.
+if (app.isPackaged) app.setPath("userData", join(app.getPath("appData"), "SideCut"));
 if (headlessProject) {
   const profile = app.commandLine.getSwitchValue("headless-profile");
   if (!isAbsolute(headlessProject) || !isAbsolute(profile) || !isAbsolute(sharedStorage))
@@ -100,7 +102,8 @@ const createWindow = () => {
     height: 900,
     minWidth: 640,
     minHeight: 600,
-    title: "SideCut",
+    title: "raE.E",
+    icon: join(rendererRoot, "icon-512.png"),
     show: false,
     webPreferences: {
       preload: join(here, "preload.cjs"),
@@ -291,6 +294,7 @@ void app
           project,
           new NativeMedia(binaries.ffmpeg, binaries.ffprobe),
           renderer,
+          recorder,
         );
         let parentGone = false;
         const http = new LocalHTTPService(api, {
@@ -384,7 +388,7 @@ void app
           return;
         }
         dialog.showErrorBox(
-          "Could not open SideCut",
+          "Could not open raE.E",
           error instanceof Error ? error.message : String(error),
         );
         app.quit();
@@ -395,7 +399,7 @@ void app
     });
   })
   .catch((error) => {
-    console.error("Could not initialize SideCut:", error);
+    console.error("Could not initialize raE.E:", error);
     app.exit(1);
   });
 

@@ -30,7 +30,9 @@ const server = createServer(async (request, response) => {
       extension = ".html";
     }
     response
-      .writeHead(200, { "content-type": mime[extension] ?? "application/octet-stream" })
+      .writeHead(200, {
+        "content-type": mime[extension] ?? "application/octet-stream",
+      })
       .end(data);
   } catch {
     response.writeHead(500).end();
@@ -38,7 +40,7 @@ const server = createServer(async (request, response) => {
 });
 await new Promise((done, reject) => {
   server.once("error", reject);
-  server.listen(configured ? 5173 : 0, "127.0.0.1", done);
+  server.listen(configured ? 3000 : 0, "127.0.0.1", done);
 });
 let browser;
 try {
@@ -72,7 +74,10 @@ try {
   await dialog.waitFor();
   const bounds = await dialog.boundingBox();
   assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 391);
-  await page.screenshot({ path: "logs/lv012-teams-mobile.png", animations: "disabled" });
+  await page.screenshot({
+    path: "logs/lv012-teams-mobile.png",
+    animations: "disabled",
+  });
   if (configured) {
     await dialog.getByRole("button", { name: "Sign in", exact: true }).click();
     await page.waitForURL(

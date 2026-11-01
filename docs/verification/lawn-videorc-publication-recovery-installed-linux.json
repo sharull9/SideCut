@@ -1,0 +1,107 @@
+{
+  "packaged": true,
+  "platform": "linux",
+  "arch": "x64",
+  "version": "0.0.1",
+  "isolation": {
+    "node": "undefined",
+    "require": "undefined",
+    "bridge": "function"
+  },
+  "credentialStorage": "encrypted round-trip",
+  "exclusiveLock": true,
+  "archive": {
+    "bytes": 50562
+  },
+  "media": {
+    "bytes": 4661,
+    "codecs": ["vp8", "opus"],
+    "duration": 0.22,
+    "decoded": "RIFF"
+  },
+  "nativeRecording": {
+    "input": "synthetic lavfi video and tone",
+    "encoder": "libx264",
+    "bytes": 129286,
+    "sha256": "4ea5bd664c66755d2ee0b54bfa75ac1442d1f8bf8b60c1d1715a360eded1dda3",
+    "codecs": ["aac", "h264"],
+    "decodedCodecs": ["opus", "vp8"],
+    "duration": 3.066,
+    "repair": {
+      "fixture": "simulated interrupted journals; synthetic intact and damaged sources",
+      "reopened": true,
+      "recovered": true,
+      "sourcePreserved": true,
+      "sourceSHA256": "952cbef5351c4934b017bb76c685fb09cd47565dcd8d845000b5f7e8b81efb89",
+      "publishedRecovered": true,
+      "publishedPreserved": true,
+      "publishedSHA256": "4ea5bd664c66755d2ee0b54bfa75ac1442d1f8bf8b60c1d1715a360eded1dda3",
+      "corruptRejected": true,
+      "corruptSourcePreserved": true,
+      "temporaryFilesRemoved": true,
+      "codecs": ["aac", "h264"],
+      "decodedCodecs": ["opus", "vp8"],
+      "duration": 3.066
+    },
+    "reopened": true
+  },
+  "support": {
+    "report": {
+      "format": "sidecut-support",
+      "version": 1,
+      "createdAt": "2026-11-01T14:58:53.850Z",
+      "runtime": {
+        "platform": "linux",
+        "arch": "x64",
+        "node": "24.22.0",
+        "electron": "45.0.0",
+        "chrome": "156.0.8078.48",
+        "rssBytes": 196067328,
+        "heapUsedBytes": 15120000
+      },
+      "services": {
+        "rendererReady": true,
+        "nativeMediaConfigured": true
+      },
+      "project": {
+        "schemaVersion": 2,
+        "revision": 2,
+        "saveState": "saved",
+        "saveError": false,
+        "width": 320,
+        "height": 180,
+        "frameRate": {
+          "numerator": 30,
+          "denominator": 1
+        },
+        "mediaCount": 1,
+        "videoTrackCount": 1,
+        "audioTrackCount": 1,
+        "clipCount": 1,
+        "validation": {
+          "errors": 0,
+          "warnings": 0
+        }
+      },
+      "recordings": {
+        "status": "available",
+        "counts": {
+          "recording": 0,
+          "stopping": 0,
+          "ready": 0,
+          "interrupted": 0,
+          "error": 0
+        }
+      }
+    },
+    "contentExcluded": true
+  },
+  "reopened": true,
+  "sqlite": {
+    "format": "SQLite format 3",
+    "legacyPreserved": true,
+    "reopened": true
+  },
+  "cli": true,
+  "unicodeSpaceProfile": true
+}

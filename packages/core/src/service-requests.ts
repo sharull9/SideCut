@@ -11,6 +11,16 @@ const range = { from: "time", to: "time" } as const;
 const image = { output: "string", format: "string" } as const;
 export const rendererMutations = new Set(["relink", "assets-use", "insert-segment"]);
 export const serviceDefinitions = {
+  diagnostics: { output: "string" },
+  studio: {
+    action: "string",
+    id: "string",
+    name: "string",
+    studioRevision: "integer",
+    expectedRevision: "integer",
+    idempotencyKey: "string",
+    author: "string",
+  },
   new: {
     name: "string",
     path: "string",
@@ -23,6 +33,16 @@ export const serviceDefinitions = {
   "import-edl": {
     path: "string",
     recipe: "string",
+    name: "string",
+    output: "string",
+    expectedRevision: "integer",
+  },
+  "import-obs": {
+    path: "string",
+    profile: "string",
+    assetRoot: "string",
+    scene: "string",
+    duration: "number",
     name: "string",
     output: "string",
     expectedRevision: "integer",
@@ -201,6 +221,7 @@ export const serviceDefinitions = {
 } as const;
 export const serviceFields: Record<string, Record<string, string>> = serviceDefinitions;
 export const requiredServiceFields = {
+  studio: ["action"],
   apply: ["commands"],
   diff: ["since"],
   restore: ["from"],
@@ -212,6 +233,7 @@ export const requiredServiceFields = {
   open: ["path", "expectedRevision"],
   "import-edl": ["path", "expectedRevision"],
   "import-filmora": ["path", "expectedRevision"],
+  "import-obs": ["path", "expectedRevision"],
   "assets-fetch": ["id"],
   "assets-show": ["id"],
   "assets-use": ["id"],

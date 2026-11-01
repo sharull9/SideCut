@@ -1,4 +1,5 @@
 import type { LiveStudio } from "@sidecut/core/live-studio";
+import { paintLiveEngagement, type LiveEngagement } from "./live-engagement";
 import { paintPicture } from "./picture";
 import { paintLiveBackground, paintLiveOverlays } from "./live-assets";
 
@@ -22,6 +23,9 @@ export class LiveStudioOutput {
     private readonly canvas: HTMLCanvasElement,
     private readonly studio: LiveStudio,
     private readonly reader: Parameters<typeof paintPicture>[3],
+    private readonly engagement?: LiveEngagement,
+    private readonly liveLayers?: (context: CanvasRenderingContext2D, time: number) => void,
+    private readonly maxOutputHeight = Number.POSITIVE_INFINITY,
   ) {
     this.staging = document.createElement("canvas");
     const context = this.staging.getContext("2d");
@@ -63,11 +67,19 @@ export class LiveStudioOutput {
       signal?.throwIfAborted();
       const frame = this.studio.frame(time);
       const assets = frame.assets;
-      const { width, height } = frame.project.settings;
-      if (width > 3840 || height > 3840 || width * height > 3840 * 2160)
+      const settings = frame.project.settings;
+      if (
+        settings.width > 3840 ||
+        settings.height > 3840 ||
+        settings.width * settings.height > 3840 * 2160
+      )
         throw new Error("Studio output exceeds the 4K pixel limit.");
-      this.staging.width = width;
-      this.staging.height = height;
+      const scale = Math.min(1, this.maxOutputHeight / settings.height);
+      const width = Math.round((settings.width * scale) / 2) * 2;
+      const height = Math.round((settings.height * scale) / 2) * 2;
+      // Resizing reallocates and clears the canvas, so only do it when the output size changes.
+      if (this.staging.width !== width) this.staging.width = width;
+      if (this.staging.height !== height) this.staging.height = height;
       const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       await paintPicture(
         this.context,
@@ -78,7 +90,9 @@ export class LiveStudioOutput {
         undefined,
         assets ? (context) => paintLiveBackground(context, assets, time, reducedMotion) : undefined,
       );
+      this.liveLayers?.(this.context, time);
       if (assets) paintLiveOverlays(this.context, assets, time, reducedMotion);
+      if (this.engagement) paintLiveEngagement(this.context, this.engagement, time, reducedMotion);
       signal?.throwIfAborted();
       if (this.closed) return null;
       if (this.studio.frame(time).commitRevision !== frame.commitRevision) return null;

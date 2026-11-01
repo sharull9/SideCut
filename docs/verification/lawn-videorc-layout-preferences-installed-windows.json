@@ -1,0 +1,127 @@
+{
+  "packaged": true,
+  "platform": "win32",
+  "arch": "x64",
+  "version": "0.0.1",
+  "isolation": {
+    "node": "undefined",
+    "require": "undefined",
+    "bridge": "function"
+  },
+  "credentialStorage": "encrypted round-trip",
+  "exclusiveLock": true,
+  "archive": {
+    "bytes": 50561
+  },
+  "media": {
+    "bytes": 4661,
+    "codecs": ["vp8", "opus"],
+    "duration": 0.22,
+    "decoded": "RIFF"
+  },
+  "nativeRecording": {
+    "input": "synthetic lavfi video and tone",
+    "encoder": "libx264",
+    "bytes": 121970,
+    "sha256": "d96bdb05597290a83ee6962ce48b6320308fc1091d2a40f145464ba4909364a2",
+    "diskJournalVersion": 1,
+    "codecs": ["aac", "h264"],
+    "decodedCodecs": ["opus", "vp8"],
+    "duration": 2.9,
+    "repair": {
+      "fixture": "simulated interrupted journals; synthetic intact and damaged sources",
+      "reopened": true,
+      "recovered": true,
+      "sourcePreserved": true,
+      "sourceSHA256": "5520d1064cce442f69e1b49595598bfc51dd5e8945fc13541d43f4c0d7032e6d",
+      "publishedRecovered": true,
+      "publishedPreserved": true,
+      "publishedRemuxRemoved": true,
+      "legacyJournalsUpgraded": true,
+      "futureJournalPreserved": true,
+      "futureJournalSHA256": "27cc669bdeda177a28cef8d04e1ad021456b1996aa1695db3428c06eac16471b",
+      "publishedSHA256": "d96bdb05597290a83ee6962ce48b6320308fc1091d2a40f145464ba4909364a2",
+      "corruptRejected": true,
+      "corruptSourcePreserved": true,
+      "temporaryFilesRemoved": true,
+      "codecs": ["aac", "h264"],
+      "decodedCodecs": ["opus", "vp8"],
+      "duration": 2.9
+    },
+    "reopened": true
+  },
+  "panelPreferences": {
+    "unreadableCases": 3,
+    "originalPreserved": true,
+    "temporaryResize": true,
+    "resetPersisted": true,
+    "resizePersisted": true,
+    "reloaded": true
+  },
+  "support": {
+    "report": {
+      "format": "sidecut-support",
+      "version": 1,
+      "createdAt": "2026-11-01T15:57:55.977Z",
+      "runtime": {
+        "platform": "win32",
+        "arch": "x64",
+        "node": "24.22.0",
+        "electron": "45.0.0",
+        "chrome": "156.0.8078.48",
+        "rssBytes": 143810560,
+        "heapUsedBytes": 14901348
+      },
+      "services": {
+        "rendererReady": true,
+        "nativeMediaConfigured": true
+      },
+      "project": {
+        "schemaVersion": 2,
+        "revision": 2,
+        "saveState": "saved",
+        "saveError": false,
+        "width": 320,
+        "height": 180,
+        "frameRate": {
+          "numerator": 30,
+          "denominator": 1
+        },
+        "mediaCount": 1,
+        "videoTrackCount": 1,
+        "audioTrackCount": 1,
+        "clipCount": 1,
+        "validation": {
+          "errors": 0,
+          "warnings": 0
+        }
+      },
+      "recordings": {
+        "status": "available",
+        "counts": {
+          "recording": 0,
+          "stopping": 0,
+          "ready": 0,
+          "interrupted": 0,
+          "error": 0
+        }
+      }
+    },
+    "contentExcluded": true
+  },
+  "reopened": true,
+  "sqlite": {
+    "format": "SQLite format 3",
+    "legacyPreserved": true,
+    "reopened": true
+  },
+  "cli": true,
+  "unicodeSpaceProfile": true,
+  "installation": {
+    "installer": "SideCut-0.0.1-win-x64.exe",
+    "sha256": "f24245929f7fa0b495187e3c75325410618bad96e5cd6a4147ca1f6813b01f17",
+    "unicodeSpacePath": true,
+    "launcher": true,
+    "uninstalled": true
+  }
+}

@@ -1,4 +1,5 @@
 import { v, ConvexError } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import type { GenericId } from "convex/values";
 import { mutation, query } from "./model";
 import type { QueryCtx } from "./model";
@@ -68,6 +69,7 @@ export const list = query({
     teamId: v.id("teams"),
     folderId: v.optional(v.id("folders")),
     search: v.optional(v.string()),
+    archived: v.optional(v.boolean()),
     sort: v.union(v.literal("name"), v.literal("newest")),
   },
   handler: async (ctx, args) => {
@@ -83,7 +85,7 @@ export const list = query({
     return records
       .filter(
         (m) =>
-          !m.archived &&
+          m.archived === (args.archived ?? false) &&
           (!args.folderId || m.folderId === args.folderId) &&
           m.name.toLowerCase().includes(search),
       )
@@ -92,6 +94,58 @@ export const list = query({
           ? a.name.localeCompare(b.name) || a._creationTime - b._creationTime
           : b._creationTime - a._creationTime,
       );
+  },
+});
+
+export const page = query({
+  args: {
+    teamId: v.id("teams"),
+    folderId: v.optional(v.id("folders")),
+    search: v.optional(v.string()),
+    archived: v.optional(v.boolean()),
+    sort: v.union(v.literal("name"), v.literal("newest")),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    await membership(ctx, args.teamId);
+    await folderAccess(ctx, args.teamId, args.folderId);
+    const search = (args.search ?? "").trim();
+    if (search.length > 200) throw new ConvexError("Search too long.");
+    if (
+      !Number.isInteger(args.paginationOpts.numItems) ||
+      args.paginationOpts.numItems < 1 ||
+      args.paginationOpts.numItems > 100
+    )
+      throw new ConvexError("Page size must be 1–100.");
+    const archived = args.archived ?? false;
+    if (search)
+      return ctx.db
+        .query("media")
+        .withSearchIndex("search_name", (q) => {
+          const scoped = q
+            .search("name", search)
+            .eq("teamId", args.teamId)
+            .eq("archived", archived);
+          return args.folderId ? scoped.eq("folderId", args.folderId) : scoped;
+        })
+        .paginate(args.paginationOpts);
+    const records = ctx.db.query("media");
+    const scoped = args.folderId
+      ? args.sort === "name"
+        ? records.withIndex("by_team_folder_archived_name", (q) =>
+            q.eq("teamId", args.teamId).eq("folderId", args.folderId).eq("archived", archived),
+          )
+        : records.withIndex("by_team_folder_archived", (q) =>
+            q.eq("teamId", args.teamId).eq("folderId", args.folderId).eq("archived", archived),
+          )
+      : args.sort === "name"
+        ? records.withIndex("by_team_archived_name", (q) =>
+            q.eq("teamId", args.teamId).eq("archived", archived),
+          )
+        : records.withIndex("by_team_archived", (q) =>
+            q.eq("teamId", args.teamId).eq("archived", archived),
+          );
+    return scoped.order(args.sort === "name" ? "asc" : "desc").paginate(args.paginationOpts);
   },
 });
 

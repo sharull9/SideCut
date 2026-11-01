@@ -10,7 +10,7 @@ import { promisify } from "node:util";
 import assert from "node:assert/strict";
 import { describe, expect, it } from "vite-plus/test";
 import { NativeRecorder } from "./native-recorder.ts";
-import { streamingOutputs, streamDestination } from "./native-streaming.ts";
+import { streamingOutputs, streamDestination, streamDestinations } from "./native-streaming.ts";
 import { mediaBinaries } from "./media-binaries.ts";
 
 const execute = promisify(execFile);
@@ -84,6 +84,19 @@ async function probe(file: string) {
 }
 
 describe("single streaming destination", () => {
+  it("bounds and isolates multiple output queues without persisting credentials", () => {
+    const urls = ["rtmp://one.test/live/key", "rtmps://two.test/live/key"];
+    const output = streamingOutputs("local.mkv", urls).at(-1)!;
+    expect(output.split("|")).toHaveLength(3);
+    expect(output.match(/queue_size=120/g)).toHaveLength(2);
+    expect(output.match(/max_recovery_attempts=3/g)).toHaveLength(2);
+    expect(output.match(/onfail=ignore/g)).toHaveLength(2);
+    expect(() => streamDestinations(urls[0], urls)).toThrow();
+    expect(() => streamDestinations(undefined, Array(5).fill(urls[0]))).toThrow();
+    expect(() => streamDestinations(undefined, [urls[0], urls[0]])).toThrow();
+    expect(() => streamDestinations(undefined, [])).toThrow();
+  });
+
   it("validates protocols and rejects tee injection without exposing stream keys", () => {
     expect(streamDestination("rtmps://example.test:443/live/private-key?token=value")).toEqual({
       url: "rtmps://example.test:443/live/private-key?token=value",
@@ -141,9 +154,17 @@ describe("single streaming destination", () => {
     const ended = once(listener, "close");
     try {
       await pause(300);
-      const started = await recorder.start({ ...request, streamURL: url });
-      expect(recorder.streamStatus().state).toBe("requested");
-      await pause(3200);
+      const started = await recorder.start({
+        ...request,
+        streamURLs: [url, `rtmp://127.0.0.1:${await port()}/live/refused-target`],
+      });
+      await expect
+        .poll(() => recorder.streamStatus().targets?.[1]?.state, { timeout: 12000 })
+        .toBe("failed");
+      expect(recorder.streamStatus().state).toBe("failed");
+      expect(recorder.streamStatus().targets?.[0]?.state).toBe("requested");
+      // Refusal can arrive before the first second of media on faster hosts.
+      await pause(1800);
       const result = await recorder.stop();
       expect(result.status).toBe("ready");
       const timeout = setTimeout(() => listener.kill(), 5000);

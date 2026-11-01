@@ -1,0 +1,39 @@
+{
+  "name": "@sidecut/landing",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "portless sidecut-landing vp dev --strictPort",
+    "generate-routes": "vp exec tsr generate",
+    "build": "vp build",
+    "brand-assets": "vp exec node scripts/brand-assets.mjs",
+    "preview": "portless sidecut-landing vp preview --strictPort",
+    "typecheck": "vp run generate-routes && vp exec tsc --noEmit && vp exec tsc --noEmit -p tsconfig.node.json"
+  },
+  "dependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@remixicon/react": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-router": "catalog:",
+    "@tanstack/react-start": "catalog:",
+    "motion": "^14.6.0",
+    "nitro": "3.0.260903-beta",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:"
+  },
+  "devDependencies": {
+    "@sidecut/config": "workspace:*",
+    "@tanstack/router-cli": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "portless": "0.15.4",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

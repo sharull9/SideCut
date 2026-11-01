@@ -22,6 +22,7 @@ describe("native media jobs", () => {
       }),
     ).rejects.toThrow(/encoding settings/);
   });
+  // Several real FFmpeg/FFprobe processes need headroom on shared CI runners.
   it("probes, trims, exports and decodes a real audio fixture", async () => {
     const binaries = mediaBinaries();
     const media = new NativeMedia(binaries.ffmpeg, binaries.ffprobe),
@@ -53,7 +54,7 @@ describe("native media jobs", () => {
     expect(Number(result.format.duration)).toBeCloseTo(0.2, 1);
     const decoded = await media.run("decode", exported, signal, () => {});
     expect(new TextDecoder().decode(decoded.slice(0, 4))).toBe("RIFF");
-  });
+  }, 30_000);
   it("cancels a real child process and waits for it to close", async () => {
     const root = await mkdtemp(join(tmpdir(), "sidecut-child-test-")),
       marker = join(root, "started");

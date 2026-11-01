@@ -63,6 +63,7 @@ it("prepares native positionals, text/JSON defaults and revision-only output", (
   ])
     expect(() => prepareQueryCommand(parseArguments(args))).toThrow();
 });
+// Multiple CLI subprocesses need headroom on shared CI runners.
 it("dispatches make before querying, prints revision-only output, and keeps failed make from querying", async () => {
   const root = await mkdtemp(join(tmpdir(), "sidecut-cli-queries-"));
   cleanups.push(() => rm(root, { recursive: true, force: true }));
@@ -168,4 +169,4 @@ it("dispatches make before querying, prints revision-only output, and keeps fail
   expect(seen.at(-1)?.body).toEqual({ count: -1.5, enabled: false });
   expect((await cli("probe", "--request", '{"nested":{"value":1}}')).code).toBe(0);
   expect(seen.at(-1)?.body).toEqual({ nested: { value: 1 } });
-});
+}, 30_000);

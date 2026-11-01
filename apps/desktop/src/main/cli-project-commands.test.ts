@@ -186,6 +186,7 @@ it("imports separate EDL/recipe and Filmora positional sources through the host"
   });
 });
 
+// Multiple CLI subprocesses need headroom on shared CI runners.
 it("rejects valued native switches before replacement and accepts command and flag aliases", async () => {
   const { run, host } = await setup();
   const before = host.snapshot().json;
@@ -219,7 +220,7 @@ it("rejects valued native switches before replacement and accepts command and fl
   for (const flag of ["search", "rewrite"]) {
     expect((await run("import", "filmora", "source.wfp", `--${flag}=unsupported`)).code).toBe(6);
   }
-});
+}, 30_000);
 
 it("cleans an exclusive import output when replacement fails and preserves existing output", async () => {
   const { run, root, host } = await setup();

@@ -309,6 +309,7 @@ describe("review, watch and CLI host adapters", () => {
       normalizeTo: -24,
     });
   });
+  // Multiple CLI subprocesses need headroom on shared CI runners.
   it("accepts pinned positional segment commands, repeated fields/values and readable output", async () => {
     const calls: { operation: string; input: Record<string, unknown> }[] = [];
     const segment = {
@@ -434,5 +435,5 @@ describe("review, watch and CLI host adapters", () => {
     expect(wrong.code).toBe(2);
     expect(wrong.err).toContain("different project");
     expect(calls).toHaveLength(count);
-  });
+  }, 30_000);
 });

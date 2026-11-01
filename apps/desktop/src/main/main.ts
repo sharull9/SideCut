@@ -1,4 +1,4 @@
-import { BrowserWindow, app, dialog, ipcMain, net, protocol, session, shell } from "electron";
+import { BrowserWindow, app, dialog, ipcMain, net, protocol, shell } from "electron";
 import { stat, writeFile, unlink, mkdir } from "node:fs/promises";
 import { dirname, join, isAbsolute } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -10,6 +10,8 @@ import {
   type DesktopAppInfo,
 } from "../shared/bridge.ts";
 import { resolveRendererPath } from "./renderer-path.ts";
+import { registerRecordingStorage } from "./recording-ipc.ts";
+import { registerCapturePermissions } from "./capture-permissions.ts";
 import { DesktopAssetProviders } from "./asset-providers.ts";
 import { HostProjectService } from "./project-service.ts";
 import { NativeProjectStore } from "./project-store.ts";
@@ -17,6 +19,12 @@ import { NativeStorage } from "./sqlite-storage.ts";
 import { registerNativeIPC } from "./native-ipc.ts";
 import { ProjectAPI } from "./project-api.ts";
 import { LocalHTTPService } from "./http-service.ts";
+import { NativeRecorder } from "./native-recorder.ts";
+import { registerNativeRecorder } from "./native-recorder-ipc.ts";
+import { NativeDeliveryService } from "./delivery-service.ts";
+import { registerNativeDelivery } from "./delivery-ipc.ts";
+import { NativeRecordingLibrary } from "./native-recording-library.ts";
+import { registerNativeRecordingLibrary } from "./native-recording-library-ipc.ts";
 import { NativeMedia } from "./native-media.ts";
 import { mediaBinaries } from "./media-binaries.ts";
 import { rendererService } from "./renderer-service.ts";
@@ -25,6 +33,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 const smoke = app.commandLine.hasSwitch("smoke-test");
 const headlessProject = app.commandLine.getSwitchValue("headless-project");
 const sharedStorage = app.commandLine.getSwitchValue("headless-storage-root");
+// Keep the existing installed profile when changing the displayed product name.
+if (app.isPackaged) app.setPath("userData", join(app.getPath("appData"), "SideCut"));
 if (headlessProject) {
   const profile = app.commandLine.getSwitchValue("headless-profile");
   if (!isAbsolute(headlessProject) || !isAbsolute(profile) || !isAbsolute(sharedStorage))
@@ -92,7 +102,8 @@ const createWindow = () => {
     height: 900,
     minWidth: 640,
     minHeight: 600,
-    title: "SideCut",
+    title: "raE.E",
+    icon: join(rendererRoot, "icon-512.png"),
     show: false,
     webPreferences: {
       preload: join(here, "preload.cjs"),
@@ -128,6 +139,7 @@ void app
   .then(async () => {
     await mkdir(sharedStorage || app.getPath("userData"), { recursive: true });
     const storage = new NativeStorage(sharedStorage || app.getPath("userData"));
+    registerRecordingStorage(storage, isTrusted);
     for (const [channel, handler] of [
       [bridgeChannels.storageRequest, (value: unknown) => storage.request(value)],
       [bridgeChannels.storagePutFile, (value: unknown) => storage.putFile(value)],
@@ -142,6 +154,30 @@ void app
         )
           throw new Error("Untrusted storage sender.");
         return handler(value);
+      });
+    for (const [channel, handler] of [
+      [bridgeChannels.storageFileBegin, () => storage.begin()],
+      [
+        bridgeChannels.storageFileAppend,
+        (id: unknown, bytes: unknown) => storage.append(id, bytes),
+      ],
+      [bridgeChannels.storageFileSeal, (id: unknown) => storage.seal(id)],
+      [bridgeChannels.storageFileAbort, (id: unknown) => storage.abort(id)],
+      [bridgeChannels.storageFileSize, (id: unknown) => storage.size(id)],
+      [
+        bridgeChannels.storageFileRead,
+        (id: unknown, offset: unknown, length: unknown) => storage.readRange(id, offset, length),
+      ],
+      [bridgeChannels.storageFileDigest, (id: unknown) => storage.digest(id)],
+    ] as const)
+      ipcMain.handle(channel, (event, ...args: unknown[]) => {
+        if (
+          !event.senderFrame ||
+          event.senderFrame !== event.sender.mainFrame ||
+          !isTrusted(event.senderFrame.url)
+        )
+          throw new Error("Untrusted storage sender.");
+        return (handler as (...args: unknown[]) => unknown)(...args);
       });
     app.once("will-quit", () => storage.close());
     const providers = new DesktopAssetProviders(
@@ -186,10 +222,7 @@ void app
         else throw new Error("Invalid credential action.");
       },
     );
-    session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) =>
-      callback(false),
-    );
-    session.defaultSession.setPermissionCheckHandler(() => false);
+    registerCapturePermissions(isTrusted);
 
     ipcMain.handle(bridgeChannels.appInfo, (event): DesktopAppInfo => {
       if (
@@ -224,6 +257,26 @@ void app
           process.env,
           app.isPackaged ? process.resourcesPath : undefined,
         );
+        const recordingRoot = join(app.getPath("userData"), "native-recordings");
+        const closeDelivery = registerNativeDelivery(
+          new NativeDeliveryService({
+            directory: sharedStorage || app.getPath("userData"),
+            ...binaries,
+          }),
+          isTrusted,
+          Boolean(headlessProject || smoke),
+        );
+        const recorder = new NativeRecorder(binaries.ffmpeg, binaries.ffprobe, recordingRoot);
+        const closeRecorder = registerNativeRecorder(
+          recorder,
+          isTrusted,
+          Boolean(headlessProject || smoke),
+        );
+        registerNativeRecordingLibrary(
+          new NativeRecordingLibrary(recordingRoot, recorder, binaries.ffmpeg, storage),
+          isTrusted,
+          Boolean(headlessProject || smoke),
+        );
         let backgroundJobs = false,
           notifyIdle = () => {};
         const renderer = rendererService(project, isTrusted, (jobs) => {
@@ -241,6 +294,7 @@ void app
           project,
           new NativeMedia(binaries.ffmpeg, binaries.ffprobe),
           renderer,
+          recorder,
         );
         let parentGone = false;
         const http = new LocalHTTPService(api, {
@@ -271,6 +325,8 @@ void app
         }
         const closeNative = registerNativeIPC(project, isTrusted, api);
         const close = async () => {
+          await closeDelivery();
+          await closeRecorder();
           await http.close();
           renderer.close();
           await unlink(discovery).catch(() => {});
@@ -332,7 +388,7 @@ void app
           return;
         }
         dialog.showErrorBox(
-          "Could not open SideCut",
+          "Could not open raE.E",
           error instanceof Error ? error.message : String(error),
         );
         app.quit();
@@ -343,7 +399,7 @@ void app
     });
   })
   .catch((error) => {
-    console.error("Could not initialize SideCut:", error);
+    console.error("Could not initialize raE.E:", error);
     app.exit(1);
   });
 

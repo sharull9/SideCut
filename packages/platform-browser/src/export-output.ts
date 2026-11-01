@@ -1,5 +1,7 @@
 import { BufferTarget, StreamTarget } from "mediabunny";
 const releases = new WeakMap<Blob, () => Promise<void>>();
+export const retainDiskExport = (blob: Blob, release: () => Promise<void>) =>
+  releases.set(blob, release);
 export const diskExport = (blob: Blob) => releases.has(blob);
 export async function releaseExport(blob: Blob) {
   const release = releases.get(blob);

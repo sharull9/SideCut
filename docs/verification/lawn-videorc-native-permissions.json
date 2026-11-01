@@ -1,0 +1,40 @@
+{
+  "testedAt": "2026-10-26T20:44:53.656Z",
+  "platform": "win32",
+  "production": true,
+  "syntheticDevices": true,
+  "simulatedPicker": true,
+  "osPermissionStatus": "simulated granted, with denied exercised separately",
+  "limitations": [
+    "Picker and source enumeration are simulated; no desktop pixels are captured.",
+    "Synthetic video MediaRecorder.start previously threw NotSupportedError in this environment; video output is not verified."
+  ],
+  "checks": {
+    "mediaPermissionPipeline": {
+      "outside": true,
+      "duplicate": true,
+      "audioLive": true,
+      "cameraDenied": true,
+      "stillAllowed": true,
+      "released": true
+    },
+    "cancelledApprovalRejected": true,
+    "untrustedDisplayRejected": true,
+    "cancelledPickerRejected": true,
+    "stalePickerRejected": true,
+    "removedSourceRejected": true,
+    "selectedSourceOnlyOnce": true,
+    "navigationRevokes": true,
+    "foreignSenderRejected": true,
+    "osDeniedRejected": true,
+    "appMicrophoneRecording": {
+      "name": "Recording-58c9922c-bebf-45ee-99f5-3090dee8da40.webm",
+      "bytes": 40877
+    },
+    "recordingMetadataUnchanged": true,
+    "recoveredChunkBytes": 40877,
+    "recordingSurvivesReload": true
+  },
+  "errors": [],
+  "accepted": true
+}

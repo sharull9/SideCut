@@ -4,6 +4,12 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./recent-clips": "./src/recent-clips.ts",
+    "./live-assets": "./src/live-assets.ts",
+    "./live-audio": "./src/live-audio.ts",
+    "./live-studio": "./src/live-studio.ts",
+    "./delivery-store": "./src/delivery-store.ts",
+    "./recordings": "./src/recordings.ts",
     "./service-sync": "./src/service-sync.ts",
     "./query-state": "./src/query-state.ts",
     "./media-role": "./src/media-role.ts",
@@ -49,7 +55,15 @@
     "./gain-follow": "./src/gain-follow.ts",
     "./quality-check": "./src/quality-check.ts",
     "./cut-audit": "./src/cut-audit.ts",
-    "./quality-notes": "./src/quality-notes.ts"
+    "./quality-notes": "./src/quality-notes.ts",
+    "./review-library": "./src/review-library.ts",
+    "./live-chat": "./src/live-chat.ts",
+    "./live-captions": "./src/live-captions.ts",
+    "./live-companion": "./src/live-companion.ts",
+    "./companion-behavior": "./src/companion-behavior.ts",
+    "./derived-edits": "./src/derived-edits.ts",
+    "./remote-control": "./src/remote-control.ts",
+    "./obs-import": "./src/obs-import.ts"
   },
   "scripts": {
     "typecheck": "vp exec tsc --noEmit"

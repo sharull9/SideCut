@@ -1,6 +1,7 @@
 import { open, readFile, unlink, mkdir, rename } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { DatabaseSync } from "node:sqlite";
 import { decodeProjectFile, encodeProjectFile } from "@sidecut/contracts/project";
 import type { ProjectFile } from "@sidecut/contracts/project";
 import { replayJournal, ProjectCoordinator } from "@sidecut/core/coordinator";
@@ -12,6 +13,34 @@ const read = async (path: string) =>
     throw error;
   });
 const validate = (json: string) => replayJournal(decodeProjectFile(JSON.parse(json)));
+const lockedMessage =
+  "Project is locked by another host. Close it first. An unreadable lock requires manual recovery after checking that no raE.E process is running.";
+function ownerExited(json: string) {
+  let owner: unknown;
+  try {
+    owner = JSON.parse(json);
+  } catch {
+    return false;
+  }
+  if (
+    !owner ||
+    typeof owner !== "object" ||
+    !("pid" in owner) ||
+    !("token" in owner) ||
+    typeof owner.pid !== "number" ||
+    !Number.isSafeInteger(owner.pid) ||
+    owner.pid <= 0 ||
+    typeof owner.token !== "string" ||
+    !owner.token
+  )
+    return false;
+  try {
+    process.kill(owner.pid, 0);
+    return false;
+  } catch (error) {
+    return error instanceof Error && "code" in error && error.code === "ESRCH";
+  }
+}
 
 export class NativeProjectStore {
   private expected: string | null = null;
@@ -44,17 +73,30 @@ export class NativeProjectStore {
 
   async acquire() {
     await mkdir(dirname(this.path), { recursive: true });
-    const lock = await open(`${this.path}.lock`, "wx").catch(() => {
-      throw new Error(
-        "Project is locked by another host. Close it first. If it crashed, remove the .lock file after checking that no SideCut process is running.",
-      );
-    });
+    // SQLite's OS lock serializes stale-file reclamation and is released even on a crash.
+    const guard = new DatabaseSync(`${this.path}.lock.sqlite`);
     try {
-      await lock.writeFile(JSON.stringify({ pid: process.pid, token: this.token }));
-      await lock.sync();
-      this.locked = true;
+      try {
+        guard.exec("BEGIN IMMEDIATE");
+      } catch {
+        throw new Error(lockedMessage);
+      }
+      const previous = await read(`${this.path}.lock`);
+      if (previous !== null) {
+        if (!ownerExited(previous)) throw new Error(lockedMessage);
+        await unlink(`${this.path}.lock`);
+      }
+      const lock = await open(`${this.path}.lock`, "wx");
+      try {
+        await lock.writeFile(JSON.stringify({ pid: process.pid, token: this.token }));
+        await lock.sync();
+        this.locked = true;
+      } finally {
+        await lock.close();
+      }
+      guard.exec("COMMIT");
     } finally {
-      await lock.close();
+      guard.close();
     }
   }
 
@@ -121,7 +163,7 @@ export class NativeProjectStore {
   private async publishPortable(json: string) {
     if (!this.options.portable || json === this.portableBaseline) return;
     if ((await read(this.path)) !== this.portableOriginal)
-      throw new Error("Project file changed outside SideCut. No file was replaced.");
+      throw new Error("Project file changed outside raE.E. No file was replaced.");
     const temporary = `${this.path}.${randomUUID()}.tmp`;
     const file = await open(temporary, "wx", 0o600);
     try {
@@ -132,7 +174,7 @@ export class NativeProjectStore {
     }
     try {
       if ((await read(this.path)) !== this.portableOriginal)
-        throw new Error("Project file changed outside SideCut. No file was replaced.");
+        throw new Error("Project file changed outside raE.E. No file was replaced.");
       await rename(temporary, this.path);
       this.portableOriginal = json;
       this.portableBaseline = json;
@@ -147,7 +189,7 @@ export class NativeProjectStore {
     const current = this.current();
     if (current !== this.expected)
       throw new Error(
-        "Project changed outside SideCut. Reload the disk version or recover the backup.",
+        "Project changed outside raE.E. Reload the disk version or recover the backup.",
       );
     if (current === json) {
       await this.publishPortable(json);

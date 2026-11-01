@@ -1,0 +1,44 @@
+{
+  "duration": 11.21629999999702,
+  "decodedAudioDuration": 11.16,
+  "marks": [
+    {
+      "time": 0.00010000000149011615,
+      "label": "Start",
+      "kind": "clip-start"
+    },
+    {
+      "time": 5.7153999999985095,
+      "label": "Switch to green",
+      "kind": "marker"
+    },
+    {
+      "time": 11.216,
+      "label": "End",
+      "kind": "clip-end"
+    }
+  ],
+  "red": [254, 0, 0, 255],
+  "greenPixel": [0, 255, 0, 255],
+  "audioEarly": 0.7066988616371148,
+  "audioLate": 0.7064201672883623,
+  "stillArmed": true,
+  "borrowedLive": true,
+  "failed": {
+    "armed": false,
+    "failure": "A recent-clip source ended. Select sources and rearm.",
+    "bytes": 0
+  },
+  "rearmed": {
+    "armed": true,
+    "failure": null,
+    "bytes": 0
+  },
+  "stoppedRejected": true,
+  "videoOnlyBytes": 2211,
+  "abortRejected": true,
+  "silentStopDetected": true,
+  "recordingBytes": 213803,
+  "browser": "156.0.8078.4",
+  "runtime": "Vite module harness; synthetic canvas/audio; real MediaRecorder and WebM decode"
+}

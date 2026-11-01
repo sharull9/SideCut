@@ -16,6 +16,12 @@ it("stores frame bytes separately, loads on demand, makes portable archives and 
       if (!value) throw new Error("Missing file");
       return value;
     },
+    putBlob: async () => {
+      throw new Error("unused");
+    },
+    getBlob: async () => {
+      throw new Error("unused");
+    },
     removeFile: async (id: string) => {
       files.delete(id);
     },

@@ -1,6 +1,7 @@
 module.exports = {
   appId: "app.sidecut.editor",
-  productName: "SideCut",
+  productName: "raE.E",
+  icon: "../landing/public/icon-512.png",
   directories: { app: ".package", output: "release" },
   files: ["dist/**/*", "package.json", "!node_modules/**/*"],
   extraResources: [{ from: ".package/resources", to: "." }],
@@ -15,13 +16,14 @@ module.exports = {
     maintainer: "SideCut contributors",
   },
   mac: {
+    executableName: "SideCut",
     target: ["dmg", "zip"],
     category: "public.app-category.video",
     identity: "-",
     hardenedRuntime: false,
     notarize: false,
   },
-  win: { target: ["nsis"], signAndEditExecutable: false },
+  win: { target: ["nsis"], executableName: "SideCut", signExecutable: false },
   nsis: {
     oneClick: false,
     perMachine: false,

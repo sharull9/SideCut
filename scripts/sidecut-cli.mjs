@@ -44,7 +44,7 @@ Closed projects can use a hidden desktop host. An installed or built SideCut is 
   --follow               Repeat watch, resuming at the last revision
   --help                 Show this help
 
-Commands: schema, status, media, timeline, clips, apply, undo, redo, history,
+Commands: schema, status, diagnostics, media, timeline, clips, apply, undo, redo, history,
 diff, restore, transcript, transcribe, search, pauses, tighten, join, captions,
 short, cards, validate, check, comments, sync, watch, wait, effects, archive,
 relink, frame, frames, screenshot, clip, export, loudness, new, open,
@@ -335,7 +335,7 @@ async function main(args) {
   }
   if (
     projectCommand.native &&
-    ["new", "import-edl", "import-filmora"].includes(operation) &&
+    ["new", "import-edl", "import-filmora", "import-obs"].includes(operation) &&
     input.expectedRevision == null
   ) {
     const status = await call("status", {});

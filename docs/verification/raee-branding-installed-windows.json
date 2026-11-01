@@ -1,0 +1,151 @@
+{
+  "packaged": true,
+  "platform": "win32",
+  "arch": "x64",
+  "version": "0.0.1",
+  "isolation": {
+    "node": "undefined",
+    "require": "undefined",
+    "bridge": "function"
+  },
+  "credentialStorage": "encrypted round-trip",
+  "exclusiveLock": true,
+  "archive": {
+    "bytes": 50561
+  },
+  "media": {
+    "bytes": 4661,
+    "codecs": ["vp8", "opus"],
+    "duration": 0.22,
+    "decoded": "RIFF"
+  },
+  "nativeRecording": {
+    "input": "synthetic lavfi video and tone",
+    "encoder": "libx264",
+    "bytes": 125172,
+    "sha256": "c6983d843741e0f6c912069aab9b4556c82cabd01e21036705920e10c3a4fb45",
+    "diskJournalVersion": 1,
+    "codecs": ["aac", "h264"],
+    "decodedCodecs": ["opus", "vp8"],
+    "duration": 2.966,
+    "repair": {
+      "fixture": "simulated interrupted journals; synthetic intact and damaged sources",
+      "reopened": true,
+      "recovered": true,
+      "sourcePreserved": true,
+      "sourceSHA256": "8150b43aca0e261f5935c94a40b60edf0ea855e4a9cc96e94165061b74998b22",
+      "publishedRecovered": true,
+      "publishedPreserved": true,
+      "publishedRemuxRemoved": true,
+      "legacyJournalsUpgraded": true,
+      "futureJournalPreserved": true,
+      "futureJournalSHA256": "534f99a05cea0601732ce227cfad7de11955fe40f2f1420a1ec08a8dfed38335",
+      "publishedSHA256": "c6983d843741e0f6c912069aab9b4556c82cabd01e21036705920e10c3a4fb45",
+      "corruptRejected": true,
+      "corruptSourcePreserved": true,
+      "temporaryFilesRemoved": true,
+      "codecs": ["aac", "h264"],
+      "decodedCodecs": ["opus", "vp8"],
+      "duration": 2.966
+    },
+    "reopened": true
+  },
+  "panelPreferences": {
+    "unreadableCases": 3,
+    "originalPreserved": true,
+    "temporaryResize": true,
+    "resetPersisted": true,
+    "resizePersisted": true,
+    "reloaded": true
+  },
+  "support": {
+    "report": {
+      "format": "sidecut-support",
+      "version": 1,
+      "createdAt": "2026-11-01T16:52:27.626Z",
+      "runtime": {
+        "platform": "win32",
+        "arch": "x64",
+        "node": "24.22.0",
+        "electron": "45.0.0",
+        "chrome": "156.0.8078.48",
+        "rssBytes": 148500480,
+        "heapUsedBytes": 15678548
+      },
+      "services": {
+        "rendererReady": true,
+        "nativeMediaConfigured": true
+      },
+      "project": {
+        "schemaVersion": 2,
+        "revision": 2,
+        "saveState": "saved",
+        "saveError": false,
+        "width": 320,
+        "height": 180,
+        "frameRate": {
+          "numerator": 30,
+          "denominator": 1
+        },
+        "mediaCount": 1,
+        "videoTrackCount": 1,
+        "audioTrackCount": 1,
+        "clipCount": 1,
+        "validation": {
+          "errors": 0,
+          "warnings": 0
+        }
+      },
+      "recordings": {
+        "status": "available",
+        "counts": {
+          "recording": 0,
+          "stopping": 0,
+          "ready": 0,
+          "interrupted": 0,
+          "error": 0
+        }
+      }
+    },
+    "contentExcluded": true
+  },
+  "supportUI": {
+    "downloaded": true,
+    "contentExcluded": true,
+    "replacementRevoked": true,
+    "unmountRevoked": true,
+    "projectUnchanged": true
+  },
+  "futureDatabase": {
+    "cases": 2,
+    "refused": true,
+    "bytesPreserved": true,
+    "filesPreserved": true,
+    "hashes": [
+      "55a13cc733bf582de41e6d874cb88e0e276db75bda102d307c4528c688bf45c3",
+      "315469df9a91b5ab52c682e53b49a90a7c999dc3c7cb6b653e2681a356975451"
+    ]
+  },
+  "branding": {
+    "title": "raE.E",
+    "wordmark": "raE.E",
+    "label": "raE.E video editor",
+    "markLoaded": true,
+    "faviconLoaded": true
+  },
+  "reopened": true,
+  "sqlite": {
+    "format": "SQLite format 3",
+    "legacyPreserved": true,
+    "reopened": true
+  },
+  "cli": true,
+  "unicodeSpaceProfile": true,
+  "installation": {
+    "sha256": "6e20da54958f9b8db9b7a0853a30b1fe4fa59b141b4108dea3c17b1e313daddc",
+    "uninstalled": true,
+    "launcher": true,
+    "installer": "SideCut-0.0.1-win-x64.exe",
+    "unicodeSpacePath": true
+  }
+}

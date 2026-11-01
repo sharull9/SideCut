@@ -1,14 +1,14 @@
 import { DatabaseSync } from "node:sqlite";
-import { mkdir, readFile, writeFile, unlink } from "node:fs/promises";
+import { mkdir, readFile, writeFile, unlink, open, rename, stat, copyFile } from "node:fs/promises";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import { SQLiteRepository } from "@sidecut/core/sqlite";
 import { decodeStorageRequest } from "@sidecut/contracts/storage";
 
 export function openSQLite(path: string) {
   const database = new DatabaseSync(path);
   try {
-    database.exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000;");
+    database.exec("PRAGMA busy_timeout=5000;");
     const repository = new SQLiteRepository({
       exec: (sql, values) => {
         if (values) database.prepare(sql).run(...values);
@@ -16,6 +16,8 @@ export function openSQLite(path: string) {
       },
       rows: (sql, values) => database.prepare(sql).all(...values),
     });
+    // Repository construction rejects newer schemas before persistent pragmas run.
+    database.exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;");
     return { database, repository };
   } catch (error) {
     database.close();
@@ -24,6 +26,95 @@ export function openSQLite(path: string) {
 }
 
 export class NativeStorage {
+  private readonly staged = new Map<string, number>();
+  private path(id: unknown) {
+    if (typeof id !== "string" || !/^[a-f0-9-]{36}$/.test(id))
+      throw new Error("Invalid storage file ID.");
+    return join(this.directory, "storage-files", id);
+  }
+  async begin() {
+    await mkdir(join(this.directory, "storage-files"), { recursive: true });
+    const id = randomUUID();
+    await writeFile(this.path(id) + ".part", new Uint8Array(), { flag: "wx", mode: 0o600 });
+    this.staged.set(id, 0);
+    return id;
+  }
+  async append(id: unknown, bytes: unknown) {
+    const path = this.path(id);
+    if (
+      typeof id !== "string" ||
+      !this.staged.has(id) ||
+      !(bytes instanceof Uint8Array) ||
+      bytes.length > 4 * 1024 * 1024 ||
+      this.staged.get(id)! + bytes.length > 100 * 1024 ** 3
+    )
+      throw new Error("Invalid staged storage write.");
+    const handle = await open(path + ".part", "a");
+    try {
+      await handle.writeFile(bytes);
+    } finally {
+      await handle.close();
+    }
+    this.staged.set(id, this.staged.get(id)! + bytes.length);
+  }
+  async seal(id: unknown) {
+    const path = this.path(id);
+    if (typeof id !== "string" || !this.staged.has(id))
+      throw new Error("Invalid staged storage file.");
+    const handle = await open(path + ".part", "r+");
+    try {
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+    await rename(path + ".part", path);
+    this.staged.delete(id);
+  }
+  async abort(id: unknown) {
+    const path = this.path(id);
+    if (typeof id !== "string" || !this.staged.has(id)) return;
+    this.staged.delete(id);
+    await unlink(path + ".part").catch(() => {});
+  }
+  async size(id: unknown) {
+    return (await stat(this.path(id))).size;
+  }
+  async readRange(id: unknown, offset: unknown, length: unknown) {
+    if (
+      typeof offset !== "number" ||
+      !Number.isSafeInteger(offset) ||
+      offset < 0 ||
+      typeof length !== "number" ||
+      !Number.isSafeInteger(length) ||
+      length < 0 ||
+      length > 4 * 1024 * 1024
+    )
+      throw new Error("Invalid storage range.");
+    const handle = await open(this.path(id), "r");
+    try {
+      const buffer = Buffer.alloc(length);
+      const { bytesRead } = await handle.read(buffer, 0, length, offset);
+      return new Uint8Array(buffer.subarray(0, bytesRead));
+    } finally {
+      await handle.close();
+    }
+  }
+  async digest(id: unknown) {
+    const hash = createHash("sha256");
+    const handle = await open(this.path(id), "r");
+    try {
+      for await (const chunk of handle.createReadStream()) hash.update(chunk);
+      return hash.digest("hex");
+    } finally {
+      await handle.close().catch(() => {});
+    }
+  }
+  async adopt(path: string) {
+    await mkdir(join(this.directory, "storage-files"), { recursive: true });
+    const id = randomUUID();
+    await copyFile(path, this.path(id), 1);
+    return id;
+  }
   async removeFile(id: unknown) {
     if (typeof id !== "string" || !/^[a-f0-9-]{36}$/.test(id))
       throw new Error("Invalid storage file ID.");

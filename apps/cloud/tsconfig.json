@@ -1,0 +1,5 @@
+{
+  "extends": "@sidecut/config/typescript/base.json",
+  "compilerOptions": { "lib": ["ES2023", "DOM"], "types": ["node"] },
+  "include": ["src/**/*.ts"]
+}

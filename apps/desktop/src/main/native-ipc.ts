@@ -42,6 +42,18 @@ export function registerNativeIPC(
     check(event);
     await project.flush();
   });
+  ipcMain.handle(bridgeChannels.supportReport, async (event, ...args: unknown[]) => {
+    check(event);
+    if (event.sender.isDestroyed()) throw new Error("Untrusted native sender.");
+    if (args.length) throw new Error("Support report takes no arguments.");
+    if (!api) throw new Error("Project service is unavailable.");
+    const result: unknown = await api.handle("diagnostics", {});
+    check(event);
+    if (event.sender.isDestroyed()) throw new Error("Untrusted native sender.");
+    if (!result || typeof result !== "object" || !("report" in result))
+      throw new Error("Support report is unavailable.");
+    return JSON.stringify(result.report, null, 2) + "\n";
+  });
   ipcMain.handle(bridgeChannels.projectResource, async (event, id: unknown) => {
     check(event);
     if (!api) throw new Error("Project service is unavailable.");

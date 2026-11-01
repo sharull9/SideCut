@@ -1,0 +1,44 @@
+{
+  "pixels": {
+    "background": [255, 0, 0, 255],
+    "panel": [0, 255, 0, 255],
+    "outsideCrop": [255, 0, 0, 255],
+    "logo": [0, 0, 255, 255],
+    "hidden": [255, 0, 0, 255]
+  },
+  "decoded": {
+    "background": [254, 0, 0, 255],
+    "panel": [0, 255, 0, 255],
+    "outsideCrop": [254, 0, 0, 255],
+    "logo": [0, 1, 255, 255],
+    "hidden": [254, 0, 0, 255]
+  },
+  "other": [0, 0, 255, 255],
+  "rotatedInside": [0, 255, 0, 255],
+  "rotatedOutside": [255, 0, 0, 255],
+  "report": {
+    "format": "obs",
+    "warnings": [
+      "Only profile base canvas and frame rate are imported; output, audio, encoder, hotkeys and account settings are not imported.",
+      "Main / Browser: Unsupported source type browser_source; item skipped.",
+      "Main / Filtered: Source filters unsupported; item skipped.",
+      "Main / Panel: Bounds, flip, nonuniform scale, blending or item transition unsupported; item skipped.",
+      "Main / Missing group: Source reference unavailable; item skipped.",
+      "Only scene color/PNG image layers are imported; live devices, audio, browser/media sources and nested groups/scenes are not activated."
+    ],
+    "clips": 4,
+    "media": 1,
+    "scenes": 2,
+    "selectedScene": "Main",
+    "supportedSources": ["color_source", "image_source (local PNG)"],
+    "duration": 3
+  },
+  "tracksStopped": true,
+  "encodedBytes": 1513,
+  "productionEditor": {
+    "opened": true,
+    "visibleDiagnostics": "Edit notes\nOnly profile base canvas and frame rate are imported; output, audio, encoder, hotkeys and account settings are not imported. Main / Logo: Image needs an approved local PNG resource; item skipped. Main / Browser: Unsupported source type browser_source; item skipped. Main / Filtered: Source filters unsupported; item skipped. Main / Panel: Bounds, flip, nonuniform scale, blending or item transition unsupported; item skipped. Main / Missing group: Source reference unavailable; item skipped. Only scene color/PNG image layers are imported; live devices, audio, browser/media sources and nested groups/scenes are not activated.",
+    "reload": true
+  },
+  "engine": "156.0.8078.4"
+}

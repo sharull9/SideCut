@@ -1,0 +1,59 @@
+{
+  "samples": {
+    "preview": {
+      "before": [255, 0, 0, 255],
+      "active": [56, 189, 248, 255],
+      "caption": [17, 24, 39, 255],
+      "highlight": [17, 24, 39, 255],
+      "decodedCaption": [16, 25, 39, 255],
+      "decodedHighlight": [16, 25, 39, 255],
+      "decodedCompanion": [56, 189, 245, 255],
+      "bytes": 6321,
+      "clearedCaption": [255, 0, 0, 255],
+      "clearedHighlight": [255, 0, 0, 255],
+      "clearedCompanion": [255, 0, 0, 255],
+      "tracksStopped": true
+    },
+    "record": {
+      "before": [255, 0, 0, 255],
+      "active": [56, 189, 248, 255],
+      "caption": [255, 0, 0, 255],
+      "highlight": [17, 24, 39, 255],
+      "decodedCaption": [254, 0, 0, 255],
+      "decodedHighlight": [16, 25, 39, 255],
+      "decodedCompanion": [56, 189, 245, 255],
+      "bytes": 4202,
+      "clearedCaption": [255, 0, 0, 255],
+      "clearedHighlight": [255, 0, 0, 255],
+      "clearedCompanion": [255, 0, 0, 255],
+      "tracksStopped": true
+    },
+    "stream": {
+      "before": [255, 0, 0, 255],
+      "active": [56, 189, 248, 255],
+      "caption": [255, 0, 0, 255],
+      "highlight": [17, 24, 39, 255],
+      "decodedCaption": [254, 0, 0, 255],
+      "decodedHighlight": [16, 25, 39, 255],
+      "decodedCompanion": [56, 189, 245, 255],
+      "bytes": 4202,
+      "clearedCaption": [255, 0, 0, 255],
+      "clearedHighlight": [255, 0, 0, 255],
+      "clearedCompanion": [255, 0, 0, 255],
+      "tracksStopped": true
+    }
+  },
+  "captionStatus": {
+    "connected": true,
+    "generation": 1,
+    "latencySeconds": 0.10000000000000009
+  },
+  "chatStatus": [
+    {
+      "provider": "twitch",
+      "generation": 1,
+      "state": "connected",
+      "viewers": null
+    }
+  ]
+}

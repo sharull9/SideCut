@@ -1,0 +1,41 @@
+{
+  "accepted": true,
+  "classification": "synthetic evidence aggregate; direct FFmpeg endurance is non-production, other reports exercise production Electron fixtures",
+  "sources": {
+    "lawn-videorc-long-run.json": {
+      "classification": "direct synthetic FFmpeg endurance, production false",
+      "accepted": true,
+      "qualifiesForHourAcceptance": true,
+      "captureWallSeconds": 3604.7023421,
+      "mediaDurationSeconds": 3605.035
+    },
+    "lawn-videorc-delivery.json": {
+      "classification": "production synthetic fixture; five base gates pass; overall false because cross-stage gates were not run in this report",
+      "accepted": false,
+      "baseGates": [
+        "largeMovingFixture",
+        "import",
+        "reloadAndSeek",
+        "deleteRetainsResource",
+        "nativeEncode"
+      ]
+    },
+    "lawn-videorc-delivery-recovery.json": {
+      "classification": "production synthetic rendering and native-encoding recovery; publication uses a fixture-only filesystem barrier after durable verification, real process-tree termination and fresh-process reconciliation",
+      "accepted": true
+    },
+    "lawn-videorc-long-delivery.json": {
+      "classification": "production synthetic 610-second nonzero-range delivery with timing and sampled resource checks",
+      "accepted": true
+    },
+    "lawn-videorc-rendered-review.json": {
+      "classification": "production synthetic rendered-review acceptance",
+      "accepted": true
+    }
+  },
+  "limits": [
+    "No physical capture, calibration, OS cadence, system-wide resource peaks or full parity is established.",
+    "Direct FFmpeg endurance does not exercise Electron IPC or recorder journal recovery.",
+    "Pitch/speed conversion and neural isolation retain the 128 MiB PCM limit."
+  ]
+}

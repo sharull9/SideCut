@@ -4,10 +4,12 @@ import { Time } from "@sidecut/contracts/time";
 interface FileStorage {
   putFile(bytes: Uint8Array): Promise<string>;
   getFile(id: string): Promise<Uint8Array<ArrayBuffer>>;
+  putBlob?(blob: Blob): Promise<string>;
+  getBlob?(id: string, type?: string, name?: string, lastModified?: number): Promise<Blob | File>;
 }
 export async function encodeStored(
   value: unknown,
-  storage: Pick<FileStorage, "putFile">,
+  storage: Pick<FileStorage, "putFile" | "putBlob">,
 ): Promise<string> {
   const encode = async (v: unknown): Promise<unknown> => {
     if (v instanceof Time) return v.toJSON();
@@ -21,7 +23,9 @@ export async function encodeStored(
     if (v instanceof Blob)
       return [
         "file",
-        await storage.putFile(new Uint8Array(await v.arrayBuffer())),
+        await (storage.putBlob
+          ? storage.putBlob(v)
+          : storage.putFile(new Uint8Array(await v.arrayBuffer()))),
         v.type,
         v instanceof File ? v.name : null,
         v instanceof File ? v.lastModified : 0,
@@ -50,7 +54,7 @@ export async function encodeStored(
 
 export async function decodeStored(
   json: string,
-  storage: Pick<FileStorage, "getFile">,
+  storage: Pick<FileStorage, "getFile" | "getBlob">,
 ): Promise<unknown> {
   const decode = async (v: unknown): Promise<unknown> => {
     if (v === null || typeof v === "string" || typeof v === "boolean" || typeof v === "number")
@@ -69,6 +73,16 @@ export async function decodeStored(
       return Object.fromEntries(entries);
     }
     if (kind === "file" && typeof first === "string" && typeof second === "string") {
+      if (
+        storage.getBlob &&
+        (third === null || (typeof third === "string" && typeof fourth === "number"))
+      )
+        return storage.getBlob(
+          first,
+          second,
+          third === null ? undefined : third,
+          typeof fourth === "number" ? fourth : 0,
+        );
       const bytes = await storage.getFile(first);
       if (third === null) return new Blob([bytes], { type: second });
       if (typeof third === "string" && typeof fourth === "number")

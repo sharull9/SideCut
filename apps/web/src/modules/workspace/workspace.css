@@ -40,6 +40,11 @@
   select:disabled {
     opacity: 0.5;
   }
+  select option,
+  select optgroup {
+    background: var(--card);
+    color: var(--foreground);
+  }
   [data-slot="field-label"] {
     font-size: 12px;
   }
@@ -119,14 +124,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  font-family: var(--font-heading);
   font-size: 15px;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.02em;
 }
-.editor-brand svg {
-  width: 20px;
-  height: 20px;
-  color: var(--accent-live);
+.editor-brand img {
+  width: 24px;
+  height: 24px;
 }
 .editor-project-name {
   display: flex;
@@ -704,6 +709,10 @@
   flex-shrink: 0;
   overflow-x: auto;
   border-bottom: 1px solid var(--border);
+}
+.editor-timeline[data-collapsed="true"] > :not(.editor-timeline-toolbar),
+.editor-timeline[data-collapsed="true"] .editor-timeline-toolbar > .editor-toolbar-group {
+  display: none;
 }
 .editor-timeline-toolbar h2 {
   margin-right: 8px;

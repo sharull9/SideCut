@@ -189,6 +189,7 @@ export async function paintPicture(
   reader: (mediaID: string) => Promise<LocalMediaReader>,
   signal?: AbortSignal,
   lut?: (path: string) => Promise<CubeLUT>,
+  background?: (context: CanvasRenderingContext2D) => void,
 ): Promise<number | null> {
   const { width, height } = ctx.canvas;
   let timestamp: number | null = null;
@@ -198,6 +199,7 @@ export async function paintPicture(
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, width, height);
   try {
+    background?.(ctx);
     const render = async (
       node: PictureNode,
       below: HTMLCanvasElement,

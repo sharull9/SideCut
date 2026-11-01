@@ -1,0 +1,122 @@
+{
+  "testedAt": "2026-10-27T12:07:14.273Z",
+  "platform": "win32",
+  "production": false,
+  "syntheticInputs": true,
+  "profile": "real-time lavfi tone first + 1080p30 test pattern",
+  "requestedWallSeconds": 60,
+  "targetMediaSeconds": 65,
+  "status": "completed",
+  "accepted": true,
+  "samples": [
+    {
+      "wallSeconds": 0.008,
+      "encodedSeconds": 0,
+      "diskBytes": 0,
+      "encoder": {
+        "pid": 28832,
+        "cpuSeconds": 0.265625,
+        "workingSetBytes": 214368256,
+        "privateBytes": 269369344
+      },
+      "node": {
+        "rssBytes": 41709568,
+        "heapUsedBytes": 5781168
+      }
+    },
+    {
+      "wallSeconds": 60.273,
+      "encodedSeconds": 59.989,
+      "diskBytes": 41202073,
+      "encoder": {
+        "pid": 28832,
+        "cpuSeconds": 27.328125,
+        "workingSetBytes": 229097472,
+        "privateBytes": 270958592
+      },
+      "node": {
+        "rssBytes": 41480192,
+        "heapUsedBytes": 5450968
+      }
+    }
+  ],
+  "checks": {
+    "captureWallSeconds": 64.6866842,
+    "mediaDuration": 65.024,
+    "timestampDriftSeconds": 0.02400000000000091,
+    "realtimeDriftSeconds": 0.31331579999999803,
+    "avStartDifferenceSeconds": 0.021,
+    "avEndDifferenceSeconds": 0.018000000000000682,
+    "sizeBytes": 44694250,
+    "streams": [
+      {
+        "index": 0,
+        "codec_name": "h264",
+        "codec_type": "video",
+        "width": 1920,
+        "height": 1080,
+        "avg_frame_rate": "30/1",
+        "start_time": "0.021000",
+        "duration": "65.021000",
+        "nb_read_packets": "1950"
+      },
+      {
+        "index": 1,
+        "codec_name": "aac",
+        "codec_type": "audio",
+        "avg_frame_rate": "0/0",
+        "start_time": "0.000000",
+        "duration": "65.024000",
+        "nb_read_packets": "3048"
+      }
+    ],
+    "sampleCount": 2,
+    "maxEncoderWorkingSetBytes": 229097472,
+    "maxEncoderPrivateBytes": 270958592,
+    "maxNodeRssBytes": 41709568,
+    "maxNodeHeapUsedBytes": 5781168
+  },
+  "errors": [],
+  "limits": [
+    "Synthetic inputs do not establish physical-device cadence, device loss, or calibrated A/V sync.",
+    "This direct FFmpeg run uses NativeRecorder's codec, queue, muxer and flush settings. It does not exercise Electron IPC or the recorder journal."
+  ],
+  "encoderPid": 28832,
+  "captureWallSeconds": 64.6866842,
+  "captureExit": {
+    "code": 0,
+    "signal": null,
+    "stderr": ""
+  },
+  "probe": {
+    "programs": [],
+    "streams": [
+      {
+        "index": 0,
+        "codec_name": "h264",
+        "codec_type": "video",
+        "width": 1920,
+        "height": 1080,
+        "avg_frame_rate": "30/1",
+        "start_time": "0.021000",
+        "duration": "65.021000",
+        "nb_read_packets": "1950"
+      },
+      {
+        "index": 1,
+        "codec_name": "aac",
+        "codec_type": "audio",
+        "avg_frame_rate": "0/0",
+        "start_time": "0.000000",
+        "duration": "65.024000",
+        "nb_read_packets": "3048"
+      }
+    ],
+    "format": {
+      "start_time": "0.000000",
+      "duration": "65.024000",
+      "size": "44694250"
+    }
+  },
+  "qualifiesForHourAcceptance": false
+}

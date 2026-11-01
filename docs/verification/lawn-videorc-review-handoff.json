@@ -1,0 +1,120 @@
+{
+  "testedAt": "2026-10-27T14:04:10.172Z",
+  "platform": "win32",
+  "production": true,
+  "syntheticInputs": true,
+  "physicalCapture": false,
+  "accepted": true,
+  "checks": {
+    "revisionA": {
+      "status": "pass",
+      "revision": 1,
+      "frameRate": {
+        "numerator": 30000,
+        "denominator": 1001
+      },
+      "projectID": "prj_4734d488-7448-439a-bee0-77bd6c85251f"
+    },
+    "export": {
+      "status": "pass",
+      "rangeLabel": "Timeline range · 1.00–2.50 s"
+    },
+    "publication": {
+      "status": "pass",
+      "versionID": "81177a63-26b0-410d-b4ab-f5908c88ca90",
+      "sourceRevision": 1,
+      "source": {
+        "startSeconds": 1.001,
+        "durationSeconds": 1.5015
+      },
+      "bytes": 1976,
+      "sha256": "11d91df97ebeddfd5c2e997314ed085e0c947d1cea8dc27a850ba382975dafe9"
+    },
+    "playback": {
+      "status": "pass",
+      "time": 0.262,
+      "frames": 12,
+      "width": 320,
+      "height": 180
+    },
+    "comments": {
+      "status": "pass",
+      "point": {
+        "versionStartSeconds": 0.2,
+        "durationSeconds": 0,
+        "sourceStartSeconds": 1.2009999999999998
+      },
+      "range": {
+        "versionStartSeconds": 0.4,
+        "durationSeconds": 0.3,
+        "sourceStartSeconds": 1.4009999999999998
+      },
+      "reply": "=SUM(1,2)",
+      "resolvedAndReopened": true
+    },
+    "revisionB": {
+      "status": "pass",
+      "versionID": "afef4bcf-1632-4fef-a73a-bf2e4e4f039e",
+      "sourceRevision": 4,
+      "sha256": "eb833b450d3746eeb6b966d0f6aa090fb9ef13ed6dce9b7b4a6dd05904dae3fa",
+      "nativePlayback": {
+        "time": 0.265,
+        "frames": 7,
+        "width": 320,
+        "height": 180
+      }
+    },
+    "isolation": {
+      "status": "pass",
+      "immutableA": true,
+      "distinctThreads": true
+    },
+    "restart": {
+      "status": "pass",
+      "decoded": {
+        "time": 0.2723,
+        "frames": 12,
+        "width": 320,
+        "height": 180
+      },
+      "versionCount": 2,
+      "threadCount": 3
+    },
+    "transport": {
+      "status": "pass",
+      "frameSeconds": 0.033366,
+      "shuttle": true,
+      "speed": 1.5,
+      "theater": true,
+      "editorUnchanged": true
+    },
+    "filters": {
+      "status": "pass",
+      "text": true,
+      "author": true,
+      "statusFilter": true
+    },
+    "csv": {
+      "status": "pass",
+      "formulaSafe": true,
+      "includesRepliesAndFilteredThreads": true
+    },
+    "handoff": {
+      "status": "pass",
+      "markerTime": 1.2009999999999998,
+      "undo": true,
+      "staleRejected": true,
+      "threadAndArtifactUnchanged": true
+    },
+    "staleGuard": {
+      "status": "pass",
+      "rejectedStaleWrite": true
+    }
+  },
+  "errors": [],
+  "handoffDiagnostic": {
+    "currentRevision": 1,
+    "sourceRevision": 1,
+    "snapshotMatchesProject": true
+  }
+}

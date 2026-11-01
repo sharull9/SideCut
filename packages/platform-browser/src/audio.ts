@@ -10,6 +10,8 @@ import {
   audioEnvelope,
   audioParams,
   compress,
+  compressorState,
+  voiceCleanupState,
   limit,
   normalizeGain,
   pitchAndSpeed,
@@ -46,11 +48,13 @@ const needsProcessing = (clip: Clip) =>
           : key === "effects" && Array.isArray(value) && value.some((fx) => fx.enabled !== false),
     ),
   );
-const streamsEnvelope = (clip: Clip) =>
+const streamsClip = (clip: Clip) =>
   clip.duration.seconds > 300 &&
   clip.speed === 1 &&
   Number(clip.audio?.voiceIsolation ?? 0) === 0 &&
-  effectsOf(clip, "audio").every((effect) => !effect.enabled);
+  effectsOf(clip, "audio").every(
+    (effect) => !effect.enabled || ["compressor", "voiceCleanup", "limiter"].includes(effect.type),
+  );
 const checkpoint = (signal?: AbortSignal) => async () => {
   signal?.throwIfAborted();
   await yieldTask();
@@ -146,6 +150,112 @@ async function processedClip(
   }
   return output;
 }
+// Each stage retains its own history, including delayed limiter output and tails.
+async function* streamProcessedClip(
+  clip: Clip,
+  mediaID: string,
+  reader: Pick<LocalMediaReader, "audio">,
+  signal: AbortSignal,
+  rate: number,
+  options: MixOptions,
+  range: { start: number; end: number },
+) {
+  const measured =
+    typeof clip.audio?.normalizeTo === "number"
+      ? (
+          await (
+            options.measure ??
+            (() => {
+              throw new Error(`Measure source ${mediaID} before speech levelling.`);
+            })
+          )(mediaID)
+        ).integratedLUFS
+      : -Infinity;
+  const normalization =
+    typeof clip.audio?.normalizeTo === "number"
+      ? normalizeGain(clip.audio.normalizeTo, measured)
+      : 0;
+  const lift = 10 ** (clamp(Number(clip.audio?.gainDB ?? 0) + normalization, -120, 150) / 20);
+  const envelope = audioEnvelope(clip, measured);
+  const stages = effectsOf(clip, "audio")
+    .filter((fx) => fx.enabled)
+    .map((fx) => ({
+      type: fx.type,
+      params: audioParams(fx),
+      compressor: compressorState(),
+      cleanup: voiceCleanupState(),
+      limiter:
+        fx.type === "limiter"
+          ? new StreamingLimiter(rate, 2, audioParams(fx).ceiling, audioParams(fx).release)
+          : null,
+    }));
+  const process = async (input: Float32Array[], from = 0) => {
+    let output = input;
+    for (let i = from; i < stages.length; i++) {
+      const stage = stages[i]!;
+      signal.throwIfAborted();
+      if (stage.type === "compressor")
+        await compress(output, rate, stage.params, checkpoint(signal), stage.compressor);
+      if (stage.type === "voiceCleanup")
+        await cleanVoice(output, rate, stage.params, checkpoint(signal), stage.cleanup);
+      if (stage.limiter) output = stage.limiter.push(output);
+    }
+    return output;
+  };
+  let outputPosition = 0;
+  const applyEnvelope = (channels: Float32Array[]) => {
+    for (let i = 0; i < channels[0]!.length; i++) {
+      const level = envelope(range.start - clip.start.seconds + (outputPosition + i) / rate) / lift;
+      for (const channel of channels) channel[i]! *= level;
+    }
+    outputPosition += channels[0]!.length;
+    return channels;
+  };
+  const sourceStart = clip.sourceStart.seconds + range.start - clip.start.seconds;
+  const frames = Math.ceil((range.end - range.start) * rate);
+  const iterator = reader.audio(Math.max(0, sourceStart), Math.max(0, sourceStart + frames / rate));
+  let current: DecodedAudio | null = null,
+    done = false;
+  try {
+    for (let first = 0; first < frames; first += 4096) {
+      signal.throwIfAborted();
+      const count = Math.min(4096, frames - first);
+      const input = [new Float32Array(count), new Float32Array(count)];
+      for (let i = 0; i < count; i++) {
+        const time = sourceStart + (first + i) / rate;
+        while (!done && (!current || time >= current.timestamp + current.duration - 1e-9)) {
+          const next = await iterator.next();
+          done = next.done ?? false;
+          current = next.done ? null : next.value;
+          signal.throwIfAborted();
+        }
+        if (!current || time < current.timestamp - 1e-9) continue;
+        const position = Math.max(0, (time - current.timestamp) * current.buffer.sampleRate);
+        const j = Math.min(current.buffer.length - 1, Math.floor(position)),
+          f = position - j;
+        for (let c = 0; c < 2; c++) {
+          const values = current.buffer.getChannelData(
+            Math.min(c, current.buffer.numberOfChannels - 1),
+          );
+          input[c]![i] =
+            ((values[j] ?? 0) * (1 - f) + (values[Math.min(j + 1, values.length - 1)] ?? 0) * f) *
+            lift;
+        }
+      }
+      const output = await process(input);
+      if (output[0]!.length) yield applyEnvelope(output);
+      await yieldTask();
+    }
+    for (let i = 0; i < stages.length; i++) {
+      const limiter = stages[i]!.limiter;
+      if (!limiter) continue;
+      const tail = await process(limiter.finish(), i + 1);
+      if (tail[0]!.length) yield applyEnvelope(tail);
+    }
+  } finally {
+    await iterator.return?.();
+  }
+}
 // Prepare expensive clip processors before starting the playback clock, including later clips.
 export async function prepareTimelineAudio(
   project: Project,
@@ -154,7 +264,7 @@ export async function prepareTimelineAudio(
   options: MixOptions = {},
 ) {
   const segments = audioSegments(project).filter(
-    (s) => needsProcessing(s.clip) && !streamsEnvelope(s.clip) && s.end > (options.start ?? 0),
+    (s) => needsProcessing(s.clip) && !streamsClip(s.clip) && s.end > (options.start ?? 0),
   );
   if (
     segments.reduce((sum, s) => sum + (s.renderEnd - s.renderStart) * 48000 * 2 * 4, 0) >
@@ -362,6 +472,10 @@ export async function* mixTimelineAudio(
     done: false,
     processed: options.prepared?.get(segment.clip.id) ?? (null as Float32Array[] | null),
     envelope: null as ((time: number) => number) | null,
+    stream: null as AsyncGenerator<Float32Array[]> | null,
+    streamBlock: null as Float32Array[] | null,
+    streamOffset: 0,
+    streamPosition: 0,
     microIn:
       !project.audioTracks
         .find((t) => t.id === segment.trackID)!
@@ -409,11 +523,48 @@ export async function* mixTimelineAudio(
             : 1);
         if (segment.end <= start) {
           source.processed = null;
+          if (source.stream) {
+            await source.stream.return(undefined);
+            source.stream = null;
+            source.streamBlock = null;
+          }
           continue;
         }
         if (source.done || segment.start >= stop) continue;
         const clip = segment.clip;
-        const processing = needsProcessing(clip) && !streamsEnvelope(clip);
+        if (needsProcessing(clip) && streamsClip(clip)) {
+          source.stream ??= streamProcessedClip(
+            clip,
+            segment.mediaID,
+            await reader(segment.mediaID),
+            signal,
+            sampleRate,
+            options,
+            { start: segment.renderStart, end: segment.renderEnd },
+          );
+          for (let i = 0; i < count; i++) {
+            const time = (first + i) / sampleRate;
+            if (time < segment.start || time >= segment.end) continue;
+            const target = Math.round((time - segment.renderStart) * sampleRate);
+            while (source.streamPosition <= target) {
+              if (!source.streamBlock || source.streamOffset >= source.streamBlock[0]!.length) {
+                const next = await source.stream.next();
+                if (next.done) break;
+                source.streamBlock = next.value;
+                source.streamOffset = 0;
+              }
+              if (source.streamPosition === target) {
+                for (let c = 0; c < 2; c++)
+                  data[c * count + i]! +=
+                    source.streamBlock[c]![source.streamOffset]! * microGain(time);
+              }
+              source.streamOffset++;
+              source.streamPosition++;
+            }
+          }
+          continue;
+        }
+        const processing = needsProcessing(clip) && !streamsClip(clip);
         if (processing) {
           source.processed ??= await processedClip(
             clip,
@@ -490,6 +641,8 @@ export async function* mixTimelineAudio(
       await yieldTask();
     }
   } finally {
-    await Promise.all(sources.map((source) => source.iterator?.return?.()));
+    await Promise.all(
+      sources.flatMap((source) => [source.iterator?.return?.(), source.stream?.return(undefined)]),
+    );
   }
 }

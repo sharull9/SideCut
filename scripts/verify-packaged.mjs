@@ -15,7 +15,7 @@ const executable =
       ? join(
           release,
           `mac${process.arch === "arm64" ? "-arm64" : ""}`,
-          "SideCut.app/Contents/MacOS/SideCut",
+          "raE.E.app/Contents/MacOS/SideCut",
         )
       : process.platform === "linux"
         ? join(release, `linux${process.arch === "arm64" ? "-arm64" : ""}-unpacked`, "sidecut")
@@ -73,9 +73,78 @@ try {
   assert.equal(result.packaged, true);
   assert.equal(result.platform, process.platform);
   assert.equal(result.arch, process.arch);
+  assert.equal(result.support?.report?.format, "sidecut-support");
+  assert.equal(result.support.contentExcluded, true);
+  for (const check of [
+    "downloaded",
+    "contentExcluded",
+    "replacementRevoked",
+    "unmountRevoked",
+    "projectUnchanged",
+  ])
+    assert.equal(result.supportUI[check], true);
   await launch(["--smoke-reopen"]);
   const reopened = JSON.parse(await readFile(output, "utf8"));
   assert.equal(reopened.reopened, true);
+  for (const branding of [result.branding, reopened.branding]) {
+    assert.equal(branding.title, "raE.E");
+    assert.equal(branding.wordmark, "raE.E");
+    assert.equal(branding.label, "raE.E video editor");
+    assert.equal(branding.markLoaded, true);
+    assert.equal(branding.faviconLoaded, true);
+  }
+  for (const future of [result.futureDatabase, reopened.futureDatabase]) {
+    assert.equal(future.cases, 2);
+    assert.equal(future.refused, true);
+    assert.equal(future.bytesPreserved, true);
+    assert.equal(future.filesPreserved, true);
+  }
+  assert.deepEqual(reopened.futureDatabase.hashes, result.futureDatabase.hashes);
+  for (const preferenceResult of [result.panelPreferences, reopened.panelPreferences]) {
+    assert.equal(preferenceResult.unreadableCases, 3);
+    for (const check of [
+      "originalPreserved",
+      "temporaryResize",
+      "resetPersisted",
+      "resizePersisted",
+      "reloaded",
+    ])
+      assert.equal(preferenceResult[check], true);
+  }
+  assert.ok(result.nativeRecording?.bytes > 0);
+  assert.equal(reopened.nativeRecording.sha256, result.nativeRecording.sha256);
+  assert.deepEqual(reopened.nativeRecording.codecs, ["aac", "h264"]);
+  assert.deepEqual(reopened.nativeRecording.decodedCodecs, ["opus", "vp8"]);
+  assert.equal(result.nativeRecording.diskJournalVersion, 1);
+  assert.equal(reopened.nativeRecording.diskJournalVersion, 1);
+  result.nativeRecording.reopened = true;
+  assert.equal(
+    reopened.nativeRecording.repair.sourceSHA256,
+    result.nativeRecording.repair.sourceSHA256,
+  );
+  for (const check of [
+    "reopened",
+    "recovered",
+    "sourcePreserved",
+    "corruptRejected",
+    "corruptSourcePreserved",
+    "temporaryFilesRemoved",
+    "publishedRecovered",
+    "publishedPreserved",
+    "publishedRemuxRemoved",
+    "legacyJournalsUpgraded",
+    "futureJournalPreserved",
+  ])
+    assert.equal(reopened.nativeRecording.repair[check], true);
+  assert.equal(
+    reopened.nativeRecording.repair.publishedSHA256,
+    result.nativeRecording.repair.publishedSHA256,
+  );
+  assert.equal(
+    reopened.nativeRecording.repair.futureJournalSHA256,
+    result.nativeRecording.repair.futureJournalSHA256,
+  );
+  result.nativeRecording.repair = reopened.nativeRecording.repair;
   result.reopened = true;
   result.sqlite = { format: "SQLite format 3", legacyPreserved: true, reopened: true };
   const cliScript =

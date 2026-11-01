@@ -12,6 +12,7 @@ const ignored = [
   "**/.nitro/**",
   "**/coverage/**",
   "**/routeTree.gen.ts",
+  "**/_generated/**",
   "pnpm-lock.yaml",
 ];
 
@@ -22,6 +23,14 @@ export default defineConfig({
     settings: webLint.settings ?? {},
     ignorePatterns: ignored,
     overrides: [
+      {
+        files: [
+          "apps/cloud/src/**/*.ts",
+          "apps/web/src/modules/cloud/**/*.{ts,tsx}",
+          "tests/browser/cloud-library-server.ts",
+        ],
+        rules: { "eslint/no-underscore-dangle": ["error", { allow: ["_id", "_creationTime"] }] },
+      },
       {
         files: [
           "apps/web/src/**/*.{ts,tsx}",

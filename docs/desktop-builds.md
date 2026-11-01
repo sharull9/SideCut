@@ -68,6 +68,19 @@ also checks archive creation, reopening, the CLI, credential encryption or secur
 keyring refusal, exclusive project locking, and that the renderer exposes neither `process` nor `require`. It removes
 the temporary profile and writes platform-specific JSON into `release/`.
 
+LV034 extends the same verifier with synthetic native H.264/AAC recording,
+MKV-to-MP4 finalization, renderer-bridge VP8/Opus transcoding and a second-process
+journal/media check using the MP4 SHA-256. See the latest
+[native platform evidence and limits](verification/lawn-videorc-native-platforms.md).
+This checks packaged codec/storage behavior; physical device capture remains a
+separate platform gate.
+
+For local troubleshooting, `diagnostics --output sidecut-support.json --json`
+creates a versioned report in the project's exports folder. It contains selected
+technical counts/status and excludes project content, paths, credentials and logs.
+See [support diagnostics and release limits](verification/lawn-videorc-release-diagnostics.md)
+for CLI/SDK usage and the report boundary.
+
 ## Verification and distribution limits
 
 Current acceptance is recorded in [phases 136–140](verification/phases-136-140.md).
@@ -103,7 +116,8 @@ default application icon. See [macOS packaging options](https://www.electron.bui
 `verify:packaged` launches the unpacked application by default. The workflow's
 additional target scripts verify NSIS, copied DMG and installed `.deb` delivery;
 the macOS script remains unexecuted. Debian installation passes in the documented
-container. AppImage execution and real desktop permissions
-are separate acceptance checks. Bundled native-library notices and source provenance are
+container. The [AppImage extract-and-run journey](verification/lawn-videorc-appimage.md)
+also passes in that environment. FUSE mounting and real desktop permissions
+remain separate acceptance checks. Bundled native-library notices and source provenance are
 included; distributing a public release still needs a review of its complete
 third-party notices and redistribution requirements.

@@ -9,7 +9,6 @@ import {
   RiArrowGoBackLine,
   RiArrowGoForwardLine,
   RiLayoutLine,
-  RiScissorsCutLine,
   RiContractLeftLine,
   RiContractRightLine,
   RiFolderVideoLine,
@@ -25,6 +24,8 @@ import { Button } from "@sidecut/ui/components/button";
 import { Alert, AlertTitle, AlertDescription } from "@sidecut/ui/components/alert";
 import { Tip, TooltipProvider } from "@sidecut/ui/components/tooltip";
 import { ExportDialog } from "./export-dialog";
+import { TeamsDialog } from "@/modules/cloud/teams-dialog";
+import { StudioDialog } from "@/modules/studio/studio-dialog";
 import { Timeline } from "./timeline";
 import { Viewer } from "./viewer";
 import { ClipInspector } from "./clip-inspector";
@@ -126,8 +127,10 @@ export function WorkspaceHome() {
   });
   const [sideTab, setSideTab] = useState<SideTab>("media");
   const [sizes, setSizes] = useState<PanelSizes>({ ...DEFAULT_PANELS });
+  const [timelineCollapsed, setTimelineCollapsed] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 1280, height: 636 });
   const [preferencesReady, setPreferencesReady] = useState(false);
+  const [layoutProtected, setLayoutProtected] = useState(false);
   const [preferenceError, setPreferenceError] = useState(false);
   const [keymapError, setKeymapError] = useState(false);
   const container = useRef<HTMLDivElement>(null);
@@ -148,7 +151,9 @@ export function WorkspaceHome() {
     void openPreferences()
       .then(() => {
         if (!active) return;
-        setSizes(readPanelSizes(readPreference(PANEL_STORAGE_KEY)));
+        const savedSizes = readPanelSizes(readPreference(PANEL_STORAGE_KEY));
+        setSizes(savedSizes ?? { ...DEFAULT_PANELS });
+        setLayoutProtected(savedSizes === null);
         setSideTab(readSideTab(readPreference(SIDE_TAB_KEY)));
         editor
           .getState()
@@ -175,11 +180,11 @@ export function WorkspaceHome() {
   }, [editor]);
 
   useEffect(() => {
-    if (!preferencesReady) return;
+    if (!preferencesReady || layoutProtected) return;
     void writePreference(PANEL_STORAGE_KEY, JSON.stringify({ version: 1, ...sizes }))
       .then(() => setPreferenceError(false))
       .catch(() => setPreferenceError(true));
-  }, [sizes, preferencesReady]);
+  }, [sizes, preferencesReady, layoutProtected]);
 
   useEffect(() => {
     if (preferencesReady) void writePreference(SIDE_TAB_KEY, sideTab).catch(() => {});
@@ -232,12 +237,12 @@ export function WorkspaceHome() {
     <TooltipProvider>
       <main
         className="dark editor-shell bg-background text-foreground"
-        aria-label="SideCut video editor"
+        aria-label="raE.E video editor"
       >
         <header className="editor-topbar">
           <div className="editor-brand">
-            <RiScissorsCutLine aria-hidden="true" />
-            <span>SideCut</span>
+            <img src="/brand/mark-white.svg" alt="" width={24} height={24} />
+            <span>raE.E</span>
           </div>
           <div className="editor-project-name">
             <span data-testid="project-name">{project.name}</span>
@@ -256,6 +261,8 @@ export function WorkspaceHome() {
             </span>
           </div>
           <div className="editor-topbar-actions">
+            <StudioDialog />
+            <TeamsDialog />
             <div className="editor-toolbar-group">
               <Tip
                 label={snapshot.undoLabel ? `Undo ${snapshot.undoLabel}` : "Nothing to undo"}
@@ -292,7 +299,12 @@ export function WorkspaceHome() {
                   variant="ghost"
                   size="sm"
                   className="editor-topbar-collapse"
-                  onClick={() => setSizes({ ...DEFAULT_PANELS })}
+                  disabled={!preferencesReady}
+                  onClick={() => {
+                    setLayoutProtected(false);
+                    setSizes({ ...DEFAULT_PANELS });
+                    setTimelineCollapsed(false);
+                  }}
                 >
                   <RiLayoutLine data-icon="inline-start" aria-hidden="true" />
                   <span className="editor-button-label">Reset layout</span>
@@ -386,6 +398,15 @@ export function WorkspaceHome() {
           </div>
         </header>
 
+        {layoutProtected && (
+          <Alert role="status" className="editor-notice">
+            <AlertTitle>Temporary layout</AlertTitle>
+            <AlertDescription>
+              Your saved layout could not be loaded. Changes will not be saved until you choose
+              Reset layout.
+            </AlertDescription>
+          </Alert>
+        )}
         {(actionError || snapshot.error) && (
           <Alert variant="destructive" className="editor-notice">
             <AlertTitle>Action needs attention</AlertTitle>
@@ -465,7 +486,11 @@ export function WorkspaceHome() {
         <div
           ref={container}
           className="editor-body"
-          style={{ gridTemplateRows: `${fitted.workspace}px ${DIVIDER_SIZE}px minmax(0, 1fr)` }}
+          style={{
+            gridTemplateRows: timelineCollapsed
+              ? "minmax(0, 1fr) 40px"
+              : `${fitted.workspace}px ${DIVIDER_SIZE}px minmax(0, 1fr)`,
+          }}
         >
           <div
             className="editor-workspace"
@@ -566,17 +591,23 @@ export function WorkspaceHome() {
               </>
             )}
           </div>
-          <PanelDivider
-            label="Viewer and timeline height"
-            controls="timeline-panel"
-            orientation="horizontal"
-            value={fitted.workspace}
-            min={WORKSPACE_MIN}
-            max={workspaceMax}
-            onChange={(value) => updatePanel("workspace", value)}
-            onReset={() => updatePanel("workspace", null)}
+          {!timelineCollapsed && (
+            <PanelDivider
+              label="Viewer and timeline height"
+              controls="timeline-panel"
+              orientation="horizontal"
+              value={fitted.workspace}
+              min={WORKSPACE_MIN}
+              max={workspaceMax}
+              onChange={(value) => updatePanel("workspace", value)}
+              onReset={() => updatePanel("workspace", null)}
+            />
+          )}
+          <Timeline
+            run={run}
+            collapsed={timelineCollapsed}
+            onToggleCollapsed={() => setTimelineCollapsed((current) => !current)}
           />
-          <Timeline run={run} />
         </div>
         <footer className="editor-statusbar">
           <span>

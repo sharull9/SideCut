@@ -1,0 +1,79 @@
+{
+  "testedAt": "2026-10-27T11:09:03.458Z",
+  "platform": "win32",
+  "production": true,
+  "syntheticInputs": true,
+  "physicalCapture": false,
+  "accepted": false,
+  "checks": {
+    "largeMovingFixture": {
+      "status": "pass",
+      "bytes": 273475293,
+      "durationSeconds": 610,
+      "tracks": [
+        {
+          "kind": "video",
+          "startSeconds": 0,
+          "durationSeconds": 610
+        },
+        {
+          "kind": "audio",
+          "startSeconds": 0,
+          "durationSeconds": 610
+        }
+      ],
+      "frameHashes": [
+        "0df75e55c25322cff84f1591a5462b12c0bf9520b2550da97e1ec9fcb4a3fa73",
+        "7ba8fb03af94bc26ccd067cf7388aeed875e72b82d1d891dc37d492ad02369c8",
+        "e66c719f1e6afe8e69e125358c7c0a85fe208ba603e094d73d253896e437e50c"
+      ],
+      "paddingBytes": 269484032
+    },
+    "import": {
+      "status": "pass",
+      "projectID": "prj_3d6b9251-deee-4ab6-9f15-a76f79ea0959",
+      "mediaID": "med_a37e7740-8f18-48bd-a093-43add37fcc65",
+      "fileID": "456f5702-3477-4d42-a2c5-d5e33926954d",
+      "bytes": 273475293
+    },
+    "reloadAndSeek": {
+      "status": "pass",
+      "size": 273475293,
+      "duration": 610,
+      "width": 160,
+      "times": [1, 305, 608]
+    },
+    "deleteRetainsResource": {
+      "status": "pass",
+      "fileID": "456f5702-3477-4d42-a2c5-d5e33926954d",
+      "seekTimes": [1, 305, 608]
+    },
+    "nativeEncode": {
+      "status": "pass",
+      "outputID": "bdbadf1a-20e6-4172-8e01-01265e0bae46",
+      "bytes": 39267,
+      "durationSeconds": 3.5
+    },
+    "frozenQueueSnapshot": {
+      "status": "notrun"
+    },
+    "restartRendering": {
+      "status": "notrun"
+    },
+    "restartNativeEncoding": {
+      "status": "notrun"
+    },
+    "restartPublication": {
+      "status": "notrun"
+    },
+    "complexLongFormOutput": {
+      "status": "notrun"
+    }
+  },
+  "errors": [],
+  "limits": [
+    "The desktop artifact must be rebuilt after implementation changes; this runner does not build it.",
+    "The size fixture uses an MP4 free box as padding; it exercises file size and seeking, not high-bitrate sustained throughput.",
+    "Synthetic accelerated media does not establish physical capture or a measured 60-minute session."
+  ]
+}

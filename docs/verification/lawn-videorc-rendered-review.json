@@ -1,0 +1,85 @@
+{
+  "testedAt": "2026-10-27T14:04:33.966Z",
+  "platform": "win32",
+  "production": true,
+  "syntheticInputs": true,
+  "physicalCapture": false,
+  "accepted": true,
+  "checks": {
+    "revisionA": {
+      "status": "pass",
+      "revision": 1,
+      "frameRate": {
+        "numerator": 30000,
+        "denominator": 1001
+      },
+      "projectID": "prj_3361a095-247a-406a-9516-8d6a53e2ace4"
+    },
+    "export": {
+      "status": "pass",
+      "rangeLabel": "Timeline range · 1.00–2.50 s"
+    },
+    "publication": {
+      "status": "pass",
+      "versionID": "b87b4f91-fef7-493d-9e62-4d45a4e8d799",
+      "sourceRevision": 1,
+      "source": {
+        "startSeconds": 1.001,
+        "durationSeconds": 1.5015
+      },
+      "bytes": 1976,
+      "sha256": "11d91df97ebeddfd5c2e997314ed085e0c947d1cea8dc27a850ba382975dafe9"
+    },
+    "playback": {
+      "status": "pass",
+      "time": 0.2586,
+      "frames": 11,
+      "width": 320,
+      "height": 180
+    },
+    "comments": {
+      "status": "pass",
+      "point": {
+        "versionStartSeconds": 0.2,
+        "durationSeconds": 0,
+        "sourceStartSeconds": 1.2009999999999998
+      },
+      "range": {
+        "versionStartSeconds": 0.4,
+        "durationSeconds": 0.3,
+        "sourceStartSeconds": 1.4009999999999998
+      },
+      "reply": "Reply A",
+      "resolvedAndReopened": true
+    },
+    "revisionB": {
+      "status": "pass",
+      "versionID": "37012d4b-e56a-4410-adcd-d42683391ab2",
+      "sourceRevision": 2,
+      "sha256": "eb833b450d3746eeb6b966d0f6aa090fb9ef13ed6dce9b7b4a6dd05904dae3fa",
+      "nativePlayback": {
+        "time": 0.2637,
+        "frames": 8,
+        "width": 320,
+        "height": 180
+      }
+    },
+    "isolation": {
+      "status": "pass",
+      "immutableA": true,
+      "distinctThreads": true
+    },
+    "restart": {
+      "status": "pass",
+      "decoded": {
+        "time": 0.2605,
+        "frames": 11,
+        "width": 320,
+        "height": 180
+      },
+      "versionCount": 2,
+      "threadCount": 3
+    }
+  },
+  "errors": []
+}

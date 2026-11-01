@@ -1,0 +1,47 @@
+{
+  "packaged": true,
+  "platform": "win32",
+  "arch": "x64",
+  "version": "0.0.1",
+  "isolation": {
+    "node": "undefined",
+    "require": "undefined",
+    "bridge": "function"
+  },
+  "credentialStorage": "encrypted round-trip",
+  "exclusiveLock": true,
+  "archive": {
+    "bytes": 50561
+  },
+  "media": {
+    "bytes": 4661,
+    "codecs": ["vp8", "opus"],
+    "duration": 0.22,
+    "decoded": "RIFF"
+  },
+  "nativeRecording": {
+    "input": "synthetic lavfi video and tone",
+    "encoder": "libx264",
+    "bytes": 126810,
+    "sha256": "784a0b42d704810873fe2b3cf425ad20962eeb974b0a49a3053cd96b8f35c659",
+    "codecs": ["aac", "h264"],
+    "decodedCodecs": ["opus", "vp8"],
+    "duration": 3,
+    "reopened": true
+  },
+  "reopened": true,
+  "sqlite": {
+    "format": "SQLite format 3",
+    "legacyPreserved": true,
+    "reopened": true
+  },
+  "cli": true,
+  "unicodeSpaceProfile": true,
+  "installation": {
+    "unicodeSpacePath": true,
+    "launcher": true,
+    "sha256": "cf25b32a81fc7812e3e8981930cfe7d471452ca273ee2cb0253f695f2603dc4a",
+    "installer": "SideCut-0.0.1-win-x64.exe",
+    "uninstalled": true
+  }
+}

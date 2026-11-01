@@ -38,7 +38,7 @@ it("accounts for every pinned edit command, service, asset operation and MCP too
       ),
   );
   expect(assetMissing).toEqual([]);
-  expect(mcpTools.map((tool) => tool.name).sort()).toEqual([...inventory.tools].sort());
+  expect(mcpTools.map((tool) => tool.name).sort()).toEqual([...inventory.tools, "studio"].sort());
   expect(effectRegistry.map((e) => e.type).sort()).toEqual([...inventory.effects].sort());
   expect([...transitionTypes].sort()).toEqual([...inventory.transitions].sort());
   if (process.env.SIDECUT_WRITE_PARITY_AUDIT === "1")
@@ -53,6 +53,7 @@ it("accounts for every pinned edit command, service, asset operation and MCP too
           assets: { expected: inventory.assets, missing: assetMissing },
           mcp: {
             expected: inventory.tools,
+            sidecutExtensions: ["studio"],
             note: "All names discovered over actual stdio in phases 131–135; exact result/default compatibility remains partial.",
           },
           effects: effectRegistry.map((e) => ({

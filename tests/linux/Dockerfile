@@ -27,8 +27,8 @@ RUN --mount=type=cache,target=/home/node/.pnpm-store,uid=1000,gid=1000 \
     --mount=type=cache,target=/home/node/.cache/electron,uid=1000,gid=1000 \
     npm_config_store_dir=/home/node/.pnpm-store vp install --frozen-lockfile \
     && vp exec --filter @sidecut/desktop install-electron
-RUN vp run lint && vp run typecheck && vp test run --maxWorkers=4
-RUN vp run build:desktop && vp exec node scripts/package-desktop.mjs
+RUN vp run lint && vp run typecheck && vp test run --maxWorkers=1 --testTimeout=30000
+RUN vp run package:desktop
 
 USER root
 RUN chown root:root apps/desktop/release/linux-unpacked/chrome-sandbox \

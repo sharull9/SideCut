@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { decodeProjectFile, encodeProjectFile } from "@sidecut/contracts/project";
 import type { ProjectFile } from "@sidecut/contracts/project";
 import { BrowserProjectStore } from "@sidecut/platform-browser/storage";
+import { DurableStorage } from "@sidecut/platform-browser/sqlite-client";
 import { acquireProjectWriter } from "@sidecut/platform-browser/writer-lock";
 import { probeLocalFile } from "@sidecut/platform-browser/media";
 import type * as MediaModule from "@sidecut/platform-browser/media";
@@ -93,6 +94,35 @@ describe("persistent browser session", () => {
     segmentStorage.rows.clear();
     segmentStorage.files.clear();
     release.mockClear();
+    const deliveryFiles = new Map<string, Blob>();
+    const deliveryRows = new Map<string, string>();
+    vi.spyOn(DurableStorage, "open").mockResolvedValue({
+      request: async (request: StorageRequest) => {
+        if (request.type === "read")
+          return [...deliveryRows]
+            .filter(([key]) => request.key === undefined || request.key === key)
+            .map(([key, value]) => ({ key, value }));
+        for (const check of request.checks)
+          if ((deliveryRows.get(check.key) ?? null) !== check.value) throw new Error("conflict");
+        for (const write of request.writes)
+          if (write.value === null) deliveryRows.delete(write.key);
+          else deliveryRows.set(write.key, write.value);
+        return [];
+      },
+      putBlob: async (blob: Blob) => {
+        const id = crypto.randomUUID();
+        deliveryFiles.set(id, blob);
+        return id;
+      },
+      getBlob: async (id: string, type = "", name?: string, lastModified = 0) => {
+        const blob = deliveryFiles.get(id);
+        if (!blob) throw new Error("missing");
+        return name === undefined ? blob : new File([blob], name, { type, lastModified });
+      },
+      removeFile: async (id: string) => {
+        deliveryFiles.delete(id);
+      },
+    } as unknown as DurableStorage);
     vi.spyOn(BrowserProjectStore, "open").mockResolvedValue(
       store as unknown as BrowserProjectStore,
     );
@@ -101,6 +131,406 @@ describe("persistent browser session", () => {
   afterEach(async () => {
     await Promise.all(sessions.splice(0).map((value) => value.close()));
     vi.restoreAllMocks();
+  });
+
+  it.each(["probe", "hydrate"] as const)(
+    "discards a fresh adoption when %s fails without changing the recording or project",
+    async (failure) => {
+      const value = session();
+      await value.start();
+      const original = value.getSnapshot().project;
+      const id = "33333333-3333-4333-8333-333333333333";
+      const recording = {
+        id,
+        projectID: "source",
+        source: "microphone" as const,
+        createdAt: "2026-01-01",
+        status: "ready" as const,
+        encoder: "aac",
+        elapsedSeconds: 2,
+        bytes: 1,
+        tracks: [{ kind: "audio" as const, startSeconds: 0, durationSeconds: 2 }],
+        error: null,
+      };
+      const library = [structuredClone(recording)];
+      const remove = vi.fn(async () => {});
+      const removeEntry = vi.fn(async () => {});
+      const bridge = {
+        nativeRecordingList: async () => library,
+        nativeRecordingAdopt: async () => ({
+          id,
+          name: "capture.m4a",
+          type: "audio/mp4",
+          bytes: 1,
+          lastModified: 0,
+        }),
+        storageFileSize: async () => 1,
+        storageFileRead: async () =>
+          failure === "hydrate" ? new Uint8Array() : new Uint8Array([1]),
+        storageRemoveFile: remove,
+        projectFlush: async () => {},
+      };
+      let contents = new File([], id);
+      const directory = {
+        getFileHandle: async () => ({
+          getFile: async () => contents,
+          createWritable: async () => ({
+            write: async (bytes: Uint8Array) => {
+              contents = new File([new Uint8Array(bytes)], id);
+            },
+            close: async () => {},
+            abort: async () => {},
+          }),
+        }),
+        removeEntry,
+      };
+      vi.stubGlobal("window", { sidecutDesktop: bridge });
+      vi.stubGlobal("navigator", {
+        storage: { getDirectory: async () => ({ getDirectoryHandle: async () => directory }) },
+      });
+      Object.defineProperty(value, "native", { value: bridge });
+      if (failure === "probe")
+        vi.mocked(probeLocalFile).mockRejectedValueOnce(new Error("probe failed"));
+      try {
+        await expect(value.importNativeRecording(id, "new-project")).rejects.toThrow(
+          failure === "probe" ? "probe failed" : "truncated",
+        );
+        expect(remove).toHaveBeenCalledWith(id);
+        expect(removeEntry).toHaveBeenCalledWith(id);
+        expect(library).toEqual([recording]);
+        expect(value.getSnapshot().project).toEqual(original);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    },
+  );
+
+  it.each(["media", "new-project"] as const)(
+    "retains an adopted file after resource commit when %s save fails",
+    async (mode) => {
+      const value = session();
+      await value.start();
+      const original = value.getSnapshot().project;
+      const id =
+        mode === "media"
+          ? "44444444-4444-4444-8444-444444444444"
+          : "55555555-5555-4555-8555-555555555555";
+      const recording = {
+        id,
+        projectID: "source",
+        source: "microphone" as const,
+        createdAt: "2026-01-01",
+        status: "ready" as const,
+        encoder: "aac",
+        elapsedSeconds: 2,
+        bytes: 1,
+        tracks: [{ kind: "audio" as const, startSeconds: 0, durationSeconds: 2 }],
+        error: null,
+      };
+      const remove = vi.fn(async () => {});
+      const file = new File(["x"], "capture.m4a", { type: "audio/mp4" });
+      const bridge = {
+        nativeRecordingList: async () => [recording],
+        nativeRecordingAdopt: async () => ({
+          id,
+          name: file.name,
+          type: file.type,
+          bytes: 1,
+          lastModified: 0,
+        }),
+        storageFileSize: async () => 1,
+        storageFileRead: async () => new Uint8Array([120]),
+        storageRemoveFile: remove,
+        projectFlush: async () => {
+          throw new Error("flush failed");
+        },
+      };
+      vi.stubGlobal("window", { sidecutDesktop: bridge });
+      vi.stubGlobal("navigator", {
+        storage: {
+          getDirectory: async () => ({
+            getDirectoryHandle: async () => ({
+              getFileHandle: async () => ({ getFile: async () => file }),
+            }),
+          }),
+        },
+      });
+      Object.defineProperty(value, "native", { value: bridge });
+      vi.mocked(probeLocalFile).mockResolvedValueOnce({
+        item: {
+          id: "native",
+          path: file.name,
+          fingerprint: "same",
+          kind: "audio",
+          role: "other",
+          hasVideo: false,
+          hasAudio: true,
+        },
+        resource: { file, state: "available", detail: "ready" },
+      });
+      if (mode === "new-project")
+        vi.spyOn(store, "importProject").mockRejectedValueOnce(new Error("project save failed"));
+      try {
+        await expect(value.importNativeRecording(id, mode)).rejects.toThrow(
+          mode === "media" ? "flush failed" : "project save failed",
+        );
+        expect(resources.has("native")).toBe(true);
+        expect(remove).not.toHaveBeenCalled();
+        if (mode === "new-project") expect(value.getSnapshot().project).toEqual(original);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    },
+  );
+
+  it("imports native media once and retains its source metadata across save retry", async () => {
+    const value = session();
+    await value.start();
+    const id = "a32e4567-e89b-42d3-a456-426614174000";
+    const recording = {
+      id,
+      projectID: "source",
+      source: "microphone" as const,
+      createdAt: "2026-01-01",
+      status: "ready" as const,
+      encoder: "aac",
+      elapsedSeconds: 2,
+      bytes: 1,
+      tracks: [{ kind: "audio" as const, startSeconds: 0, durationSeconds: 2 }],
+      error: null,
+    };
+    const file = new File(["x"], "capture.m4a", { type: "audio/mp4" });
+    Object.defineProperty(value, "native", {
+      value: {
+        nativeRecordingRead: async () => ({
+          recording,
+          name: file.name,
+          type: "audio/mp4",
+          bytes: new Uint8Array([1]),
+        }),
+        projectFlush: async () => {
+          if (failSave) throw new Error("quota");
+        },
+      },
+    });
+    vi.mocked(probeLocalFile).mockResolvedValue({
+      item: {
+        id: "native",
+        path: file.name,
+        fingerprint: "same",
+        kind: "audio",
+        role: "other",
+        hasVideo: false,
+        hasAudio: true,
+      },
+      resource: { file, state: "available", detail: "ready" },
+    });
+    failSave = true;
+    await expect(value.importNativeRecording(id, "media")).rejects.toThrow("quota");
+    failSave = false;
+    await value.importNativeRecording(id, "media");
+    expect(value.getSnapshot().project.media).toHaveLength(1);
+    expect(value.getSnapshot().project.media[0]?.nativeRecording).toMatchObject({
+      id,
+      tracks: recording.tracks,
+    });
+  });
+
+  it("stages a native project with aligned linked tracks before replacing the current project", async () => {
+    const value = session();
+    await value.start();
+    const id = "a32e4567-e89b-42d3-a456-426614174000";
+    const recording = {
+      id,
+      projectID: "source",
+      source: "screen" as const,
+      createdAt: "2026-01-01",
+      status: "ready" as const,
+      encoder: "libx264",
+      elapsedSeconds: 3,
+      bytes: 1,
+      tracks: [
+        { kind: "video" as const, startSeconds: 1, durationSeconds: 2 },
+        { kind: "audio" as const, startSeconds: 1.5, durationSeconds: 1.5 },
+      ],
+      error: null,
+    };
+    const file = new File(["x"], "capture.mp4", { type: "video/mp4" });
+    Object.defineProperty(value, "native", {
+      value: {
+        nativeRecordingRead: async () => ({
+          recording,
+          name: file.name,
+          type: "video/mp4",
+          bytes: new Uint8Array([1]),
+        }),
+        projectFlush: async () => {},
+      },
+    });
+    const item = {
+      id: "native",
+      path: file.name,
+      fingerprint: "same",
+      kind: "video" as const,
+      role: "other" as const,
+      hasVideo: true,
+      hasAudio: true,
+      duration: 2.8,
+    };
+    vi.mocked(probeLocalFile)
+      .mockResolvedValueOnce({ item, resource: { file, state: "unsupported", detail: "bad" } })
+      .mockResolvedValue({ item, resource: { file, state: "available", detail: "ready" } });
+    const original = value.getSnapshot().project.id;
+    await expect(value.importNativeRecording(id, "new-project")).rejects.toThrow("bad");
+    expect(value.getSnapshot().project.id).toBe(original);
+    await value.importNativeRecording(id, "new-project");
+    const project = value.getSnapshot().project;
+    const video = project.videoTracks[0]!.clips[0]!,
+      audio = project.audioTracks[0]!.clips[0]!;
+    expect([video.start.seconds, audio.start.seconds, audio.sourceStart.seconds]).toEqual([
+      0, 0.5, 1.5,
+    ]);
+    expect(video.linkGroup).toBe(audio.linkGroup);
+    expect(video.duration.seconds).toBeCloseTo(1.8);
+    expect(audio.duration.seconds).toBeCloseTo(1.3);
+    expect(saved?.project.media).toHaveLength(1);
+  });
+
+  it("does not publish a recording project if resource staging fails", async () => {
+    const value = session();
+    await value.start();
+    const id = "a32e4567-e89b-42d3-a456-426614174000";
+    const recording = {
+      id,
+      projectID: "source",
+      source: "microphone" as const,
+      createdAt: "2026-01-01",
+      status: "ready" as const,
+      encoder: "aac",
+      elapsedSeconds: 2,
+      bytes: 1,
+      tracks: [{ kind: "audio" as const, startSeconds: 0, durationSeconds: 2 }],
+      error: null,
+    };
+    const file = new File(["x"], "capture.m4a", { type: "audio/mp4" });
+    Object.defineProperty(value, "native", {
+      value: {
+        nativeRecordingRead: async () => ({
+          recording,
+          name: file.name,
+          type: "audio/mp4",
+          bytes: new Uint8Array([1]),
+        }),
+      },
+    });
+    vi.mocked(probeLocalFile).mockResolvedValue({
+      item: {
+        id: "native",
+        path: file.name,
+        fingerprint: "same",
+        kind: "audio",
+        role: "other",
+        hasVideo: false,
+        hasAudio: true,
+      },
+      resource: { file, state: "available", detail: "ready" },
+    });
+    const original = value.getSnapshot().project.id;
+    vi.spyOn(store, "putResource").mockRejectedValueOnce(new Error("disk full"));
+    await expect(value.importNativeRecording(id, "new-project")).rejects.toThrow("disk full");
+    expect(value.getSnapshot().project.id).toBe(original);
+  });
+
+  it("rejects a native read when the session closes while it is pending", async () => {
+    const value = session();
+    await value.start();
+    let finish!: (value: never) => void;
+    Object.defineProperty(value, "native", {
+      value: {
+        nativeRecordingRead: () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      },
+    });
+    const pending = value.importNativeRecording("id", "media");
+    await value.close();
+    finish({} as never);
+    await expect(pending).rejects.toThrow("closed");
+    expect(resources.size).toBe(0);
+  });
+
+  it("binds capture to the starting project and stops it when that project is replaced", async () => {
+    const value = session();
+    await value.start();
+    const projectID = value.getSnapshot().project.id;
+    const start = vi.spyOn(value.recording, "start").mockResolvedValue();
+    await value.startRecording({ source: "microphone", microphone: false });
+    expect(start).toHaveBeenCalledWith({ source: "microphone", microphone: false }, projectID);
+    expect(value.recordingProjectID).toBe(projectID);
+    vi.spyOn(value.recording, "getSnapshot").mockReturnValue({
+      status: "recording",
+      startedAt: 0,
+      bytes: 0,
+    });
+    const stop = vi.spyOn(value.recording, "stop").mockImplementation(() => {});
+    await value.createProject();
+    expect(value.getSnapshot().project.id).not.toBe(projectID);
+    expect(stop).toHaveBeenCalled();
+    expect(value.recordingProjectID).toBe(projectID);
+  });
+
+  it("does not request recording permissions before the project is writable", async () => {
+    const value = session();
+    const start = vi.spyOn(value.recording, "start");
+    await expect(value.startRecording({ source: "camera", microphone: false })).rejects.toThrow(
+      "read-only",
+    );
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it("retains completed recording data after save failure and retries without duplicate media", async () => {
+    const value = session();
+    await value.start();
+    const file = new File(["synthetic recording"], "recording.webm", { type: "audio/webm" });
+    value.recordingProjectID = value.getSnapshot().project.id;
+    vi.spyOn(value.recording, "getSnapshot").mockReturnValue({ status: "ready", file });
+    const discard = vi.spyOn(value.recording, "discard");
+    vi.mocked(probeLocalFile).mockResolvedValue({
+      item: {
+        id: "recorded",
+        path: file.name,
+        fingerprint: "recording",
+        kind: "audio",
+        role: "other",
+        hasVideo: false,
+        hasAudio: true,
+      },
+      resource: { file, state: "available", detail: "Local recording" },
+    });
+    failSave = true;
+    await expect(value.importRecording()).rejects.toThrow("quota");
+    expect(discard).not.toHaveBeenCalled();
+    expect(value.recording.getSnapshot()).toEqual({ status: "ready", file });
+    failSave = false;
+    await value.importRecording();
+    expect(discard).toHaveBeenCalledOnce();
+    expect(saved?.project.media).toHaveLength(1);
+    expect(value.getSnapshot().project.media).toHaveLength(1);
+  });
+
+  it("refuses to import a recording into a replacement project", async () => {
+    const value = session();
+    await value.start();
+    value.recordingProjectID = "previous-project";
+    vi.spyOn(value.recording, "getSnapshot").mockReturnValue({
+      status: "ready",
+      file: new File(["recording"], "old.webm"),
+    });
+    const discard = vi.spyOn(value.recording, "discard");
+    await expect(value.importRecording()).rejects.toThrow("original project");
+    expect(value.getSnapshot().project.media).toHaveLength(0);
+    expect(discard).not.toHaveBeenCalled();
   });
 
   it("captures queued export bounds and rejects ranges outside the sequence", async () => {
@@ -132,6 +562,7 @@ describe("persistent browser session", () => {
     const range = { from: 0.5, to: 1.25 };
     const id = value.queueExport(null, "webm", range);
     range.from = 1;
+    await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
     finish(new Blob(["first"]));
     await vi.waitFor(() =>
       expect(value.exports.getSnapshot().find((entry) => entry.id === id)?.status).toBe("done"),
@@ -142,6 +573,8 @@ describe("persistent browser session", () => {
       null,
       "webm",
       { from: 0.5, to: 1.25 },
+      expect.objectContaining({ id: value.getSnapshot().project.id }),
+      expect.any(Function),
     );
     expect(value.exports.getSnapshot().find((entry) => entry.id === id)?.name).toContain(
       "0.500-1.250s",
@@ -156,7 +589,7 @@ describe("persistent browser session", () => {
     expect(value.exports.getSnapshot()).toHaveLength(2);
   });
 
-  it("refuses queued exports after the project revision changes", async () => {
+  it("renders the frozen snapshot after the project revision changes", async () => {
     const value = session();
     await value.start();
     let finish!: (blob: Blob) => void;
@@ -168,30 +601,68 @@ describe("persistent browser session", () => {
         }),
     );
     const render = vi.spyOn(value, "exportWebM").mockResolvedValue(new Blob(["video"]));
+    await value.apply({
+      commands: [
+        {
+          insertClip: {
+            trackID: "trk_video_0",
+            clip: {
+              id: "duration",
+              duration: 1,
+              content: { solid: { color: { r: 0, g: 0, b: 0, a: 1 } } },
+            },
+          },
+        },
+      ],
+    });
+    const original = value.getSnapshot().project;
     const id = value.queueExport();
     await rename(value, "Changed after queueing");
+    await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
     finish(new Blob(["first"]));
     await vi.waitFor(() =>
       expect(value.exports.getSnapshot().find((entry) => entry.id === id)).toMatchObject({
-        status: "failed",
-        error: expect.stringContaining("Project changed"),
+        status: "done",
       }),
     );
-    expect(render).not.toHaveBeenCalled();
+    expect(render).toHaveBeenCalledWith(
+      expect.any(AbortSignal),
+      expect.any(Function),
+      null,
+      "webm",
+      expect.any(Object),
+      original,
+      expect.any(Function),
+    );
+    expect(value.getSnapshot().project.name).toBe("Changed after queueing");
   });
   it("guards edits during queued audio rendering and releases the guard after cancellation", async () => {
-    const service = await import("./service-render");
-    const render = vi.spyOn(service, "renderService").mockImplementation(
-      async (_session, _operation, _request, signal) =>
+    const service = await import("@sidecut/platform-browser/wav-export");
+    const render = vi.spyOn(service, "renderWAV").mockImplementation(
+      async (_project, _resource, signal) =>
         new Promise((_resolve, reject) => {
           signal.addEventListener("abort", () => reject(signal.reason), { once: true });
         }),
     );
     const value = session();
     await value.start();
+    await value.apply({
+      commands: [
+        {
+          insertClip: {
+            trackID: "trk_video_0",
+            clip: {
+              id: "duration",
+              duration: 1,
+              content: { solid: { color: { r: 0, g: 0, b: 0, a: 1 } } },
+            },
+          },
+        },
+      ],
+    });
     const id = value.queueExport(null, "wav");
-    expect(value.getSnapshot().busy).toBe(true);
     await vi.waitFor(() => expect(render).toHaveBeenCalledTimes(1));
+    expect(value.getSnapshot().busy).toBe(true);
     expect(() => rename(value, "Blocked while exporting")).toThrow("current file operation");
     value.exports.cancel(id);
     await vi.waitFor(() =>

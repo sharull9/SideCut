@@ -1,0 +1,165 @@
+{
+  "patterns": [
+    {
+      "background": "solid",
+      "first": 2637978565,
+      "second": 2637978565,
+      "reducedFirst": 2637978565,
+      "reducedSecond": 2637978565
+    },
+    {
+      "background": "waves",
+      "first": 2391265730,
+      "second": 4178266573,
+      "reducedFirst": 2391265730,
+      "reducedSecond": 2391265730
+    },
+    {
+      "background": "grid",
+      "first": 3769508229,
+      "second": 4060237829,
+      "reducedFirst": 3769508229,
+      "reducedSecond": 3769508229
+    },
+    {
+      "background": "orbits",
+      "first": 3402849518,
+      "second": 1832667661,
+      "reducedFirst": 3402849518,
+      "reducedSecond": 3402849518
+    },
+    {
+      "background": "rings",
+      "first": 1112782286,
+      "second": 784417877,
+      "reducedFirst": 1112782286,
+      "reducedSecond": 1112782286
+    },
+    {
+      "background": "particles",
+      "first": 3158319163,
+      "second": 3882351270,
+      "reducedFirst": 3158319163,
+      "reducedSecond": 3158319163
+    },
+    {
+      "background": "rays",
+      "first": 68608086,
+      "second": 2953650777,
+      "reducedFirst": 68608086,
+      "reducedSecond": 68608086
+    },
+    {
+      "background": "stripes",
+      "first": 1397582420,
+      "second": 4161542528,
+      "reducedFirst": 1397582420,
+      "reducedSecond": 1397582420
+    },
+    {
+      "background": "checker",
+      "first": 706386117,
+      "second": 1625920965,
+      "reducedFirst": 706386117,
+      "reducedSecond": 706386117
+    },
+    {
+      "background": "aurora",
+      "first": 3548156726,
+      "second": 3537049837,
+      "reducedFirst": 3548156726,
+      "reducedSecond": 3548156726
+    },
+    {
+      "background": "mesh",
+      "first": 3898326516,
+      "second": 374615372,
+      "reducedFirst": 3898326516,
+      "reducedSecond": 3898326516
+    }
+  ],
+  "topPixel": [0, 255, 0, 255],
+  "reorderedPixel": [255, 0, 0, 255],
+  "unity": {
+    "leftRMS": 0.5,
+    "rightRMS": 0.5,
+    "onset": 0
+  },
+  "quiet": {
+    "leftRMS": 0.25,
+    "rightRMS": 0.25,
+    "onset": 0
+  },
+  "muted": {
+    "leftRMS": 0,
+    "rightRMS": 0,
+    "onset": -1
+  },
+  "delayed": {
+    "leftRMS": 0.0036084391824351613,
+    "rightRMS": 0.0036084391824351613,
+    "onset": 4800
+  },
+  "rumble": {
+    "leftRMS": 0.022887932486204365,
+    "rightRMS": 0.022887932486204365,
+    "onset": 51
+  },
+  "unfiltered": {
+    "leftRMS": 0.35355339011114906,
+    "rightRMS": 0.35355339011114906,
+    "onset": 39
+  },
+  "monitorOff": {
+    "leftRMS": 0.5,
+    "rightRMS": 0,
+    "onset": 0
+  },
+  "monitorOn": {
+    "leftRMS": 0.5,
+    "rightRMS": 0.5,
+    "onset": 0
+  },
+  "meter": {
+    "peak": 0.25118863582611084,
+    "rms": 0.17700192687408617,
+    "peakDB": -12.000000253286988,
+    "rmsDB": -15.040440116127938,
+    "clipped": false
+  },
+  "stereoMeter": {
+    "peak": 0.5,
+    "rms": 0.3539744489489233,
+    "peakDB": -6.020599913279624,
+    "rmsDB": -9.02056171321178,
+    "clipped": false
+  },
+  "updatedMeter": {
+    "peak": 0.1258925348520279,
+    "rms": 0.08939203461996618,
+    "peakDB": -18.000000436554874,
+    "rmsDB": -20.974023555784946,
+    "clipped": false
+  },
+  "mutedMeter": {
+    "peak": 0,
+    "rms": 0,
+    "peakDB": null,
+    "rmsDB": null,
+    "clipped": false
+  },
+  "invalidUpdateRejected": true,
+  "priorSettingsRetained": true,
+  "borrowedTrackRetained": true,
+  "originalMixRetained": true,
+  "closedTracks": true,
+  "audioOnset": 0.6085208333333333,
+  "greenAt": 0.5250000000000001,
+  "measuredOffsetMs": 83.52083333333316,
+  "frameCount": 50,
+  "redFrames": 20,
+  "greenFrames": 30,
+  "recordingBytes": 16514,
+  "browser": "156.0.8078.4",
+  "runtime": "Vite development module harness; real Web Audio, canvas and MediaRecorder"
+}

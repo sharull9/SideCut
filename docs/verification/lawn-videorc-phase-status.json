@@ -1,0 +1,52 @@
+{
+  "through": "LV035",
+  "counts": {
+    "done": 10,
+    "inProgress": 25,
+    "pending": 0
+  },
+  "phases": {
+    "done": [
+      "LV001",
+      "LV002",
+      "LV004",
+      "LV006",
+      "LV007",
+      "LV008",
+      "LV009",
+      "LV010",
+      "LV011",
+      "LV033"
+    ],
+    "inProgress": [
+      "LV003",
+      "LV005",
+      "LV012",
+      "LV013",
+      "LV014",
+      "LV015",
+      "LV016",
+      "LV017",
+      "LV018",
+      "LV019",
+      "LV020",
+      "LV021",
+      "LV022",
+      "LV023",
+      "LV024",
+      "LV025",
+      "LV026",
+      "LV027",
+      "LV028",
+      "LV029",
+      "LV030",
+      "LV031",
+      "LV032",
+      "LV034",
+      "LV035"
+    ],
+    "pending": []
+  },
+  "scope": "Recorded acceptance within the stated limits; full parity is not certified.",
+  "missingChecklistLinks": []
+}

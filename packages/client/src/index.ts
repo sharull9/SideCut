@@ -284,6 +284,12 @@ export class SideCutClient {
       commands.length,
     );
   }
+  studio(input: ServiceRequest<"studio">, signal?: AbortSignal) {
+    return this.call("studio", input, signal);
+  }
+  diagnostics(input: ServiceRequest<"diagnostics"> = {}, signal?: AbortSignal) {
+    return this.call("diagnostics", input, signal);
+  }
   undo(expectedRevision = this.revision, count?: number, signal?: AbortSignal) {
     return this.call(
       "undo",

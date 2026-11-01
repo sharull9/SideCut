@@ -1,12 +1,13 @@
 export type ServiceEvent = {
   seq: number;
-  kind: "edit" | "undo" | "redo" | "reload" | "jobs" | "export";
+  kind: "edit" | "undo" | "redo" | "reload" | "jobs" | "export" | "studio";
   date: string;
   revision?: number;
   label?: string;
   author?: string;
   jobs?: unknown[];
   export?: Record<string, unknown>;
+  studio?: { action: string; id: string };
 };
 export class ServiceEvents {
   private sequence = 0;

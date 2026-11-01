@@ -2,19 +2,40 @@ import { describe, expect, it } from "vite-plus/test";
 import { DEFAULT_PANELS, fitPanels, readPanelSizes, readSideTab } from "./panel-sizes";
 
 describe("editor panel sizing", () => {
-  it("ignores corrupt/old preferences and clamps valid saved widths", () => {
+  it("distinguishes unreadable preferences from an absent layout and clamps valid saved widths", () => {
+    expect(readPanelSizes(null)).toEqual(DEFAULT_PANELS);
     for (const value of [
-      null,
+      "",
       "{",
       "null",
       '{"version":2}',
       '{"version":1,"media":"wide","inspector":300,"workspace":null}',
     ])
-      expect(readPanelSizes(value)).toEqual(DEFAULT_PANELS);
+      expect(readPanelSizes(value)).toBeNull();
     expect(readPanelSizes('{"version":1,"media":-1,"inspector":9999,"workspace":420}')).toEqual({
       media: 240,
       inspector: 600,
       workspace: 420,
+      mediaHidden: false,
+      inspectorHidden: false,
+    });
+  });
+  it("refuses invalid versions and malformed fields while retaining legacy visibility defaults", () => {
+    for (const version of [undefined, null, 0, 2, "1", {}, []])
+      expect(
+        readPanelSizes(JSON.stringify({ version, media: 300, inspector: 320, workspace: null })),
+      ).toBeNull();
+    for (const fields of [
+      { media: null, inspector: 320, workspace: null },
+      { media: 300, inspector: false, workspace: null },
+      { media: 300, inspector: 320, workspace: "tall" },
+      { media: 300, inspector: 320 },
+    ])
+      expect(readPanelSizes(JSON.stringify({ version: 1, ...fields }))).toBeNull();
+    expect(readPanelSizes('{"version":1,"media":300,"inspector":320,"workspace":null}')).toEqual({
+      media: 300,
+      inspector: 320,
+      workspace: null,
       mediaHidden: false,
       inspectorHidden: false,
     });

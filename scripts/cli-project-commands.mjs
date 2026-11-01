@@ -46,7 +46,8 @@ export function prepareProjectCommand(args, parsed) {
   const inputWords = parsed?.words ?? args;
   const offset = inputWords[0] === "project" ? 1 : 0;
   let command = inputWords[offset];
-  if (!["new", "app", "import", "import-edl", "import-filmora"].includes(command)) return { args };
+  if (!["new", "app", "import", "import-edl", "import-filmora", "import-obs"].includes(command))
+    return { args };
   const words = parsed ? inputWords.slice(offset + 1) : [],
     flags = new Map(parsed?.flags);
   const switches = new Set(["json", "portrait", "keep-levels"]);
@@ -67,7 +68,8 @@ export function prepareProjectCommand(args, parsed) {
   const native = command === "import" || command === "app" || words.length > 0;
   if (command === "import") {
     const kind = words.shift();
-    if (!["edl", "filmora"].includes(kind)) throw new Error("import needs edl or filmora.");
+    if (!["edl", "filmora", "obs"].includes(kind))
+      throw new Error("import needs edl, filmora or obs.");
     command = `import-${kind}`;
   }
   if (words.length > 1) throw new Error(`Unexpected arguments for ${command}.`);

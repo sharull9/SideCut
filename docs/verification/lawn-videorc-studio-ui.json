@@ -1,0 +1,32 @@
+{
+  "testedAt": "2026-11-01T17:58:46.893Z",
+  "platform": "win32",
+  "production": true,
+  "syntheticDevices": true,
+  "checks": {
+    "scenes": true,
+    "camera": {
+      "beforeCamera": [17, 24, 39, 255],
+      "withCamera": [0, 135, 0, 255]
+    },
+    "screen": {
+      "listed": 2
+    },
+    "microphone": {
+      "audible": 1,
+      "muted": 0
+    },
+    "closeGuard": true,
+    "recording": {
+      "size": [1920, 1080],
+      "bytes": 686690,
+      "audio": 1,
+      "banner": [55, 189, 249, 255]
+    },
+    "handoff": true,
+    "recentClips": true,
+    "reloadRecovery": true
+  },
+  "errors": [],
+  "accepted": true
+}

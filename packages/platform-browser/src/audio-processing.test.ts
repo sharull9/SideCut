@@ -392,3 +392,158 @@ it("removes rumble and expands room noise while retaining an active speech-band 
   await cleanVoice([quiet], rate, { highPass: 0, expanderThreshold: -40, expanderRange: 10 });
   expect(rms(quiet) / 0.001).toBeCloseTo(10 ** (-10 / 20), 2);
 });
+
+it("streams long dynamics in effect order across mixer partitions and preserves range state", async () => {
+  const hz = 1000;
+  const effects = [
+    { id: "c", type: "compressor", enabled: true, params: { threshold: -20, ratio: 4 } },
+    { id: "v", type: "voiceCleanup", enabled: true, params: { highPass: 60, expanderRange: 8 } },
+    { id: "l", type: "limiter", enabled: true, params: { ceiling: -3, release: 80 } },
+  ];
+  const make = (duration: number) =>
+    decodeProjectFile({
+      revision: 0,
+      project: {
+        media: [{ id: "m", path: "long.wav", kind: "audio", duration: 700 }],
+        audioTracks: [
+          {
+            id: "a",
+            kind: "audio",
+            clips: [
+              {
+                id: "c",
+                start: 1,
+                sourceStart: 2,
+                duration,
+                content: { media: { mediaID: "m" } },
+                audio: { gainDB: 3, normalizeTo: -20, effects },
+              },
+            ],
+          },
+        ],
+      },
+    }).project;
+  const source = {
+    audio: async function* (from: number, to: number) {
+      for (let first = Math.floor(from * hz); first < to * hz; first += 257) {
+        const values = Float32Array.from({ length: 257 }, (_, i) =>
+          (first + i) % 431 < 7 ? 0.9 : 0.1 * Math.sin((first + i) / 9),
+        );
+        yield {
+          timestamp: first / hz,
+          duration: values.length / hz,
+          buffer: {
+            sampleRate: hz,
+            length: values.length,
+            numberOfChannels: 1,
+            getChannelData: () => values,
+          } as unknown as AudioBuffer,
+        };
+      }
+    },
+  };
+  const measure = async () => ({ integratedLUFS: -23, truePeakDBTP: -10, loudnessRange: 0 });
+  const collect = async (duration: number, block: number) => {
+    const values: number[] = [];
+    let timestamp = 1.2;
+    for await (const part of mixTimelineAudio(
+      make(duration),
+      async () => source,
+      new AbortController().signal,
+      hz,
+      block,
+      2,
+      { start: 1.2, measure },
+    )) {
+      expect(part.timestamp).toBeCloseTo(timestamp, 8);
+      timestamp += part.frames / hz;
+      values.push(...part.data.subarray(0, part.frames));
+    }
+    return values;
+  };
+  const reference = await collect(3, 173);
+  expect(await collect(360, 37)).toEqual(reference);
+  expect(await collect(360, 251)).toEqual(reference);
+  expect(
+    (
+      await prepareTimelineAudio(make(360), async () => source, new AbortController().signal, {
+        measure,
+      })
+    ).size,
+  ).toBe(0);
+  let total = 0;
+  for await (const part of mixTimelineAudio(
+    make(360),
+    async () => source,
+    new AbortController().signal,
+    hz,
+    997,
+    361,
+    { measure },
+  ))
+    total += part.frames;
+  expect(total).toBe(361 * hz);
+});
+
+it("mixes ten minutes of processed clips with bounded packets and closes on cancellation", async () => {
+  const hz = 100;
+  const project = decodeProjectFile({
+    revision: 0,
+    project: {
+      media: [{ id: "m", path: "long.wav", kind: "audio", duration: 700 }],
+      audioTracks: [
+        {
+          id: "a",
+          kind: "audio",
+          clips: [0, 300].map((start, i) => ({
+            id: `c${i}`,
+            start,
+            duration: 300.1,
+            content: { media: { mediaID: "m" } },
+            audio: { effects: [{ id: `compress${i}`, type: "compressor", enabled: true }] },
+          })),
+        },
+      ],
+    },
+  }).project;
+  let closed = 0;
+  const source = {
+    audio: async function* (from: number, to: number) {
+      try {
+        for (let first = from * hz; first < to * hz; first += 1000) {
+          const values = new Float32Array(1000).fill(0.1);
+          yield {
+            timestamp: first / hz,
+            duration: 10,
+            buffer: {
+              sampleRate: hz,
+              length: 1000,
+              numberOfChannels: 1,
+              getChannelData: () => values,
+            } as unknown as AudioBuffer,
+          };
+        }
+      } finally {
+        closed++;
+      }
+    },
+  };
+  let count = 0;
+  for await (const block of mixTimelineAudio(
+    project,
+    async () => source,
+    new AbortController().signal,
+    hz,
+    233,
+    600,
+  ))
+    count += block.frames;
+  expect(count).toBe(600 * hz);
+  expect(closed).toBe(2);
+  const abort = new AbortController();
+  const stream = mixTimelineAudio(project, async () => source, abort.signal, hz, 233, 600);
+  await stream.next();
+  abort.abort();
+  await expect(stream.next()).rejects.toThrow();
+  expect(closed).toBe(3);
+});

@@ -130,7 +130,7 @@ describe("host authority and native persistence", () => {
       delete external.sidecutJournal;
       replace(JSON.stringify(external));
       edit(service, 1, "Unsaved version");
-      await expect(service.flush()).rejects.toThrow(/outside SideCut/);
+      await expect(service.flush()).rejects.toThrow(/outside raE.E/);
       expect(JSON.parse(current()).project.name).toBe("External version");
       expect(JSON.parse((await service.replace()).json).project.name).toBe("External version");
       replace("interrupted invalid JSON");

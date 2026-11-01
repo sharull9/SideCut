@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@sidecut/ui/components/button";
 import { runContractProbe } from "./contract-probe";
 import { runMediaProbe } from "./media-probe";
@@ -7,9 +7,11 @@ import { RiArrowLeftLine } from "@remixicon/react";
 import { Link } from "@tanstack/react-router";
 import { useEditorSession } from "../workspace/editor-session";
 import { runSessionProbe } from "./session-probe";
+import { nativeBridge } from "../workspace/host-coordinator";
 
 export function DiagnosticsPage() {
   const { session, snapshot } = useEditorSession();
+  const bridge = nativeBridge();
   const [sessionResult, setSessionResult] = useState<ReturnType<typeof runSessionProbe> | null>(
     null,
   );
@@ -18,6 +20,39 @@ export function DiagnosticsPage() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [download, setDownload] = useState<string | null>(null);
+  const [reportPending, setReportPending] = useState(false);
+  const [reportDownload, setReportDownload] = useState<string | null>(null);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const active = useRef(true);
+
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
+  useEffect(
+    () => () => {
+      if (reportDownload) URL.revokeObjectURL(reportDownload);
+    },
+    [reportDownload],
+  );
+
+  async function createReport() {
+    if (!bridge?.supportReport || reportPending) return;
+    setReportPending(true);
+    setReportError(null);
+    setReportDownload(null);
+    try {
+      const json = await bridge.supportReport();
+      if (active.current)
+        setReportDownload(URL.createObjectURL(new Blob([json], { type: "application/json" })));
+    } catch {
+      if (active.current) setReportError("Could not create the support report. Please try again.");
+    } finally {
+      if (active.current) setReportPending(false);
+    }
+  }
 
   useEffect(
     () => () => {
@@ -69,6 +104,42 @@ export function DiagnosticsPage() {
             upload is used.
           </p>
         </header>
+        {bridge?.supportReport && (
+          <section aria-labelledby="support-heading" className="space-y-4 border-t pt-6">
+            <h2 id="support-heading" className="text-lg font-medium">
+              Local support report
+            </h2>
+            <p className="text-sm leading-6 text-muted-foreground">
+              Create a JSON file with app versions, service status, and technical project counts.
+              Project content, file paths, credentials, and logs are excluded. The file stays on
+              your device until you choose to share it.
+            </p>
+            <Button onClick={() => void createReport()} disabled={reportPending}>
+              {reportPending ? "Creating report…" : "Create support report"}
+            </Button>
+            <p role="status" className="text-sm text-muted-foreground">
+              {reportPending
+                ? "Creating a local report…"
+                : reportDownload
+                  ? "Report ready to download."
+                  : ""}
+            </p>
+            {reportDownload && (
+              <a
+                className="inline-block text-sm underline"
+                href={reportDownload}
+                download="sidecut-support.json"
+              >
+                Download support report
+              </a>
+            )}
+            {reportError && (
+              <p role="alert" className="text-sm text-destructive">
+                {reportError}
+              </p>
+            )}
+          </section>
+        )}
         <section aria-labelledby="session-heading" className="flex flex-col gap-4 border-t pt-6">
           <h2 id="session-heading" className="text-lg font-medium">
             Validation and command session

@@ -1,0 +1,119 @@
+{
+  "testedAt": "2026-10-26T16:30:35.487Z",
+  "platform": "win32",
+  "profiles": [
+    {
+      "name": "host-managed synthetic 1080p30 + tone",
+      "accepted": true,
+      "elapsedMs": 654.0939,
+      "frames": 150,
+      "duration": 5.021,
+      "effectiveEncodeFps": 229.32487216285,
+      "video": {
+        "codec": "h264",
+        "width": 1920,
+        "height": 1080,
+        "fps": "30/1",
+        "start": "0.000000"
+      },
+      "audio": {
+        "codec": "aac",
+        "start": "-0.021000",
+        "sampleRate": "48000"
+      },
+      "medianFrameStepMs": 33.00000000000014,
+      "p95FrameStepMs": 34.000000000000256,
+      "maxFrameStepMs": 34.000000000000696,
+      "initialTimestampSkewMs": 21
+    },
+    {
+      "name": "Windows desktop + synthetic audio",
+      "accepted": false,
+      "elapsedMs": 5235.558499999999,
+      "frames": 137,
+      "duration": 5.021,
+      "effectiveEncodeFps": 26.167217881339695,
+      "video": {
+        "codec": "h264",
+        "width": 1920,
+        "height": 1080,
+        "fps": "30/1",
+        "start": "0.000000"
+      },
+      "audio": {
+        "codec": "aac",
+        "start": "-0.021000",
+        "sampleRate": "48000"
+      },
+      "medianFrameStepMs": 33.00000000000036,
+      "p95FrameStepMs": 66.99999999999973,
+      "maxFrameStepMs": 67.00000000000017,
+      "initialTimestampSkewMs": 21
+    },
+    {
+      "name": "Windows desktop + microphone",
+      "accepted": false,
+      "elapsedMs": 6372.4108,
+      "frames": 35,
+      "duration": 5.023,
+      "effectiveEncodeFps": 5.4924268222004775,
+      "video": {
+        "codec": "h264",
+        "width": 1920,
+        "height": 1080,
+        "fps": "30/1",
+        "start": "0.000000"
+      },
+      "audio": {
+        "codec": "aac",
+        "start": "-0.023000",
+        "sampleRate": "44100"
+      },
+      "medianFrameStepMs": 33.00000000000036,
+      "p95FrameStepMs": 800.0000000000002,
+      "maxFrameStepMs": 800.0000000000002,
+      "initialTimestampSkewMs": 23
+    },
+    {
+      "name": "Windows microphone-first + bounded input queues",
+      "accepted": true,
+      "elapsedMs": 5501.726500000001,
+      "frames": 146,
+      "duration": 5.023,
+      "effectiveEncodeFps": 26.537124300889907,
+      "video": {
+        "codec": "h264",
+        "width": 1920,
+        "height": 1080,
+        "fps": "30/1",
+        "start": "0.000000"
+      },
+      "audio": {
+        "codec": "aac",
+        "start": "-0.023000",
+        "sampleRate": "44100"
+      },
+      "medianFrameStepMs": 33.00000000000014,
+      "p95FrameStepMs": 34.000000000000256,
+      "maxFrameStepMs": 67.00000000000017,
+      "initialTimestampSkewMs": 23
+    }
+  ],
+  "errors": [],
+  "physicalAVSyncMeasured": false,
+  "worker": {
+    "code": 0,
+    "elapsedMs": 569.0186,
+    "timedOut": false,
+    "totalElapsedMs": 639.7471999999998,
+    "implementation": "Private Node process supervising the same FFmpeg encoder"
+  },
+  "microphoneDeviceCount": 2,
+  "engineDecision": "Keep supervised FFmpeg as the initial encoding candidate. Gate native capture on microphone startup/cadence and physical A/V calibration; a private Node wrapper alone does not solve device timing. No Rust/GPU choice is justified by this probe.",
+  "limits": [
+    "Five-second samples, no sustained recording or physical A/V calibration",
+    "Frame cadence and container start timestamps are not physical sync measurements",
+    "Node worker comparison uses the same software encoder; no Rust or GPU prototype was measured",
+    "No capture artifacts or device names retained"
+  ]
+}

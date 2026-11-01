@@ -197,6 +197,8 @@ describe("single streaming destination", () => {
         streamURL: `rtmp://127.0.0.1:${await port()}/live/rejected-key`,
       });
       await expect.poll(() => recorder.streamStatus().state, { timeout: 8000 }).toBe("failed");
+      // A refused connection can fail before a full second of local media is encoded.
+      await pause(1800);
       const stopped = await recorder.stop();
       expect(stopped.status).toBe("ready");
       const local = await probe(join(root, started.id, "recording.mp4"));
@@ -216,6 +218,22 @@ describe("single streaming destination", () => {
       const hostname = mode === "hostname-mismatch" ? "127.0.0.2" : "127.0.0.1";
       const root = await mkdtemp(join(tmpdir(), "sidecut-stream-"));
       const { ffmpeg, ffprobe } = mediaBinaries();
+      const { stdout: version } = await execute(ffmpeg, ["-version"], { windowsHide: true });
+      if (!version.includes("--enable-gnutls")) {
+        const recorder = new NativeRecorder(ffmpeg, ffprobe, root, { inputProvider: synthetic });
+        try {
+          await expect(
+            recorder.start({ ...request, streamURL: "rtmps://localhost/live/tls-fixture" }),
+          ).rejects.toThrow("RTMPS requires a verified GnuTLS FFmpeg build.");
+          expect(await recorder.list()).toEqual([]);
+          expect(recorder.streamStatus().state).toBe("off");
+        } finally {
+          await recorder.close();
+          assert.ok(root.startsWith(join(tmpdir(), "sidecut-stream-")));
+          await rm(root, { recursive: true, force: true, maxRetries: 3 });
+        }
+        return;
+      }
       const certificate = resolve("tests/fixtures/streaming/localhost-cert.pem");
       const proxy = createTLSServer({
         cert: await readFile(certificate),
@@ -272,8 +290,10 @@ describe("single streaming destination", () => {
         if (mode === "trusted") {
           await pause(2200);
           expect(recorder.streamStatus().state).toBe("requested");
-        } else
+        } else {
           await expect.poll(() => recorder.streamStatus().state, { timeout: 8000 }).toBe("failed");
+          await pause(1800);
+        }
         const result = await recorder.stop();
         expect(result.status).toBe("ready");
         const local = await probe(join(root, started.id, "recording.mp4"));

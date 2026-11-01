@@ -94,7 +94,7 @@ it("creates native positional projects with settings, safe output, guards and re
   expect(readable.out).toContain("Landscape.tandem");
   expect(JSON.parse(host.snapshot().json).project.name).toBe("Landscape");
   expect((await run("new", "Bad", "--size", "0x10")).code).toBe(2);
-});
+}, 30000);
 
 it("imports separate EDL/recipe and Filmora positional sources through the host", async () => {
   const { run, root, host, api } = await setup();
@@ -184,7 +184,7 @@ it("imports separate EDL/recipe and Filmora positional sources through the host"
     name: "Legacy EDL",
     report: { format: "edl", clips: 2, media: 1, warnings: [] },
   });
-});
+}, 30000);
 
 // Multiple CLI subprocesses need headroom on shared CI runners.
 it("rejects valued native switches before replacement and accepts command and flag aliases", async () => {

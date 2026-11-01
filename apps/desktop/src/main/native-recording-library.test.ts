@@ -1,7 +1,17 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdir, mkdtemp, open, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  open,
+  readFile,
+  realpath,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
@@ -89,7 +99,7 @@ describe("native recording library", () => {
       await library.reveal(video.id, (path) => {
         revealed = path;
       });
-      expect(revealed).toBe(join(video.folder, "recording.mp4"));
+      expect(revealed).toBe(await realpath(join(video.folder, "recording.mp4")));
       expect(await readFile(join(video.folder, "recording.mkv"), "utf8")).toBe("original");
       await library.remove(video.id);
       await expect(stat(video.folder)).rejects.toThrow();
@@ -113,7 +123,7 @@ describe("native recording library", () => {
       await library.reveal(failed.id, (path) => {
         revealed = path;
       });
-      expect(revealed).toBe(join(failed.folder, "recording.mkv"));
+      expect(revealed).toBe(await realpath(join(failed.folder, "recording.mkv")));
       const active = await fixture(root, false, "stopping");
       await expect(library.remove(active.id)).rejects.toThrow();
       const large = await fixture(root);

@@ -11,6 +11,7 @@ import {
 } from "@sidecut/ui/components/dialog";
 import { Progress } from "@sidecut/ui/components/progress";
 import { Alert, AlertTitle, AlertDescription } from "@sidecut/ui/components/alert";
+import { UploadToCloudButton } from "../cloud/upload-button";
 import { exportPlan, projectDuration } from "@sidecut/core/render-plan";
 import { exportPresetPlan, type ExportPreset } from "@sidecut/core/export-presets";
 import { missingFonts, missingFontWarning } from "@sidecut/core/text";
@@ -237,6 +238,15 @@ export function ExportDialog({
                       ? "MP4"
                       : "WebM"}
                 </Button>
+              )}
+              {entry.status === "done" && (
+                <UploadToCloudButton
+                  getFile={async () => {
+                    const res = await fetch(entry.url);
+                    if (!res.ok) throw new Error("Export file is no longer available.");
+                    return { file: await res.blob(), name: entry.name };
+                  }}
+                />
               )}
               {(entry.status === "failed" ||
                 entry.status === "cancelled" ||

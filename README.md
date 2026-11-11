@@ -1,5 +1,13 @@
 # raE.E
 
+The whole project is open source, and every feature can be self-hosted for
+free. Only our hosted version is paid: there, the video editor is free, while
+the live streaming studio, MCP access, in-app AI, cloud uploads, team sharing
+and collaborative cloud comments need a subscription. Pricing and payment
+enforcement are not yet implemented. See [product access](docs/product-access.md).
+
+Licensed under the [GNU AGPL v3](LICENSE).
+
 The [Lawn/Videorc integration phases](docs/lawn-videorc-phases.md) now include
 short browser recordings. Open **Project media → Record**, choose screen/window,
 camera or microphone, then stop and add the recording to Project media. Completed

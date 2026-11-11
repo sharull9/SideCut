@@ -1,13 +1,13 @@
 {
-  "testedAt": "2026-11-01T17:58:46.893Z",
+  "testedAt": "2026-11-02T20:41:25.931Z",
   "platform": "win32",
   "production": true,
   "syntheticDevices": true,
   "checks": {
     "scenes": true,
     "camera": {
-      "beforeCamera": [17, 24, 39, 255],
-      "withCamera": [0, 135, 0, 255]
+      "beforeCamera": [28, 73, 102, 255],
+      "withCamera": [74, 255, 22, 255]
     },
     "screen": {
       "listed": 2
@@ -19,9 +19,9 @@
     "closeGuard": true,
     "recording": {
       "size": [1920, 1080],
-      "bytes": 686690,
+      "bytes": 604573,
       "audio": 1,
-      "banner": [55, 189, 249, 255]
+      "banner": [56, 189, 249, 255]
     },
     "handoff": true,
     "recentClips": true,

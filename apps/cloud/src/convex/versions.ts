@@ -2,6 +2,7 @@ import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./model";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { mediaAccess } from "./library";
+import { requireSubscription } from "./billing";
 
 export const begin = mutation({
   args: {
@@ -14,6 +15,7 @@ export const begin = mutation({
   handler: async (ctx, args) => {
     const media = await mediaAccess(ctx, args.mediaId, true);
     if (media.archived) throw new ConvexError("Media archived.");
+    await requireSubscription(ctx, media.teamId);
     if (
       !args.requestId ||
       args.requestId.length > 100 ||
@@ -197,6 +199,7 @@ export const transfer = internalQuery({
     if (!version) throw new ConvexError("Version unavailable.");
     const media = await mediaAccess(ctx, version.mediaId, true);
     if (media.archived) throw new ConvexError("Media archived.");
+    await requireSubscription(ctx, media.teamId);
     const parts = await ctx.db
       .query("uploadParts")
       .withIndex("by_version_part", (q) => q.eq("versionId", args.versionId))

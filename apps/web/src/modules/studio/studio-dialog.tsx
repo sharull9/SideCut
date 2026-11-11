@@ -1,4 +1,5 @@
-import { Suspense, lazy, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@sidecut/ui/components/button";
 import {
   Dialog,
@@ -7,14 +8,25 @@ import {
   DialogTitle,
 } from "@sidecut/ui/components/dialog";
 import { useEditorSession } from "@/modules/workspace/editor-session";
+import { SubscriptionGate } from "@/modules/billing/subscription-gate";
 
 const StudioPanel = lazy(() => import("./studio-panel"));
 
-export function StudioDialog() {
+export function StudioDialog({ openOnMount = false }: { openOnMount?: boolean }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const { snapshot } = useEditorSession();
+  const navigate = useNavigate();
+  const openedFromRoute = useRef(false);
+  useEffect(() => {
+    // Wait for the project to finish loading: scenes are stored per project.
+    if (!openOnMount || openedFromRoute.current || snapshot.saveState === "loading") return;
+    openedFromRoute.current = true;
+    setOpen(true);
+    // Clear the one-time ?studio=open param so a reload or back navigation does not reopen it.
+    void navigate({ to: "/", search: {}, replace: true });
+  }, [openOnMount, snapshot.saveState, navigate]);
   return (
     <>
       {/* Scenes are stored per project, so the real project must be open first. */}
@@ -47,9 +59,11 @@ export function StudioDialog() {
             <p role="alert">Stop the recording and add or discard the take before closing.</p>
           )}
           {open && (
-            <Suspense fallback={<p role="status">Loading studio…</p>}>
-              <StudioPanel onBusy={setBusy} />
-            </Suspense>
+            <SubscriptionGate feature="Live studio">
+              <Suspense fallback={<p role="status">Loading studio…</p>}>
+                <StudioPanel onBusy={setBusy} />
+              </Suspense>
+            </SubscriptionGate>
           )}
         </DialogContent>
       </Dialog>

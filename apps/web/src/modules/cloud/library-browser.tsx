@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
 import type { api } from "@sidecut/cloud/api";
 import { Button } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
+import { isSubscriptionRequired, subscriptionRequiredMessage } from "./subscription-error";
 
 export type LibraryFilter = Omit<FunctionArgs<typeof api.library.list>, "teamId">;
 type Bulk = Omit<FunctionArgs<typeof api.library.bulk>, "teamId">;
@@ -21,6 +22,7 @@ export type LibraryBrowserProps = {
     status: "LoadingFirstPage" | "CanLoadMore" | "LoadingMore" | "Exhausted";
     loadMore: () => void;
   };
+  renderItemAction?: (item: Items[number]) => ReactNode;
 };
 
 export function LibraryBrowser({
@@ -32,6 +34,7 @@ export function LibraryBrowser({
   createFolder,
   bulk,
   pagination,
+  renderItemAction,
 }: LibraryBrowserProps) {
   const [selected, setSelected] = useState(new Set<Items[number]["_id"]>());
   const [destination, setDestination] = useState<Folders[number]["_id"] | undefined>();
@@ -55,8 +58,12 @@ export function LibraryBrowser({
       await action();
       setSelected(new Set());
       setMessage(success);
-    } catch {
-      setError("The library update failed. Your selection was kept. Try again.");
+    } catch (cause) {
+      setError(
+        isSubscriptionRequired(cause)
+          ? subscriptionRequiredMessage
+          : "The library update failed. Your selection was kept. Try again.",
+      );
     } finally {
       setBusy(false);
     }
@@ -195,6 +202,7 @@ export function LibraryBrowser({
                   {item.archived ? " · Archived" : ""}
                 </p>
               </div>
+              {renderItemAction?.(item)}
             </li>
           ))}
         </ul>

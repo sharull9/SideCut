@@ -24,7 +24,8 @@ import { Button } from "@sidecut/ui/components/button";
 import { Alert, AlertTitle, AlertDescription } from "@sidecut/ui/components/alert";
 import { Tip, TooltipProvider } from "@sidecut/ui/components/tooltip";
 import { ExportDialog } from "./export-dialog";
-import { TeamsDialog } from "@/modules/cloud/teams-dialog";
+import { useAuth } from "@workos-inc/authkit-react";
+import { useCloud } from "@/modules/cloud/cloud-provider";
 import { StudioDialog } from "@/modules/studio/studio-dialog";
 import { Timeline } from "./timeline";
 import { Viewer } from "./viewer";
@@ -77,7 +78,8 @@ function PanelRail({
   );
 }
 
-export function WorkspaceHome() {
+export function WorkspaceHome({ studioOpen = false }: { studioOpen?: boolean }) {
+  const { configured } = useCloud();
   const { session, snapshot, editor } = useEditorSession();
   const keymap = useEditorView((state) => state.keymap);
   const keymapOverrides = useEditorView((state) => state.keymapOverrides);
@@ -261,8 +263,15 @@ export function WorkspaceHome() {
             </span>
           </div>
           <div className="editor-topbar-actions">
-            <StudioDialog />
-            <TeamsDialog />
+            <StudioDialog openOnMount={studioOpen} />
+            <Link
+              to="/cloud"
+              search={{ section: "overview" }}
+              className="inline-flex h-7 items-center rounded-md px-2.5 text-xs font-medium hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              Cloud
+              {configured ? <CloudSignedInIndicator /> : null}
+            </Link>
             <div className="editor-toolbar-group">
               <Tip
                 label={snapshot.undoLabel ? `Undo ${snapshot.undoLabel}` : "Nothing to undo"}
@@ -644,5 +653,17 @@ export function WorkspaceHome() {
         </footer>
       </main>
     </TooltipProvider>
+  );
+}
+
+// Rendered only when cloud is configured, so useAuth always has an AuthKitProvider above it.
+function CloudSignedInIndicator() {
+  const { user, isLoading } = useAuth();
+  if (isLoading || !user) return null;
+  return (
+    <>
+      <span aria-hidden="true" className="ml-1.5 size-1.5 rounded-full bg-primary" />
+      <span className="sr-only">(signed in as {user.email})</span>
+    </>
   );
 }

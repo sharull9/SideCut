@@ -1,19 +1,19 @@
 {
-  "duration": 11.21629999999702,
+  "duration": 11.219599999999627,
   "decodedAudioDuration": 11.16,
   "marks": [
     {
-      "time": 0.00010000000149011615,
+      "time": 0.0002999999988824129,
       "label": "Start",
       "kind": "clip-start"
     },
     {
-      "time": 5.7153999999985095,
+      "time": 5.712199999999255,
       "label": "Switch to green",
       "kind": "marker"
     },
     {
-      "time": 11.216,
+      "time": 11.219099999999628,
       "label": "End",
       "kind": "clip-end"
     }
@@ -21,7 +21,7 @@
   "red": [254, 0, 0, 255],
   "greenPixel": [0, 255, 0, 255],
   "audioEarly": 0.7066988616371148,
-  "audioLate": 0.7064201672883623,
+  "audioLate": 0.7058129148958818,
   "stillArmed": true,
   "borrowedLive": true,
   "failed": {
@@ -35,10 +35,10 @@
     "bytes": 0
   },
   "stoppedRejected": true,
-  "videoOnlyBytes": 2211,
+  "videoOnlyBytes": 2212,
   "abortRejected": true,
   "silentStopDetected": true,
-  "recordingBytes": 213803,
+  "recordingBytes": 213770,
   "browser": "156.0.8078.4",
   "runtime": "Vite module harness; synthetic canvas/audio; real MediaRecorder and WebM decode"
 }

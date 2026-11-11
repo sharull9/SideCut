@@ -1,5 +1,6 @@
 import { ClientOnly, HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
 import appCss from "@sidecut/ui/globals.css?url";
+import { CloudProvider } from "@/modules/cloud/cloud-provider";
 import { EditorSessionProvider } from "@/modules/workspace/editor-session";
 
 export const Route = createRootRoute({
@@ -44,7 +45,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <ClientOnly>
-          <EditorSessionProvider>{children}</EditorSessionProvider>
+          <CloudProvider>
+            <EditorSessionProvider>{children}</EditorSessionProvider>
+          </CloudProvider>
         </ClientOnly>
         <Scripts />
       </body>

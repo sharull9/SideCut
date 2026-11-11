@@ -122,9 +122,9 @@
   },
   "meter": {
     "peak": 0.25118863582611084,
-    "rms": 0.17700192687408617,
+    "rms": 0.17710911766819182,
     "peakDB": -12.000000253286988,
-    "rmsDB": -15.040440116127938,
+    "rmsDB": -15.035181610635917,
     "clipped": false
   },
   "stereoMeter": {
@@ -136,9 +136,9 @@
   },
   "updatedMeter": {
     "peak": 0.1258925348520279,
-    "rms": 0.08939203461996618,
+    "rms": 0.08906431906663352,
     "peakDB": -18.000000436554874,
-    "rmsDB": -20.974023555784946,
+    "rmsDB": -21.00592496215023,
     "clipped": false
   },
   "mutedMeter": {
@@ -153,13 +153,13 @@
   "borrowedTrackRetained": true,
   "originalMixRetained": true,
   "closedTracks": true,
-  "audioOnset": 0.6085208333333333,
+  "audioOnset": 0.6071875,
   "greenAt": 0.5250000000000001,
-  "measuredOffsetMs": 83.52083333333316,
+  "measuredOffsetMs": 82.18749999999986,
   "frameCount": 50,
-  "redFrames": 20,
-  "greenFrames": 30,
-  "recordingBytes": 16514,
+  "redFrames": 19,
+  "greenFrames": 31,
+  "recordingBytes": 16837,
   "browser": "156.0.8078.4",
   "runtime": "Vite development module harness; real Web Audio, canvas and MediaRecorder"
 }

@@ -1,15 +1,10 @@
 import { useQuery } from "convex/react";
 import { makeFunctionReference } from "convex/server";
 import { browserCloudConfig } from "../cloud/config";
+import { billingEnabledAtBuild } from "./billing-flag";
 
-// Only the hosted build turns billing on. Self-hosted and unset builds allow everything.
-export function parseBillingFlag(value: string | undefined): boolean {
-  return value === "true" || value === "1";
-}
-
-export function billingEnabledAtBuild(): boolean {
-  return parseBillingFlag(import.meta.env.VITE_SIDECUT_BILLING_ENABLED);
-}
+// Re-exported so existing imports and tests keep working. The flag logic lives in billing-flag.ts.
+export { parseBillingFlag, billingEnabledAtBuild } from "./billing-flag";
 
 export type Subscription = {
   billingEnabled: boolean;

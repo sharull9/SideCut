@@ -118,8 +118,10 @@ export default defineSchema({
     archived: v.boolean(),
     nextVersion: v.number(),
     readyVersionId: v.optional(v.id("mediaVersions")),
+    createRequestId: v.optional(v.string()),
   })
     .index("by_team", ["teamId"])
+    .index("by_team_request", ["teamId", "createRequestId"])
     .index("by_team_archived", ["teamId", "archived"])
     .index("by_team_archived_name", ["teamId", "archived", "name"])
     .index("by_team_folder_archived", ["teamId", "folderId", "archived"])
@@ -140,6 +142,7 @@ export default defineSchema({
       v.literal("processing"),
       v.literal("ready"),
       v.literal("failed"),
+      v.literal("cancelled"),
     ),
     attempt: v.number(),
     objectKey: v.string(),
@@ -149,9 +152,12 @@ export default defineSchema({
     thumbnailKey: v.optional(v.string()),
     workflow: v.optional(reviewWorkflow),
     workflowRevision: v.optional(v.number()),
+    fileName: v.optional(v.string()),
+    createdBy: v.optional(v.string()),
   })
     .index("by_media", ["mediaId"])
-    .index("by_request", ["mediaId", "requestId"]),
+    .index("by_request", ["mediaId", "requestId"])
+    .index("by_status", ["status"]),
   uploadParts: defineTable({
     versionId: v.id("mediaVersions"),
     part: v.number(),

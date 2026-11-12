@@ -3,7 +3,7 @@ import {
   readPreference,
   writePreference,
 } from "@sidecut/platform-browser/preferences";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   RiArrowGoBackLine,
@@ -24,10 +24,12 @@ import { Button } from "@sidecut/ui/components/button";
 import { Alert, AlertTitle, AlertDescription } from "@sidecut/ui/components/alert";
 import { Tip, TooltipProvider } from "@sidecut/ui/components/tooltip";
 import { ExportDialog } from "./export-dialog";
-import { useAuth } from "@workos-inc/authkit-react";
 import { useCloud } from "@/modules/cloud/cloud-provider";
 import { StudioDialog } from "@/modules/studio/studio-dialog";
 import { Timeline } from "./timeline";
+
+// AuthKit loads only when a signed-in indicator is actually shown (cloud configured).
+const CloudSignedInIndicator = lazy(() => import("@/modules/cloud/cloud-signed-in-indicator"));
 import { Viewer } from "./viewer";
 import { ClipInspector } from "./clip-inspector";
 import { SidePanel } from "./side-panel";
@@ -270,7 +272,11 @@ export function WorkspaceHome({ studioOpen = false }: { studioOpen?: boolean }) 
               className="inline-flex h-7 items-center rounded-md px-2.5 text-xs font-medium hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
             >
               Cloud
-              {configured ? <CloudSignedInIndicator /> : null}
+              {configured ? (
+                <Suspense fallback={null}>
+                  <CloudSignedInIndicator />
+                </Suspense>
+              ) : null}
             </Link>
             <div className="editor-toolbar-group">
               <Tip
@@ -653,17 +659,5 @@ export function WorkspaceHome({ studioOpen = false }: { studioOpen?: boolean }) 
         </footer>
       </main>
     </TooltipProvider>
-  );
-}
-
-// Rendered only when cloud is configured, so useAuth always has an AuthKitProvider above it.
-function CloudSignedInIndicator() {
-  const { user, isLoading } = useAuth();
-  if (isLoading || !user) return null;
-  return (
-    <>
-      <span aria-hidden="true" className="ml-1.5 size-1.5 rounded-full bg-primary" />
-      <span className="sr-only">(signed in as {user.email})</span>
-    </>
   );
 }

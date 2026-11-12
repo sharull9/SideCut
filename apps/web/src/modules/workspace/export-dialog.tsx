@@ -11,7 +11,7 @@ import {
 } from "@sidecut/ui/components/dialog";
 import { Progress } from "@sidecut/ui/components/progress";
 import { Alert, AlertTitle, AlertDescription } from "@sidecut/ui/components/alert";
-import { UploadToCloudButton } from "../cloud/upload-button";
+import { UploadToCloudButton } from "../cloud/upload-button-lazy";
 import { exportPlan, projectDuration } from "@sidecut/core/render-plan";
 import { exportPresetPlan, type ExportPreset } from "@sidecut/core/export-presets";
 import { missingFonts, missingFontWarning } from "@sidecut/core/text";

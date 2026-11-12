@@ -40,6 +40,7 @@ export function CloudLibrary({
   const folders = useQuery(api.library.folders, { teamId });
   const create = useMutation(api.library.createFolder);
   const bulk = useMutation(api.library.bulk);
+  const original = useAction(api.storage.originalUrl);
   const playback = useAction(api.storage.playbackUrl);
   const { session, snapshot } = useEditorSession();
   const [progress, setProgress] = useState<AddProgress | null>(null);
@@ -55,10 +56,19 @@ export function CloudLibrary({
     setOutcome(null);
     setProgress({ name: item.name, phase: "resolving", loaded: 0 });
     try {
-      const { url } = await playback({ mediaId: item._id, versionId });
+      // The original keeps its stored name and type. Playback is the fallback when it can't be resolved.
+      let source: { url: string; fileName?: string };
+      try {
+        const resolved = await original({ mediaId: item._id, versionId });
+        source = { url: resolved.url, fileName: resolved.fileName };
+      } catch (cause) {
+        if (controller.signal.aborted) throw cause;
+        const { url } = await playback({ mediaId: item._id, versionId });
+        source = { url };
+      }
       if (controller.signal.aborted) throw new DOMException("Cancelled.", "AbortError");
       const file = await downloadToFile({
-        url,
+        ...source,
         name: item.name,
         signal: controller.signal,
         onProgress: ({ loaded, total }) =>

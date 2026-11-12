@@ -8,9 +8,13 @@ import {
   DialogTitle,
 } from "@sidecut/ui/components/dialog";
 import { useEditorSession } from "@/modules/workspace/editor-session";
-import { SubscriptionGate } from "@/modules/billing/subscription-gate";
+import { billingEnabledAtBuild } from "@/modules/billing/billing-flag";
 
 const StudioPanel = lazy(() => import("./studio-panel"));
+// Billing code (Convex) is fetched only in builds where billing is on.
+const SubscriptionGate = lazy(() =>
+  import("@/modules/billing/subscription-gate").then((m) => ({ default: m.SubscriptionGate })),
+);
 
 export function StudioDialog({ openOnMount = false }: { openOnMount?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -59,11 +63,15 @@ export function StudioDialog({ openOnMount = false }: { openOnMount?: boolean })
             <p role="alert">Stop the recording and add or discard the take before closing.</p>
           )}
           {open && (
-            <SubscriptionGate feature="Live studio">
-              <Suspense fallback={<p role="status">Loading studio…</p>}>
+            <Suspense fallback={<p role="status">Loading studio…</p>}>
+              {billingEnabledAtBuild() ? (
+                <SubscriptionGate feature="Live studio">
+                  <StudioPanel onBusy={setBusy} />
+                </SubscriptionGate>
+              ) : (
                 <StudioPanel onBusy={setBusy} />
-              </Suspense>
-            </SubscriptionGate>
+              )}
+            </Suspense>
           )}
         </DialogContent>
       </Dialog>

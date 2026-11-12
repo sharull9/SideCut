@@ -4,27 +4,12 @@ import {
   RiArrowLeftLine,
   RiArrowRightUpLine,
   RiCloudLine,
-  RiDashboardLine,
   RiFolderVideoLine,
-  RiGroupLine,
-  RiChatCheckLine,
-  RiSendPlaneLine,
-  RiPieChartLine,
 } from "@remixicon/react";
 import { CloudContent } from "./cloud-content";
 import { browserCloudConfig } from "./config";
+import { cloudSections, type Section } from "./cloud-sections";
 import "./cloud-dashboard.css";
-
-export const cloudSections = [
-  { id: "overview", label: "Overview", icon: RiDashboardLine },
-  { id: "library", label: "Library", icon: RiFolderVideoLine },
-  { id: "team", label: "Team", icon: RiGroupLine },
-  { id: "reviews", label: "Reviews", icon: RiChatCheckLine },
-  { id: "publishing", label: "Publishing", icon: RiSendPlaneLine },
-  { id: "usage", label: "Usage", icon: RiPieChartLine },
-] as const;
-
-type Section = (typeof cloudSections)[number]["id"];
 
 const descriptions: Record<Section, string> = {
   overview: "Your team, shared media and cloud workflows, together.",

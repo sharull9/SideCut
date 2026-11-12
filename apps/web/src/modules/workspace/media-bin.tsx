@@ -27,7 +27,7 @@ import {
 } from "@sidecut/ui/components/empty";
 import { Input } from "@sidecut/ui/components/input";
 import { Tip } from "@sidecut/ui/components/tooltip";
-import { UploadToCloudButton } from "../cloud/upload-button";
+import { UploadToCloudButton } from "../cloud/upload-button-lazy";
 import { useEditorSession } from "./editor-session";
 import { placeSource, MEDIA_DRAG_TYPE } from "./placement";
 import { MediaPlacementForm } from "./media-placement-form";

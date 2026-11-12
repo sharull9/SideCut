@@ -85,3 +85,23 @@ it("renders children as unconfigured with no team when cloud config is absent", 
     ),
   ).toBe("<p>configured:false;team:none</p>");
 });
+
+it("reports cloud as unavailable and activate as a no-op when config is absent", () => {
+  function Available() {
+    const cloud = useCloud();
+    cloud.activate();
+    return <p>{`available:${String(cloud.available)}`}</p>;
+  }
+  expect(
+    renderToStaticMarkup(
+      <CloudProvider>
+        <Available />
+      </CloudProvider>,
+    ),
+  ).toBe("<p>available:false</p>");
+});
+
+it("re-exports the dependency-free helpers unchanged", () => {
+  expect(safeReturnTo("/cloud?section=team")).toBe("/cloud?section=team");
+  expect(activeTeamStorageKey).toBe("sidecut.cloud.activeTeam");
+});

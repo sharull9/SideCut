@@ -63,9 +63,10 @@ try {
   page.setDefaultTimeout(30_000);
   page.on("pageerror", (error) => result.errors.push(error.message));
   await page.goto(url);
-  const dialog = page.getByRole("dialog");
+  const dialog = page.getByRole("main", { name: "Studio" });
+  const nav = page.getByRole("navigation", { name: "App" });
   const openStudio = async () => {
-    await page.getByRole("button", { name: "Studio", exact: true }).click();
+    await nav.getByRole("link", { name: "Studio", exact: true }).click();
     await dialog.getByRole("button", { name: "Save from editor" }).waitFor();
     await dialog.getByText("Opening saved scenes…").waitFor({ state: "detached" });
   };
@@ -147,11 +148,15 @@ try {
   // Record: decoded output has picture, overlay, camera and audio.
   await button("Start recording").click();
   await button("Stop recording").waitFor();
-  await page.waitForTimeout(4000);
+  await page.waitForTimeout(2000);
+  await button("Mark moment").click();
+  await dialog.getByText("1 mark", { exact: false }).waitFor();
+  await page.waitForTimeout(2000);
 
-  // Output in memory must not be lost by closing.
-  await page.keyboard.press("Escape");
-  await dialog.getByText("Stop the recording and add or discard").waitFor();
+  // Output in memory must not be lost by leaving the route.
+  await nav.getByRole("link", { name: "Edit", exact: true }).click();
+  await dialog.getByText("Stop the recording, let the upload finish").waitFor();
+  await button("Stay in Studio").click();
   result.checks.closeGuard = true;
   await button("Stop recording").click();
   await dialog.getByRole("link", { name: "Download take" }).waitFor();
@@ -185,11 +190,17 @@ try {
   assert.ok(decoded.banner[2] > 180, `decoded banner was ${decoded.banner}`);
   result.checks.recording = decoded;
 
-  // Editor handoff.
+  // Editor handoff: the take lands at the end of the timeline with its mark.
   await button("Add take to project").click();
-  await dialog.getByText("was added to Project media.").waitFor();
-  result.checks.handoff = true;
+  await dialog.getByText("placed at the end of the timeline").waitFor();
   await noAlert();
+  await nav.getByRole("link", { name: "Edit", exact: true }).click();
+  await page
+    .getByLabel(/Mark 1 at \d+\.\d+ seconds/)
+    .first()
+    .waitFor();
+  result.checks.handoff = { placed: true, marker: true };
+  await openStudio();
 
   // Recent clips.
   await button("Arm buffer").click();
@@ -203,8 +214,8 @@ try {
   await button("Stop buffer").click();
   result.checks.recentClips = true;
 
-  // Closing releases devices; reopening recovers scenes without a crash.
-  await page.keyboard.press("Escape");
+  // Leaving releases devices; returning recovers scenes without a crash.
+  await nav.getByRole("link", { name: "Edit", exact: true }).click();
   await dialog.waitFor({ state: "detached" });
   await page.reload();
   await openStudio();
@@ -213,6 +224,20 @@ try {
   await page.waitForTimeout(600);
   assert.deepEqual((await pixel(0.1, 0.86)).slice(0, 3), [56, 189, 248]);
   result.checks.reloadRecovery = true;
+
+  // A take cut off by a reload is kept on disk and offered back.
+  await button("Start recording").click();
+  await button("Stop recording").waitFor();
+  await page.waitForTimeout(6500);
+  page.once("dialog", (prompt) => void prompt.accept());
+  await page.reload();
+  await openStudio();
+  const recovered = dialog.getByRole("region", { name: "Recovered takes" });
+  await recovered.getByText("· interrupted", { exact: false }).waitFor();
+  await recovered.getByRole("button", { name: "Add to project", exact: true }).click();
+  await dialog.getByText("was added to Project media").waitFor();
+  await recovered.waitFor({ state: "detached" });
+  result.checks.takeRecovery = true;
 
   assert.deepEqual(result.errors, []);
   result.accepted = true;

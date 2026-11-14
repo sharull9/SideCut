@@ -3,26 +3,32 @@ import type { IpcMainInvokeEvent } from "electron";
 import { randomUUID } from "node:crypto";
 import type { HostProjectService } from "./project-service.ts";
 import { bridgeChannels } from "../shared/bridge.ts";
-import { EditError } from "@sidecut/core/coordinator";
 import { QueryError } from "@sidecut/core/project-queries";
-import { rendererMutations } from "@sidecut/core/service-requests";
 import { projectDuration } from "@sidecut/core/render-plan";
 import { decodeProjectFile } from "@sidecut/contracts/project";
+import {
+  pendingRequest,
+  requestTransition,
+  serviceTransition,
+  type PendingRequest,
+  type ProjectPosition,
+  type RequestEvent,
+  type RequestState,
+  type ServiceState,
+} from "./renderer-request-state.ts";
 export function rendererService(
   project: HostProjectService,
   isTrusted: (url: string) => boolean,
   onJobs: (jobs: unknown[]) => void = () => {},
 ) {
+  type Entry = {
+    state: PendingRequest;
+    dispatch: (event: RequestEvent) => void;
+    progress?: (value: number) => void;
+  };
   const ready = new Set<number>(),
-    pending = new Map<
-      string,
-      {
-        sender: number;
-        operation: string;
-        finish: (result: unknown, error?: string) => void;
-        progress?: (value: number) => void;
-      }
-    >();
+    pending = new Map<string, Entry>();
+  let lifecycle: ServiceState = "open";
   const check = (event: IpcMainInvokeEvent) => {
     if (event.senderFrame !== event.sender.mainFrame || !isTrusted(event.senderFrame?.url ?? ""))
       throw new Error("Untrusted service sender.");
@@ -34,6 +40,13 @@ export function rendererService(
         !w.webContents.isDestroyed() &&
         isTrusted(w.webContents.getURL()),
     );
+  const position = (): ProjectPosition => {
+    const current = project.snapshot();
+    return {
+      generation: current.generation,
+      revision: (JSON.parse(current.json) as { revision: number }).revision,
+    };
+  };
   ipcMain.handle(bridgeChannels.serviceProgress, (event, id: unknown, progress: unknown) => {
     check(event);
     if (
@@ -45,7 +58,7 @@ export function rendererService(
     )
       throw new Error("Invalid service progress.");
     const request = pending.get(id);
-    if (request?.sender === event.sender.id) request.progress?.(progress);
+    if (request?.state.sender === event.sender.id) request.progress?.(progress);
   });
   ipcMain.handle(bridgeChannels.serviceJobs, (event, jobs: unknown) => {
     check(event);
@@ -66,10 +79,23 @@ export function rendererService(
       if (typeof id !== "string" || (error !== undefined && typeof error !== "string"))
         throw new Error("Invalid service response.");
       const request = pending.get(id);
-      if (!request || request.sender !== event.sender.id) return;
-      if (JSON.stringify(result ?? null).length > 360 * 1024 * 1024)
-        throw new Error("Service response exceeds limits.");
-      request.finish(result, error as string | undefined);
+      if (!request || request.state.sender !== event.sender.id) return;
+      try {
+        if (JSON.stringify(result ?? null).length > 360 * 1024 * 1024)
+          throw new Error("Service response exceeds limits.");
+        request.dispatch({
+          type: "reply",
+          sender: event.sender.id,
+          result,
+          error: error as string | undefined,
+          current: position(),
+        });
+      } catch (cause) {
+        request.dispatch({
+          type: "failed",
+          error: cause instanceof Error ? cause : new Error(String(cause)),
+        });
+      }
     },
   );
   const run = (
@@ -78,12 +104,14 @@ export function rendererService(
     signal: AbortSignal,
     progress?: (value: number) => void,
   ): Promise<unknown> => {
+    if (lifecycle !== "open")
+      return Promise.reject(new QueryError("unavailable", "Desktop service is closing."));
     const target = window();
     if (!target)
       return Promise.reject(new QueryError("unavailable", "No ready editor renderer is attached."));
     if (
       pending.size >= 8 ||
-      ([...pending.values()].some((p) => !["wait", "query-state"].includes(p.operation)) &&
+      ([...pending.values()].some((p) => !["wait", "query-state"].includes(p.state.operation)) &&
         !["query-state", "timeline", "wait", "comments"].includes(operation))
     )
       return Promise.reject(
@@ -94,56 +122,36 @@ export function rendererService(
       file = JSON.parse(snapshot.json),
       id = randomUUID();
     return new Promise((resolve, reject) => {
-      const finish = (result: unknown, error?: string) => {
-        if (!pending.delete(id)) return;
+      const initial = pendingRequest(target.webContents.id, operation, {
+        generation: snapshot.generation,
+        revision: file.revision,
+      });
+      let state: RequestState = initial;
+      // The only path that settles a request: transition first, then release, then notify.
+      const dispatch = (event: RequestEvent) => {
+        if (state.phase === "settled") return;
+        const next = requestTransition(state, event);
+        if (next.phase === "pending") return;
+        state = next;
+        pending.delete(id);
         clearTimeout(timer);
-        signal.removeEventListener("abort", cancel);
-        target.webContents.removeListener("destroyed", closed);
-        const current = project.snapshot();
-        if (error) {
-          let detail: { code?: unknown; message?: unknown } = {};
+        signal.removeEventListener("abort", onAbort);
+        target.webContents.removeListener("destroyed", onDestroyed);
+        if (next.outcome.kind === "resolve") resolve(next.outcome.value);
+        else reject(next.outcome.error);
+        if (
+          (event.type === "abort" || event.type === "deadline") &&
+          !target.webContents.isDestroyed()
+        ) {
           try {
-            const parsed: unknown = JSON.parse(error);
-            if (parsed && typeof parsed === "object") detail = parsed;
+            target.webContents.send(bridgeChannels.serviceRequest, { id, type: "cancel" });
           } catch {
-            /* Older renderers return plain text. */
+            /* Cancellation is best effort once the request has settled. */
           }
-          reject(
-            detail.code === "staleRevision"
-              ? new EditError(
-                  "stale-revision",
-                  typeof detail.message === "string" ? detail.message : "Stale project revision.",
-                )
-              : new QueryError(
-                  detail.code === "badRequest" ||
-                    detail.code === "notFound" ||
-                    detail.code === "notImplemented"
-                    ? detail.code
-                    : "unavailable",
-                  typeof detail.message === "string" ? detail.message : error,
-                ),
-          );
-        } else if (
-          current.generation !== snapshot.generation ||
-          (!rendererMutations.has(operation) &&
-            operation !== "wait" &&
-            operation !== "transcribe" &&
-            JSON.parse(current.json).revision !== file.revision)
-        )
-          reject(
-            new QueryError(
-              "unavailable",
-              "Project changed while the renderer operation was running.",
-            ),
-          );
-        else resolve(result);
+        }
       };
-      const cancel = () => {
-        if (!target.webContents.isDestroyed())
-          target.webContents.send(bridgeChannels.serviceRequest, { id, type: "cancel" });
-        finish(null, "Renderer operation cancelled.");
-      };
-      const closed = () => finish(null, "Editor window closed.");
+      const onAbort = () => dispatch({ type: "abort" });
+      const onDestroyed = () => dispatch({ type: "destroyed" });
       const exportSeconds = ["clip", "export"].includes(operation)
         ? Math.max(
             0,
@@ -153,7 +161,7 @@ export function rendererService(
           )
         : 0;
       const timer = setTimeout(
-        cancel,
+        () => dispatch({ type: "deadline" }),
         Math.min(
           ["transcribe", "wait", "clip", "export"].includes(operation) ? 86401000 : 610000,
           Math.max(
@@ -163,23 +171,25 @@ export function rendererService(
           ),
         ),
       );
-      pending.set(id, {
-        sender: target.webContents.id,
-        operation,
-        finish,
-        ...(progress ? { progress } : {}),
-      });
-      target.webContents.once("destroyed", closed);
-      signal.addEventListener("abort", cancel, { once: true });
-      target.webContents.send(bridgeChannels.serviceRequest, {
-        id,
-        type: "call",
-        operation,
-        input,
-        projectID: file.project.id,
-        generation: snapshot.generation,
-        revision: file.revision,
-      });
+      pending.set(id, { state: initial, dispatch, ...(progress ? { progress } : {}) });
+      target.webContents.once("destroyed", onDestroyed);
+      signal.addEventListener("abort", onAbort, { once: true });
+      try {
+        target.webContents.send(bridgeChannels.serviceRequest, {
+          id,
+          type: "call",
+          operation,
+          input,
+          projectID: file.project.id,
+          generation: snapshot.generation,
+          revision: file.revision,
+        });
+      } catch (error) {
+        dispatch({
+          type: "failed",
+          error: error instanceof Error ? error : new Error(String(error)),
+        });
+      }
     });
   };
   const screenshot = async () => {
@@ -188,11 +198,14 @@ export function rendererService(
     return new Uint8Array((await target.webContents.capturePage()).toPNG());
   };
   const close = () => {
-    for (const request of pending.values()) request.finish(null, "Desktop service is closing.");
+    lifecycle = serviceTransition(lifecycle, "close");
+    for (const request of [...pending.values()]) request.dispatch({ type: "close" });
+    ready.clear();
     ipcMain.removeHandler(bridgeChannels.serviceReady);
     ipcMain.removeHandler(bridgeChannels.serviceReply);
     ipcMain.removeHandler(bridgeChannels.serviceProgress);
     ipcMain.removeHandler(bridgeChannels.serviceJobs);
+    lifecycle = serviceTransition(lifecycle, "closed");
   };
   return {
     activate() {

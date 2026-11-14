@@ -51,10 +51,13 @@ try {
   const address = server.address();
   assert.ok(address && typeof address === "object");
   await page.goto(`http://${configured ? "localhost" : "127.0.0.1"}:${address.port}`);
-  const trigger = page.getByRole("button", { name: "Teams", exact: true });
+  const trigger = page
+    .getByRole("navigation", { name: "App" })
+    .getByRole("link", { name: "Team", exact: true });
   await trigger.click();
-  const dialog = page.getByRole("dialog", { name: "Teams", exact: true });
-  await dialog
+  await page.waitForURL((url) => url.pathname === "/team");
+  const teamPage = page.getByRole("main", { name: "Team" });
+  await teamPage
     .getByText(
       configured
         ? "Sign in to create a team or accept an invitation."
@@ -62,33 +65,27 @@ try {
       { exact: false },
     )
     .waitFor();
-  await page.keyboard.press("Escape");
-  await dialog.waitFor({ state: "hidden" });
-  assert.equal(await trigger.evaluate((element) => element === document.activeElement), true);
-  await trigger.click();
-  await dialog.waitFor();
-  await dialog.getByRole("button", { name: "Close", exact: true }).click();
-  await dialog.waitFor({ state: "hidden" });
+  await page.goBack();
+  await teamPage.waitFor({ state: "detached" });
+  await page.goForward();
+  await teamPage.waitFor();
   await page.setViewportSize({ width: 390, height: 844 });
-  await trigger.click();
-  await dialog.waitFor();
-  const bounds = await dialog.boundingBox();
+  const bounds = await teamPage.boundingBox();
   assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 391);
   await page.screenshot({
     path: "logs/lv012-teams-mobile.png",
     animations: "disabled",
   });
   if (configured) {
-    await dialog.getByRole("button", { name: "Sign in", exact: true }).click();
+    await teamPage.getByRole("button", { name: "Sign in", exact: true }).click();
     await page.waitForURL(
       (url) => url.hostname.endsWith("authkit.app") || url.hostname === "api.workos.com",
       { timeout: 30000 },
     );
   }
-  await page.keyboard.press("Escape");
   assert.deepEqual(errors, []);
   process.stdout.write(
-    `Teams production smoke passed: ${configured ? "configured sign-in and WorkOS redirect" : "unconfigured state"}, reopen, Escape, focus return, mobile bounds, no page errors.\n`,
+    `Teams production smoke passed: ${configured ? "configured sign-in and WorkOS redirect" : "unconfigured state"}, route, back/forward, mobile bounds, no page errors.\n`,
   );
 } finally {
   await browser?.close();

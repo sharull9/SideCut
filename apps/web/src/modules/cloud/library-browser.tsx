@@ -18,6 +18,8 @@ export type LibraryBrowserProps = {
   readOnly: boolean;
   createFolder: (name: string) => Promise<unknown>;
   bulk: (operation: Bulk) => Promise<unknown>;
+  /** Opens a file in the editor; omitted where there is no editor to open it in. */
+  onEdit?: (mediaId: Items[number]["_id"]) => void;
   pagination?: {
     status: "LoadingFirstPage" | "CanLoadMore" | "LoadingMore" | "Exhausted";
     loadMore: () => void;
@@ -33,6 +35,7 @@ export function LibraryBrowser({
   readOnly,
   createFolder,
   bulk,
+  onEdit,
   pagination,
   renderItemAction,
 }: LibraryBrowserProps) {
@@ -203,6 +206,16 @@ export function LibraryBrowser({
                 </p>
               </div>
               {renderItemAction?.(item)}
+              {onEdit && !item.archived && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-label={`Open ${item.name} in the editor`}
+                  onClick={() => onEdit(item._id)}
+                >
+                  Open in editor
+                </Button>
+              )}
             </li>
           ))}
         </ul>

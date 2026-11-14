@@ -1,15 +1,20 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { AppShell } from "@/modules/shell/app-shell";
 import { WorkspaceHome } from "@/modules/workspace/workspace-home";
 
-type EditorSearch = { studio?: "open" };
-
 export const Route = createFileRoute("/")({
-  validateSearch: (search: Record<string, unknown>): EditorSearch =>
-    search.studio === "open" ? { studio: "open" } : {},
-  component: EditorRoute,
+  // Older WorkOS setups register the site root as the Redirect URI; sign-in finishes on Team.
+  beforeLoad: ({ location }) => {
+    const search = location.search as Record<string, unknown>;
+    if (search.code && search.state) throw redirect({ to: "/team", search, replace: true });
+  },
+  component: EditPage,
 });
 
-function EditorRoute() {
-  const { studio } = Route.useSearch();
-  return <WorkspaceHome studioOpen={studio === "open"} />;
+function EditPage() {
+  return (
+    <AppShell>
+      <WorkspaceHome />
+    </AppShell>
+  );
 }

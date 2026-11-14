@@ -8,6 +8,9 @@ enforcement are not yet implemented. See [product access](docs/product-access.md
 
 Licensed under the [GNU AGPL v3](LICENSE).
 
+Environment setup and validation: see [the env package guide](packages/env/README.md)
+and the `.env.example` files at the root and in each app.
+
 The [Lawn/Videorc integration phases](docs/lawn-videorc-phases.md) now include
 short browser recordings. Open **Project media → Record**, choose screen/window,
 camera or microphone, then stop and add the recording to Project media. Completed

@@ -191,6 +191,148 @@ describe("native recorder", () => {
       await cleanup(root);
     }
   }, 30000);
+  it("lets exactly one concurrent stop finalize and rejects the other", async () => {
+    const root = await mkdtemp(join(tmpdir(), "native-recorder-"));
+    const { ffmpeg, ffprobe } = mediaBinaries();
+    const recorder = new NativeRecorder(ffmpeg, ffprobe, root, { inputProvider: synthetic });
+    try {
+      const started = await recorder.start(request);
+      await pause(1200);
+      const first = recorder.stop(started.id);
+      await expect(recorder.stop(started.id)).rejects.toThrow("No active recording");
+      expect((await first).status).toBe("ready");
+      await expect(recorder.stop(started.id)).rejects.toThrow();
+      expect(recorder.streamStatus()).toEqual({ state: "off" });
+    } finally {
+      await recorder.close();
+      await cleanup(root);
+    }
+  }, 30000);
+  it("rejects saved-recording operations, retry and start while an operation owns the slot", async () => {
+    const root = await mkdtemp(join(tmpdir(), "native-recorder-"));
+    const { ffmpeg, ffprobe } = mediaBinaries();
+    const recorder = new NativeRecorder(ffmpeg, ffprobe, root, { inputProvider: synthetic });
+    try {
+      const started = await recorder.start(request);
+      await expect(recorder.withSavedRecording(started.id, async () => 1)).rejects.toThrow(
+        "already active",
+      );
+      await expect(recorder.retry(started.id)).rejects.toThrow("already active");
+      await pause(800);
+      await recorder.stop(started.id);
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const holding = recorder.withSavedRecording(started.id, () => gate);
+      await expect(recorder.start(request)).rejects.toThrow("already active");
+      await expect(recorder.withSavedRecording(started.id, async () => 1)).rejects.toThrow(
+        "already active",
+      );
+      release();
+      await holding;
+      await expect(recorder.withSavedRecording(started.id, async () => 7)).resolves.toBe(7);
+    } finally {
+      await recorder.close();
+      await cleanup(root);
+    }
+  }, 30000);
+  it("close during finalization waits for the stop and then refuses new work", async () => {
+    const root = await mkdtemp(join(tmpdir(), "native-recorder-"));
+    const { ffmpeg, ffprobe } = mediaBinaries();
+    const recorder = new NativeRecorder(ffmpeg, ffprobe, root, { inputProvider: synthetic });
+    try {
+      const started = await recorder.start(request);
+      await pause(1200);
+      const stopping = recorder.stop(started.id);
+      await recorder.close();
+      expect((await stopping).status).toBe("ready");
+      await expect(recorder.start(request)).rejects.toThrow("already active or closed");
+      await expect(recorder.retry(started.id)).rejects.toThrow("already active or closed");
+    } finally {
+      await recorder.close();
+      await cleanup(root);
+    }
+  }, 30000);
+  it("records an unexpected real process exit as an error and releases the slot", async () => {
+    const root = await mkdtemp(join(tmpdir(), "native-recorder-"));
+    const { ffmpeg, ffprobe } = mediaBinaries();
+    const finite = async () => ({
+      args: [
+        "-t",
+        "2",
+        "-re",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=size=128x128:rate=15",
+        "-t",
+        "2",
+        "-re",
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=440:sample_rate=44100",
+      ],
+      video: true,
+      audio: true,
+    });
+    let provider = finite;
+    const recorder = new NativeRecorder(ffmpeg, ffprobe, root, {
+      inputProvider: () => provider(),
+    });
+    try {
+      const started = await recorder.start(request);
+      const deadline = Date.now() + 15000;
+      let row = (await recorder.list()).find((item) => item.id === started.id);
+      while (row?.status !== "error" && Date.now() < deadline) {
+        await pause(100);
+        row = (await recorder.list()).find((item) => item.id === started.id);
+      }
+      expect(row?.status).toBe("error");
+      expect(row?.error).toBe("Recording process stopped unexpectedly");
+      // The exit raced with stop: stop must lose cleanly, never finalize or hang.
+      await expect(recorder.stop(started.id)).rejects.toThrow();
+      provider = synthetic;
+      const next = await recorder.start(request);
+      expect(next.id).not.toBe(started.id);
+    } finally {
+      await recorder.close();
+      await cleanup(root);
+    }
+  }, 40000);
+  it("close drains and reaches closed even when the stop rejects", async () => {
+    const root = await mkdtemp(join(tmpdir(), "native-recorder-"));
+    const { ffmpeg, ffprobe } = mediaBinaries();
+    const recorder = new NativeRecorder(ffmpeg, ffprobe, root, { inputProvider: synthetic });
+    try {
+      const started = await recorder.start(request);
+      await pause(800);
+      // Make the journal unwritable so every save in stop fails.
+      const journal = join(root, started.id, "metadata.json");
+      await rm(journal, { force: true });
+      await mkdir(journal);
+      await expect(recorder.close()).rejects.toThrow();
+      await expect(recorder.start(request)).rejects.toThrow("already active or closed");
+      await recorder.close();
+    } finally {
+      await cleanup(root);
+    }
+  }, 30000);
+  it("closing a live recording stops and finalizes it", async () => {
+    const root = await mkdtemp(join(tmpdir(), "native-recorder-"));
+    const { ffmpeg, ffprobe } = mediaBinaries();
+    const recorder = new NativeRecorder(ffmpeg, ffprobe, root, { inputProvider: synthetic });
+    try {
+      const started = await recorder.start(request);
+      await pause(1200);
+      await recorder.close();
+      const reopened = new NativeRecorder(ffmpeg, ffprobe, root);
+      expect((await reopened.list()).find((item) => item.id === started.id)?.status).toBe("ready");
+    } finally {
+      await cleanup(root);
+    }
+  }, 30000);
   it("preserves corrupt and misnamed non-Matroska sources without publishing an output", async () => {
     const root = await mkdtemp(join(tmpdir(), "native-recorder-"));
     const { ffmpeg, ffprobe } = mediaBinaries();

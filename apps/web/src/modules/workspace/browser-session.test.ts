@@ -824,6 +824,114 @@ describe("persistent browser session", () => {
     expect(value.getSnapshot().saveState).toBe("saved");
   });
 
+  describe("save identity and capture ownership", () => {
+    const original = store.save;
+    afterEach(() => {
+      store.save = original;
+    });
+    /** Holds each save until the test settles it; returns them in call order. */
+    const heldSaves = () => {
+      const held: Array<{ revision: number; ok: () => void; fail: () => void }> = [];
+      store.save = (file: ProjectFile) =>
+        new Promise<void>((resolve, reject) => {
+          held.push({
+            revision: file.revision,
+            ok: () => {
+              saved = file;
+              resolve();
+            },
+            fail: () => reject(new Error("Storage quota exceeded")),
+          });
+        });
+      return held;
+    };
+    const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    it("records an older successful save while a newer save is pending, then the newer failure and retry", async () => {
+      const value = session();
+      await value.start();
+      expect(value.saveProgress()).toEqual({
+        generation: null,
+        lastSavedRevision: 0,
+        pending: null,
+      });
+      const held = heldSaves();
+      rename(value, "First");
+      rename(value, "Second");
+      await tick();
+      expect(value.saveProgress()?.pending).toEqual({ sequence: 2, revision: 2 });
+      held[0]!.ok();
+      await tick();
+      // The older save is durable although the newer one is still in flight.
+      expect(value.saveProgress()).toMatchObject({
+        lastSavedRevision: 1,
+        pending: { sequence: 2, revision: 2 },
+      });
+      expect(value.getSnapshot().saveState).toBe("saving");
+      held[1]!.fail();
+      await tick();
+      expect(value.getSnapshot().saveState).toBe("error");
+      expect(value.saveProgress()).toMatchObject({
+        lastSavedRevision: 1,
+        pending: { sequence: 2, revision: 2 },
+      });
+      const retry = value.retrySave();
+      await tick();
+      held[2]!.ok();
+      await retry;
+      expect(value.saveProgress()).toMatchObject({ lastSavedRevision: 2, pending: null });
+      expect(value.getSnapshot().saveState).toBe("saved");
+    });
+
+    it("restart drains the old backend before reopening and ignores its persistence events", async () => {
+      const value = session();
+      await value.start();
+      const held = heldSaves();
+      rename(value, "Old epoch");
+      await tick();
+      const restarting = value.start();
+      await tick();
+      expect(release).not.toHaveBeenCalled();
+      expect(store.close).not.toHaveBeenCalled();
+      expect(value.saveProgress()).toBeNull();
+      held[0]!.ok();
+      await restarting;
+      expect(release).toHaveBeenCalledTimes(1);
+      expect(store.close).toHaveBeenCalledTimes(1);
+      expect(value.saveProgress()).toMatchObject({ lastSavedRevision: 1, pending: null });
+      expect(value.getSnapshot().project.name).toBe("Old epoch");
+      expect(value.getSnapshot().saveState).toBe("saved");
+    });
+
+    it("stops a running capture once when write access is lost, not on ordinary data changes", async () => {
+      const value = session();
+      await value.start();
+      vi.spyOn(value.recording, "start").mockResolvedValue();
+      await value.startRecording({ source: "microphone", microphone: false });
+      const running = { status: "recording" as const, startedAt: 0, bytes: 0 };
+      vi.spyOn(value.recording, "getSnapshot").mockReturnValue(running);
+      const stop = vi.spyOn(value.recording, "stop").mockImplementation(() => {});
+      rename(value, "Same project edit");
+      value.undo();
+      expect(stop).not.toHaveBeenCalled();
+      await value.close();
+      expect(stop).toHaveBeenCalledTimes(1);
+    });
+
+    it("discards a pending capture request once when the session restarts", async () => {
+      const value = session();
+      await value.start();
+      vi.spyOn(value.recording, "start").mockResolvedValue();
+      await value.startRecording({ source: "microphone", microphone: false });
+      vi.spyOn(value.recording, "getSnapshot").mockReturnValue({ status: "requesting" });
+      const discard = vi.spyOn(value.recording, "discard").mockResolvedValue();
+      await value.start();
+      rename(value, "After restart");
+      // The session's own teardown (recording.close) is a separate, later discard.
+      expect(discard).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it("blocks all mutation entry points without a writer lock and reloads before taking over", async () => {
     vi.mocked(acquireProjectWriter).mockResolvedValueOnce(null);
     const value = session();
@@ -861,6 +969,181 @@ describe("persistent browser session", () => {
     await abandoned;
     expect(vi.mocked(acquireProjectWriter).mock.calls.length).toBe(calls);
     expect(value.getSnapshot().readOnly).toBe(false);
+  });
+
+  it("close drains a pending save before releasing the writer lock", async () => {
+    const writerRelease = vi.fn();
+    vi.mocked(acquireProjectWriter).mockResolvedValueOnce(writerRelease);
+    const value = session();
+    await value.start();
+    let finishSave!: () => void;
+    store.save = async (file: ProjectFile) => {
+      await new Promise<void>((resolve) => {
+        finishSave = resolve;
+      });
+      saved = file;
+    };
+    try {
+      rename(value, "Closing study");
+      const closing = value.close();
+      let secondClosed = false;
+      const secondClosing = value.close().then(() => {
+        secondClosed = true;
+      });
+      await Promise.resolve();
+      expect(secondClosed).toBe(false);
+      expect(value.getSnapshot().readOnly).toBe(true);
+      expect(writerRelease).not.toHaveBeenCalled();
+      expect(store.close).not.toHaveBeenCalled();
+      finishSave();
+      await closing;
+      await secondClosing;
+      expect(saved?.project.name).toBe("Closing study");
+      expect(writerRelease).toHaveBeenCalledTimes(1);
+      expect(store.close).toHaveBeenCalledTimes(1);
+      expect(value.getSnapshot().saveState).toBe("saved");
+    } finally {
+      store.save = async (file: ProjectFile) => {
+        if (failSave) throw new Error("Storage quota exceeded");
+        saved = file;
+      };
+    }
+  });
+
+  it("a late storage acquisition cannot configure exports after close", async () => {
+    const storage = await DurableStorage.open();
+    let entered!: () => void;
+    const acquiring = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    let finish!: (value: DurableStorage) => void;
+    vi.mocked(DurableStorage.open).mockImplementationOnce(() => {
+      entered();
+      return new Promise((resolve) => {
+        finish = resolve;
+      });
+    });
+    const value = session();
+    const configure = vi.spyOn(value.exports, "configure");
+    const opening = value.start();
+    await acquiring;
+    await value.close();
+    finish(storage);
+    await opening;
+    expect(configure).not.toHaveBeenCalled();
+    expect(value.getSnapshot().readOnly).toBe(true);
+  });
+
+  it("failure after install retains unsupported original data for download", async () => {
+    const value = session();
+    let entered!: () => void;
+    const configuring = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    let fail!: (error: Error) => void;
+    vi.mocked(DurableStorage.open).mockImplementationOnce(() => {
+      entered();
+      return new Promise((_resolve, reject) => {
+        fail = reject;
+      });
+    });
+    const starting = value.start();
+    await configuring;
+    const original = JSON.stringify({ revision: 5, project: { schemaVersion: 99, future: true } });
+    await value.openProject(new File([original], "future.tandem"));
+    fail(new Error("export storage unavailable"));
+    await starting;
+    expect(value.getSnapshot()).toMatchObject({
+      readOnly: true,
+      error: "export storage unavailable",
+      unsupportedJSON: original,
+    });
+    const click = vi.fn();
+    const anchor = { href: "", download: "", click, remove: vi.fn() };
+    vi.stubGlobal("document", { createElement: () => anchor, body: { append: vi.fn() } });
+    vi.useFakeTimers();
+    const createURL = vi.spyOn(URL, "createObjectURL");
+    try {
+      value.downloadProject();
+      const blob = createURL.mock.calls[0]![0];
+      if (!(blob instanceof Blob)) throw new Error("Expected project JSON download");
+      expect(await blob.text()).toBe(original);
+      expect(click).toHaveBeenCalledTimes(1);
+      vi.runAllTimers();
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("a stale operation cannot clear the busy state of a session reopened after close", async () => {
+    const value = session();
+    await value.start();
+    let resolveProbe!: () => void;
+    vi.mocked(probeLocalFile).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveProbe = () =>
+            resolve({
+              item: {
+                id: "med_stale",
+                path: "stale.png",
+                kind: "image" as const,
+                role: "image" as const,
+                fingerprint: "stale",
+                hasVideo: true,
+                hasAudio: false,
+              },
+              resource: { file: new File(["x"], "stale.png"), state: "available", detail: "" },
+            });
+        }),
+    );
+    const importing = value.importFiles([new File(["x"], "stale.png")]);
+    expect(value.getSnapshot().busy).toBe(true);
+    await value.close();
+    await value.start();
+    expect(value.getSnapshot().busy).toBe(false);
+    // A new foreground operation in the reopened session must survive the old completion.
+    let finishNew!: () => void;
+    vi.mocked(probeLocalFile).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishNew = () =>
+            resolve({
+              item: {
+                id: "med_new",
+                path: "new.png",
+                kind: "image" as const,
+                role: "image" as const,
+                fingerprint: "new",
+                hasVideo: true,
+                hasAudio: false,
+              },
+              resource: { file: new File(["y"], "new.png"), state: "available", detail: "" },
+            });
+        }),
+    );
+    const next = value.importFiles([new File(["y"], "new.png")]);
+    expect(value.getSnapshot().busy).toBe(true);
+    resolveProbe();
+    await expect(importing).rejects.toThrow("closed");
+    expect(value.getSnapshot().busy).toBe(true);
+    finishNew();
+    await next;
+    expect(value.getSnapshot().busy).toBe(false);
+  });
+
+  it("a failed startup is recoverable by starting again without leaking the lock", async () => {
+    vi.mocked(BrowserProjectStore.open).mockRejectedValueOnce(new Error("storage unavailable"));
+    const value = session();
+    await value.start();
+    expect(value.getSnapshot()).toMatchObject({
+      saveState: "error",
+      readOnly: true,
+      error: "storage unavailable",
+    });
+    await value.start();
+    expect(value.getSnapshot()).toMatchObject({ saveState: "saved", readOnly: false, error: null });
   });
 
   it("rejects invalid open without switching the active project and preserves envelope fields", async () => {

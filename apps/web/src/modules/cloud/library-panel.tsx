@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAction, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { api } from "@sidecut/cloud/api";
 import { Button } from "@sidecut/ui/components/button";
 import { useEditorSession } from "../workspace/editor-session";
@@ -43,6 +43,7 @@ export function CloudLibrary({
   const original = useAction(api.storage.originalUrl);
   const playback = useAction(api.storage.playbackUrl);
   const { session, snapshot } = useEditorSession();
+  const navigate = useNavigate();
   const [progress, setProgress] = useState<AddProgress | null>(null);
   const [outcome, setOutcome] = useState<AddOutcome | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
@@ -155,6 +156,7 @@ export function CloudLibrary({
         bulk={(operation) => bulk({ teamId, ...operation })}
         pagination={{ status, loadMore: () => loadMore(25) }}
         renderItemAction={renderItemAction}
+        onEdit={(mediaId) => void navigate({ to: "/edit/$mediaId", params: { mediaId } })}
       />
       {progress && (
         <div className="grid justify-items-start gap-2 text-sm" role="status">

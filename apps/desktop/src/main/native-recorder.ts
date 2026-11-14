@@ -23,15 +23,23 @@ import type {
 import { nativeDevices, nativeInputs, type NativeInput } from "./native-recording-inputs.ts";
 import { decodeNativeRecording } from "@sidecut/contracts/native-recording";
 import { streamingOutputs, streamDestination, streamDestinations } from "./native-streaming.ts";
+import {
+  OperationRejected,
+  operationSession,
+  operationSettling,
+  operationTransition,
+  type Lifetime,
+  type Operation,
+  type OperationEvent,
+  type Recovery,
+} from "./native-recorder-state.ts";
 
 type Session = {
   recording: NativeRecording;
-  child?: ChildProcessWithoutNullStreams;
-  done?: Promise<number | null>;
   started: number;
-  stopping: boolean;
   stream: NativeStreamStatus;
 };
+type Proc = { child: ChildProcessWithoutNullStreams; done: Promise<number | null> };
 type Options = {
   inputProvider?: (request: NativeRecordingRequest) => Promise<NativeInput>;
   encoderCandidates?: readonly string[];
@@ -75,10 +83,26 @@ function run(executable: string, args: string[], timeout: number): Promise<strin
 }
 
 export class NativeRecorder {
-  private session: Session | undefined;
-  private busy = false;
-  private closed = false;
-  private initialized: Promise<void> | undefined;
+  private op: Operation<Session, Proc> = { kind: "idle" };
+  private lifetime: Lifetime = "open";
+  private recovery: Recovery = { kind: "pending" };
+  private get session() {
+    return operationSession(this.op);
+  }
+  /** Transition first; effects (spawn, journal writes) follow from the new state. */
+  private dispatch(event: OperationEvent<Session, Proc>) {
+    this.op = operationTransition(this.op, event);
+  }
+  private begin(event: "prepare" | "operateSaved") {
+    if (this.lifetime !== "open")
+      throw new Error("A recording operation is already active or closed");
+    try {
+      this.dispatch({ type: event });
+    } catch (error) {
+      if (error instanceof OperationRejected) throw new Error(error.message, { cause: error });
+      throw error;
+    }
+  }
   constructor(
     private readonly ffmpeg: string,
     private readonly ffprobe: string,
@@ -147,9 +171,7 @@ export class NativeRecorder {
     id: string,
     action: (recording: NativeRecording, folder: string) => Promise<T>,
   ): Promise<T> {
-    if (this.closed || this.busy || this.session)
-      throw new Error("A recording operation is already active or closed");
-    this.busy = true;
+    this.begin("operateSaved");
     try {
       const resolved = await this.safeFolder(id);
       const item = await this.load(id);
@@ -157,11 +179,14 @@ export class NativeRecorder {
         throw new Error("Recording is active or stopping");
       return await action(item, resolved);
     } finally {
-      this.busy = false;
+      this.dispatch({ type: "release" });
     }
   }
   private init(): Promise<void> {
-    return (this.initialized ??= (async () => {
+    if (this.recovery.kind === "running") return this.recovery.ready;
+    if (this.recovery.kind === "done") return Promise.resolve();
+    if (this.recovery.kind === "failed") return Promise.reject(this.recovery.error);
+    const ready = (async () => {
       await mkdir(this.root, { recursive: true });
       for (const id of await readdir(this.root)) {
         if (!idPattern.test(id)) continue;
@@ -176,7 +201,17 @@ export class NativeRecorder {
           await this.save(item);
         }
       }
-    })());
+    })();
+    this.recovery = { kind: "running", ready };
+    ready.then(
+      () => {
+        this.recovery = { kind: "done" };
+      },
+      (error: unknown) => {
+        this.recovery = { kind: "failed", error };
+      },
+    );
+    return ready;
   }
   async list(): Promise<NativeRecording[]> {
     await this.init();
@@ -235,9 +270,7 @@ export class NativeRecorder {
     return "libx264";
   }
   async start(request: NativeRecordingRequest): Promise<NativeRecording> {
-    if (this.closed || this.busy || this.session)
-      throw new Error("A recording operation is already active or closed");
-    this.busy = true;
+    this.begin("prepare");
     let session: Session | undefined;
     try {
       const destinations = streamDestinations(request.streamURL, request.streamURLs);
@@ -252,7 +285,7 @@ export class NativeRecorder {
         : nativeInputs(this.ffmpeg, request));
       if (!input.video && !input.audio) throw new Error("No capture streams available");
       const encoder = await this.encoder(request, input.video);
-      if (this.closed) throw new Error("Recorder is closed");
+      if (this.lifetime !== "open") throw new Error("Recorder is closed");
       const recording: NativeRecording = {
         id: randomUUID(),
         projectID: request.projectID,
@@ -271,13 +304,11 @@ export class NativeRecorder {
       session = {
         recording,
         started: Date.now(),
-        stopping: false,
         stream: {
           state: destinations.length ? "requested" : "off",
           targets: destinations.map((_, index) => ({ index, state: "requested" })),
         },
       };
-      this.session = session;
       await this.save(recording);
       const args = [
         "-hide_banner",
@@ -326,7 +357,6 @@ export class NativeRecorder {
             ]),
       ];
       const child = spawn(this.ffmpeg, args, { windowsHide: true, stdio: "pipe" });
-      session.child = child;
       let diagnostics = "";
       const ownedStream = session.stream;
       child.stderr.on("data", (chunk: Buffer) => {
@@ -343,10 +373,14 @@ export class NativeRecorder {
           ownedStream.state = "failed";
       });
       child.stdin.on("error", () => {});
-      session.done = new Promise((resolve) => {
-        child.on("error", () => {});
-        child.on("close", resolve);
-      });
+      const proc: Proc = {
+        child,
+        done: new Promise((resolve) => {
+          child.on("error", () => {});
+          child.on("close", resolve);
+        }),
+      };
+      this.dispatch({ type: "spawned", session, proc });
       await new Promise<void>((resolve, reject) => {
         const cleanup = () => {
           clearTimeout(timer);
@@ -376,60 +410,63 @@ export class NativeRecorder {
         child.once("error", ended);
       });
       const owned = session;
-      void session.done.then(async () => {
-        if (owned.stopping) return;
-        owned.recording.status = "error";
-        owned.recording.error = "Recording process stopped unexpectedly";
-        owned.recording.elapsedSeconds = Math.max(0, (Date.now() - owned.started) / 1000);
-        owned.recording.bytes = await this.safeFile(owned.recording.id, "recording.mkv")
-          .then((file) => stat(file))
-          .then((s) => s.size)
-          .catch(() => 0);
-        await this.save(owned.recording).catch(() => {});
-        if (this.session === owned) this.session = undefined;
+      this.dispatch({ type: "ready", session: owned });
+      // An explicit stop moves the operation to `stopping` first; only a recording that is
+      // still `recording` when its process ends has exited unexpectedly.
+      void proc.done.then(async () => {
+        if (this.op.kind !== "recording" || this.op.session !== owned) return;
+        this.dispatch({ type: "exited", session: owned });
+        try {
+          owned.recording.status = "error";
+          owned.recording.error = "Recording process stopped unexpectedly";
+          owned.recording.elapsedSeconds = Math.max(0, (Date.now() - owned.started) / 1000);
+          owned.recording.bytes = await this.safeFile(owned.recording.id, "recording.mkv")
+            .then((file) => stat(file))
+            .then((s) => s.size)
+            .catch(() => 0);
+          await this.save(owned.recording).catch(() => {});
+        } finally {
+          this.dispatch({ type: "release" });
+        }
       });
       return { ...recording };
     } catch (error) {
       if (session) {
-        session.stopping = true;
-        session.child?.kill();
-        await session.done;
+        const proc = this.op.kind === "starting" ? this.op.proc : undefined;
+        proc?.child.kill();
+        await proc?.done;
         session.recording.status = "error";
         session.recording.error = "Could not start native recording";
         await this.save(session.recording).catch(() => {});
-        if (this.session === session) this.session = undefined;
       }
       throw error;
     } finally {
-      this.busy = false;
+      // A recording that reached `recording` keeps its slot until stop or exit releases it.
+      if (this.op.kind !== "recording") this.dispatch({ type: "release" });
     }
   }
   async stop(expectedID?: string): Promise<NativeRecording> {
     if (expectedID !== undefined && this.session?.recording.id !== expectedID)
       throw new Error("Recording changed. Refresh before stopping.");
-    if (this.busy || !this.session || !this.session.child || !this.session.done)
-      throw new Error("No active recording");
-    this.busy = true;
-    const session = this.session;
-    const child = session.child;
-    const done = session.done;
-    if (!child || !done) {
-      this.busy = false;
-      throw new Error("No active recording");
-    }
-    session.stopping = true;
+    const active = this.op;
+    if (active.kind !== "recording") throw new Error("No active recording");
+    const { session, proc } = active;
+    const { child, done } = proc;
+    this.dispatch({ type: "stop" });
     try {
       session.recording.status = "stopping";
       await this.save(session.recording);
       child.stdin.write("q\n");
       const timer = setTimeout(() => child.kill(), 10000);
       const code = await done.finally(() => clearTimeout(timer));
+      this.dispatch({ type: "processEnded", session });
       session.recording.elapsedSeconds = Math.max(0, (Date.now() - session.started) / 1000);
       if (code !== 0) throw new Error("Recording process failed while stopping");
       return await this.finalize(session.recording);
     } catch {
       child.kill();
       await done;
+      this.dispatch({ type: "processEnded", session });
       session.recording.status = "error";
       session.recording.error = "Recording could not be finalized";
       session.recording.bytes = await this.safeFile(session.recording.id, "recording.mkv")
@@ -439,8 +476,7 @@ export class NativeRecorder {
       await this.save(session.recording);
       return { ...session.recording };
     } finally {
-      this.session = undefined;
-      this.busy = false;
+      this.dispatch({ type: "release" });
     }
   }
   private async cleanupPublishedRemuxes(id: string): Promise<void> {
@@ -560,9 +596,7 @@ export class NativeRecorder {
     }
   }
   async retry(id: string): Promise<NativeRecording> {
-    if (this.closed || this.busy || this.session)
-      throw new Error("A recording operation is already active or closed");
-    this.busy = true;
+    this.begin("operateSaved");
     try {
       await this.init();
       const item = await this.load(id);
@@ -577,13 +611,26 @@ export class NativeRecorder {
         return item;
       }
     } finally {
-      this.busy = false;
+      this.dispatch({ type: "release" });
     }
   }
   async close(): Promise<void> {
-    this.closed = true;
-    if (this.session && !this.busy) await this.stop();
-    while (this.busy) await new Promise((resolve) => setTimeout(resolve, 20));
-    if (this.session) await this.stop();
+    this.lifetime = "closing";
+    // A rejected stop must not strand the recorder in `closing`: drain, then always close.
+    let failure: { error: unknown } | undefined;
+    const stopRecording = async () => {
+      if (this.op.kind !== "recording") return;
+      try {
+        await this.stop();
+      } catch (error) {
+        failure ??= { error };
+      }
+    };
+    await stopRecording();
+    while (operationSettling(this.op)) await new Promise((resolve) => setTimeout(resolve, 20));
+    await stopRecording();
+    while (operationSettling(this.op)) await new Promise((resolve) => setTimeout(resolve, 20));
+    this.lifetime = "closed";
+    if (failure) throw failure.error;
   }
 }

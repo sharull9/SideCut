@@ -43,6 +43,26 @@ describe("private R2 action boundary", () => {
     );
     await expect(b.action(api.storage.complete, { versionId })).rejects.toThrow("access denied");
     await expect(b.action(api.storage.playbackUrl, { mediaId })).rejects.toThrow("access denied");
+    await expect(b.action(api.storage.sourceUrl, { mediaId })).rejects.toThrow("access denied");
+    await expect(a.action(api.storage.sourceUrl, { mediaId })).rejects.toThrow(
+      "Source unavailable",
+    );
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("refuses to complete a recording upload before its size is sealed", async () => {
+    const t = createTest();
+    const a = t.withIdentity({ subject: "alice", issuer: "https://api.workos.com/" });
+    const teamId = await a.mutation(api.teams.create, { name: "A" });
+    const mediaId = await a.mutation(api.library.create, { teamId, name: "Take" });
+    const versionId = await a.mutation(api.versions.beginStream, {
+      mediaId,
+      requestId: "take",
+      snapshot: "{}",
+    });
+    await t.run((ctx) => ctx.db.patch(versionId, { uploadId: "upload" }));
+    const send = vi.spyOn(S3Client.prototype, "send");
+    await expect(a.action(api.storage.complete, { versionId })).rejects.toThrow("not sealed");
     expect(send).not.toHaveBeenCalled();
   });
 });

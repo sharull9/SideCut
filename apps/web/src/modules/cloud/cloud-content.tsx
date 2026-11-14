@@ -20,7 +20,7 @@ class CloudErrorBoundary extends Component<{ children: ReactNode }, { failed: bo
   }
 }
 
-export function CloudContent({ view = "all" }: { view?: "all" | "team" | "library" }) {
+export function CloudContent({ view = "team" }: { view?: "team" | "library" }) {
   return (
     <CloudErrorBoundary>
       <Suspense fallback={<p role="status">Loading cloud workspace…</p>}>

@@ -2,6 +2,7 @@
 "use node";
 
 import process from "node:process";
+import { createStorageEnv } from "@sidecut/env/cloud";
 
 import {
   S3Client,
@@ -21,12 +22,18 @@ import { internal } from "./_generated/api";
 import { attachmentDisposition, safeFileName } from "./downloadName";
 
 function storage() {
-  const account = process.env.R2_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-  const bucket = process.env.R2_BUCKET;
-  if (!account || !/^[a-f0-9]{32}$/.test(account) || !accessKeyId || !secretAccessKey || !bucket)
+  let env;
+  try {
+    env = createStorageEnv(process.env);
+  } catch {
     throw new ConvexError("Private media storage is not configured.");
+  }
+  const {
+    R2_ACCOUNT_ID: account,
+    R2_ACCESS_KEY_ID: accessKeyId,
+    R2_SECRET_ACCESS_KEY: secretAccessKey,
+    R2_BUCKET: bucket,
+  } = env;
   return {
     bucket,
     client: new S3Client({
@@ -170,6 +177,7 @@ export const complete = action({
     if (version.status === "processing" || version.status === "ready") return;
     if (version.status !== "uploading" || !version.uploadId)
       throw new ConvexError("Upload unavailable.");
+    if (version.open) throw new ConvexError("Recording upload is not sealed.");
     const { client, bucket } = storage();
     const object = { Bucket: bucket, Key: version.objectKey };
     // Reconcile a completed object after a lost response or database outage.
@@ -239,6 +247,33 @@ export const playbackUrl = action({
         { expiresIn },
       ),
       expiresIn,
+    };
+  },
+});
+
+export const sourceUrl = action({
+  args: { mediaId: v.id("media") },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    url: string;
+    expiresIn: number;
+    name: string;
+    snapshot: string;
+    marks: { seconds: number; name: string }[];
+  }> => {
+    const source = await ctx.runQuery(internal.versions.source, args);
+    const { client, bucket } = storage();
+    const expiresIn = 60;
+    return {
+      url: await getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: source.key }), {
+        expiresIn,
+      }),
+      expiresIn,
+      name: source.name,
+      snapshot: source.snapshot,
+      marks: source.marks,
     };
   },
 });

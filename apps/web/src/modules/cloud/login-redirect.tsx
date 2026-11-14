@@ -21,7 +21,7 @@ function StartSignIn() {
       window.location.replace("/");
       return;
     }
-    void signIn({ state: { returnTo: "/cloud?section=team" } }).catch(() =>
+    void signIn({ state: { returnTo: "/team" } }).catch(() =>
       setError("Sign-in could not start. Reload to try again."),
     );
   }, [isLoading, user, signIn]);

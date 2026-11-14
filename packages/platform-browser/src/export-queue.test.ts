@@ -227,6 +227,41 @@ function durableFixture() {
 }
 const tick = () => new Promise((resolve) => setTimeout(resolve, 10));
 
+it("reconfigures a stopped queue with the new storage in a host without Web Locks", async () => {
+  vi.stubGlobal("navigator", undefined);
+  try {
+    const first = durableFixture();
+    const second = durableFixture();
+    const queue = new ExportQueue();
+    await queue.configure({
+      ...first.storage,
+      store: first.store,
+      run: async () => new Blob(["old"]),
+    });
+    queue.stop();
+    await queue.configure({
+      ...second.storage,
+      store: second.store,
+      run: async () => new Blob(["new"]),
+    });
+    queue.enqueue(
+      "new.webm",
+      async () => new Blob(),
+      "webm",
+      second.recipe,
+      Promise.resolve(second.recipe),
+    );
+    await vi.waitFor(() => expect(queue.getSnapshot()[0]?.status).toBe("done"));
+    expect(await first.store.list()).toHaveLength(0);
+    expect(await second.store.list()).toMatchObject([{ status: "done" }]);
+    queue.clear();
+    queue.stop();
+    await tick();
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
 it("removes a recipe after staging finishes without resurrecting its journal or files", async () => {
   const { storage, store, files, recipe } = durableFixture();
   const queue = new ExportQueue();
@@ -398,4 +433,132 @@ it("keeps another window from interrupting a live queue and releases ownership a
     first.stop();
     second.stop();
   }
+});
+
+it("releases the delivery lock when stopped during lock acquisition", async () => {
+  const release = vi.fn();
+  let grant!: (value: () => void) => void;
+  vi.mocked(acquireProjectWriter).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        grant = resolve;
+      }),
+  );
+  const { storage, store } = durableFixture();
+  const queue = new ExportQueue();
+  const configuring = queue.configure({ ...storage, store, run: async () => new Blob() });
+  queue.stop();
+  expect(() => queue.assertAvailable()).toThrow("closing");
+  grant(release);
+  await configuring;
+  expect(release).toHaveBeenCalledTimes(1);
+  expect(queue.getSnapshot()).toEqual([]);
+});
+
+it("keeps the lock until recovery finishes when stopped during recovery", async () => {
+  const release = vi.fn();
+  vi.mocked(acquireProjectWriter).mockResolvedValueOnce(release);
+  const { storage, store, recipe } = durableFixture();
+  const id = crypto.randomUUID();
+  await store.put(
+    { id, name: "q", recipe, status: "queued", error: null, outputFileID: null, outputType: null },
+    null,
+  );
+  let finish!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  const queue = new ExportQueue();
+  let renders = 0;
+  const configuring = queue.configure({
+    ...storage,
+    store: Object.assign(Object.create(store), {
+      interruptRunning: async () => {
+        await gate;
+        return store.interruptRunning();
+      },
+    }),
+    run: async () => {
+      renders++;
+      return new Blob();
+    },
+  });
+  await tick();
+  queue.stop();
+  expect(release).not.toHaveBeenCalled();
+  finish();
+  await configuring;
+  await tick();
+  expect(release).toHaveBeenCalledTimes(1);
+  expect(renders).toBe(0);
+});
+
+it("does not let a second configure call acquire the lock twice", async () => {
+  const { storage, store } = durableFixture();
+  const queue = new ExportQueue();
+  vi.mocked(acquireProjectWriter).mockClear();
+  const options = { ...storage, store, run: async () => new Blob() };
+  await Promise.all([queue.configure(options), queue.configure(options)]);
+  expect(acquireProjectWriter).toHaveBeenCalledTimes(1);
+  expect(() => queue.assertAvailable()).not.toThrow();
+  queue.stop();
+});
+
+it("cancelling during output commit leaves no journal output or stored file", async () => {
+  const { storage, store, files, recipe } = durableFixture();
+  let release!: () => void;
+  const queue = new ExportQueue();
+  await queue.configure({
+    ...storage,
+    store,
+    putBlob: async (blob) => {
+      const fileID = await storage.putBlob(blob);
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return fileID;
+    },
+    run: async () => new Blob(["output"]),
+  });
+  const id = queue.enqueue(
+    "commit",
+    async () => new Blob(),
+    undefined,
+    undefined,
+    Promise.resolve(recipe),
+  );
+  await tick();
+  expect(queue.getSnapshot()[0]?.status).toBe("running");
+  queue.cancel(id);
+  expect(queue.getSnapshot()[0]?.status).toBe("running"); // cancelling still drains
+  release();
+  await tick();
+  expect(queue.getSnapshot()[0]?.status).toBe("cancelled");
+  expect(queue.getOutput(id)).toBeUndefined();
+  expect((await store.list())[0]?.status).toBe("cancelled");
+  expect([...files.keys()]).toEqual(["owned"]);
+  queue.remove(id);
+});
+
+it("an old attempt's late completion cannot settle a retried attempt", async () => {
+  const queue = new ExportQueue();
+  const finishes: ((blob: Blob) => void)[] = [];
+  const id = queue.enqueue(
+    "retry",
+    () =>
+      new Promise((resolve) => {
+        finishes.push(resolve);
+      }),
+  );
+  queue.cancel(id);
+  finishes[0]!(new Blob(["old"]));
+  await tick();
+  expect(queue.getSnapshot()[0]?.status).toBe("cancelled");
+  queue.retry(id);
+  await tick();
+  expect(queue.getSnapshot()[0]?.status).toBe("running");
+  finishes[1]!(new Blob(["new"]));
+  await tick();
+  expect(queue.getSnapshot()[0]).toMatchObject({ status: "done", bytes: 3 });
+  queue.clear();
 });

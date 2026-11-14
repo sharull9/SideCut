@@ -78,7 +78,7 @@ export function CloudDashboard({ section }: { section: Section }) {
           <Link to="/" className="cloud-editor-link">
             <RiArrowLeftLine size={16} aria-hidden="true" /> Back to editor
           </Link>
-          <Link to="/" search={{ studio: "open" }} className="cloud-editor-link">
+          <Link to="/studio" className="cloud-editor-link">
             Open studio <RiArrowRightUpLine size={16} aria-hidden="true" />
           </Link>
         </div>

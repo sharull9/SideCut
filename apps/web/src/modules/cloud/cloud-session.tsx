@@ -50,10 +50,10 @@ export default function CloudSession({
   const router = useRouter();
   const onRedirectCallback = useCallback(
     ({ state }: { state?: unknown }) => {
-      // The dedicated /callback page has nothing to show, so fall back to the cloud team screen.
+      // The dedicated /callback page has nothing to show, so fall back to Team.
       const target =
         safeReturnTo(returnToFromState(state)) ??
-        (window.location.pathname === "/callback" ? "/cloud?section=team" : null);
+        (window.location.pathname === "/callback" ? "/team" : null);
       if (!target) {
         // No usable return path: drop the one-time OAuth params and stay on this page.
         const url = new URL(window.location.href);

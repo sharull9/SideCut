@@ -3,7 +3,7 @@ import {
   readPreference,
   writePreference,
 } from "@sidecut/platform-browser/preferences";
-import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   RiArrowGoBackLine,
@@ -24,12 +24,7 @@ import { Button } from "@sidecut/ui/components/button";
 import { Alert, AlertTitle, AlertDescription } from "@sidecut/ui/components/alert";
 import { Tip, TooltipProvider } from "@sidecut/ui/components/tooltip";
 import { ExportDialog } from "./export-dialog";
-import { useCloud } from "@/modules/cloud/cloud-provider";
-import { StudioDialog } from "@/modules/studio/studio-dialog";
 import { Timeline } from "./timeline";
-
-// AuthKit loads only when a signed-in indicator is actually shown (cloud configured).
-const CloudSignedInIndicator = lazy(() => import("@/modules/cloud/cloud-signed-in-indicator"));
 import { Viewer } from "./viewer";
 import { ClipInspector } from "./clip-inspector";
 import { SidePanel } from "./side-panel";
@@ -80,8 +75,7 @@ function PanelRail({
   );
 }
 
-export function WorkspaceHome({ studioOpen = false }: { studioOpen?: boolean }) {
-  const { configured } = useCloud();
+export function WorkspaceHome() {
   const { session, snapshot, editor } = useEditorSession();
   const keymap = useEditorView((state) => state.keymap);
   const keymapOverrides = useEditorView((state) => state.keymapOverrides);
@@ -244,10 +238,6 @@ export function WorkspaceHome({ studioOpen = false }: { studioOpen?: boolean }) 
         aria-label="raE.E video editor"
       >
         <header className="editor-topbar">
-          <div className="editor-brand">
-            <img src="/brand/mark-white.svg" alt="" width={24} height={24} />
-            <span>raE.E</span>
-          </div>
           <div className="editor-project-name">
             <span data-testid="project-name">{project.name}</span>
             <span className="editor-session-label" role="status" data-state={snapshot.saveState}>
@@ -265,19 +255,6 @@ export function WorkspaceHome({ studioOpen = false }: { studioOpen?: boolean }) 
             </span>
           </div>
           <div className="editor-topbar-actions">
-            <StudioDialog openOnMount={studioOpen} />
-            <Link
-              to="/cloud"
-              search={{ section: "overview" }}
-              className="inline-flex h-7 items-center rounded-md px-2.5 text-xs font-medium hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
-            >
-              Cloud
-              {configured ? (
-                <Suspense fallback={null}>
-                  <CloudSignedInIndicator />
-                </Suspense>
-              ) : null}
-            </Link>
             <div className="editor-toolbar-group">
               <Tip
                 label={snapshot.undoLabel ? `Undo ${snapshot.undoLabel}` : "Nothing to undo"}

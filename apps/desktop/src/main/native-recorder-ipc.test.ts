@@ -116,3 +116,47 @@ it("rejects stream destination injection before requesting confirmation or devic
   expect(recorder.devices).not.toHaveBeenCalled();
   expect(recorder.start).not.toHaveBeenCalled();
 });
+it("stops only the recording a late start created when the renderer is destroyed during start", async () => {
+  mock.dialog.mockResolvedValue({ response: 1 });
+  let created!: (value: { id: string }) => void;
+  recorder.start.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        created = resolve;
+      }),
+  );
+  const event = { sender, senderFrame: sender.mainFrame };
+  const pending = mock.handlers.get(bridgeChannels.nativeRecordingStart)!(event, {
+    projectID: "project",
+    source: "screen",
+    encoder: "auto",
+  });
+  await vi.waitFor(() => expect(recorder.start).toHaveBeenCalled());
+  sender.emit("destroyed");
+  expect(recorder.stop).not.toHaveBeenCalled(); // nothing was published to this owner yet
+  created({ id: "late" });
+  await expect(pending).rejects.toThrow("expired");
+  expect(recorder.stop).toHaveBeenCalledOnce();
+  // The slot is released, so another start is not blocked by the dead owner.
+  recorder.start.mockResolvedValue({ id: "next" });
+  await expect(
+    mock.handlers.get(bridgeChannels.nativeRecordingStart)!(event, {
+      projectID: "project",
+      source: "screen",
+      encoder: "auto",
+    }),
+  ).resolves.toEqual({ id: "next" });
+});
+it("rejects a second stop and status from a stopped owner", async () => {
+  mock.dialog.mockResolvedValue({ response: 1 });
+  const event = { sender, senderFrame: sender.mainFrame };
+  await mock.handlers.get(bridgeChannels.nativeRecordingStart)!(event, {
+    projectID: "project",
+    source: "screen",
+    encoder: "auto",
+  });
+  const stop = mock.handlers.get(bridgeChannels.nativeRecordingStop)!;
+  await stop(event);
+  await expect(stop(event)).rejects.toThrow("No native recording owned");
+  expect(recorder.stop).toHaveBeenCalledOnce();
+});

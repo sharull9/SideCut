@@ -35,3 +35,43 @@
   color: #fff;
   text-align: center;
 }
+/* Record / Live / Both: one segmented choice above the Go controls. */
+.studio-modes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in oklch, var(--muted) 50%, transparent);
+}
+.studio-modes label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 7px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 120ms ease-out;
+}
+.studio-modes label:hover {
+  background: var(--accent);
+}
+.studio-modes label[data-checked] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.studio-modes label:has(:focus-visible) {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+.studio-modes label:has(:disabled) {
+  cursor: default;
+  opacity: 0.6;
+}
+.studio-modes small {
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.75;
+}

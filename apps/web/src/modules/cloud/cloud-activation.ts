@@ -8,9 +8,10 @@ export { billingEnabledAtBuild, parseBillingFlag } from "../billing/billing-flag
 
 export const cloudUsedStorageKey = "sidecut.cloud.used";
 
-const cloudPathSegments = ["cloud", "login", "callback"];
+const cloudPathSegments = ["cloud", "login", "callback", "team", "library", "edit"];
 
-// Matches "/cloud", "/cloud/x", "/login", "/callback". Does not match "/cloudy".
+// Matches "/cloud", "/cloud/x", "/login", "/callback", "/team", "/library", "/edit/x".
+// Does not match "/cloudy". Studio stays dormant: it records locally until cloud is used.
 export function isCloudPath(pathname: string): boolean {
   const first = pathname.split("/")[1] ?? "";
   return cloudPathSegments.includes(first);

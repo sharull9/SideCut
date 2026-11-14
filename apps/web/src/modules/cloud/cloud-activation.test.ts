@@ -76,6 +76,9 @@ describe("isCloudPath", () => {
     expect(isCloudPath("/loginx")).toBe(false);
     expect(isCloudPath("/")).toBe(false);
     expect(isCloudPath("/studio")).toBe(false);
+    expect(isCloudPath("/team")).toBe(true);
+    expect(isCloudPath("/library")).toBe(true);
+    expect(isCloudPath("/edit/abc")).toBe(true);
     expect(isCloudPath("/x/cloud")).toBe(false);
   });
 });

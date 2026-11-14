@@ -3,7 +3,8 @@ import { useAuth } from "@workos-inc/authkit-react";
 import { useConvexAuth, useQuery, useMutation } from "convex/react";
 import { api } from "@sidecut/cloud/api";
 import type { FunctionReturnType } from "convex/server";
-import { Button } from "@sidecut/ui/components/button";
+import { Link } from "@tanstack/react-router";
+import { Button, buttonVariants } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
 import { currentReturnTo, useCloud } from "./cloud-provider";
 import { CloudLibrary } from "./library-panel";
@@ -12,9 +13,11 @@ import { cloudErrorMessage } from "./subscription-error";
 type Team = NonNullable<FunctionReturnType<typeof api.teams.list>[number]["team"]>;
 const roles = ["owner", "admin", "member", "viewer"] as const;
 
-type CloudView = "all" | "team" | "library";
+type CloudView = "team" | "library";
 
-export default function CloudTeams({ view = "all" }: { view?: CloudView }) {
+// Team (the /team page and the dashboard's Team section) links to the library;
+// the dashboard's Library section shows it inline.
+export default function CloudTeams({ view = "team" }: { view?: CloudView }) {
   const { configured } = useCloud();
   if (!configured)
     return <p>Cloud teams are not configured for this app. You can keep editing locally.</p>;
@@ -161,10 +164,14 @@ function TeamManager({ view }: { view: CloudView }) {
       )}
       {current?.team && (
         <>
-          {view !== "library" && (
-            <TeamDetails key={current.team._id} team={current.team} role={current.role} />
-          )}
-          {view !== "team" && (
+          {view === "team" ? (
+            <>
+              <TeamDetails key={current.team._id} team={current.team} role={current.role} />
+              <Link to="/library" className={buttonVariants({ variant: "outline" })}>
+                Open {current.team.name}'s library
+              </Link>
+            </>
+          ) : (
             <CloudLibrary
               key={current.team._id}
               teamId={current.team._id}
@@ -174,7 +181,8 @@ function TeamManager({ view }: { view: CloudView }) {
         </>
       )}
       <p className="text-xs text-muted-foreground">
-        Team selection does not upload or move your local project.
+        The active team is where Studio saves cloud takes. Selecting a team does not upload or move
+        your local project.
       </p>
     </div>
   );

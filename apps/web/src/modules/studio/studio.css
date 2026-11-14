@@ -1,6 +1,7 @@
 .studio-layout {
   display: grid;
-  gap: 12px;
+  gap: 16px;
+  font-size: 13px;
 }
 .studio-layout > * {
   min-width: 0;
@@ -8,15 +9,66 @@
 }
 @media (min-width: 1024px) {
   .studio-layout {
-    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
   }
 }
-.studio-program {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
+
+/* Panels */
+.studio-section {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+.studio-section > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+}
+.studio-section h3 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.studio-section > header p {
+  margin-top: 2px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.studio-alert {
+  padding: 8px 12px;
+  border: 1px solid color-mix(in oklch, var(--destructive) 45%, transparent);
   border-radius: 8px;
+  background: color-mix(in oklch, var(--destructive) 10%, transparent);
+}
+
+/* Program preview: sized to the output's own shape so the handles line up with the picture. */
+.studio-program-frame {
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in oklch, var(--muted) 40%, transparent);
+}
+.studio-program {
+  --studio-aspect: 1.7778;
+  position: relative;
+  width: min(100%, calc(62vh * var(--studio-aspect)));
+  aspect-ratio: var(--studio-aspect);
+  overflow: hidden;
+  border-radius: 6px;
   background: #000;
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground) 8%, transparent);
+  transition: box-shadow 160ms ease-out;
+}
+.studio-program[data-recording] {
+  box-shadow: 0 0 0 2px #ef4444;
 }
 /* A canvas's intrinsic size is the output size (up to 4K); it must never size the layout. */
 .studio-program canvas {
@@ -24,9 +76,8 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
 }
-.studio-program p {
+.studio-program-empty {
   position: absolute;
   inset: 0;
   display: grid;
@@ -35,6 +86,114 @@
   color: #fff;
   text-align: center;
 }
+.studio-rec-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.6);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+}
+.studio-rec-badge::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: studio-blink 1.2s ease-in-out infinite;
+}
+@keyframes studio-blink {
+  50% {
+    opacity: 0.3;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .studio-rec-badge::before {
+    animation: none;
+  }
+}
+
+/* Source handles over the program */
+.studio-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.studio-source-box {
+  position: absolute;
+  cursor: move;
+  touch-action: none;
+  outline: 1px dashed transparent;
+  outline-offset: -1px;
+  transition: outline-color 120ms ease-out;
+}
+.studio-stage:hover .studio-source-box {
+  outline-color: rgb(255 255 255 / 0.35);
+}
+.studio-source-box:focus-visible,
+.studio-source-box[data-selected] {
+  outline: 2px solid var(--ring, #38bdf8);
+  outline-offset: -2px;
+  z-index: 1;
+}
+.studio-source-tag {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgb(0 0 0 / 0.65);
+  color: #fff;
+  font-size: 11px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease-out;
+}
+.studio-source-tag::before {
+  content: attr(data-label);
+}
+.studio-stage:hover .studio-source-tag,
+.studio-source-box[data-selected] .studio-source-tag {
+  opacity: 1;
+}
+.studio-source-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--ring, #38bdf8);
+  border-radius: 3px;
+  background: #fff;
+  touch-action: none;
+}
+.studio-source-handle[data-corner="nw"] {
+  top: -2px;
+  left: -2px;
+  cursor: nwse-resize;
+}
+.studio-source-handle[data-corner="se"] {
+  right: -2px;
+  bottom: -2px;
+  cursor: nwse-resize;
+}
+.studio-source-handle[data-corner="ne"] {
+  top: -2px;
+  right: -2px;
+  cursor: nesw-resize;
+}
+.studio-source-handle[data-corner="sw"] {
+  bottom: -2px;
+  left: -2px;
+  cursor: nesw-resize;
+}
+
 /* Record / Live / Both: one segmented choice above the Go controls. */
 .studio-modes {
   display: grid;
@@ -49,7 +208,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 6px 8px;
+  padding: 5px 8px;
   border-radius: 7px;
   font-weight: 500;
   cursor: pointer;
@@ -59,8 +218,8 @@
   background: var(--accent);
 }
 .studio-modes label[data-checked] {
-  background: var(--primary);
-  color: var(--primary-foreground);
+  background: var(--background);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
 }
 .studio-modes label:has(:focus-visible) {
   outline: 2px solid var(--ring);
@@ -73,5 +232,164 @@
 .studio-modes small {
   font-size: 10px;
   font-weight: 400;
+  opacity: 0.7;
+}
+.studio-go-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.studio-go-button {
+  height: 36px;
+  padding-inline: 14px;
+  font-weight: 600;
+}
+.studio-save-to {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  color: var(--muted-foreground);
+}
+
+/* Rows: scenes, sources, overlays */
+.studio-list {
+  display: grid;
+  gap: 2px;
+}
+.studio-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 34px;
+  padding: 2px 4px 2px 2px;
+  border-radius: 8px;
+  transition: background-color 120ms ease-out;
+}
+.studio-row:hover {
+  background: color-mix(in oklch, var(--muted) 60%, transparent);
+}
+.studio-row[data-selected] {
+  background: var(--muted);
+  box-shadow: inset 2px 0 0 var(--primary);
+}
+.studio-row-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  align-self: stretch;
+  padding: 0 8px;
+  border-radius: 6px;
+  text-align: left;
+  cursor: pointer;
+}
+.studio-row-main > svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--muted-foreground);
+}
+.studio-row-main:has(:focus-visible),
+.studio-row-main:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+.studio-row > button[data-slot="button"]:not(:disabled) {
   opacity: 0.75;
+}
+.studio-row:hover > button[data-slot="button"],
+.studio-row > button[data-slot="button"]:focus-visible {
+  opacity: 1;
+}
+.studio-live-badge {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.studio-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 6px 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* Fields */
+.studio-fields {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: end;
+  gap: 10px;
+}
+.studio-fields .studio-check {
+  grid-column: 1 / -1;
+}
+.studio-field {
+  display: grid;
+  gap: 4px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.studio-field select {
+  width: 100%;
+  color: var(--foreground);
+  text-transform: capitalize;
+}
+.studio-field input[type="color"] {
+  width: 44px;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid var(--input);
+  border-radius: min(var(--radius-md), 10px);
+  background: transparent;
+  cursor: pointer;
+}
+.studio-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.studio-layout input[type="checkbox"],
+.studio-layout input[type="range"] {
+  accent-color: var(--primary);
+}
+
+/* Audio channel strip */
+.studio-channel {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.studio-channel meter {
+  width: 100%;
+  height: 6px;
+}
+.studio-slider {
+  display: grid;
+  grid-template-columns: 44px 1fr 52px;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-foreground);
+}
+.studio-slider input {
+  width: 100%;
+}
+.studio-slider output {
+  color: var(--foreground);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }

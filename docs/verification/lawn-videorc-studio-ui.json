@@ -1,5 +1,5 @@
 {
-  "testedAt": "2026-11-14T14:09:27.289Z",
+  "testedAt": "2026-11-14T16:19:41.407Z",
   "platform": "win32",
   "production": true,
   "syntheticDevices": true,
@@ -8,6 +8,11 @@
     "camera": {
       "beforeCamera": [17, 24, 39, 255],
       "withCamera": [0, 135, 0, 255]
+    },
+    "sourceLayout": {
+      "beforeDrag": [17, 24, 39, 255],
+      "afterDrag": [0, 135, 0, 255],
+      "width": [219.5, 98.078125]
     },
     "screen": {
       "listed": 2
@@ -19,7 +24,7 @@
     "closeGuard": true,
     "recording": {
       "size": [1920, 1080],
-      "bytes": 969081,
+      "bytes": 918489,
       "audio": 1,
       "banner": [55, 190, 247, 255]
     },

@@ -18,6 +18,24 @@ import { recordingLimits } from "@sidecut/platform-browser/recording";
 import { Button, buttonVariants } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
 import { useNavigate } from "@tanstack/react-router";
+import {
+  RiAddLine,
+  RiArrowDownLine,
+  RiArrowUpLine,
+  RiCloseLine,
+  RiComputerLine,
+  RiDeleteBinLine,
+  RiFlagLine,
+  RiFullscreenExitLine,
+  RiFullscreenLine,
+  RiMicLine,
+  RiMusic2Line,
+  RiPlayFill,
+  RiRecordCircleFill,
+  RiRefreshLine,
+  RiStopFill,
+  RiVideoOnLine,
+} from "@remixicon/react";
 import { useEditorSession } from "@/modules/workspace/editor-session";
 import { nativeBridge } from "@/modules/workspace/host-coordinator";
 import { NativeRecordingControls } from "@/modules/workspace/native-recording-controls";
@@ -42,11 +60,21 @@ import {
   clipsNeedResolution,
   type CaptureDeps,
 } from "./studio-capture";
+import {
+  defaultLayout,
+  fillLayout,
+  fitLayout,
+  sourceRect,
+  type SourceLayout,
+} from "./source-layout";
+import { SourceStage } from "./source-stage";
 import "./studio.css";
 
 type VideoSource = {
   id: string;
   kind: "camera" | "screen";
+  label: string;
+  layout: SourceLayout;
   video: HTMLVideoElement;
   stream: MediaStream;
 };
@@ -73,33 +101,39 @@ const OVERLAY_BOUNDS: Record<
   highlight: { x: 0.6, y: 0.05, width: 0.35, height: 0.2 },
 };
 
-/** Draw whole sources; screens fill the frame and cameras sit picture-in-picture above them. */
+const sourceAspect = (video: HTMLVideoElement) =>
+  video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 16 / 9;
+
+/** Draws sources bottom to top, each where the user placed it on the program canvas. */
 function paintSources(context: CanvasRenderingContext2D, sources: readonly VideoSource[]) {
   const { width, height } = context.canvas;
-  const ordered = [...sources].sort(
-    (a, b) => Number(a.kind === "camera") - Number(b.kind === "camera"),
-  );
-  let cameras = 0;
-  for (const { kind, video } of ordered) {
+  for (const { video, layout } of sources) {
     if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) continue;
-    if (kind === "screen") {
-      const scale = Math.min(width / video.videoWidth, height / video.videoHeight);
-      const w = video.videoWidth * scale;
-      const h = video.videoHeight * scale;
-      context.drawImage(video, (width - w) / 2, (height - h) / 2, w, h);
-    } else {
-      const w = width * 0.25;
-      const h = w / (video.videoWidth / video.videoHeight);
-      const margin = width * 0.02;
-      context.drawImage(video, width - w - margin, height - (h + margin) * ++cameras, w, h);
-    }
+    const rect = sourceRect(layout, width / height, sourceAspect(video));
+    context.drawImage(video, rect.x * width, rect.y * height, rect.w * width, rect.h * height);
   }
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title: string;
+  description?: ReactNode;
+  action?: ReactNode;
+  children?: ReactNode;
+}) {
   return (
-    <section className="grid gap-2 rounded-lg border p-3" aria-label={title}>
-      <h3 className="font-medium">{title}</h3>
+    <section className="studio-section" aria-label={title}>
+      <header>
+        <div className="min-w-0">
+          <h3>{title}</h3>
+          {description && <p>{description}</p>}
+        </div>
+        {action && <div className="flex shrink-0 flex-wrap justify-end gap-1.5">{action}</div>}
+      </header>
       {children}
     </section>
   );
@@ -134,6 +168,13 @@ export default function StudioPanel({
   const [name, setName] = useState("Scene 1");
   const [selected, setSelected] = useState<string | null>(null);
   const [draft, setDraft] = useState<LiveAssets>(DEFAULT_LIVE_ASSETS);
+  const [selectedSource, setSelectedSource] = useState<string | null>(null);
+  const sourceNumbers = useRef({ camera: 0, screen: 0 });
+  /** The program canvas's shape; a placeholder until the first frame sizes it. */
+  const canvasAspect = () => {
+    const element = canvas.current;
+    return frame && element?.width && element.height ? element.width / element.height : 16 / 9;
+  };
   const [overlayText, setOverlayText] = useState("");
   const [overlayKind, setOverlayKind] = useState<LiveOverlay["kind"]>("banner");
   const [settings, setSettings] = useState<Record<string, LiveAudioSettings>>({});
@@ -441,6 +482,7 @@ export default function StudioPanel({
     sources.current = sources.current.filter((item) => item.id !== id);
     for (const track of source.stream.getTracks()) track.stop();
     source.video.srcObject = null;
+    setSelectedSource((current) => (current === id ? null : current));
     refresh();
   };
   const addSource = (kind: VideoSource["kind"]) =>
@@ -460,10 +502,34 @@ export default function StudioPanel({
         for (const track of stream.getTracks()) track.stop();
         throw cause;
       }
-      sources.current = [...sources.current, { id, kind, video, stream }];
+      const same = sources.current.filter((item) => item.kind === kind);
+      const label = `${kind === "camera" ? "Camera" : "Screen"} ${++sourceNumbers.current[kind]}`;
+      const layout = defaultLayout(kind, same.length, canvasAspect(), sourceAspect(video));
+      const source: VideoSource = { id, kind, label, layout, video, stream };
+      // New screens go under the cameras so a share never hides the presenter.
+      const firstCamera = sources.current.findIndex((item) => item.kind === "camera");
+      const at = kind === "screen" && firstCamera >= 0 ? firstCamera : sources.current.length;
+      sources.current = [...sources.current.slice(0, at), source, ...sources.current.slice(at)];
       stream.getVideoTracks()[0]?.addEventListener("ended", () => removeSource(id), { once: true });
+      setSelectedSource(id);
       refresh();
     }, `Could not start the ${kind}.`);
+  const placeSource = (id: string, layout: SourceLayout) => {
+    const source = sources.current.find((item) => item.id === id);
+    if (!source) return;
+    source.layout = layout;
+    refresh();
+  };
+  /** Moves a source one layer up (towards the viewer) or down. */
+  const restack = (id: string, step: 1 | -1) => {
+    const from = sources.current.findIndex((item) => item.id === id);
+    const to = from + step;
+    if (from < 0 || to < 0 || to >= sources.current.length) return;
+    const next = [...sources.current];
+    [next[from], next[to]] = [next[to]!, next[from]!];
+    sources.current = next;
+    refresh();
+  };
   const removeInput = (id: string) => {
     mixer.current?.remove(id);
     for (const input of audioInputs.current)
@@ -580,15 +646,52 @@ export default function StudioPanel({
   const saveClip = (seconds: 30 | 60) =>
     attempt(() => clips.current!.save(seconds), "The clip could not be saved.");
 
+  const stageSources = sources.current.map((source) => ({
+    id: source.id,
+    label: source.label,
+    layout: source.layout,
+    aspect: sourceAspect(source.video),
+  }));
+  const startDisabled =
+    !frame || (program.kind !== "idle" && program.kind !== "failed" && program.kind !== "uploaded");
+
   return (
     <div className="studio-layout">
       <div className="grid gap-3">
-        <div className="studio-program">
-          <canvas ref={canvas} aria-label="Program output" data-scene={frame ?? ""} />
-          {!active && !loading && <p>Save a scene and switch to it to start the program output.</p>}
+        <div className="studio-program-frame">
+          <div
+            className="studio-program"
+            style={{ ["--studio-aspect" as string]: String(canvasAspect()) }}
+            data-recording={recording || undefined}
+          >
+            <canvas ref={canvas} aria-label="Program output" data-scene={frame ?? ""} />
+            {frame && (
+              <SourceStage
+                sources={stageSources}
+                canvasAspect={canvasAspect()}
+                selected={selectedSource}
+                onSelect={setSelectedSource}
+                onChange={placeSource}
+              />
+            )}
+            {!active && !loading && (
+              <p className="studio-program-empty">
+                Save a scene from the editor, then go live with it to start the program output.
+              </p>
+            )}
+            {recording && (
+              <span className="studio-rec-badge" aria-hidden>
+                REC
+              </span>
+            )}
+          </div>
         </div>
-        {(error || captureFailure) && <p role="alert">{error || captureFailure}</p>}
-        <p role="status" aria-live="polite" className="empty:hidden">
+        {(error || captureFailure) && (
+          <p role="alert" className="studio-alert">
+            {error || captureFailure}
+          </p>
+        )}
+        <p role="status" aria-live="polite" className="text-muted-foreground empty:hidden">
           {loading ? "Opening saved scenes…" : status || captureNotice}
         </p>
         <Section title="Go">
@@ -631,69 +734,73 @@ export default function StudioPanel({
             ))}
           {mode === "record" && (
             <>
-              <label className="grid gap-1">
-                Save to
-                <select
-                  value={toCloud ? "cloud" : "device"}
-                  disabled={busy}
-                  onChange={(event) =>
-                    setSaveTo(event.target.value === "cloud" ? "cloud" : "device")
-                  }
-                >
-                  <option value="device">This device</option>
-                  <option value="cloud" disabled={cloud.state !== "ready"}>
-                    {cloud.state === "ready" ? `Cloud · ${cloud.teamName}` : "Cloud"}
-                  </option>
-                </select>
-              </label>
-              <p className="text-muted-foreground">
-                {cloud.state !== "ready"
-                  ? cloud.reason
-                  : toCloud
-                    ? "Uploads while you record. When you stop, the take opens in the editor."
-                    : "Takes stay in this browser until you add them to the project or download them."}
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="studio-go-row">
                 {recording ? (
-                  <Button size="sm" onClick={() => capture.current!.stop()}>
+                  <Button
+                    variant="destructive"
+                    className="studio-go-button"
+                    onClick={() => capture.current!.stop()}
+                  >
+                    <RiStopFill data-icon="inline-start" />
                     Stop recording
                   </Button>
                 ) : (
                   <Button
-                    size="sm"
-                    disabled={
-                      !frame ||
-                      (program.kind !== "idle" &&
-                        program.kind !== "failed" &&
-                        program.kind !== "uploaded")
-                    }
+                    className="studio-go-button"
+                    disabled={startDisabled}
                     onClick={() => void startRecording()}
                   >
+                    <RiRecordCircleFill data-icon="inline-start" className="text-red-500" />
                     Start recording
                   </Button>
                 )}
                 {recording && (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        void attempt(() => capture.current!.mark(), "The mark could not be added.")
-                      }
-                    >
-                      Mark moment
-                    </Button>
-                    <span role="status">
-                      Recording program output…
-                      {markCount ? ` ${markCount} ${markCount === 1 ? "mark" : "marks"}` : ""}
-                    </span>
-                  </>
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      void attempt(() => capture.current!.mark(), "The mark could not be added.")
+                    }
+                  >
+                    <RiFlagLine data-icon="inline-start" />
+                    Mark moment
+                  </Button>
                 )}
-                {program.kind === "starting" && <span role="status">Starting recording…</span>}
-                {(program.kind === "stopping" || (program.kind === "saving" && !program.cloud)) && (
-                  <span role="status">Saving the take…</span>
-                )}
+                <label className="studio-save-to">
+                  <span>Save to</span>
+                  <select
+                    value={toCloud ? "cloud" : "device"}
+                    disabled={busy}
+                    onChange={(event) =>
+                      setSaveTo(event.target.value === "cloud" ? "cloud" : "device")
+                    }
+                  >
+                    <option value="device">This device</option>
+                    <option value="cloud" disabled={cloud.state !== "ready"}>
+                      {cloud.state === "ready" ? `Cloud · ${cloud.teamName}` : "Cloud"}
+                    </option>
+                  </select>
+                </label>
               </div>
+              <p className="text-muted-foreground">
+                {recording ? (
+                  <span role="status">
+                    Recording program output…
+                    {markCount ? ` ${markCount} ${markCount === 1 ? "mark" : "marks"}` : ""}
+                  </span>
+                ) : program.kind === "starting" ? (
+                  <span role="status">Starting recording…</span>
+                ) : program.kind === "stopping" || (program.kind === "saving" && !program.cloud) ? (
+                  <span role="status">Saving the take…</span>
+                ) : !frame ? (
+                  "Go live with a scene to enable recording."
+                ) : cloud.state !== "ready" ? (
+                  cloud.reason
+                ) : toCloud ? (
+                  "Uploads while you record. When you stop, the take opens in the editor."
+                ) : (
+                  "Takes stay in this browser until you add them to the project or download them."
+                )}
+              </p>
               {shownProgress && (
                 <p role="status">
                   {uploading ? "Finishing upload:" : "Uploaded"}{" "}
@@ -702,8 +809,8 @@ export default function StudioPanel({
                 </p>
               )}
               {take && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="truncate">{take.file.name}</span>
+                <div className="studio-item">
+                  <span className="min-w-0 flex-1 truncate">{take.file.name}</span>
                   <Button
                     size="sm"
                     disabled={blocked || program.kind === "importing"}
@@ -720,7 +827,7 @@ export default function StudioPanel({
                   </a>
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="ghost"
                     disabled={program.kind === "importing"}
                     onClick={() => capture.current!.discard()}
                   >
@@ -732,13 +839,13 @@ export default function StudioPanel({
           )}
         </Section>
         {recovered.length > 0 && (
-          <Section title="Recovered takes">
-            <p className="text-muted-foreground">
-              Takes left on this device by an earlier visit. Interrupted takes may end abruptly.
-            </p>
-            <ul className="grid gap-2">
+          <Section
+            title="Recovered takes"
+            description="Takes left on this device by an earlier visit. Interrupted takes may end abruptly."
+          >
+            <ul className="grid gap-1.5">
               {recovered.map((item) => (
-                <li key={item.fileName} className="flex flex-wrap items-center gap-2">
+                <li key={item.fileName} className="studio-item">
                   <span className="min-w-0 flex-1 truncate">
                     {new Date(item.startedAt).toLocaleString()} · {megabytes(item.bytes)}
                     {item.state === "recording" ? " · interrupted" : ""}
@@ -764,7 +871,7 @@ export default function StudioPanel({
                   >
                     Download
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => dropRecovered(item.fileName)}>
+                  <Button size="sm" variant="ghost" onClick={() => dropRecovered(item.fileName)}>
                     Discard
                   </Button>
                 </li>
@@ -772,11 +879,14 @@ export default function StudioPanel({
             </ul>
           </Section>
         )}
-        <Section title="Recent clips">
+        <Section
+          title="Recent clips"
+          description="Keep a rolling buffer of the program and save the last 30 or 60 seconds."
+        >
           <div className="flex flex-wrap items-center gap-2">
             <Button
               size="sm"
-              variant="outline"
+              variant={armed ? "secondary" : "outline"}
               disabled={
                 !frame ||
                 clipState.buffer.kind === "arming" ||
@@ -813,8 +923,8 @@ export default function StudioPanel({
             ))}
           </div>
           {clip && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="truncate">
+            <div className="studio-item">
+              <span className="min-w-0 flex-1 truncate">
                 {clip.file.name} · {clip.marks} {clip.marks === 1 ? "mark" : "marks"}
               </span>
               <Button
@@ -833,7 +943,7 @@ export default function StudioPanel({
               </a>
               <Button
                 size="sm"
-                variant="outline"
+                variant="ghost"
                 disabled={clipState.product.kind === "importing"}
                 onClick={() => clips.current!.discard()}
               >
@@ -844,84 +954,209 @@ export default function StudioPanel({
         </Section>
       </div>
       <div className="grid gap-3">
-        <Section title="Scenes">
-          <div className="flex gap-2">
+        <Section
+          title="Scenes"
+          description="Pick a scene to edit its look. Go live puts it on the program."
+        >
+          {scenes.length > 0 && (
+            <ul className="studio-list">
+              {scenes.map((scene) => {
+                const live = active?.id === scene.id;
+                return (
+                  <li
+                    key={scene.id}
+                    className="studio-row"
+                    data-selected={selected === scene.id || undefined}
+                  >
+                    <label className="studio-row-main">
+                      <input
+                        type="radio"
+                        name="studio-scene"
+                        className="sr-only"
+                        checked={selected === scene.id}
+                        onChange={() => setSelected(scene.id)}
+                      />
+                      <span className="truncate">{scene.name}</span>
+                      {live && <span className="studio-live-badge">Live</span>}
+                    </label>
+                    {!live && (
+                      <Button
+                        size="xs"
+                        aria-label={`Switch to ${scene.name}`}
+                        onClick={() => void switchTo(scene.id)}
+                      >
+                        Go live
+                      </Button>
+                    )}
+                    <Button
+                      size="icon-xs"
+                      variant="ghost"
+                      aria-label={`Update ${scene.name} from editor`}
+                      title="Update from editor"
+                      onClick={() => void saveFromEditor({ id: scene.id, name: scene.name })}
+                    >
+                      <RiRefreshLine />
+                    </Button>
+                    <Button
+                      size="icon-xs"
+                      variant="ghost"
+                      aria-label={`Remove ${scene.name}`}
+                      title={live ? "Go live with another scene first" : "Remove scene"}
+                      disabled={live}
+                      onClick={() => void remove(scene.id)}
+                    >
+                      <RiDeleteBinLine />
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <form
+            className="flex gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!loading && name.trim()) void saveFromEditor();
+            }}
+          >
             <Input
               aria-label="New scene name"
               value={name}
               maxLength={100}
               onChange={(event) => setName(event.target.value)}
             />
-            <Button
-              size="sm"
-              disabled={loading || !name.trim()}
-              onClick={() => void saveFromEditor()}
-            >
+            <Button type="submit" size="sm" variant="outline" disabled={loading || !name.trim()}>
+              <RiAddLine data-icon="inline-start" />
               Save from editor
             </Button>
-          </div>
-          <ul className="grid gap-1">
-            {scenes.map((scene) => (
-              <li key={scene.id} className="flex flex-wrap items-center gap-2">
-                <label className="flex min-w-0 flex-1 items-center gap-2">
-                  <input
-                    type="radio"
-                    name="studio-scene"
-                    checked={selected === scene.id}
-                    onChange={() => setSelected(scene.id)}
-                  />
-                  <span className="truncate">{scene.name}</span>
-                  {active?.id === scene.id && <strong>Live</strong>}
-                </label>
-                <Button
-                  size="sm"
-                  aria-label={`Switch to ${scene.name}`}
-                  onClick={() => void switchTo(scene.id)}
-                >
-                  Switch
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-label={`Update ${scene.name} from editor`}
-                  onClick={() => void saveFromEditor({ id: scene.id, name: scene.name })}
-                >
-                  Update
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-label={`Remove ${scene.name}`}
-                  disabled={active?.id === scene.id}
-                  onClick={() => void remove(scene.id)}
-                >
-                  Remove
-                </Button>
-              </li>
-            ))}
-          </ul>
+          </form>
         </Section>
-        <Section title="Scene look">
-          <label className="grid gap-1">
-            Background
-            <select
-              value={draft.background}
-              disabled={!selectedScene}
-              onChange={(event) => {
-                const background = LIVE_BACKGROUNDS.find((item) => item === event.target.value);
-                if (background) setDraft((current) => ({ ...current, background }));
-              }}
-            >
-              {LIVE_BACKGROUNDS.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="flex flex-wrap gap-3">
-            <label className="flex items-center gap-2">
-              Color
+        <Section
+          title="Sources"
+          description={
+            sources.current.length
+              ? "Drag a source on the preview to move it, or drag its corners to resize. Hold Alt to stop snapping."
+              : "Add a camera or share a screen to put it on the program."
+          }
+          action={
+            <>
+              <Button size="sm" variant="outline" onClick={() => void addSource("camera")}>
+                <RiVideoOnLine data-icon="inline-start" />
+                Add camera
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => void addSource("screen")}>
+                <RiComputerLine data-icon="inline-start" />
+                Add screen
+              </Button>
+            </>
+          }
+        >
+          {sources.current.length > 0 && (
+            <ul className="studio-list">
+              {/* Top layer first, like a layers panel. */}
+              {[...sources.current].reverse().map((source, fromTop, list) => {
+                const isSelected = selectedSource === source.id;
+                const aspects = [canvasAspect(), sourceAspect(source.video)] as const;
+                return (
+                  <li
+                    key={source.id}
+                    className="studio-row"
+                    data-selected={isSelected || undefined}
+                  >
+                    <button
+                      type="button"
+                      className="studio-row-main"
+                      aria-pressed={isSelected}
+                      onClick={() => setSelectedSource(isSelected ? null : source.id)}
+                    >
+                      {source.kind === "camera" ? <RiVideoOnLine /> : <RiComputerLine />}
+                      <span className="truncate">{source.label}</span>
+                    </button>
+                    <Button
+                      size="icon-xs"
+                      variant="ghost"
+                      aria-label={`Fit ${source.label} to the frame`}
+                      title="Fit to frame"
+                      onClick={() => placeSource(source.id, fitLayout(...aspects))}
+                    >
+                      <RiFullscreenExitLine />
+                    </Button>
+                    <Button
+                      size="icon-xs"
+                      variant="ghost"
+                      aria-label={`Fill the frame with ${source.label}`}
+                      title="Fill frame"
+                      onClick={() => placeSource(source.id, fillLayout(...aspects))}
+                    >
+                      <RiFullscreenLine />
+                    </Button>
+                    <Button
+                      size="icon-xs"
+                      variant="ghost"
+                      aria-label={`Bring ${source.label} forward`}
+                      title="Bring forward"
+                      disabled={fromTop === 0}
+                      onClick={() => restack(source.id, 1)}
+                    >
+                      <RiArrowUpLine />
+                    </Button>
+                    <Button
+                      size="icon-xs"
+                      variant="ghost"
+                      aria-label={`Send ${source.label} backward`}
+                      title="Send backward"
+                      disabled={fromTop === list.length - 1}
+                      onClick={() => restack(source.id, -1)}
+                    >
+                      <RiArrowDownLine />
+                    </Button>
+                    <Button
+                      size="icon-xs"
+                      variant="ghost"
+                      aria-label={`Remove ${source.label}`}
+                      title="Remove source"
+                      onClick={() => removeSource(source.id)}
+                    >
+                      <RiCloseLine />
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Section>
+        <Section
+          title="Scene look"
+          description={
+            selectedScene ? (
+              <>
+                Editing <strong className="text-foreground">{selectedScene.name}</strong>
+              </>
+            ) : (
+              "Save a scene to style it."
+            )
+          }
+        >
+          <div className="studio-fields">
+            <label className="studio-field">
+              <span>Background</span>
+              <select
+                value={draft.background}
+                disabled={!selectedScene}
+                onChange={(event) => {
+                  const background = LIVE_BACKGROUNDS.find((item) => item === event.target.value);
+                  if (background) setDraft((current) => ({ ...current, background }));
+                }}
+              >
+                {LIVE_BACKGROUNDS.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="studio-field">
+              <span>Color</span>
               <input
                 type="color"
                 value={draft.color}
@@ -929,8 +1164,8 @@ export default function StudioPanel({
                 onChange={(event) => setDraft({ ...draft, color: event.target.value })}
               />
             </label>
-            <label className="flex items-center gap-2">
-              Accent
+            <label className="studio-field">
+              <span>Accent</span>
               <input
                 type="color"
                 value={draft.accent}
@@ -938,7 +1173,7 @@ export default function StudioPanel({
                 onChange={(event) => setDraft({ ...draft, accent: event.target.value })}
               />
             </label>
-            <label className="flex items-center gap-2">
+            <label className="studio-check">
               <input
                 type="checkbox"
                 checked={draft.motion}
@@ -948,11 +1183,18 @@ export default function StudioPanel({
               Motion
             </label>
           </div>
-          <div className="flex gap-2">
+          <form
+            className="flex gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              addOverlay();
+            }}
+          >
             <select
               aria-label="Overlay type"
               value={overlayKind}
               disabled={!selectedScene}
+              className="w-28 shrink-0"
               onChange={(event) => {
                 const kind = (["banner", "takeover", "highlight"] as const).find(
                   (item) => item === event.target.value,
@@ -966,59 +1208,61 @@ export default function StudioPanel({
             </select>
             <Input
               aria-label="Overlay text"
+              placeholder="Overlay text"
               value={overlayText}
               maxLength={500}
               disabled={!selectedScene}
               onChange={(event) => setOverlayText(event.target.value)}
             />
             <Button
+              type="submit"
               size="sm"
               variant="outline"
               disabled={!selectedScene || !overlayText.trim() || draft.overlays.length >= 20}
-              onClick={addOverlay}
             >
               Add
             </Button>
-          </div>
-          <ul className="grid gap-1">
-            {draft.overlays.map((overlay) => (
-              <li key={overlay.id} className="flex items-center gap-2">
-                <label className="flex min-w-0 flex-1 items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={overlay.enabled}
-                    onChange={(event) =>
+          </form>
+          {draft.overlays.length > 0 && (
+            <ul className="studio-list">
+              {draft.overlays.map((overlay) => (
+                <li key={overlay.id} className="studio-row">
+                  <label className="studio-row-main">
+                    <input
+                      type="checkbox"
+                      checked={overlay.enabled}
+                      onChange={(event) =>
+                        setDraft({
+                          ...draft,
+                          overlays: draft.overlays.map((item) =>
+                            item.id === overlay.id
+                              ? { ...item, enabled: event.target.checked }
+                              : item,
+                          ),
+                        })
+                      }
+                    />
+                    <span className="text-muted-foreground capitalize">{overlay.kind}</span>
+                    <span className="truncate">{overlay.text}</span>
+                  </label>
+                  <Button
+                    size="icon-xs"
+                    variant="ghost"
+                    aria-label={`Remove overlay ${overlay.text}`}
+                    onClick={() =>
                       setDraft({
                         ...draft,
-                        overlays: draft.overlays.map((item) =>
-                          item.id === overlay.id
-                            ? { ...item, enabled: event.target.checked }
-                            : item,
-                        ),
+                        overlays: draft.overlays.filter((item) => item.id !== overlay.id),
                       })
                     }
-                  />
-                  <span className="truncate">
-                    {overlay.kind}: {overlay.text}
-                  </span>
-                </label>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-label={`Remove overlay ${overlay.text}`}
-                  onClick={() =>
-                    setDraft({
-                      ...draft,
-                      overlays: draft.overlays.filter((item) => item.id !== overlay.id),
-                    })
-                  }
-                >
-                  Remove
-                </Button>
-              </li>
-            ))}
-          </ul>
-          <div className="flex flex-wrap gap-2">
+                  >
+                    <RiCloseLine />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex flex-wrap justify-end gap-2">
             <Button
               size="sm"
               variant="outline"
@@ -1028,68 +1272,68 @@ export default function StudioPanel({
               Save look
             </Button>
             <Button size="sm" disabled={!selectedScene} onClick={() => void applyLook(true)}>
-              Save and switch
+              Save and go live
             </Button>
           </div>
         </Section>
-        <Section title="Sources">
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => void addSource("camera")}>
-              Add camera
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => void addSource("screen")}>
-              Add screen
-            </Button>
-          </div>
-          <ul className="grid gap-1">
-            {sources.current.map((source, index) => (
-              <li key={source.id} className="flex items-center justify-between gap-2">
-                <span>
-                  {source.kind === "camera" ? "Camera" : "Screen"} {index + 1}
-                </span>
-                <Button size="sm" variant="outline" onClick={() => removeSource(source.id)}>
-                  Remove
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </Section>
-        <Section title="Audio">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => void addMicrophone()}>
-              Add microphone
-            </Button>
-            <label className={buttonVariants({ size: "sm", variant: "outline" })}>
-              Add sound
-              <input
-                className="sr-only"
-                type="file"
-                accept="audio/*"
-                onChange={(event) => {
-                  void loadSound(event.target.files?.[0]);
-                  event.target.value = "";
-                }}
-              />
-            </label>
-          </div>
+        <Section
+          title="Audio"
+          description={
+            audioInputs.current.length || sounds.current.size
+              ? undefined
+              : "Add a microphone for your voice, or sounds to play on cue."
+          }
+          action={
+            <>
+              <Button size="sm" variant="outline" onClick={() => void addMicrophone()}>
+                <RiMicLine data-icon="inline-start" />
+                Add microphone
+              </Button>
+              <label className={buttonVariants({ size: "sm", variant: "outline" })}>
+                <RiMusic2Line data-icon="inline-start" />
+                Add sound
+                <input
+                  className="sr-only"
+                  type="file"
+                  accept="audio/*"
+                  onChange={(event) => {
+                    void loadSound(event.target.files?.[0]);
+                    event.target.value = "";
+                  }}
+                />
+              </label>
+            </>
+          }
+        >
           {audioInputs.current.map((input) => {
             const value = settings[input.id] ?? DEFAULT_LIVE_AUDIO;
             return (
-              <div key={input.id} className="grid gap-1 rounded border p-2">
+              <div key={input.id} className="studio-channel">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="truncate">{input.label}</span>
-                  <Button size="sm" variant="outline" onClick={() => removeInput(input.id)}>
-                    Remove
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <RiMicLine className="size-4 shrink-0 text-muted-foreground" />
+                    <span className="truncate">{input.label}</span>
+                  </span>
+                  <Button
+                    size="icon-xs"
+                    variant="ghost"
+                    aria-label={`Remove ${input.label}`}
+                    onClick={() => removeInput(input.id)}
+                  >
+                    <RiCloseLine />
                   </Button>
                 </div>
                 <meter
                   aria-label={`${input.label} level`}
                   min={0}
                   max={1}
+                  low={0.6}
+                  high={0.9}
+                  optimum={0.3}
                   value={meters[input.id] ?? 0}
                 />
-                <label className="flex items-center gap-2">
-                  Gain
+                <label className="studio-slider">
+                  <span>Gain</span>
                   <input
                     type="range"
                     min={-60}
@@ -1097,10 +1341,10 @@ export default function StudioPanel({
                     value={value.gainDB}
                     onChange={(event) => updateInput(input, { gainDB: Number(event.target.value) })}
                   />
-                  {value.gainDB} dB
+                  <output>{value.gainDB} dB</output>
                 </label>
-                <label className="flex items-center gap-2">
-                  Delay
+                <label className="studio-slider">
+                  <span>Delay</span>
                   <input
                     type="range"
                     min={0}
@@ -1111,10 +1355,10 @@ export default function StudioPanel({
                       updateInput(input, { syncOffsetMs: Number(event.target.value) })
                     }
                   />
-                  {value.syncOffsetMs} ms
+                  <output>{value.syncOffsetMs} ms</output>
                 </label>
-                <div className="flex flex-wrap gap-3">
-                  <label className="flex items-center gap-2">
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <label className="studio-check">
                     <input
                       type="checkbox"
                       checked={value.muted}
@@ -1122,7 +1366,7 @@ export default function StudioPanel({
                     />
                     Mute
                   </label>
-                  <label className="flex items-center gap-2">
+                  <label className="studio-check">
                     <input
                       type="checkbox"
                       checked={value.monitor}
@@ -1130,7 +1374,7 @@ export default function StudioPanel({
                     />
                     Monitor
                   </label>
-                  <label className="flex items-center gap-2">
+                  <label className="studio-check">
                     <input
                       type="checkbox"
                       checked={value.cleanup === "rumble"}
@@ -1144,13 +1388,21 @@ export default function StudioPanel({
               </div>
             );
           })}
-          <div className="flex flex-wrap gap-2">
-            {[...sounds.current.keys()].map((sound) => (
-              <Button key={sound} size="sm" variant="outline" onClick={() => void playSound(sound)}>
-                Play {sound}
-              </Button>
-            ))}
-          </div>
+          {sounds.current.size > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {[...sounds.current.keys()].map((sound) => (
+                <Button
+                  key={sound}
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void playSound(sound)}
+                >
+                  <RiPlayFill data-icon="inline-start" />
+                  {sound}
+                </Button>
+              ))}
+            </div>
+          )}
         </Section>
       </div>
     </div>

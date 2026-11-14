@@ -143,6 +143,8 @@ export default defineSchema({
     ),
     attempt: v.number(),
     objectKey: v.string(),
+    // Recording uploads start before their size is known; `seal` fixes the size and part count.
+    open: v.optional(v.boolean()),
     uploadId: v.optional(v.string()),
     error: v.optional(v.string()),
     playbackKey: v.optional(v.string()),

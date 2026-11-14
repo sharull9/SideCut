@@ -15,6 +15,7 @@ import { Route as DiagnosticsRouteImport } from './routes/diagnostics'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as StudioRouteImport } from './routes/studio'
 import { Route as TeamRouteImport } from './routes/team'
+import { Route as EditMediaIdRouteImport } from './routes/edit/$mediaId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +47,11 @@ const TeamRoute = TeamRouteImport.update({
   path: '/team',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EditMediaIdRoute = EditMediaIdRouteImport.update({
+  id: '/edit/$mediaId',
+  path: '/edit/$mediaId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/studio': typeof StudioRoute
   '/team': typeof TeamRoute
+  '/edit/$mediaId': typeof EditMediaIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/studio': typeof StudioRoute
   '/team': typeof TeamRoute
+  '/edit/$mediaId': typeof EditMediaIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,12 +79,27 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/studio': typeof StudioRoute
   '/team': typeof TeamRoute
+  '/edit/$mediaId': typeof EditMediaIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/callback' | '/diagnostics' | '/login' | '/studio' | '/team'
+  fullPaths:
+    | '/'
+    | '/callback'
+    | '/diagnostics'
+    | '/login'
+    | '/studio'
+    | '/team'
+    | '/edit/$mediaId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/callback' | '/diagnostics' | '/login' | '/studio' | '/team'
+  to:
+    | '/'
+    | '/callback'
+    | '/diagnostics'
+    | '/login'
+    | '/studio'
+    | '/team'
+    | '/edit/$mediaId'
   id:
     | '__root__'
     | '/'
@@ -85,6 +108,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/studio'
     | '/team'
+    | '/edit/$mediaId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -94,6 +118,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   StudioRoute: typeof StudioRoute
   TeamRoute: typeof TeamRoute
+  EditMediaIdRoute: typeof EditMediaIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -140,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TeamRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/edit/$mediaId': {
+      id: '/edit/$mediaId'
+      path: '/edit/$mediaId'
+      fullPath: '/edit/$mediaId'
+      preLoaderRoute: typeof EditMediaIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -150,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   StudioRoute: StudioRoute,
   TeamRoute: TeamRoute,
+  EditMediaIdRoute: EditMediaIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

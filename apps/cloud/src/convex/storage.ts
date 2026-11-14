@@ -113,6 +113,7 @@ export const complete = action({
     if (version.status === "processing" || version.status === "ready") return;
     if (version.status !== "uploading" || !version.uploadId)
       throw new ConvexError("Upload unavailable.");
+    if (version.open) throw new ConvexError("Recording upload is not sealed.");
     const { client, bucket } = storage();
     const object = { Bucket: bucket, Key: version.objectKey };
     // Reconcile a completed object after a lost response or database outage.
@@ -189,6 +190,26 @@ export const playbackUrl = action({
         { expiresIn },
       ),
       expiresIn,
+    };
+  },
+});
+
+export const sourceUrl = action({
+  args: { mediaId: v.id("media") },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ url: string; expiresIn: number; name: string; snapshot: string }> => {
+    const source = await ctx.runQuery(internal.versions.source, args);
+    const { client, bucket } = storage();
+    const expiresIn = 60;
+    return {
+      url: await getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: source.key }), {
+        expiresIn,
+      }),
+      expiresIn,
+      name: source.name,
+      snapshot: source.snapshot,
     };
   },
 });

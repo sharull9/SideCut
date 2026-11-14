@@ -75,3 +75,16 @@ The library/version backend and private R2 adapter are described in [the cloud l
 ## LV015 share services
 
 The typed cloud API now exposes `shareAccess.create/open`, `shares.list/revoke/view/comment/resolve/heartbeat/workflow`, and `storage.guestUrl`. These implement the service boundary only; no guest page has been shipped. Link/session tokens are bearer secrets and should stay out of logs and query strings. A future guest page should consume the link token from a URL fragment, retain its returned session only for the review session, and use authenticated WorkOS context for private grants. See [guest-review verification and limits](verification/lawn-videorc-guest-scenes.md), including the one-minute lifetime of already-issued object grants.
+
+## Studio cloud takes and editing from the cloud
+
+Signed-in members with editing access can choose **Save to → Cloud** in Studio. The take uploads while it records: `versions.beginStream` opens a version before its size is known, the browser sends equal 8 MiB parts through `storage.partUrl`, and on stop `versions.seal` fixes the size and part count before `storage.complete`. `complete` refuses unsealed versions. Studio keeps a local copy of takes up to 128 MiB, so a failed upload of a short take is still offered as a local take. Signed-out users, viewers and builds without cloud configuration record to this device only.
+
+After the upload completes, Studio opens `/edit/$mediaId`. That page asks `storage.sourceUrl` for a one-minute signed link to the original upload, downloads it and imports it into the open project (re-imports of the same file are deduplicated). The library's **Open in editor** button uses the same page. `sourceUrl` does not need the processing service; it serves the original once its upload has completed.
+
+Before using this against a real bucket:
+
+1. Deploy the new functions with `vp exec convex dev --once`.
+2. Add an R2 CORS rule for each app origin allowing `PUT` (part uploads) and `GET` (editor downloads), with the `Content-Type` request header allowed. Without it the browser blocks both requests.
+
+Live output stays in the desktop app, which streams through the native recorder. Studio scenes are not streamed yet.

@@ -127,8 +127,8 @@
 }
 /* Native selects match the editor's inputs on every page. */
 .app-page select {
+  flex: none;
   height: 32px;
-  min-width: 0;
   padding: 0 8px;
   border: 1px solid var(--input);
   border-radius: min(var(--radius-md), 10px);

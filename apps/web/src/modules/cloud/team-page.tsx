@@ -25,7 +25,7 @@ export function TeamPage() {
   return (
     <AppPage
       title="Team"
-      description="Manage your cloud team and its library. Editing and recordings stay on this device."
+      description="Manage your cloud team and its library. Studio can save takes here, and any file opens in the editor."
     >
       <div className="grid gap-4">
         <CloudErrorBoundary>

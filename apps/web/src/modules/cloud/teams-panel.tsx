@@ -1,66 +1,22 @@
-import { useState, useCallback, useEffect } from "react";
-import { AuthKitProvider, useAuth } from "@workos-inc/authkit-react";
-import {
-  ConvexReactClient,
-  ConvexProviderWithAuth,
-  useConvexAuth,
-  useQuery,
-  useMutation,
-} from "convex/react";
+import { useState } from "react";
+import { useAuth } from "@workos-inc/authkit-react";
+import { useConvexAuth, useQuery, useMutation } from "convex/react";
 import { api } from "@sidecut/cloud/api";
 import type { FunctionReturnType } from "convex/server";
 import { Button } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
-import { browserCloudConfig } from "./config";
+import { useCloud } from "./cloud-provider";
+import { useActiveTeamId } from "./active-team";
 import { CloudLibrary } from "./library-panel";
 
 type Team = NonNullable<FunctionReturnType<typeof api.teams.list>[number]["team"]>;
 const roles = ["owner", "admin", "member", "viewer"] as const;
 
-function useWorkOSAuth() {
-  const { isLoading, user, getAccessToken } = useAuth();
-  const fetchAccessToken = useCallback(
-    async ({ forceRefreshToken }: { forceRefreshToken: boolean }) => {
-      try {
-        return await getAccessToken({ forceRefresh: forceRefreshToken });
-      } catch {
-        return null;
-      }
-    },
-    [getAccessToken],
-  );
-  return { isLoading, isAuthenticated: !!user, fetchAccessToken };
-}
-
 export default function CloudTeams() {
-  const [configuration] = useState(browserCloudConfig);
-  const [client, setClient] = useState<ConvexReactClient | null>(null);
-  useEffect(() => {
-    if (!configuration) return;
-    const connection = new ConvexReactClient(configuration.url, {
-      unsavedChangesWarning: false,
-    });
-    setClient(connection);
-    return () => {
-      // Parent cleanups run before children unsubscribe; closing now throws in their cleanups.
-      setTimeout(() => void connection.close());
-    };
-  }, [configuration]);
-  if (!configuration)
+  const { configured } = useCloud();
+  if (!configured)
     return <p>Cloud teams are not configured for this app. You can keep editing locally.</p>;
-  if (!client) return <p role="status">Connecting teams…</p>;
-  return (
-    <AuthKitProvider
-      clientId={configuration.clientId}
-      redirectUri={configuration.redirectUri}
-      devMode={configuration.devMode}
-      {...(configuration.apiHostname ? { apiHostname: configuration.apiHostname } : {})}
-    >
-      <ConvexProviderWithAuth client={client} useAuth={useWorkOSAuth}>
-        <Account />
-      </ConvexProviderWithAuth>
-    </AuthKitProvider>
-  );
+  return <Account />;
 }
 
 function Account() {
@@ -110,7 +66,7 @@ function TeamManager() {
   const invitations = useQuery(api.teams.pendingInvitations);
   const create = useMutation(api.teams.create);
   const accept = useMutation(api.teams.accept);
-  const [selected, setSelected] = useState<Team["_id"] | null>(null);
+  const [selected, setSelected] = useActiveTeamId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const current = teams?.find((entry) => entry.team?._id === selected) ?? teams?.[0];
@@ -208,7 +164,8 @@ function TeamManager() {
         </>
       )}
       <p className="text-xs text-muted-foreground">
-        Team selection does not upload or move your local project.
+        The active team is where Studio saves cloud takes. Selecting a team does not upload or move
+        your local project.
       </p>
     </div>
   );

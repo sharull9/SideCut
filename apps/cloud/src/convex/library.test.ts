@@ -194,6 +194,44 @@ describe("cloud library and immutable versions", () => {
     expect((await a.query(api.versions.list, { mediaId }))[0]?.status).toBe("processing");
   });
 
+  it("streams a recording of unknown length, then seals its final size exactly once", async () => {
+    const { t, a, b, mediaId } = await setup();
+    const stream = { mediaId, requestId: "take", snapshot: '{"type":"video/webm"}' };
+    await expect(b.mutation(api.versions.beginStream, stream)).rejects.toThrow("access denied");
+    const versionId = await a.mutation(api.versions.beginStream, stream);
+    expect(await a.mutation(api.versions.beginStream, stream)).toBe(versionId);
+    await expect(
+      a.mutation(api.versions.beginStream, { ...stream, snapshot: "other" }),
+    ).rejects.toThrow("conflicts");
+    // Parts may arrive before the size is known.
+    for (const part of [1, 2])
+      await t.mutation(internal.versions.recordPart, {
+        versionId,
+        part,
+        etag: `part-${part}`,
+        bytes: part === 1 ? 8 : 3,
+      });
+    const seal = { versionId, expectedBytes: 11, partCount: 2 };
+    await expect(b.mutation(api.versions.seal, seal)).rejects.toThrow("access denied");
+    await expect(a.mutation(api.versions.seal, { ...seal, partCount: 0 })).rejects.toThrow(
+      "Invalid transfer size",
+    );
+    await a.mutation(api.versions.seal, seal);
+    await a.mutation(api.versions.seal, seal);
+    await expect(a.mutation(api.versions.seal, { ...seal, expectedBytes: 12 })).rejects.toThrow(
+      "already sealed",
+    );
+    await t.mutation(internal.versions.uploaded, { versionId });
+    const [version] = await a.query(api.versions.list, { mediaId });
+    expect(version).toMatchObject({ status: "processing", open: false, expectedBytes: 11 });
+    expect(await a.query(internal.versions.source, { mediaId })).toMatchObject({
+      key: version?.objectKey,
+      name: "Render",
+      snapshot: '{"type":"video/webm"}',
+    });
+    await expect(b.query(internal.versions.source, { mediaId })).rejects.toThrow("access denied");
+  });
+
   it("retains ready output on failure, ignores stale jobs and never rolls back to older results", async () => {
     const { t, a, teamId, mediaId, begin, upload } = await setup();
     const first = await begin("one");

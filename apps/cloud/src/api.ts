@@ -59,6 +59,8 @@ export const api: FilterApi<
   },
   versions: {
     begin: makeFunctionReference("versions:begin"),
+    beginStream: makeFunctionReference("versions:beginStream"),
+    seal: makeFunctionReference("versions:seal"),
     list: makeFunctionReference("versions:list"),
     retryProcessing: makeFunctionReference("versions:retryProcessing"),
   },
@@ -67,6 +69,7 @@ export const api: FilterApi<
     partUrl: makeFunctionReference("storage:partUrl"),
     complete: makeFunctionReference("storage:complete"),
     playbackUrl: makeFunctionReference("storage:playbackUrl"),
+    sourceUrl: makeFunctionReference("storage:sourceUrl"),
     guestUrl: makeFunctionReference("storage:guestUrl"),
   },
   teams: {

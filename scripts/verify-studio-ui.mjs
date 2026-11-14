@@ -152,7 +152,7 @@ try {
 
   // Output in memory must not be lost by leaving the route.
   await nav.getByRole("link", { name: "Edit", exact: true }).click();
-  await dialog.getByText("Stop the recording and add or discard").waitFor();
+  await dialog.getByText("Stop the recording, let the upload finish").waitFor();
   await button("Stay in Studio").click();
   result.checks.closeGuard = true;
   await button("Stop recording").click();

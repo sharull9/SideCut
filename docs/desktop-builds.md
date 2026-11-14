@@ -1,28 +1,42 @@
 # Desktop builds
 
-The `Desktop builds` GitHub Actions workflow builds Windows x64, Linux x64 and
+The `Release` GitHub Actions workflow builds Windows x64, Linux x64 and
 macOS Apple Silicon. It produces NSIS `.exe` installers on `windows-latest`,
 AppImage and `.deb` files on `ubuntu-24.04`, and `.dmg` and `.zip` files on
 `macos-15`. Each package includes a CLI launcher under `resources/cli` (inside
 the app bundle's Resources directory on macOS).
 
-## Run on GitHub
+## Releases
 
-1. Commit and push the workflow and packaging changes. For the manual Run workflow
-   button to appear, the workflow must be present on the repository's default branch.
-2. Open **Actions**, select **Desktop builds**, and choose **Run workflow**.
-3. After the target job passes, download `sidecut-windows-x64`, `sidecut-linux-x64` or `sidecut-macos-arm64`
-   from that run's **Artifacts** section. Each contains the installers and a
-   `smoke-*.json` verification result. Artifacts expire after one day.
+The workflow publishes a GitHub release once all three platforms build and pass
+verification:
 
-Pushing a version tag such as `v0.1.0` also runs the workflow. The staged app's
-version comes from that tag. Manual branch builds use `apps/desktop/package.json`.
-The workflow does not create GitHub releases or publish downloads automatically,
-and it needs no signing secrets. Both workflows use Node 24.22.1, matching the
-repository engine.
+- **Pushes to `main`** publish a nightly prerelease,
+  `v<version>-nightly.<YYYYMMDD>.<run>`, where `<version>` comes from
+  `apps/desktop/package.json`, at most once every 4 hours. A push is skipped when
+  the last nightly is newer than that, or when nothing but docs changed since it;
+  an hourly scheduled run then releases the skipped commits once the 4 hours
+  pass. Nightlies are never marked latest.
+- **Pushing a version tag** such as `v0.1.0` publishes a stable release with that
+  version and marks it latest. A tag with a suffix (`v0.1.0-beta.1`) is a prerelease.
+- **Run workflow** (Actions → **Release**) on `main` publishes a nightly at once,
+  ignoring the 4-hour gap.
 
-The workflow has read-only repository permissions, a 30-minute job timeout, and
-cancels older builds for the same ref. It installs dependencies, runs the full
+Each release has the installers, a `SHA256SUMS` file and notes GitHub generates
+from merged pull requests. It is created as a draft and published only after every
+file is attached, so a cancelled run leaves no partial release. Release runs for
+the same ref wait for each other and are never cancelled; a waiting run rechecks
+the gap when it starts. The verification results (`smoke-*.json`) stay in the
+run's **Artifacts** section, which expires after one day.
+
+To cut a stable release, bump `version` in `apps/desktop/package.json` (so later
+nightlies count from it), merge, then tag that commit and push the tag:
+`git tag v0.1.0 && git push origin v0.1.0`.
+
+The workflow needs no signing secrets: builds are unsigned on Windows and
+ad-hoc signed, not notarized, on macOS. It uses Node 24.22.1, matching the
+repository engine. Package jobs have read-only repository permissions and a
+30-minute timeout; only the final publish job can write releases. It installs dependencies, runs the full
 checks, builds and packages the app, then verifies the unpacked application before
 uploading artifacts. It also tests NSIS installation, a copied DMG app, or an
 installed Debian package on the corresponding runner. Linux verification uses Xvfb and permits Chromium sandbox

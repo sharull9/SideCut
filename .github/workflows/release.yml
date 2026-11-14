@@ -1,0 +1,212 @@
+name: Release
+
+# Nightlies: a push to main publishes a prerelease (v<version>-nightly.<date>.<run>) when the
+# last nightly is at least 4 hours old and code changed since it. The hourly schedule picks up
+# pushes that landed inside the gap. Run workflow publishes a nightly at once, ignoring the gap.
+# Stable: pushing a v*.*.* tag publishes a release that becomes "latest".
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+  schedule:
+    # Off the hour, when GitHub's scheduled runs are busiest.
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One release run per ref at a time. Nothing is cancelled: a waiting run rechecks the gap when it
+# starts, so a push queued behind a nightly is skipped or released on its own merits.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  meta:
+    name: Resolve version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      release: ${{ steps.gate.outputs.release }}
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: apps/desktop/package.json
+          sparse-checkout-cone-mode: false
+      - id: gate
+        name: Check the nightly gap
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          GAP_HOURS: 4
+        run: |
+          set -euo pipefail
+          decide() { echo "release=$1" >> "$GITHUB_OUTPUT"; echo "$2" | tee -a "$GITHUB_STEP_SUMMARY"; }
+          if [[ "$GITHUB_REF_TYPE" == "tag" || "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            decide true "Tag or manual run: no gap applies."
+            exit 0
+          fi
+          nightlies='[.[] | select(.isDraft | not) | select(.tagName | test("-nightly[.]"))]'
+          last="$(gh release list --limit 100 --json tagName,publishedAt,isDraft --jq "$nightlies | sort_by(.publishedAt) | last // empty")"
+          if [[ -z "$last" ]]; then
+            decide true "No nightly published yet."
+            exit 0
+          fi
+          tag="$(jq -r .tagName <<<"$last")"
+          age=$(( $(date -u +%s) - $(date -u -d "$(jq -r .publishedAt <<<"$last")" +%s) ))
+          if (( age < GAP_HOURS * 3600 )); then
+            decide false "Skipped: $tag was published $(( age / 60 )) minutes ago (gap is $GAP_HOURS hours)."
+            exit 0
+          fi
+          compare="$(gh api "repos/$GH_REPO/compare/$tag...$GITHUB_SHA")"
+          if [[ "$(jq -r .status <<<"$compare")" != "ahead" ]]; then
+            decide false "Skipped: no new commits since $tag."
+            exit 0
+          fi
+          # The schedule ignores paths-ignore, so check for code changes here too.
+          code="$(jq '[.files[].filename | select((startswith("docs/") or endswith(".md")) | not)] | length' <<<"$compare")"
+          if (( code == 0 )); then
+            decide false "Skipped: only docs changed since $tag."
+            exit 0
+          fi
+          decide true "Releasing: code changed since $tag."
+      - id: meta
+        name: Resolve release version
+        if: steps.gate.outputs.release == 'true'
+        shell: bash
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+            # A tag with a suffix (v1.2.0-beta.1) is still a prerelease.
+            if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then prerelease=false; else prerelease=true; fi
+          else
+            base="$(node -p "require('./apps/desktop/package.json').version")"
+            date="$(date -u +%Y%m%d)"
+            version="${base}-nightly.${date}.${RUN_NUMBER}"
+            prerelease=true
+          fi
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release version: $version" >&2
+            exit 1
+          fi
+          {
+            echo "version=$version"
+            echo "tag=v$version"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+          echo "Releasing v$version (prerelease: $prerelease)" >> "$GITHUB_STEP_SUMMARY"
+
+  package:
+    name: ${{ matrix.name }}
+    needs: meta
+    if: needs.meta.outputs.release == 'true'
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-latest
+            artifact: sidecut-windows-x64
+          - name: Linux x64
+            os: ubuntu-24.04
+            artifact: sidecut-linux-x64
+          - name: macOS Apple Silicon
+            os: macos-15
+            artifact: sidecut-macos-arm64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      RELEASE_VERSION: ${{ needs.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: voidzero-dev/setup-vp@v1.21.2
+        with:
+          node-version: 24.22.1
+          cache: true
+          run-install: false
+      - run: vp install --frozen-lockfile
+      - run: vp run check
+      - run: vp run package:desktop
+      - name: Allow Chromium sandbox namespaces on the Linux runner
+        if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Verify packaged app on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run -a vp run verify:packaged
+      - name: Verify packaged app on macOS
+        if: runner.os == 'macOS'
+        run: vp run verify:packaged
+      - name: Verify Windows installer and CLI
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/verify-windows-install.ps1
+      - name: Verify installed macOS DMG copy
+        if: runner.os == 'macOS'
+        run: sh scripts/verify-macos-install.sh
+      - name: Verify installed Debian package
+        if: runner.os == 'Linux'
+        run: xvfb-run -a sh scripts/verify-linux-install.sh
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.artifact }}
+          retention-days: 1
+          if-no-files-found: error
+          compression-level: 0
+          path: |
+            apps/desktop/release/*.AppImage
+            apps/desktop/release/*.deb
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.zip
+            apps/desktop/release/*.exe
+            apps/desktop/release/smoke-*.json
+            apps/desktop/release/installed-smoke-*.json
+
+  release:
+    name: Publish GitHub release
+    needs: [meta, package]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: sidecut-*
+          merge-multiple: true
+          path: release-assets
+      # Smoke results stay in the run's artifacts; the release carries installers only.
+      - name: Write checksums
+        working-directory: release-assets
+        run: |
+          rm -f -- *smoke-*.json
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+      # Created as a draft and published only after every file is attached.
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.meta.outputs.tag }}
+          PRERELEASE: ${{ needs.meta.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          flags=(--draft --generate-notes --target "$GITHUB_SHA" --title "raE.E $TAG")
+          if [[ "$PRERELEASE" == "true" ]]; then
+            flags+=(--prerelease --latest=false)
+          else
+            flags+=(--latest)
+          fi
+          gh release create "$TAG" "${flags[@]}" release-assets/*
+          gh release edit "$TAG" --draft=false

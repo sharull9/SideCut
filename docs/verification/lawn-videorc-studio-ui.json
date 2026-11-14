@@ -1,5 +1,5 @@
 {
-  "testedAt": "2026-11-14T12:24:58.339Z",
+  "testedAt": "2026-11-14T14:09:27.289Z",
   "platform": "win32",
   "production": true,
   "syntheticDevices": true,
@@ -19,7 +19,7 @@
     "closeGuard": true,
     "recording": {
       "size": [1920, 1080],
-      "bytes": 991984,
+      "bytes": 969081,
       "audio": 1,
       "banner": [55, 190, 247, 255]
     },

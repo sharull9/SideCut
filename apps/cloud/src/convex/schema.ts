@@ -145,6 +145,8 @@ export default defineSchema({
     objectKey: v.string(),
     // Recording uploads start before their size is known; `seal` fixes the size and part count.
     open: v.optional(v.boolean()),
+    // Moments marked while recording, in seconds from the start of the take.
+    marks: v.optional(v.array(v.object({ seconds: v.number(), name: v.string() }))),
     uploadId: v.optional(v.string()),
     error: v.optional(v.string()),
     playbackKey: v.optional(v.string()),

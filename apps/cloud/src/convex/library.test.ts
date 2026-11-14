@@ -211,11 +211,19 @@ describe("cloud library and immutable versions", () => {
         etag: `part-${part}`,
         bytes: part === 1 ? 8 : 3,
       });
-    const seal = { versionId, expectedBytes: 11, partCount: 2 };
+    const seal = {
+      versionId,
+      expectedBytes: 11,
+      partCount: 2,
+      marks: [{ seconds: 1.5, name: "Intro" }],
+    };
     await expect(b.mutation(api.versions.seal, seal)).rejects.toThrow("access denied");
     await expect(a.mutation(api.versions.seal, { ...seal, partCount: 0 })).rejects.toThrow(
       "Invalid transfer size",
     );
+    await expect(
+      a.mutation(api.versions.seal, { ...seal, marks: [{ seconds: -1, name: "x" }] }),
+    ).rejects.toThrow("Invalid marks");
     await a.mutation(api.versions.seal, seal);
     await a.mutation(api.versions.seal, seal);
     await expect(a.mutation(api.versions.seal, { ...seal, expectedBytes: 12 })).rejects.toThrow(
@@ -228,6 +236,7 @@ describe("cloud library and immutable versions", () => {
       key: version?.objectKey,
       name: "Render",
       snapshot: '{"type":"video/webm"}',
+      marks: [{ seconds: 1.5, name: "Intro" }],
     });
     await expect(b.query(internal.versions.source, { mediaId })).rejects.toThrow("access denied");
   });

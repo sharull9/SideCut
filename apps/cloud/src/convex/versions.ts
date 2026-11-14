@@ -97,8 +97,15 @@ export const beginStream = mutation({
 });
 
 /** Fix the final size of a recorded version once every part has been sent. */
+const markList = v.array(v.object({ seconds: v.number(), name: v.string() }));
+
 export const seal = mutation({
-  args: { versionId: v.id("mediaVersions"), expectedBytes: v.number(), partCount: v.number() },
+  args: {
+    versionId: v.id("mediaVersions"),
+    expectedBytes: v.number(),
+    partCount: v.number(),
+    marks: v.optional(markList),
+  },
   handler: async (ctx, args) => {
     const version = await ctx.db.get(args.versionId);
     if (!version) throw new ConvexError("Version unavailable.");
@@ -112,6 +119,18 @@ export const seal = mutation({
       args.partCount > MAX_PARTS
     )
       throw new ConvexError("Invalid transfer size.");
+    const marks = args.marks ?? [];
+    if (
+      marks.length > 500 ||
+      marks.some(
+        (mark) =>
+          !Number.isFinite(mark.seconds) ||
+          mark.seconds < 0 ||
+          mark.seconds > 86400 ||
+          mark.name.length > 200,
+      )
+    )
+      throw new ConvexError("Invalid marks.");
     if (!version.open) {
       // A repeated seal after a lost response is accepted; a different size is not.
       if (version.expectedBytes === args.expectedBytes && version.partCount === args.partCount)
@@ -123,6 +142,7 @@ export const seal = mutation({
       expectedBytes: args.expectedBytes,
       partCount: args.partCount,
       open: false,
+      ...(marks.length ? { marks } : {}),
     });
   },
 });
@@ -277,7 +297,12 @@ export const source = internalQuery({
       (item) => item.status === "processing" || item.status === "ready",
     );
     if (!version) throw new ConvexError("Source unavailable.");
-    return { key: version.objectKey, name: media.name, snapshot: version.snapshot };
+    return {
+      key: version.objectKey,
+      name: media.name,
+      snapshot: version.snapshot,
+      marks: version.marks ?? [],
+    };
   },
 });
 

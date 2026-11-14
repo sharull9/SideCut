@@ -148,7 +148,10 @@ try {
   // Record: decoded output has picture, overlay, camera and audio.
   await button("Start recording").click();
   await button("Stop recording").waitFor();
-  await page.waitForTimeout(4000);
+  await page.waitForTimeout(2000);
+  await button("Mark moment").click();
+  await dialog.getByText("1 mark", { exact: false }).waitFor();
+  await page.waitForTimeout(2000);
 
   // Output in memory must not be lost by leaving the route.
   await nav.getByRole("link", { name: "Edit", exact: true }).click();
@@ -187,11 +190,17 @@ try {
   assert.ok(decoded.banner[2] > 180, `decoded banner was ${decoded.banner}`);
   result.checks.recording = decoded;
 
-  // Editor handoff.
+  // Editor handoff: the take lands at the end of the timeline with its mark.
   await button("Add take to project").click();
-  await dialog.getByText("was added to Project media.").waitFor();
-  result.checks.handoff = true;
+  await dialog.getByText("placed at the end of the timeline").waitFor();
   await noAlert();
+  await nav.getByRole("link", { name: "Edit", exact: true }).click();
+  await page
+    .getByLabel(/Mark 1 at \d+\.\d+ seconds/)
+    .first()
+    .waitFor();
+  result.checks.handoff = { placed: true, marker: true };
+  await openStudio();
 
   // Recent clips.
   await button("Arm buffer").click();
@@ -215,6 +224,20 @@ try {
   await page.waitForTimeout(600);
   assert.deepEqual((await pixel(0.1, 0.86)).slice(0, 3), [56, 189, 248]);
   result.checks.reloadRecovery = true;
+
+  // A take cut off by a reload is kept on disk and offered back.
+  await button("Start recording").click();
+  await button("Stop recording").waitFor();
+  await page.waitForTimeout(6500);
+  page.once("dialog", (prompt) => void prompt.accept());
+  await page.reload();
+  await openStudio();
+  const recovered = dialog.getByRole("region", { name: "Recovered takes" });
+  await recovered.getByText("· interrupted", { exact: false }).waitFor();
+  await recovered.getByRole("button", { name: "Add to project", exact: true }).click();
+  await dialog.getByText("was added to Project media").waitFor();
+  await recovered.waitFor({ state: "detached" });
+  result.checks.takeRecovery = true;
 
   assert.deepEqual(result.errors, []);
   result.accepted = true;

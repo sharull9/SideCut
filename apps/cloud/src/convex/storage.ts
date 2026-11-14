@@ -199,7 +199,13 @@ export const sourceUrl = action({
   handler: async (
     ctx,
     args,
-  ): Promise<{ url: string; expiresIn: number; name: string; snapshot: string }> => {
+  ): Promise<{
+    url: string;
+    expiresIn: number;
+    name: string;
+    snapshot: string;
+    marks: { seconds: number; name: string }[];
+  }> => {
     const source = await ctx.runQuery(internal.versions.source, args);
     const { client, bucket } = storage();
     const expiresIn = 60;
@@ -210,6 +216,7 @@ export const sourceUrl = action({
       expiresIn,
       name: source.name,
       snapshot: source.snapshot,
+      marks: source.marks,
     };
   },
 });

@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { RiFilmLine, RiLiveLine, RiTeamLine } from "@remixicon/react";
+import { RiFilmLine, RiFolderVideoLine, RiLiveLine, RiTeamLine } from "@remixicon/react";
 import "./shell.css";
 
 const DESTINATIONS = [
   { to: "/studio", label: "Studio", icon: RiLiveLine },
+  { to: "/library", label: "Library", icon: RiFolderVideoLine },
   { to: "/", label: "Edit", icon: RiFilmLine },
   { to: "/team", label: "Team", icon: RiTeamLine },
 ] as const;

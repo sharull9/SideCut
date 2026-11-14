@@ -3,11 +3,11 @@ import { useAuth } from "@workos-inc/authkit-react";
 import { useConvexAuth, useQuery, useMutation } from "convex/react";
 import { api } from "@sidecut/cloud/api";
 import type { FunctionReturnType } from "convex/server";
-import { Button } from "@sidecut/ui/components/button";
+import { Link } from "@tanstack/react-router";
+import { Button, buttonVariants } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
 import { useCloud } from "./cloud-provider";
 import { useActiveTeamId } from "./active-team";
-import { CloudLibrary } from "./library-panel";
 
 type Team = NonNullable<FunctionReturnType<typeof api.teams.list>[number]["team"]>;
 const roles = ["owner", "admin", "member", "viewer"] as const;
@@ -156,11 +156,9 @@ function TeamManager() {
       {current?.team && (
         <>
           <TeamDetails key={current.team._id} team={current.team} role={current.role} />
-          <CloudLibrary
-            key={current.team._id}
-            teamId={current.team._id}
-            readOnly={current.role === "viewer"}
-          />
+          <Link to="/library" className={buttonVariants({ variant: "outline" })}>
+            Open {current.team.name}'s library
+          </Link>
         </>
       )}
       <p className="text-xs text-muted-foreground">

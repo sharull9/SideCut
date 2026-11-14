@@ -1,5 +1,5 @@
 {
-  "testedAt": "2026-11-14T12:06:53.911Z",
+  "testedAt": "2026-11-14T12:24:58.339Z",
   "platform": "win32",
   "production": true,
   "syntheticDevices": true,
@@ -13,19 +13,23 @@
       "listed": 2
     },
     "microphone": {
-      "audible": 0.999969482421875,
+      "audible": 1,
       "muted": 0
     },
     "closeGuard": true,
     "recording": {
       "size": [1920, 1080],
-      "bytes": 978551,
+      "bytes": 991984,
       "audio": 1,
       "banner": [55, 190, 247, 255]
     },
-    "handoff": true,
+    "handoff": {
+      "placed": true,
+      "marker": true
+    },
     "recentClips": true,
-    "reloadRecovery": true
+    "reloadRecovery": true,
+    "takeRecovery": true
   },
   "errors": [],
   "accepted": true

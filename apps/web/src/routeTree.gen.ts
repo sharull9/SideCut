@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as DiagnosticsRouteImport } from './routes/diagnostics'
+import { Route as LibraryRouteImport } from './routes/library'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as StudioRouteImport } from './routes/studio'
 import { Route as TeamRouteImport } from './routes/team'
@@ -30,6 +31,11 @@ const CallbackRoute = CallbackRouteImport.update({
 const DiagnosticsRoute = DiagnosticsRouteImport.update({
   id: '/diagnostics',
   path: '/diagnostics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LibraryRoute = LibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/callback': typeof CallbackRoute
   '/diagnostics': typeof DiagnosticsRoute
+  '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
   '/studio': typeof StudioRoute
   '/team': typeof TeamRoute
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/callback': typeof CallbackRoute
   '/diagnostics': typeof DiagnosticsRoute
+  '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
   '/studio': typeof StudioRoute
   '/team': typeof TeamRoute
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/callback': typeof CallbackRoute
   '/diagnostics': typeof DiagnosticsRoute
+  '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
   '/studio': typeof StudioRoute
   '/team': typeof TeamRoute
@@ -87,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/callback'
     | '/diagnostics'
+    | '/library'
     | '/login'
     | '/studio'
     | '/team'
@@ -96,6 +106,7 @@ export interface FileRouteTypes {
     | '/'
     | '/callback'
     | '/diagnostics'
+    | '/library'
     | '/login'
     | '/studio'
     | '/team'
@@ -105,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/callback'
     | '/diagnostics'
+    | '/library'
     | '/login'
     | '/studio'
     | '/team'
@@ -115,6 +127,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CallbackRoute: typeof CallbackRoute
   DiagnosticsRoute: typeof DiagnosticsRoute
+  LibraryRoute: typeof LibraryRoute
   LoginRoute: typeof LoginRoute
   StudioRoute: typeof StudioRoute
   TeamRoute: typeof TeamRoute
@@ -142,6 +155,13 @@ declare module '@tanstack/react-router' {
       path: '/diagnostics'
       fullPath: '/diagnostics'
       preLoaderRoute: typeof DiagnosticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/library': {
+      id: '/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof LibraryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -179,6 +199,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CallbackRoute: CallbackRoute,
   DiagnosticsRoute: DiagnosticsRoute,
+  LibraryRoute: LibraryRoute,
   LoginRoute: LoginRoute,
   StudioRoute: StudioRoute,
   TeamRoute: TeamRoute,

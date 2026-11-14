@@ -3,6 +3,7 @@ import { api } from "@sidecut/cloud/api";
 import { useActiveTeam } from "./active-team";
 import { recordingSnapshot } from "./recording-metadata";
 import { RecordingUpload, putPart, type UploadProgress } from "@/modules/studio/cloud-upload";
+import type { TakeMark } from "@/modules/studio/take-store";
 
 export type CloudRecording = { upload: RecordingUpload; mediaId: Promise<string> };
 
@@ -15,6 +16,7 @@ export type StudioCloud =
       begin: (
         fileName: string,
         type: string,
+        marks: () => readonly TakeMark[],
         onProgress: (p: UploadProgress) => void,
       ) => CloudRecording;
     };
@@ -47,7 +49,7 @@ export function useStudioCloud(): StudioCloud {
   return {
     state: "ready",
     teamName: current.team.name,
-    begin: (fileName, type, onProgress) => {
+    begin: (fileName, type, marks, onProgress) => {
       // Recording starts at once; parts wait here until the cloud upload exists.
       const prepared = (async () => {
         const name = `Studio take ${new Date().toLocaleString()}`;
@@ -69,7 +71,7 @@ export function useStudioCloud(): StudioCloud {
           put: putPart,
           finish: async (expectedBytes, partCount) => {
             const { versionId } = await prepared;
-            await seal({ versionId, expectedBytes, partCount });
+            await seal({ versionId, expectedBytes, partCount, marks: [...marks()] });
             await complete({ versionId });
           },
         },

@@ -1275,9 +1275,11 @@ export class BrowserProjectSession {
     }
   }
 
-  async importFiles(files: readonly File[]) {
+  /** Returns the media ID of each file, in order; files already in the project keep their ID. */
+  async importFiles(files: readonly File[]): Promise<string[]> {
     this.assertWritable();
-    if (!this.store || !files.length) return;
+    if (!this.store || !files.length) return [];
+    const ids: string[] = [];
     const epoch = this.epoch;
     this.update({ busy: true, error: null });
     try {
@@ -1295,11 +1297,13 @@ export class BrowserProjectSession {
         const existingID = known.get(key);
         if (existingID) {
           await this.store.putResource(this.state.project.id, existingID, resource);
+          ids.push(existingID);
           continue;
         }
         await this.store.putResource(this.state.project.id, item.id, resource);
         commands.push({ addMedia: { item } });
         known.set(key, item.id);
+        ids.push(item.id);
       }
       this.assertOpen(epoch);
       if (commands.length)
@@ -1310,6 +1314,7 @@ export class BrowserProjectSession {
         });
       await this.queue?.flush();
       await this.refreshMedia();
+      return ids;
     } finally {
       if (epoch === this.epoch) this.update({ busy: false });
     }

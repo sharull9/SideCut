@@ -8,6 +8,8 @@ import { Button } from "@sidecut/ui/components/button";
 import { Progress } from "@sidecut/ui/components/progress";
 import { AppPage } from "@/modules/shell/app-shell";
 import { megabytes } from "@/modules/studio/cloud-upload";
+import { addTakeToProject } from "@/modules/studio/place-take";
+import { findCloudTake, removeTake, takeFile } from "@/modules/studio/take-store";
 import { useEditorSession } from "@/modules/workspace/editor-session";
 import { useCloud } from "./cloud-provider";
 import { recordingMetadata } from "./recording-metadata";
@@ -15,7 +17,10 @@ import { recordingMetadata } from "./recording-metadata";
 export function EditFromCloud({ mediaId }: { mediaId: string }) {
   const { configured } = useCloud();
   return (
-    <AppPage title="Open from cloud" description="Downloads the original file into this project.">
+    <AppPage
+      title="Open from cloud"
+      description="Adds the original file to this project and places it at the end of the timeline."
+    >
       {configured ? (
         <Download mediaId={mediaId as GenericId<"media">} />
       ) : (
@@ -47,6 +52,15 @@ function Download({ mediaId }: { mediaId: GenericId<"media"> }) {
     void (async () => {
       try {
         setPhase({ name: "waiting" });
+        // A take recorded on this device is still on disk: open it without downloading.
+        const local = await findCloudTake(mediaId).catch(() => undefined);
+        if (local) {
+          setPhase({ name: "importing", fileName: local.fileName });
+          await addTakeToProject(session, await takeFile(local.fileName), local.marks);
+          await removeTake(local.fileName);
+          if (!abort.signal.aborted) void navigate({ to: "/", replace: true });
+          return;
+        }
         const source = await sourceUrl({ mediaId });
         const { fileName, type } = recordingMetadata(source.snapshot, source.name);
         const response = await fetch(source.url, { signal: abort.signal });
@@ -64,7 +78,7 @@ function Download({ mediaId }: { mediaId: GenericId<"media"> }) {
           setPhase({ name: "downloading", received, total, fileName });
         }
         setPhase({ name: "importing", fileName });
-        await session.importFiles([new File(chunks, fileName, { type })]);
+        await addTakeToProject(session, new File(chunks, fileName, { type }), source.marks);
         if (!abort.signal.aborted) void navigate({ to: "/", replace: true });
       } catch (cause) {
         if (abort.signal.aborted) return;

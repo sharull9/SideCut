@@ -1,10 +1,12 @@
+import { env as browserEnv } from "../../env";
+
 export function cloudConfig(
   env: {
-    url?: string;
-    clientId?: string;
-    apiHostname?: string;
-    devMode?: string;
-    redirectUri?: string;
+    url?: string | undefined;
+    clientId?: string | undefined;
+    apiHostname?: string | undefined;
+    devMode?: string | undefined;
+    redirectUri?: string | undefined;
   },
   origin: string,
 ) {
@@ -32,11 +34,11 @@ export function browserCloudConfig() {
   try {
     return cloudConfig(
       {
-        url: import.meta.env.VITE_CONVEX_URL,
-        clientId: import.meta.env.VITE_WORKOS_CLIENT_ID,
-        apiHostname: import.meta.env.VITE_WORKOS_API_HOSTNAME,
-        devMode: import.meta.env.VITE_WORKOS_DEV_MODE,
-        redirectUri: import.meta.env.VITE_WORKOS_REDIRECT_URI,
+        url: browserEnv.VITE_CONVEX_URL,
+        clientId: browserEnv.VITE_WORKOS_CLIENT_ID,
+        apiHostname: browserEnv.VITE_WORKOS_API_HOSTNAME,
+        devMode: browserEnv.VITE_WORKOS_DEV_MODE,
+        redirectUri: browserEnv.VITE_WORKOS_REDIRECT_URI,
       },
       window.location.origin,
     );

@@ -16,6 +16,7 @@
     "@sidecut/cloud": "workspace:*",
     "@sidecut/contracts": "workspace:*",
     "@sidecut/core": "workspace:*",
+    "@sidecut/env": "workspace:*",
     "@sidecut/platform-browser": "workspace:*",
     "@sidecut/ui": "workspace:*",
     "@tailwindcss/vite": "catalog:",

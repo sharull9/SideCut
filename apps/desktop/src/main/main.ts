@@ -1,4 +1,5 @@
 import { BrowserWindow, app, dialog, ipcMain, net, protocol, shell } from "electron";
+import { createDesktopEnv } from "@sidecut/env/desktop";
 import { stat, writeFile, unlink, mkdir } from "node:fs/promises";
 import { dirname, join, isAbsolute } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -51,12 +52,9 @@ if (smoke) {
 
 // SIDECUT_RENDERER_URL points the window at a local web dev server instead of the build.
 const devUrl = (() => {
-  const value = process.env["SIDECUT_RENDERER_URL"];
+  const value = createDesktopEnv(process.env).SIDECUT_RENDERER_URL;
   if (!value) return undefined;
-  const url = new URL(value);
-  if (url.protocol !== "http:" || !["127.0.0.1", "localhost"].includes(url.hostname))
-    throw new Error("SIDECUT_RENDERER_URL must be a local http URL.");
-  return url;
+  return new URL(value);
 })();
 const trustedUrl = devUrl ?? new URL(rendererOrigin);
 

@@ -18,6 +18,7 @@
     "@sidecut/config": "workspace:*",
     "@sidecut/contracts": "workspace:*",
     "@sidecut/core": "workspace:*",
+    "@sidecut/env": "workspace:*",
     "@types/node": "catalog:",
     "electron": "catalog:",
     "electron-builder": "26.18.0",

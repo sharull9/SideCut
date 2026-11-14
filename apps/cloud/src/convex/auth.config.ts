@@ -1,7 +1,7 @@
 import type { AuthConfig } from "convex/server";
+import { createAuthEnv } from "@sidecut/env/cloud";
 
-const clientId = process.env.WORKOS_CLIENT_ID;
-if (!clientId) throw new Error("Set WORKOS_CLIENT_ID in the Convex deployment.");
+const { WORKOS_CLIENT_ID: clientId } = createAuthEnv(process.env);
 
 export default {
   providers: [

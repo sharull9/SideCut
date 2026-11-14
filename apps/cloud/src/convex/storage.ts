@@ -2,6 +2,7 @@
 "use node";
 
 import process from "node:process";
+import { createStorageEnv } from "@sidecut/env/cloud";
 
 import {
   S3Client,
@@ -19,12 +20,18 @@ import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 
 function storage() {
-  const account = process.env.R2_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-  const bucket = process.env.R2_BUCKET;
-  if (!account || !/^[a-f0-9]{32}$/.test(account) || !accessKeyId || !secretAccessKey || !bucket)
+  let env;
+  try {
+    env = createStorageEnv(process.env);
+  } catch {
     throw new ConvexError("Private media storage is not configured.");
+  }
+  const {
+    R2_ACCOUNT_ID: account,
+    R2_ACCESS_KEY_ID: accessKeyId,
+    R2_SECRET_ACCESS_KEY: secretAccessKey,
+    R2_BUCKET: bucket,
+  } = env;
   return {
     bucket,
     client: new S3Client({

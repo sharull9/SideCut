@@ -10,6 +10,20 @@ import type { FolderMedia } from "@sidecut/contracts/desktop";
 import { createArchive, openArchive, type ArchiveResource } from "@sidecut/core/archive";
 import { importEDL, importFilmora, object } from "@sidecut/core/interchange";
 import { HostCoordinator, nativeBridge } from "./host-coordinator";
+import {
+  captureTransition,
+  deriveStatus,
+  saveProgress,
+  sessionTransition,
+  type CaptureCause,
+  type Backend,
+  type NativeHost,
+  type OpenSession,
+  type OperationName,
+  type SessionEvent,
+  type SessionState,
+  type SessionStep,
+} from "./project-session-state";
 import { parseCube } from "@sidecut/core/cube-lut";
 import { validateProject } from "@sidecut/core/validation";
 import { ProjectCoordinator } from "@sidecut/core/coordinator";
@@ -24,6 +38,7 @@ import type { ProjectFile } from "@sidecut/contracts/project";
 import { BrowserProjectStore } from "@sidecut/platform-browser/storage";
 import { acquireProjectWriter } from "@sidecut/platform-browser/writer-lock";
 import { SaveQueue } from "@sidecut/platform-browser/save-queue";
+import type { HostSnapshot } from "@sidecut/contracts/desktop";
 import { BrowserJobs } from "@sidecut/platform-browser/jobs";
 import { BrowserRecording, type RecordingRequest } from "@sidecut/platform-browser/recording";
 import { releaseExport } from "@sidecut/platform-browser/export-output";
@@ -99,6 +114,11 @@ function coordinatorState(coordinator: ProjectCoordinator | HostCoordinator): Se
     lastChange: state.lastChange,
   };
 }
+
+type SessionData = Omit<
+  BrowserSnapshot,
+  "saveState" | "readOnly" | "busy" | "error" | "unsupportedJSON"
+>;
 
 export class BrowserProjectSession {
   readonly jobs = new BrowserJobs(2);
@@ -187,7 +207,9 @@ export class BrowserProjectSession {
     };
   }
   private async configureExports() {
+    const epoch = this.epoch;
     const storage = await DurableStorage.open();
+    if (epoch !== this.epoch || this.machine.kind !== "open") return;
     await this.exports.configure({
       store: new DeliveryStore(storage),
       putBlob: storage.putBlob,
@@ -298,7 +320,7 @@ export class BrowserProjectSession {
     };
     let adoptedFileID: string | undefined;
     let resourceCommitted = false;
-    this.update({ busy: true, error: null });
+    const operation = this.begin("native-recording", { clearError: true });
     try {
       if (this.state.saveState === "error") {
         if (this.native) await this.native.projectFlush();
@@ -415,39 +437,170 @@ export class BrowserProjectSession {
       resourceCommitted = true;
       check();
       const json = encodeProjectFile(candidate);
-      this.update({ busy: false });
+      // Hand the foreground slot to the replacement operation.
+      this.finish(operation);
       await this.openProject(new File([json], "Recording.tandem", { type: "application/json" }));
     } finally {
       if (adoptedFileID && !resourceCommitted)
         await discardNativeFile(adoptedFileID).catch(() => {});
-      if (this.epoch === epoch) this.update({ busy: false });
+      this.finish(operation);
     }
   }
-  private archivedRaw: string | null = null;
-  private envelope = standardProject("prj_loading");
-  private coordinator: ProjectCoordinator | HostCoordinator = new ProjectCoordinator(this.envelope);
-  private hostGeneration = 0;
-  private folderStop: (() => void) | null = null;
+  /** Authoritative lifecycle: opening/open(backend, persistence, error, operation)/closing/closed/failed. */
+  private machine: SessionState = { kind: "opening", epoch: 0 };
+  /** Last document view, kept for reads once the backend that produced it was retired. */
+  private retiredView: ProjectCoordinator | HostCoordinator = new ProjectCoordinator(
+    standardProject("prj_loading"),
+  );
   private folderPending = Promise.resolve();
   readonly native = nativeBridge();
   private state: BrowserSnapshot = {
     warnings: [],
-    ...this.coordinator.getSnapshot(),
-    saveState: "loading",
-    readOnly: true,
-    busy: false,
-    error: null,
-    unsupportedJSON: null,
+    ...this.retiredView.getSnapshot(),
+    ...deriveStatus(this.machine),
     mediaAvailability: {},
   };
-  private store: BrowserProjectStore | null = null;
-  private release: (() => void) | null = null;
-  private unsubscribe: (() => void) | null = null;
-  private queue: SaveQueue | null = null;
-  private channel: BroadcastChannel | null = null;
   private listeners = new Set<() => void>();
-  private epoch = 0;
-  private exportController: AbortController | null = null;
+  private get epoch() {
+    return this.machine.epoch;
+  }
+  private get open(): OpenSession | null {
+    return this.machine.kind === "open" ? this.machine : null;
+  }
+  private get store() {
+    return this.open?.store ?? null;
+  }
+  private get coordinator(): ProjectCoordinator | HostCoordinator {
+    return this.open?.backend.coordinator ?? this.retiredView;
+  }
+  private get queue() {
+    const backend = this.open?.backend;
+    return backend?.kind === "browserWriter" ? backend.queue : null;
+  }
+  private get host(): NativeHost | null {
+    const backend = this.open?.backend;
+    return backend?.kind === "nativeHost" ? backend : null;
+  }
+  private get unsupportedOriginal() {
+    return deriveStatus(this.machine).unsupportedJSON;
+  }
+
+  /** Applies a named transition without notifying; callers publish once their data patch is ready. */
+  private transition(event: SessionEvent): SessionStep {
+    const before = this.machine;
+    const step = sessionTransition(before, event);
+    this.machine = step.state;
+    if (step.state !== before) this.guardCapture(this.machineCause(before, step.state));
+    return step;
+  }
+  /** What a lifecycle transition changed that capture is bound to, if anything. */
+  private machineCause(before: SessionState, after: SessionState): CaptureCause | null {
+    if (before.epoch !== after.epoch) return "epoch";
+    const backend = (state: SessionState) => (state.kind === "open" ? state.backend : null);
+    if (backend(before) !== backend(after)) return "backend";
+    if (deriveStatus(before).readOnly !== deriveStatus(after).readOnly) return "ownership";
+    return null;
+  }
+  private directedCapture: unknown = null;
+  /**
+   * Named effect: capture belongs to the project and write access it started with. It runs when
+   * ownership, backend, epoch or project change, never from snapshot publication, and acts at
+   * most once per capture state.
+   */
+  private guardCapture(cause: CaptureCause | null) {
+    if (!cause) return;
+    const capture = this.recording.getSnapshot();
+    if (capture === this.directedCapture) return;
+    const action = captureTransition({
+      cause,
+      readOnly: deriveStatus(this.machine).readOnly,
+      projectID: this.state.project.id,
+      boundProjectID: this.recordingProjectID,
+      status: capture.status,
+    });
+    if (action === "none") return;
+    this.directedCapture = capture;
+    if (action === "discard") void this.recording.discard().catch(() => {});
+    else this.recording.stop();
+  }
+  /** Last durable revision and newest outstanding save of the open session. */
+  saveProgress() {
+    return saveProgress(this.machine);
+  }
+  private send(event: SessionEvent): SessionStep {
+    const step = this.transition(event);
+    this.publish();
+    return step;
+  }
+  /** Foreground operation: begin/finish with an owner token. Stale finishes are ignored. */
+  private begin(
+    name: OperationName,
+    options: { clearError?: boolean; controller?: AbortController } = {},
+  ): { epoch: number; token: number } {
+    const epoch = this.epoch;
+    const step = this.send({
+      type: "operationBegun",
+      epoch,
+      name,
+      clearError: options.clearError ?? false,
+      ...(options.controller ? { controller: options.controller } : {}),
+    });
+    return { epoch, token: step.token! };
+  }
+  private finish(operation: { epoch: number; token: number }) {
+    const before = this.machine;
+    const step = this.transition({ type: "operationEnded", ...operation });
+    if (step.state !== before) this.publish();
+  }
+  private raise(cause: unknown, source: "operation" | "background" = "background") {
+    this.send({
+      type: "errorRaised",
+      epoch: this.epoch,
+      error: { source, message: message(cause) },
+    });
+  }
+  private disposeBackend(backend: Backend, options: { keepLock?: boolean } = {}) {
+    backend.unsubscribe();
+    if (backend.kind === "nativeHost") {
+      backend.folderStop?.();
+      backend.coordinator.close();
+    }
+    if (backend.kind === "browserWriter" && !options.keepLock) backend.release();
+  }
+  /** Releases everything an open session owned, exactly once, after the machine moved on. */
+  private draining: Promise<"saved" | "error" | null> | null = null;
+  private disposeOpen(open: OpenSession) {
+    this.retiredView = open.backend.coordinator;
+    this.disposeBackend(open.backend, { keepLock: true });
+    const previous = this.draining;
+    this.draining = (async () => {
+      await previous;
+      try {
+        if (open.backend.kind === "browserWriter") await open.backend.queue.flush();
+        return open.backend.kind === "browserWriter" ? ("saved" as const) : null;
+      } catch {
+        /* The last successfully committed snapshot remains intact. */
+        return "error" as const;
+      } finally {
+        open.channel?.close();
+        if (open.backend.kind === "browserWriter") open.backend.release();
+        open.store.close();
+      }
+    })();
+    return this.draining;
+  }
+  private retireBackend(
+    step: { retired?: OpenSession | Backend },
+    options: { keepLock?: boolean } = {},
+  ) {
+    const retired = step.retired;
+    if (!retired) return;
+    if ("store" in retired) return this.disposeOpen(retired);
+    else {
+      this.retiredView = retired.coordinator;
+      this.disposeBackend(retired, options);
+    }
+  }
 
   getSnapshot = () => this.state;
   subscribe = (listener: () => void) => {
@@ -458,61 +611,53 @@ export class BrowserProjectSession {
   };
 
   async start(): Promise<void> {
-    const epoch = ++this.epoch;
+    const started = this.transition({ type: "start" });
+    started.abort?.abort();
+    const epoch = this.epoch;
+    const retired = this.retireBackend(started);
+    this.publish();
+    // Resources acquired while opening stay here until `opened` hands them to the machine.
     let store: BrowserProjectStore | null = null;
     let release: (() => void) | null = null;
-    this.archivedRaw = null;
-    this.update({
-      saveState: "loading",
-      readOnly: true,
-      busy: false,
-      error: null,
-      unsupportedJSON: null,
-    });
+    let channel: BroadcastChannel | null = null;
+    let installed = false;
     try {
+      const draining = retired ?? this.draining;
+      if (draining) await draining;
+      if (epoch !== this.epoch) return;
       store = await BrowserProjectStore.open();
       if (epoch !== this.epoch) {
         store.close();
         return;
       }
       if (this.native) {
-        this.store = store;
-        this.attachHost();
-        this.folderStop = this.native.folderSubscribe((files, error) => {
-          if (error) {
-            this.update({ error });
-            return;
-          }
-          const projectID = this.state.project.id;
-          const generation = this.hostGeneration;
-          this.folderPending = this.folderPending
-            .then(async () => {
-              if (this.state.busy)
-                await new Promise<void>((resolve) => {
-                  const stop = this.subscribe(() => {
-                    if (
-                      !this.state.busy ||
-                      store !== this.store ||
-                      generation !== this.hostGeneration
-                    ) {
-                      stop();
-                      resolve();
-                    }
-                  });
-                });
-              if (
-                store !== this.store ||
-                projectID !== this.state.project.id ||
-                generation !== this.hostGeneration
-              )
-                return;
-              await this.importFolderMedia(files);
-            })
-            .catch((cause) => {
-              if (store === this.store) this.update({ error: message(cause) });
-            });
+        const { backend, initial } = this.hostBackend();
+        this.transition({
+          type: "opened",
+          epoch,
+          store,
+          channel: null,
+          backend,
+          ...(initial ? { persistence: initial.saveState } : {}),
+        });
+        installed = true;
+        if (initial)
+          this.transition({
+            type: "hostStatus",
+            epoch,
+            host: backend.coordinator,
+            status: initial.saveState,
+            revision: backend.coordinator.getSnapshot().revision,
+            sequence: initial.sequence,
+            generation: initial.generation,
+            ...(initial.error ? { message: initial.error } : {}),
+          });
+        this.update({
+          ...coordinatorState(backend.coordinator),
+          reviewPendingCount: initial?.reviewPendingCount ?? 0,
         });
         await this.refreshMedia();
+        if (epoch !== this.epoch) return;
         await this.configureExports();
         return;
       }
@@ -531,69 +676,134 @@ export class BrowserProjectSession {
         store.close();
         return;
       }
-      this.store = store;
-      this.release = release;
       if (typeof BroadcastChannel !== "undefined") {
-        this.channel = new BroadcastChannel("sidecut.project.changes");
-        this.channel.onmessage = (event) => {
+        channel = new BroadcastChannel("sidecut.project.changes");
+        channel.onmessage = (event) => {
           if (event.data === this.state.project.id && this.state.readOnly && !this.state.busy)
-            void this.refreshReadOnly().catch((error) => this.update({ error: message(error) }));
+            void this.refreshReadOnly().catch((error) => this.raise(error));
         };
       }
-      this.attach(latest, release === null);
+      const built = this.browserBackend(epoch, latest, store, channel, release);
+      this.transition({
+        type: "opened",
+        epoch,
+        store,
+        channel,
+        backend: built.backend,
+        savedRevision: latest.revision,
+      });
+      installed = true;
+      this.update(built.data);
       await this.refreshMedia();
+      if (epoch !== this.epoch) return;
       await this.configureExports();
     } catch (error) {
-      release?.();
-      store?.close();
+      if (!installed) {
+        release?.();
+        channel?.close();
+        store?.close();
+      }
       if (epoch === this.epoch) {
-        this.store = null;
-        this.release = null;
-        this.update({ saveState: "error", readOnly: true, error: message(error) });
+        const failed = this.transition({ type: "openFailed", epoch, message: message(error) });
+        failed.abort?.abort();
+        const failedDrain = this.retireBackend(failed);
+        this.publish();
+        await failedDrain;
       }
     }
   }
 
-  private attachHost() {
-    if (!this.native) return;
-    this.unsubscribe?.();
-    if (this.coordinator instanceof HostCoordinator) this.coordinator.close();
-    this.coordinator = new HostCoordinator(this.native, (value) => {
-      this.update({
-        saveState: value.saveState,
-        error: value.error,
-        reviewPendingCount: value.reviewPendingCount ?? 0,
+  /** Native desktop host: the host coordinator and its folder watch belong to this backend. */
+  private hostBackend(): { backend: NativeHost; initial: HostSnapshot | undefined } {
+    const native = this.native!;
+    let initial: HostSnapshot | undefined;
+    let live = false;
+    const coordinator = new HostCoordinator(native, (value) => {
+      initial = value;
+      if (!live) return;
+      this.transition({
+        type: "hostStatus",
+        epoch: this.epoch,
+        host: coordinator,
+        status: value.saveState,
+        revision: coordinator.getSnapshot().revision,
+        sequence: value.sequence,
+        generation: value.generation,
+        ...(value.error ? { message: value.error } : {}),
       });
+      this.publish({ reviewPendingCount: value.reviewPendingCount ?? 0 });
     });
-    this.hostGeneration = this.coordinator.generation;
-    this.unsubscribe = this.coordinator.subscribe(() => {
-      if (
-        this.coordinator instanceof HostCoordinator &&
-        this.coordinator.generation !== this.hostGeneration
-      ) {
-        this.hostGeneration = this.coordinator.generation;
-        ++this.epoch;
+    live = true;
+    const unsubscribe = coordinator.subscribe(() => {
+      const host = this.host;
+      if (!host || host.coordinator !== coordinator) return;
+      if (coordinator.generation !== host.generation) {
+        // The host replaced the project: invalidate older work and cancel owned operations.
+        const step = this.transition({
+          type: "hostGenerationChanged",
+          epoch: this.epoch,
+          generation: coordinator.generation,
+        });
+        step.abort?.abort();
         this.jobs.cancelAll();
         this.analysis.reset();
-        this.exportController?.abort();
-        this.update({ busy: false, mediaAvailability: {}, unsupportedJSON: null });
+        this.publish({ mediaAvailability: {} });
       }
-      this.update(coordinatorState(this.coordinator));
-      void this.refreshMedia().catch((error) => this.update({ error: message(error) }));
+      this.update(coordinatorState(coordinator));
+      void this.refreshMedia().catch((error) => this.raise(error));
     });
-    this.update({ ...coordinatorState(this.coordinator), readOnly: false, busy: false });
+    const folderStop = native.folderSubscribe((files, error) => {
+      if (error) {
+        this.send({
+          type: "errorRaised",
+          epoch: this.epoch,
+          error: { source: "background", message: error },
+        });
+        return;
+      }
+      const projectID = this.state.project.id;
+      const folderEpoch = this.epoch;
+      this.folderPending = this.folderPending
+        .then(async () => {
+          if (this.state.busy)
+            await new Promise<void>((resolve) => {
+              const stop = this.subscribe(() => {
+                if (!this.state.busy || folderEpoch !== this.epoch) {
+                  stop();
+                  resolve();
+                }
+              });
+            });
+          if (folderEpoch !== this.epoch || projectID !== this.state.project.id) return;
+          await this.importFolderMedia(files);
+        })
+        .catch((cause) => {
+          if (folderEpoch === this.epoch) this.raise(cause);
+        });
+    });
+    return {
+      backend: {
+        kind: "nativeHost",
+        coordinator,
+        generation: coordinator.generation,
+        unsubscribe,
+        folderStop,
+      },
+      initial,
+    };
   }
 
   async reloadNativeProject(backup = false) {
-    if (!this.native || !(this.coordinator instanceof HostCoordinator)) return;
-    this.coordinator.receive(await this.native.projectReload(backup));
+    const host = this.host;
+    if (!this.native || !host) return;
+    host.coordinator.receive(await this.native.projectReload(backup));
   }
 
   private async importFolderMedia(files: FolderMedia[]) {
     if (!this.store || !this.native) return;
     this.assertWritable();
     const epoch = this.epoch;
-    this.update({ busy: true });
+    const operation = this.begin("folder");
     try {
       for (const entry of files) {
         const file = new File([new Uint8Array(entry.bytes)], entry.path.split("/").at(-1)!, {
@@ -651,7 +861,7 @@ export class BrowserProjectSession {
       await this.native.projectFlush();
       await this.refreshMedia();
     } finally {
-      if (epoch === this.epoch) this.update({ busy: false });
+      this.finish(operation);
     }
   }
 
@@ -659,57 +869,109 @@ export class BrowserProjectSession {
     await this.native?.folderSelect();
   }
 
-  private attach(file: ProjectFile, readOnly: boolean) {
+  /** Builds a browser backend: writer (lock + SaveQueue), follower, or unsupported (read-only). */
+  private browserBackend(
+    epoch: number,
+    file: ProjectFile,
+    store: BrowserProjectStore,
+    channel: BroadcastChannel | null,
+    lock: (() => void) | null,
+    original?: string,
+  ): { backend: Backend; data: Partial<SessionData> } {
     this.jobs.cancelAll();
     this.analysis.reset();
-    this.unsubscribe?.();
-    this.envelope = file;
-    this.coordinator = new ProjectCoordinator(file);
-    const coordinator = this.coordinator;
-    const epoch = this.epoch;
-    const store = this.store;
-    if (!store) throw new Error("Browser storage is closed.");
-    this.queue = new SaveQueue(
-      async (snapshot) => {
-        await store.save(snapshot);
-        this.channel?.postMessage(snapshot.project.id);
-      },
-      (saveState, error) => {
-        if (this.epoch !== epoch || this.coordinator !== coordinator) return;
-        this.update({
-          saveState,
-          error: error ? `Could not save: ${message(error)}. Download a copy or retry.` : null,
-        });
-      },
-    );
-    this.unsubscribe = this.coordinator.subscribe(() => {
-      this.update(coordinatorState(this.coordinator));
-      this.queue?.enqueue(this.projectFile());
-      void this.refreshMedia().catch((error) => this.update({ error: message(error) }));
+    const coordinator = new ProjectCoordinator(file);
+    let backend!: Backend;
+    const unsubscribe = coordinator.subscribe(() => {
+      this.update(coordinatorState(coordinator));
+      if (backend.kind === "browserWriter") backend.queue.enqueue(coordinator.projectFile());
+      void this.refreshMedia().catch((error) => this.raise(error));
     });
-    this.update({
-      ...coordinatorState(this.coordinator),
-      readOnly,
-      saveState: readOnly ? "read-only" : "saved",
-      error: null,
-      mediaAvailability: {},
-      warnings: [
-        ...(typeof file.sidecutRecovery === "string" ? [file.sidecutRecovery] : []),
-        ...validateProject(file.project)
-          .filter((issue) => issue.severity === "warning")
-          .map((issue) => issue.message),
-      ],
-    });
+    if (lock) {
+      const queue = new SaveQueue(
+        async (snapshot) => {
+          await store.save(snapshot);
+          channel?.postMessage(snapshot.project.id);
+        },
+        (status, error) => {
+          this.transition({
+            type: "persistence",
+            epoch,
+            backend,
+            status,
+            ...(error
+              ? { message: `Could not save: ${message(error)}. Download a copy or retry.` }
+              : {}),
+          });
+          this.publish();
+        },
+        (save) => this.transition({ type: "saveRecorded", epoch, backend, save }),
+      );
+      backend = { kind: "browserWriter", coordinator, release: lock, queue, unsubscribe };
+    } else if (original !== undefined)
+      backend = { kind: "unsupported", coordinator, original, unsubscribe };
+    else backend = { kind: "browserFollower", coordinator, unsubscribe };
+    return {
+      backend,
+      data: {
+        ...coordinatorState(coordinator),
+        mediaAvailability: {},
+        warnings: [
+          ...(typeof file.sidecutRecovery === "string" ? [file.sidecutRecovery] : []),
+          ...validateProject(file.project)
+            .filter((issue) => issue.severity === "warning")
+            .map((issue) => issue.message),
+        ],
+      },
+    };
   }
 
-  private update(patch: Partial<BrowserSnapshot>) {
-    this.state = Object.freeze({ ...this.state, ...patch });
-    if (this.state.readOnly || this.state.project.id !== this.recordingProjectID) {
-      const capture = this.recording.getSnapshot();
-      if (capture.status === "requesting") void this.recording.discard().catch(() => {});
-      if (capture.status === "recording") this.recording.stop();
-    }
+  /** Replaces the backend of an open session; the retired backend is disposed after the switch. */
+  private installBackend(
+    file: ProjectFile,
+    backend: { lock: (() => void) | null; original?: string },
+    extra: Partial<SessionData> = {},
+    options: { keepLock?: boolean } = {},
+  ) {
+    const open = this.open;
+    if (!open) throw new Error("The project session was closed.");
+    const built = this.browserBackend(
+      this.epoch,
+      file,
+      open.store,
+      open.channel,
+      backend.lock,
+      backend.original,
+    );
+    this.retireBackend(
+      this.transition({
+        type: "backendInstalled",
+        epoch: this.epoch,
+        backend: built.backend,
+        savedRevision: file.revision,
+      }),
+      options,
+    );
+    this.update({ ...built.data, ...extra });
+  }
+
+  /** Document data changed: ordinary content ("data") or a different project ("project"). */
+  private update(patch: Partial<SessionData>) {
+    const projectID = this.state.project.id;
+    this.derive(patch);
+    this.guardCapture(this.state.project.id === projectID ? "data" : "project");
+    this.notify();
+  }
+  private derive(patch: Partial<SessionData>) {
+    this.state = Object.freeze({ ...this.state, ...patch, ...deriveStatus(this.machine) });
+  }
+  private notify() {
     for (const listener of this.listeners) listener();
+  }
+  /** Snapshot derivation and notification only; side effects belong to named transitions. */
+  private publish(patch: Partial<SessionData> = {}) {
+    this.derive(patch);
+    this.notify();
   }
 
   private assertWritable() {
@@ -805,9 +1067,8 @@ export class BrowserProjectSession {
   ) {
     if (!this.store || this.state.busy || this.state.saveState === "loading")
       throw new Error("Wait for the current project operation to finish.");
-    const store = this.store,
-      epoch = this.epoch;
-    this.update({ busy: true });
+    const store = this.store;
+    const operation = this.begin("export");
     try {
       const { renderWAV } = await import("@sidecut/platform-browser/wav-export");
       return await this.jobs.run("export", "Export audio", 10, signal, (jobSignal) =>
@@ -821,7 +1082,7 @@ export class BrowserProjectSession {
         ),
       );
     } finally {
-      if (this.epoch === epoch) this.update({ busy: false });
+      this.finish(operation);
     }
   }
 
@@ -839,10 +1100,8 @@ export class BrowserProjectSession {
     const store = this.store,
       settings = exportPresetPlan(snapshotProject, preset, format),
       project = settings.project,
-      epoch = this.epoch,
       controller = new AbortController();
-    this.exportController = controller;
-    this.update({ busy: true });
+    const operation = this.begin("export", { controller });
     try {
       const { renderWebM } = await import("@sidecut/platform-browser/export");
       return await this.jobs.run(
@@ -868,8 +1127,7 @@ export class BrowserProjectSession {
         },
       );
     } finally {
-      if (this.exportController === controller) this.exportController = null;
-      if (this.epoch === epoch) this.update({ busy: false });
+      this.finish(operation);
     }
   }
 
@@ -888,28 +1146,30 @@ export class BrowserProjectSession {
   }
 
   async enableEditing() {
-    if (this.archivedRaw)
+    if (this.unsupportedOriginal)
       throw new Error("This imported project uses unsupported data and must stay read-only.");
-    if (!this.store || !this.state.readOnly || this.state.busy) return;
+    const open = this.open;
+    if (!open || !this.state.readOnly || this.state.busy) return;
     const epoch = this.epoch;
-    this.update({ busy: true, error: null });
+    const operation = this.begin("editing", { clearError: true });
     let release: (() => void) | null = null;
+    let installed = false;
     try {
       release = await acquireProjectWriter(this.state.project.id);
       this.assertOpen(epoch);
       if (!release)
         throw new Error("Another tab is still editing this project. Close it and try again.");
-      const latest = await this.store.load(this.state.project.id);
+      const latest = await open.store.load(this.state.project.id);
       this.assertOpen(epoch);
       if (!latest) throw new Error("The saved project was not found.");
-      this.release = release;
-      this.attach(latest, false);
+      this.installBackend(latest, { lock: release });
+      installed = true;
       await this.refreshMedia();
     } catch (error) {
-      release?.();
-      if (epoch === this.epoch) this.update({ error: message(error) });
+      if (!installed) release?.();
+      if (epoch === this.epoch) this.raise(error, "operation");
     } finally {
-      if (epoch === this.epoch) this.update({ busy: false });
+      this.finish(operation);
     }
   }
 
@@ -922,10 +1182,11 @@ export class BrowserProjectSession {
       this.store &&
       latest &&
       this.state.readOnly &&
+      !this.unsupportedOriginal &&
       this.state.project.id === id &&
       !this.state.busy
     ) {
-      this.attach(latest, true);
+      this.installBackend(latest, { lock: null });
       await this.refreshMedia();
     }
   }
@@ -956,7 +1217,7 @@ export class BrowserProjectSession {
       throw new Error("Wait for browser storage to finish opening.");
     this.jobs.cancelAll();
     const epoch = this.epoch;
-    this.update({ busy: true, error: null });
+    const operation = this.begin("replace", { clearError: true });
     let candidateRelease: (() => void) | null = null;
     try {
       const archive = /\.sidecut$/i.test(file.name);
@@ -1030,8 +1291,9 @@ export class BrowserProjectSession {
           );
           this.assertOpen(epoch);
         }
-      if (this.native && this.coordinator instanceof HostCoordinator) {
-        this.coordinator.receive(await this.native.projectImport(original));
+      const host = this.host;
+      if (this.native && host) {
+        host.coordinator.receive(await this.native.projectImport(original));
         await this.refreshMedia();
         this.update({ warnings });
         return;
@@ -1040,14 +1302,11 @@ export class BrowserProjectSession {
       if (!inspected.editable) {
         if (!this.state.readOnly) await this.queue?.flush();
         this.assertOpen(epoch);
-        this.release?.();
-        this.release = null;
-        this.attach(
+        this.installBackend(
           decodeProjectFile({ revision: 0, project: { id: "prj_unsupported", name: file.name } }),
-          true,
+          { lock: null, original },
+          { warnings: [inspected.reason] },
         );
-        this.archivedRaw = original;
-        this.update({ warnings: [inspected.reason], unsupportedJSON: original, error: null });
         return;
       }
       const candidate = inspected.file;
@@ -1056,26 +1315,27 @@ export class BrowserProjectSession {
       if (!this.state.readOnly) await this.queue?.flush();
       this.assertOpen(epoch);
       const same = candidate.project.id === this.state.project.id;
+      const currentBackend = this.open?.backend;
       if (!same) candidateRelease = await acquireProjectWriter(candidate.project.id);
       this.assertOpen(epoch);
       await this.store.importProject(candidate);
       const latest = (await this.store.load(candidate.project.id)) ?? candidate;
       this.assertOpen(epoch);
-      if (!same) {
-        this.release?.();
-        this.release = candidateRelease;
-      }
-      this.archivedRaw = null;
-      this.update({ unsupportedJSON: null });
-      this.attach(latest, this.release === null);
+      // The same project keeps its lock; a different one swaps it for the candidate's.
+      const lock = same
+        ? currentBackend?.kind === "browserWriter"
+          ? currentBackend.release
+          : null
+        : candidateRelease;
       candidateRelease = null;
+      this.installBackend(latest, { lock }, {}, { keepLock: same });
       await this.refreshMedia();
       this.update({ warnings });
     } catch (error) {
       candidateRelease?.();
       throw error;
     } finally {
-      if (epoch === this.epoch) this.update({ busy: false });
+      this.finish(operation);
     }
   }
 
@@ -1085,9 +1345,10 @@ export class BrowserProjectSession {
     await this.openProject(new File([json], "Untitled.tandem", { type: "application/json" }));
   }
   downloadProject(version = false) {
-    const json = this.archivedRaw ?? encodeProjectFile(this.projectFile());
+    const original = this.unsupportedOriginal;
+    const json = original ?? encodeProjectFile(this.projectFile());
     // Run the same full validator used for editing before exporting a project.
-    const validated = this.archivedRaw
+    const validated = original
       ? null
       : new ProjectCoordinator(decodeProjectFile(JSON.parse(json))).getSnapshot();
     if (validated?.project.id === "prj_loading")
@@ -1110,7 +1371,7 @@ export class BrowserProjectSession {
       JSON.stringify({
         type: "markReviewed",
         projectID: this.state.project.id,
-        generation: this.hostGeneration,
+        generation: this.host?.generation ?? 0,
         revision: this.state.revision,
       }),
     );
@@ -1182,8 +1443,7 @@ export class BrowserProjectSession {
   async downloadArchive() {
     this.assertWritable();
     if (!this.store) throw new Error("Storage is closed.");
-    const epoch = this.epoch;
-    this.update({ busy: true, error: null });
+    const operation = this.begin("archive", { clearError: true });
     try {
       await this.queue?.flush();
       await this.native?.projectFlush();
@@ -1200,7 +1460,7 @@ export class BrowserProjectSession {
       anchor.remove();
       setTimeout(() => URL.revokeObjectURL(url), 30000);
     } finally {
-      if (epoch === this.epoch) this.update({ busy: false });
+      this.finish(operation);
     }
   }
 
@@ -1211,7 +1471,7 @@ export class BrowserProjectSession {
     if (!original) throw new Error("Source no longer exists in this project.");
     const epoch = this.epoch,
       revision = this.state.revision;
-    this.update({ busy: true, error: null });
+    const operation = this.begin("relink", { clearError: true });
     try {
       const { item, resource } = await probeLocalFile(file);
       this.assertOpen(epoch);
@@ -1247,7 +1507,7 @@ export class BrowserProjectSession {
           ],
         });
     } finally {
-      if (epoch === this.epoch) this.update({ busy: false });
+      this.finish(operation);
     }
   }
 
@@ -1256,7 +1516,7 @@ export class BrowserProjectSession {
     if (!this.store) throw new Error("Browser storage is closed.");
     const epoch = this.epoch,
       projectID = this.state.project.id;
-    this.update({ busy: true, error: null });
+    const operation = this.begin("resource", { clearError: true });
     try {
       if (file.size > 32 * 1024 * 1024) throw new Error("LUT exceeds the browser's 32 MB limit.");
       parseCube(await file.text());
@@ -1271,7 +1531,7 @@ export class BrowserProjectSession {
       await this.refreshMedia();
       return file.name;
     } finally {
-      if (epoch === this.epoch) this.update({ busy: false });
+      this.finish(operation);
     }
   }
 
@@ -1281,7 +1541,7 @@ export class BrowserProjectSession {
     if (!this.store || !files.length) return [];
     const ids: string[] = [];
     const epoch = this.epoch;
-    this.update({ busy: true, error: null });
+    const operation = this.begin("import", { clearError: true });
     try {
       const known = new Map(
         this.state.project.media.map((item) => [
@@ -1316,7 +1576,7 @@ export class BrowserProjectSession {
       await this.refreshMedia();
       return ids;
     } finally {
-      if (epoch === this.epoch) this.update({ busy: false });
+      this.finish(operation);
     }
   }
 
@@ -1467,7 +1727,7 @@ export class BrowserProjectSession {
       segment = makeSegment(project, ids, name, new Date().toISOString(), options.fields),
       resources: SegmentEntry["resources"] = {};
     segment.storageID = crypto.randomUUID();
-    this.update({ busy: true });
+    const operation = this.begin("segment");
     let library: SegmentLibrary | undefined;
     try {
       for (const item of segment.resources) {
@@ -1494,7 +1754,7 @@ export class BrowserProjectSession {
       return segment;
     } finally {
       library?.close();
-      if (this.epoch === epoch) this.update({ busy: false });
+      this.finish(operation);
     }
   }
   async insertSavedSegment(
@@ -1544,7 +1804,7 @@ export class BrowserProjectSession {
           "notFound",
           `Saved segment is missing ${item.path}. Save it again from its source project.`,
         );
-    this.update({ busy: true });
+    const operation = this.begin("segment");
     try {
       for (const item of entry.segment.resources) {
         options.signal?.throwIfAborted();
@@ -1591,7 +1851,7 @@ export class BrowserProjectSession {
       await this.refreshMedia();
       return result;
     } finally {
-      if (this.epoch === epoch) this.update({ busy: false });
+      this.finish(operation);
     }
   }
 
@@ -1623,28 +1883,16 @@ export class BrowserProjectSession {
     this.exports.stop();
     this.jobs.cancelAll();
     this.analysis.reset();
-    this.exportController?.abort();
-    ++this.epoch;
-    this.unsubscribe?.();
-    this.unsubscribe = null;
-    this.folderStop?.();
-    this.folderStop = null;
-    if (this.coordinator instanceof HostCoordinator) this.coordinator.close();
-    const store = this.store;
-    const release = this.release;
-    const queue = this.queue;
-    this.store = null;
-    this.release = null;
-    this.channel?.close();
-    this.channel = null;
-    this.update({ readOnly: true });
-    try {
-      await queue?.flush();
-    } catch {
-      /* The last successfully committed snapshot remains intact. */
-    }
-    release?.();
-    store?.close();
+    // Invalidate the epoch before awaiting anything; older work and a later start cannot be
+    // affected by this close draining the resources captured below.
+    const requested = this.transition({ type: "closeRequested" });
+    const epoch = this.epoch;
+    requested.abort?.abort();
+    const retired = this.retireBackend(requested);
+    this.publish();
+    const persistence = await (retired ?? this.draining);
+    this.transition({ type: "closed", epoch, ...(persistence ? { persistence } : {}) });
+    if (epoch === this.epoch) this.publish();
     await discardRecording;
   }
 }

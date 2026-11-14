@@ -4,6 +4,14 @@ import type { NativeRecordingRequest } from "@sidecut/contracts/native-recording
 import { streamDestination, streamDestinations } from "./native-streaming.ts";
 import { bridgeChannels } from "../shared/bridge.ts";
 import type { NativeRecorder } from "./native-recorder.ts";
+import {
+  OwnerCommandError,
+  ownerInvalid,
+  ownerStarted,
+  ownerTransition,
+  type OwnerEvent,
+  type OwnerState,
+} from "./native-recorder-owner-state.ts";
 
 export function registerNativeRecorder(
   recorder: NativeRecorder,
@@ -14,13 +22,23 @@ export function registerNativeRecorder(
     | {
         sender: Electron.WebContents;
         frame: Electron.WebFrameMain;
-        invalid: boolean;
-        started: boolean;
-        stopping: boolean;
-        id: string | undefined;
+        /** The only lifecycle record: confirming, starting, active, stopping or invalidating. */
+        state: OwnerState;
         dispose: () => void;
       }
     | undefined;
+  type Owner = NonNullable<typeof owner>;
+  /** Transition first; the returned effects run after the owner already changed state. */
+  const advance = (target: Owner, event: OwnerEvent) => {
+    const step = ownerTransition(target.state, event);
+    if (step.state) target.state = step.state;
+    return step;
+  };
+  const owns = (event: IpcMainInvokeEvent, frame: Electron.WebFrameMain) =>
+    owner !== undefined &&
+    owner.sender === event.sender &&
+    owner.frame === frame &&
+    ownerStarted(owner.state);
   const check = (event: IpcMainInvokeEvent) => {
     if (
       headless ||
@@ -87,15 +105,14 @@ export function registerNativeRecorder(
     check(event);
     const items = await recorder.list();
     const current = owner;
+    const state = current?.state;
     if (
-      current?.started &&
-      !current.stopping &&
+      state?.kind === "active" &&
       items.some(
-        (item) =>
-          item.id === current.id && item.status !== "recording" && item.status !== "stopping",
+        (item) => item.id === state.id && item.status !== "recording" && item.status !== "stopping",
       )
     )
-      current.dispose();
+      current?.dispose();
     return items;
   });
   ipcMain.handle(bridgeChannels.nativeRecordingRetry, (event, id: unknown) => {
@@ -106,10 +123,15 @@ export function registerNativeRecorder(
   });
   ipcMain.handle(bridgeChannels.nativeRecordingStop, async (event) => {
     const frame = check(event);
-    if (!owner || owner.sender !== event.sender || owner.frame !== frame || !owner.started)
+    if (!owns(event, frame) || !owner)
       throw new Error("No native recording owned by this document.");
     const current = owner;
-    current.stopping = true;
+    try {
+      advance(current, { type: "stop" });
+    } catch (error) {
+      if (error instanceof OwnerCommandError) throw new Error(error.message, { cause: error });
+      throw error;
+    }
     try {
       return await recorder.stop();
     } finally {
@@ -118,8 +140,7 @@ export function registerNativeRecorder(
   });
   ipcMain.handle(bridgeChannels.nativeRecordingStreamStatus, (event) => {
     const frame = check(event);
-    if (!owner || owner.sender !== event.sender || owner.frame !== frame || !owner.started)
-      throw new Error("No native recording owned by this document.");
+    if (!owns(event, frame)) throw new Error("No native recording owned by this document.");
     return recorder.streamStatus();
   });
   ipcMain.handle(bridgeChannels.nativeRecordingStart, async (event, input: unknown) => {
@@ -128,20 +149,15 @@ export function registerNativeRecorder(
     if (owner) throw new Error("Another native recording is active or awaiting confirmation.");
     const window = BrowserWindow.fromWebContents(event.sender);
     if (!window || !window.isVisible()) throw new Error("A visible recording window is required.");
-    const current = {
+    const current: Owner = {
       sender: event.sender,
       frame,
-      invalid: false,
-      started: false,
-      stopping: false,
-      id: undefined as string | undefined,
+      state: { kind: "confirming" },
       dispose: () => {},
     };
     owner = current;
     const revoke = () => {
-      current.invalid = true;
-      if (current.started && !current.stopping) {
-        current.stopping = true;
+      if (advance(current, { type: "invalidate" }).stopRecorder) {
         void recorder
           .stop()
           .catch(() => {})
@@ -180,7 +196,8 @@ export function registerNativeRecorder(
         if (["denied", "restricted"].includes(systemPreferences.getMediaAccessStatus(kind)))
           throw new Error(`Allow ${kind} access in system privacy settings, then retry.`);
       }
-      if (current.invalid || !valid(event, frame)) throw new Error("Recording request expired.");
+      if (ownerInvalid(current.state) || !valid(event, frame))
+        throw new Error("Recording request expired.");
       const description =
         request.source === "screen"
           ? "the entire desktop"
@@ -201,12 +218,13 @@ export function registerNativeRecorder(
         cancelId: 0,
       });
       if (choice.response !== 1) throw new Error("Recording cancelled.");
-      if (current.invalid || !valid(event, frame) || !window.isVisible())
+      if (ownerInvalid(current.state) || !valid(event, frame) || !window.isVisible())
         throw new Error("Recording request expired.");
+      advance(current, { type: "confirmed" });
       const result = await recorder.start(request);
-      current.id = result.id;
-      current.started = true;
-      if (current.invalid || !valid(event, frame)) {
+      const started = advance(current, { type: "started", id: result.id });
+      if (started.stopLateStart || ownerInvalid(current.state) || !valid(event, frame)) {
+        if (!started.stopLateStart) advance(current, { type: "invalidate" });
         await recorder.stop();
         throw new Error("Recording request expired.");
       }
@@ -218,7 +236,7 @@ export function registerNativeRecorder(
   });
   return async () => {
     if (owner) {
-      owner.invalid = true;
+      advance(owner, { type: "invalidate" });
       owner.dispose();
     }
     await recorder.close();

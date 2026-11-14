@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { DEFAULT_LIVE_ASSETS, LIVE_BACKGROUNDS, liveAssets } from "@sidecut/core/live-assets";
 import type { LiveAssets, LiveOverlay } from "@sidecut/core/live-assets";
 import { DEFAULT_LIVE_AUDIO, type LiveAudioSettings } from "@sidecut/core/live-audio";
@@ -28,6 +35,7 @@ import {
 } from "./take-store";
 import type { CloudRecording, StudioCloud } from "@/modules/cloud/studio-cloud";
 import { loadStudio, saveStudio } from "./studio-store";
+import { ClipCapture, clipsNeedResolution } from "./studio-capture";
 import "./studio.css";
 
 type VideoSource = {
@@ -112,7 +120,6 @@ export default function StudioPanel({
   const mixer = useRef<LiveAudioMixer | null>(null);
   const sources = useRef<VideoSource[]>([]);
   const audioInputs = useRef<AudioInput[]>([]);
-  const clips = useRef(new RecentClips());
   const recorder = useRef<MediaRecorder | null>(null);
   const sounds = useRef(new Map<string, AudioBuffer>());
   const persist = useRef<Promise<void>>(Promise.resolve());
@@ -147,12 +154,28 @@ export default function StudioPanel({
   const [recovered, setRecovered] = useState<Recovered[]>([]);
   const [markCount, setMarkCount] = useState(0);
   const markTake = useRef<(() => void) | null>(null);
-  const [armed, setArmed] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [clip, setClip] = useState<(Take & { marks: number }) | null>(null);
+  // Points at this render's programStream so the long-lived clip controller never goes stale.
+  const latestStream = useRef<(() => Promise<{ stream: MediaStream; audio: MediaStream }>) | null>(
+    null,
+  );
+  const clips = useRef<ClipCapture | null>(null);
+  // The clip controller is the only source for buffer and saved-clip UI.
+  clips.current ??= new ClipCapture({
+    buffer: new RecentClips(),
+    acquire: () => latestStream.current!(),
+    createURL: (file) => URL.createObjectURL(file),
+    revokeURL: (url) => URL.revokeObjectURL(url),
+  });
+  const clipState = useSyncExternalStore(clips.current.subscribe, () => clips.current!.state);
+  const armed = clipState.buffer.kind === "armed";
+  const saving = clipState.product.kind === "saving";
+  const clip =
+    clipState.product.kind === "retained" || clipState.product.kind === "importing"
+      ? clipState.product.clip
+      : null;
   const blocked = snapshot.readOnly || snapshot.busy || snapshot.project.id !== projectID;
   // Takes on disk can be recovered later, so only takes held in memory keep Studio open.
-  const hasTake = Boolean((take && !take.stored) || clip);
+  const hasTake = Boolean(take && !take.stored) || clipsNeedResolution(clipState);
 
   const busy = recording || hasTake || uploading;
   useEffect(() => {
@@ -204,7 +227,6 @@ export default function StudioPanel({
     let alive = true;
     let timer: ReturnType<typeof setInterval> | undefined;
     const readers = new Map<string, Promise<LocalMediaReader>>();
-    const clipBuffer = clips.current;
     const reader = (id: string) => {
       let entry = readers.get(id);
       if (!entry) {
@@ -258,7 +280,7 @@ export default function StudioPanel({
     return () => {
       alive = false;
       clearInterval(timer);
-      void clipBuffer.stop();
+      void clips.current?.close();
       if (recorder.current?.state === "recording") recorder.current.stop();
       output.current?.close();
       output.current = null;
@@ -454,6 +476,8 @@ export default function StudioPanel({
     if (!output.current) throw new Error("Studio output is unavailable.");
     return { stream: output.current.recordingStream(audio.stream), audio: audio.stream };
   };
+  latestStream.current = programStream;
+
   const startRecording = () =>
     attempt(async () => {
       const { stream } = await programStream();
@@ -571,10 +595,9 @@ export default function StudioPanel({
       setStatus("");
       setRecording(true);
     }, "Recording could not start.");
-  const addFile = (file: File, done: () => void) =>
+  const addClip = (file: File) =>
     attempt(async () => {
-      await session.importFiles([file]);
-      done();
+      await clips.current!.importClip((target) => session.importFiles([target]).then(() => {}));
       setStatus(`${file.name} was added to Project media.`);
     }, "Import failed. Download the file or retry.");
   const clearTake = () => {
@@ -603,36 +626,13 @@ export default function StudioPanel({
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
     }, "The take could not be read from this device.");
-  const clearClip = () => {
-    if (clip) URL.revokeObjectURL(clip.url);
-    setClip(null);
-  };
   const toggleClips = () =>
     attempt(async () => {
-      if (armed) {
-        await clips.current.stop();
-        setArmed(false);
-        return;
-      }
-      const { stream, audio } = await programStream();
-      clips.current.arm({ video: stream, audio });
-      setArmed(true);
+      if (armed || clipState.buffer.kind === "failed") await clips.current!.disarm();
+      else await clips.current!.arm();
     }, "Recent clips could not start.");
   const saveClip = (seconds: 30 | 60) =>
-    attempt(async () => {
-      setSaving(true);
-      try {
-        const saved = await clips.current.save(seconds);
-        if (clip) URL.revokeObjectURL(clip.url);
-        setClip({
-          file: saved.file,
-          url: URL.createObjectURL(saved.file),
-          marks: saved.marks.length,
-        });
-      } finally {
-        setSaving(false);
-      }
-    }, "The clip could not be saved.");
+    attempt(() => clips.current!.save(seconds), "The clip could not be saved.");
 
   return (
     <div className="studio-layout">
@@ -810,7 +810,12 @@ export default function StudioPanel({
             <Button
               size="sm"
               variant="outline"
-              disabled={!frame}
+              disabled={
+                !frame ||
+                clipState.buffer.kind === "arming" ||
+                clipState.buffer.kind === "stopping" ||
+                saving
+              }
               onClick={() => void toggleClips()}
             >
               {armed ? "Stop buffer" : "Arm buffer"}
@@ -821,7 +826,7 @@ export default function StudioPanel({
               disabled={!armed}
               onClick={() =>
                 void attempt(
-                  () => clips.current.mark("Studio mark"),
+                  () => clips.current!.mark("Studio mark"),
                   "The mark could not be added.",
                 )
               }
@@ -833,7 +838,7 @@ export default function StudioPanel({
                 key={seconds}
                 size="sm"
                 variant="outline"
-                disabled={!armed || saving}
+                disabled={!armed || saving || clipState.product.kind === "importing"}
                 onClick={() => void saveClip(seconds)}
               >
                 Save last {seconds}s
@@ -847,8 +852,8 @@ export default function StudioPanel({
               </span>
               <Button
                 size="sm"
-                disabled={blocked}
-                onClick={() => void addFile(clip.file, clearClip)}
+                disabled={blocked || clipState.product.kind === "importing"}
+                onClick={() => void addClip(clip.file)}
               >
                 Add clip to project
               </Button>
@@ -859,7 +864,12 @@ export default function StudioPanel({
               >
                 Download clip
               </a>
-              <Button size="sm" variant="outline" onClick={clearClip}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={clipState.product.kind === "importing"}
+                onClick={() => clips.current!.discard()}
+              >
                 Discard clip
               </Button>
             </div>

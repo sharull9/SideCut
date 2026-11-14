@@ -9,15 +9,21 @@ import {
 } from "electron";
 import type { IpcMainInvokeEvent } from "electron";
 import { bridgeChannels } from "../shared/bridge";
+import {
+  grantApproved,
+  grantDisplayGranted,
+  grantExpired,
+  grantTransition,
+  type GrantEvent,
+  type GrantState,
+} from "./capture-grant-state.ts";
 
 type Grant = {
   id: string;
   source: "screen" | "camera" | "microphone";
   microphone: boolean;
-  approved: boolean;
-  expires: number;
-  displayPending: boolean;
-  displayGranted: boolean;
+  /** The only lifecycle record: approval, display selection and revocation. */
+  state: GrantState;
   frame: Electron.WebFrameMain;
   dispose: () => void;
 };
@@ -36,9 +42,12 @@ export function registerCapturePermissions(isTrusted: (url: string) => boolean) 
   };
   const current = (id: number) => {
     const grant = grants.get(id);
-    if (grant && grant.expires > Date.now()) return grant;
+    if (grant && !grantExpired(grant.state, Date.now())) return grant;
     grant?.dispose();
     return undefined;
+  };
+  const advance = (grant: Grant, event: GrantEvent) => {
+    grant.state = grantTransition(grant.state, event);
   };
   ipcMain.handle(bridgeChannels.capturePrepare, async (event, id: unknown, input: unknown) => {
     const frame = check(event);
@@ -63,10 +72,7 @@ export function registerCapturePermissions(isTrusted: (url: string) => boolean) 
       id,
       source,
       microphone: input.microphone || source === "microphone",
-      approved: false,
-      expires: Date.now() + 60_000,
-      displayPending: false,
-      displayGranted: false,
+      state: { kind: "awaitingApproval", expires: Date.now() + 60_000 },
       frame,
       dispose: () => {},
     };
@@ -87,6 +93,7 @@ export function registerCapturePermissions(isTrusted: (url: string) => boolean) 
     let timer = setTimeout(revoke, 60_000);
     timer.unref();
     grant.dispose = () => {
+      advance(grant, { type: "revoke" });
       if (grants.get(event.sender.id) === grant) grants.delete(event.sender.id);
       clearTimeout(timer);
       cleanup();
@@ -122,8 +129,7 @@ export function registerCapturePermissions(isTrusted: (url: string) => boolean) 
         event.senderFrame !== event.sender.mainFrame
       )
         throw new Error("Capture request expired or was cancelled.");
-      grant.approved = true;
-      grant.expires = Date.now() + 310_000;
+      advance(grant, { type: "approve", expires: Date.now() + 310_000 });
       clearTimeout(timer);
       timer = setTimeout(revoke, 310_000);
       timer.unref();
@@ -147,7 +153,12 @@ export function registerCapturePermissions(isTrusted: (url: string) => boolean) 
   ) => {
     if (!contents || !isTrusted(url) || !isTrusted(contents.getURL())) return false;
     const grant = current(contents.id);
-    if (!grant?.approved || grant.frame !== contents.mainFrame || !isTrusted(grant.frame.url))
+    if (
+      !grant ||
+      !grantApproved(grant.state) ||
+      grant.frame !== contents.mainFrame ||
+      !isTrusted(grant.frame.url)
+    )
       return false;
     if (permission === "display-capture") return grant.source === "screen";
     return (
@@ -158,7 +169,7 @@ export function registerCapturePermissions(isTrusted: (url: string) => boolean) 
           (type === "video" && grant.source === "camera") ||
           (type === "audio" &&
             grant.microphone &&
-            (grant.source !== "screen" || grant.displayGranted)),
+            (grant.source !== "screen" || grantDisplayGranted(grant.state))),
       )
     );
   };
@@ -186,14 +197,18 @@ export function registerCapturePermissions(isTrusted: (url: string) => boolean) 
       request.frame !== contents.mainFrame ||
       !allowed(contents, "display-capture", request.securityOrigin, []) ||
       !grant ||
-      grant.displayPending ||
+      grant.state.kind !== "approved" ||
       !request.videoRequested ||
       request.audioRequested
     ) {
       callback({});
       return;
     }
-    grant.displayPending = true;
+    advance(grant, { type: "beginDisplay" });
+    const reject = () => {
+      advance(grant, { type: "displayRejected" });
+      callback({});
+    };
     void (async () => {
       try {
         const sources = await desktopCapturer.getSources({
@@ -202,7 +217,7 @@ export function registerCapturePermissions(isTrusted: (url: string) => boolean) 
         });
         const window = BrowserWindow.fromWebContents(contents);
         if (!window || current(contents.id) !== grant || request.frame !== contents.mainFrame) {
-          callback({});
+          reject();
           return;
         }
         const choice = await dialog.showMessageBox(window, {
@@ -223,7 +238,7 @@ export function registerCapturePermissions(isTrusted: (url: string) => boolean) 
           contents.isDestroyed() ||
           request.frame !== contents.mainFrame
         ) {
-          callback({});
+          reject();
           return;
         }
         const available = await desktopCapturer.getSources({
@@ -237,13 +252,13 @@ export function registerCapturePermissions(isTrusted: (url: string) => boolean) 
           request.frame !== contents.mainFrame ||
           !live
         ) {
-          callback({});
+          reject();
           return;
         }
-        grant.displayGranted = true;
+        advance(grant, { type: "displayChosen" });
         callback({ video: live });
       } catch {
-        callback({});
+        reject();
       }
     })();
   });

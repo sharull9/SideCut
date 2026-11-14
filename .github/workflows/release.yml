@@ -1,0 +1,166 @@
+name: Release
+
+# Every push to main publishes a nightly prerelease (v<version>-nightly.<date>.<run>).
+# Pushing a v*.*.* tag publishes a stable release that becomes "latest".
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to main supersedes an unfinished nightly. Tag releases are never cancelled.
+# Releases are drafts until every asset is attached, so a cancelled run publishes nothing.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref == 'refs/heads/main' }}
+
+jobs:
+  meta:
+    name: Resolve version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: apps/desktop/package.json
+          sparse-checkout-cone-mode: false
+      - id: meta
+        name: Resolve release version
+        shell: bash
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+            # A tag with a suffix (v1.2.0-beta.1) is still a prerelease.
+            if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then prerelease=false; else prerelease=true; fi
+          else
+            base="$(node -p "require('./apps/desktop/package.json').version")"
+            date="$(date -u +%Y%m%d)"
+            version="${base}-nightly.${date}.${RUN_NUMBER}"
+            prerelease=true
+          fi
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release version: $version" >&2
+            exit 1
+          fi
+          {
+            echo "version=$version"
+            echo "tag=v$version"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+          echo "Releasing v$version (prerelease: $prerelease)" >> "$GITHUB_STEP_SUMMARY"
+
+  package:
+    name: ${{ matrix.name }}
+    needs: meta
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-latest
+            artifact: sidecut-windows-x64
+          - name: Linux x64
+            os: ubuntu-24.04
+            artifact: sidecut-linux-x64
+          - name: macOS Apple Silicon
+            os: macos-15
+            artifact: sidecut-macos-arm64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      RELEASE_VERSION: ${{ needs.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: voidzero-dev/setup-vp@v1.21.2
+        with:
+          node-version: 24.22.1
+          cache: true
+          run-install: false
+      - run: vp install --frozen-lockfile
+      - run: vp run check
+      - run: vp run package:desktop
+      - name: Allow Chromium sandbox namespaces on the Linux runner
+        if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Verify packaged app on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run -a vp run verify:packaged
+      - name: Verify packaged app on macOS
+        if: runner.os == 'macOS'
+        run: vp run verify:packaged
+      - name: Verify Windows installer and CLI
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/verify-windows-install.ps1
+      - name: Verify installed macOS DMG copy
+        if: runner.os == 'macOS'
+        run: sh scripts/verify-macos-install.sh
+      - name: Verify installed Debian package
+        if: runner.os == 'Linux'
+        run: xvfb-run -a sh scripts/verify-linux-install.sh
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.artifact }}
+          retention-days: 1
+          if-no-files-found: error
+          compression-level: 0
+          path: |
+            apps/desktop/release/*.AppImage
+            apps/desktop/release/*.deb
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.zip
+            apps/desktop/release/*.exe
+            apps/desktop/release/smoke-*.json
+            apps/desktop/release/installed-smoke-*.json
+
+  release:
+    name: Publish GitHub release
+    needs: [meta, package]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: sidecut-*
+          merge-multiple: true
+          path: release-assets
+      # Smoke results stay in the run's artifacts; the release carries installers only.
+      - name: Write checksums
+        working-directory: release-assets
+        run: |
+          rm -f -- *smoke-*.json
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+      # Created as a draft and published only after every file is attached.
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.meta.outputs.tag }}
+          PRERELEASE: ${{ needs.meta.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          flags=(--draft --generate-notes --target "$GITHUB_SHA" --title "raE.E $TAG")
+          if [[ "$PRERELEASE" == "true" ]]; then
+            flags+=(--prerelease --latest=false)
+          else
+            flags+=(--latest)
+          fi
+          gh release create "$TAG" "${flags[@]}" release-assets/*
+          gh release edit "$TAG" --draft=false

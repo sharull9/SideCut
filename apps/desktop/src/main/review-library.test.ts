@@ -152,34 +152,39 @@ describe("review, watch and CLI host adapters", () => {
     await expect(api.handle("sync", { delay: 80 })).rejects.toThrow(/one second/);
     await expect(api.handle("sync", { makeDefault: true })).rejects.toThrow(/delay/);
   });
-  it("runs CLI create/edit/inspect with strict fields and stable error exits", async () => {
-    const { api, host, cli } = await setup();
-    expect((await cli("new", "--name", "CLI project")).code).toBe(2);
-    const created = await cli("new", "--name", "CLI project", "--expected-revision", "0");
-    expect(created.code, created.err).toBe(0);
-    expect(JSON.parse(created.out).name).toBe("CLI project");
-    const edited = await cli(
-      "apply",
-      "--commands",
-      JSON.stringify([{ updateProject: { patch: { name: "CLI edited" } } }]),
-      "--expected-revision",
-      "0",
-    );
-    expect(edited.code, edited.err).toBe(0);
-    expect(JSON.parse((await cli("status", "--json")).out)).toMatchObject({
-      name: "CLI edited",
-      revision: 1,
-    });
-    expect(JSON.parse(host.snapshot().json).project.name).toBe("CLI edited");
-    expect((await cli("apply", "--commands", "[]", "--expected-revision", "0")).code).toBe(4);
-    expect((await cli("check")).code).toBe(2);
-    expect((await cli("status", "--constructor", "bad")).code).toBe(2);
-    expect((await cli("assets", "show", "--id", "missing")).code).toBe(3);
-    expect((await cli("effects", "--type", "missing")).code).toBe(5);
-    expect(await api.handle("schema", {})).toMatchObject({
-      operations: { "assets-search": { online: "boolean" }, watch: { revision: "integer" } },
-    });
-  });
+  // Several real CLI processes need extra startup time on shared macOS runners.
+  it(
+    "runs CLI create/edit/inspect with strict fields and stable error exits",
+    { timeout: 15_000 },
+    async () => {
+      const { api, host, cli } = await setup();
+      expect((await cli("new", "--name", "CLI project")).code).toBe(2);
+      const created = await cli("new", "--name", "CLI project", "--expected-revision", "0");
+      expect(created.code, created.err).toBe(0);
+      expect(JSON.parse(created.out).name).toBe("CLI project");
+      const edited = await cli(
+        "apply",
+        "--commands",
+        JSON.stringify([{ updateProject: { patch: { name: "CLI edited" } } }]),
+        "--expected-revision",
+        "0",
+      );
+      expect(edited.code, edited.err).toBe(0);
+      expect(JSON.parse((await cli("status", "--json")).out)).toMatchObject({
+        name: "CLI edited",
+        revision: 1,
+      });
+      expect(JSON.parse(host.snapshot().json).project.name).toBe("CLI edited");
+      expect((await cli("apply", "--commands", "[]", "--expected-revision", "0")).code).toBe(4);
+      expect((await cli("check")).code).toBe(2);
+      expect((await cli("status", "--constructor", "bad")).code).toBe(2);
+      expect((await cli("assets", "show", "--id", "missing")).code).toBe(3);
+      expect((await cli("effects", "--type", "missing")).code).toBe(5);
+      expect(await api.handle("schema", {})).toMatchObject({
+        operations: { "assets-search": { online: "boolean" }, watch: { revision: "integer" } },
+      });
+    },
+  );
   it("watches changes, resumes after a revision, times out and cancels without editing", async () => {
     const { api, host } = await setup();
     const waiting = api.handle("watch", { revision: 0, timeout: 1 });

@@ -10,6 +10,7 @@
 
 import type * as access from "../access.js";
 import type * as accounts from "../accounts.js";
+import type * as billing from "../billing.js";
 import type * as library from "../library.js";
 import type * as model from "../model.js";
 import type * as publishJobs from "../publishJobs.js";
@@ -29,6 +30,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   access: typeof access;
   accounts: typeof accounts;
+  billing: typeof billing;
   library: typeof library;
   model: typeof model;
   publishJobs: typeof publishJobs;

@@ -5,8 +5,13 @@ import { useCloud } from "@/modules/cloud/cloud-provider";
 import { AppPage } from "@/modules/shell/app-shell";
 import { useEditorSession } from "@/modules/workspace/editor-session";
 import { LOCAL_ONLY, useStudioCloud } from "@/modules/cloud/studio-cloud";
+import { billingEnabledAtBuild } from "@/modules/billing/billing-flag";
 
 const StudioPanel = lazy(() => import("./studio-panel"));
+// Billing code (Convex) is fetched only in builds where billing is on.
+const SubscriptionGate = lazy(() =>
+  import("@/modules/billing/subscription-gate").then((m) => ({ default: m.SubscriptionGate })),
+);
 
 function CloudStudioPanel({ onBusy }: { onBusy: (busy: boolean) => void }) {
   return <StudioPanel onBusy={onBusy} cloud={useStudioCloud()} />;
@@ -56,7 +61,11 @@ export function StudioPage() {
         <p role="status">Opening project…</p>
       ) : (
         <Suspense fallback={<p role="status">Loading studio…</p>}>
-          {configured ? (
+          {configured && billingEnabledAtBuild() ? (
+            <SubscriptionGate feature="Live studio">
+              <CloudStudioPanel onBusy={onBusy} />
+            </SubscriptionGate>
+          ) : configured ? (
             <CloudStudioPanel onBusy={onBusy} />
           ) : (
             <StudioPanel onBusy={onBusy} cloud={LOCAL_ONLY} />

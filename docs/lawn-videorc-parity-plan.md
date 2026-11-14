@@ -4,6 +4,8 @@ Updated: 2026-10-26 after fetching and fast-forwarding to SideCut `origin/main`.
 
 ## Objective
 
+The [product access policy](product-access.md), clarified on 2026-11-03, keeps the editor and live streaming studio free and open source. MCP integration, cloud uploads, team sharing and collaborative cloud comments are paid features. Pricing and complete entitlement enforcement remain implementation work.
+
 Extend SideCut to cover the user-facing features of both Lawn and Videorc, while retaining the existing browser editor and optional Electron desktop application. The user explicitly selected full parity with both repositories. Recording and review are early milestones, not a reduced final scope.
 
 The intended workflow is: capture or go live, retain editable recordings, edit in SideCut, prepare outputs, publish a review version, collect feedback, and deliver the revision. Local editing and recording must remain usable without a cloud account. Cloud sharing, platform accounts, and hosted AI require their respective services.

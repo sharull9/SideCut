@@ -3,7 +3,8 @@ import type { GenericId } from "convex/values";
 import { mutation, query, type QueryCtx } from "./model";
 import { internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { entitled, reserve, settle } from "./accounts";
+import { reserve, settle } from "./accounts";
+import { entitled, requireSubscription } from "./billing";
 import { identity, membership } from "./access";
 import { mediaAccess } from "./library";
 import { publishPayload } from "./schema";
@@ -75,6 +76,7 @@ export const start = mutation({
       .withIndex("by_team_user", (q) => q.eq("teamId", media.teamId).eq("user", user))
       .unique();
     if (!grant?.enabled) throw new ConvexError("Explicit processing consent required.");
+    await requireSubscription(ctx, media.teamId);
     if (!/^[a-zA-Z0-9_-]{1,100}$/.test(args.requestId))
       throw new ConvexError("Invalid request ID.");
     validatePublishPayload(args.payload);

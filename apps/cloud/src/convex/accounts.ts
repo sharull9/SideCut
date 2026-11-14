@@ -1,20 +1,11 @@
 import { v, ConvexError } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import type { GenericId } from "convex/values";
-import { query, mutation, type MutationCtx, type QueryCtx } from "./model";
+import { query, mutation, type MutationCtx } from "./model";
 import { internalMutation } from "./_generated/server";
 import { membership, identity } from "./access";
+import { billingEnabled, serviceAccount as account } from "./billing";
 
-async function account(ctx: QueryCtx, teamId: GenericId<"teams">) {
-  return ctx.db
-    .query("serviceAccounts")
-    .withIndex("by_team", (q) => q.eq("teamId", teamId))
-    .unique();
-}
-export async function entitled(ctx: QueryCtx, teamId: GenericId<"teams">) {
-  const row = await account(ctx, teamId);
-  return !!row?.enabled && (row.expiresAt === 0 || row.expiresAt > Date.now());
-}
 export async function reserve(
   ctx: MutationCtx,
   teamId: GenericId<"teams">,
@@ -25,6 +16,8 @@ export async function reserve(
     throw new ConvexError("Invalid usage reservation.");
   let row = await account(ctx, teamId);
   if (!row) {
+    // Billing on: an account row must come from a verified billing event, never a fixture.
+    if (billingEnabled()) throw new ConvexError("Subscription required.");
     const id = await ctx.db.insert("serviceAccounts", {
       teamId,
       enabled: true,
@@ -87,17 +80,18 @@ export const status = query({
   args: { teamId: v.id("teams") },
   handler: async (ctx, args) => {
     await membership(ctx, args.teamId);
-    return (
-      (await account(ctx, args.teamId)) ?? {
-        teamId: args.teamId,
-        enabled: true,
-        limit: 10000,
-        used: 0,
-        reserved: 0,
-        expiresAt: 0,
-        sequence: 0,
-      }
-    );
+    const row = await account(ctx, args.teamId);
+    if (row) return row;
+    // Billing on: no row means no entitlement. Billing off: keep the self-hosted fixture.
+    return {
+      teamId: args.teamId,
+      enabled: !billingEnabled(),
+      limit: billingEnabled() ? 0 : 10000,
+      used: 0,
+      reserved: 0,
+      expiresAt: 0,
+      sequence: 0,
+    };
   },
 });
 

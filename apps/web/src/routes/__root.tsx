@@ -1,6 +1,7 @@
 import { ClientOnly, HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
 import appCss from "@sidecut/ui/globals.css?url";
 import { CloudProvider } from "@/modules/cloud/cloud-provider";
+import { CloudRouteGuard } from "@/modules/cloud/cloud-route-guard";
 import { EditorSessionProvider } from "@/modules/workspace/editor-session";
 
 export const Route = createRootRoute({
@@ -47,6 +48,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body className="bg-background text-foreground">
         <ClientOnly>
           <CloudProvider>
+            <CloudRouteGuard />
             <EditorSessionProvider>{children}</EditorSessionProvider>
           </CloudProvider>
         </ClientOnly>

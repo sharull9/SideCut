@@ -1,7 +1,17 @@
-import type { ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { RiFilmLine, RiFolderVideoLine, RiLiveLine, RiTeamLine } from "@remixicon/react";
+import {
+  RiCloudLine,
+  RiFilmLine,
+  RiFolderVideoLine,
+  RiLiveLine,
+  RiTeamLine,
+} from "@remixicon/react";
+import { useCloud } from "@/modules/cloud/cloud-provider";
 import "./shell.css";
+
+// AuthKit loads only when the signed-in dot is actually shown (cloud active on this page).
+const CloudSignedInIndicator = lazy(() => import("@/modules/cloud/cloud-signed-in-indicator"));
 
 const DESTINATIONS = [
   { to: "/studio", label: "Studio", icon: RiLiveLine },
@@ -12,6 +22,7 @@ const DESTINATIONS = [
 
 /** Every app page shares one dark frame: the rail switches between capture, editing and the team. */
 export function AppShell({ children }: { children: ReactNode }) {
+  const { configured } = useCloud();
   return (
     <div className="app-frame">
       <nav className="app-rail" aria-label="App">
@@ -30,6 +41,22 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span>{label}</span>
           </Link>
         ))}
+        <Link
+          to="/cloud"
+          search={{ section: "overview" }}
+          className="app-rail-link"
+          activeProps={{ "aria-current": "page" }}
+        >
+          <RiCloudLine aria-hidden="true" />
+          <span>
+            Cloud
+            {configured && (
+              <Suspense fallback={null}>
+                <CloudSignedInIndicator />
+              </Suspense>
+            )}
+          </span>
+        </Link>
       </nav>
       <div className="app-content">{children}</div>
     </div>

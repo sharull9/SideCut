@@ -2,6 +2,7 @@
   "name": "@sidecut/workspace",
   "version": "0.0.1",
   "private": true,
+  "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
     "verify:single-stream": "vp exec node scripts/verify-single-stream.mjs",
@@ -12,6 +13,7 @@
     "verify:live-studio": "vp exec node scripts/verify-live-studio.mjs",
     "verify:studio-ui": "vp exec node scripts/verify-studio-ui.mjs",
     "verify:cloud-teams": "vp exec node scripts/verify-cloud-teams.mjs",
+    "verify:cloud-dashboard": "vp exec node scripts/verify-cloud-dashboard.mjs",
     "mcp": "vp exec node scripts/sidecut-mcp.mjs",
     "cli": "vp exec node scripts/sidecut-cli.mjs",
     "dev": "vp run --filter @sidecut/web dev",

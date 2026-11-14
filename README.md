@@ -1,5 +1,13 @@
 # raE.E
 
+The whole project is open source, and every feature can be self-hosted for
+free. Only our hosted version is paid: there, the video editor is free, while
+the live streaming studio, MCP access, in-app AI, cloud uploads, team sharing
+and collaborative cloud comments need a subscription. Pricing and payment
+enforcement are not yet implemented. See [product access](docs/product-access.md).
+
+Licensed under the [GNU AGPL v3](LICENSE).
+
 Environment setup and validation: see [the env package guide](packages/env/README.md)
 and the `.env.example` files at the root and in each app.
 

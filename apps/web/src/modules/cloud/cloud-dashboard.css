@@ -1,0 +1,316 @@
+.cloud-dashboard {
+  display: grid;
+  grid-template-columns: 224px minmax(0, 1fr);
+  min-height: 100dvh;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-heading);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.cloud-dashboard a {
+  text-decoration: none;
+}
+.cloud-dashboard a:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 4px;
+}
+.cloud-dashboard p {
+  color: var(--muted-foreground);
+}
+.cloud-dashboard svg {
+  flex-shrink: 0;
+}
+.cloud-skip {
+  position: fixed;
+  top: 8px;
+  left: 16px;
+  transform: translateY(-160%);
+  z-index: 10;
+  background: var(--background);
+  padding: 12px;
+}
+.cloud-skip:focus {
+  transform: none;
+}
+.cloud-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  padding: 28px 20px;
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+}
+.cloud-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  font-size: 20px;
+  color: var(--foreground);
+}
+.cloud-brand-label {
+  color: var(--muted-foreground);
+  font-size: 14px;
+  font-weight: 400;
+  margin-left: 4px;
+}
+.cloud-navigation {
+  display: grid;
+  gap: 6px;
+}
+.cloud-navigation a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: 8px;
+  color: var(--muted-foreground);
+}
+.cloud-navigation a:hover,
+.cloud-navigation a[aria-current="page"] {
+  color: var(--foreground);
+  background: var(--sidebar-accent);
+}
+.cloud-navigation a[aria-current="page"] {
+  font-weight: 600;
+}
+.cloud-sidebar-footer {
+  margin-top: auto;
+  display: grid;
+  gap: 24px;
+  font-size: 12px;
+}
+.cloud-editor-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--foreground);
+  font-weight: 500;
+}
+.cloud-body {
+  min-width: 0;
+}
+.cloud-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 76px;
+  padding: 16px 40px;
+  border-bottom: 1px solid var(--border);
+}
+.cloud-connection {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.cloud-main {
+  width: 100%;
+  max-width: 1220px;
+  padding: 44px 40px 64px;
+  margin: 0 auto;
+}
+.cloud-page-heading {
+  margin-bottom: 32px;
+}
+.cloud-page-heading h1 {
+  font-size: clamp(28px, 4vw, 36px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  margin-bottom: 10px;
+}
+.cloud-start {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 40px;
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+}
+.cloud-start h2 {
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  max-width: 20ch;
+  margin: 22px 0 12px;
+}
+.cloud-start p {
+  max-width: 48ch;
+}
+.cloud-primary-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 500;
+}
+.cloud-primary-link:hover {
+  background: color-mix(in oklch, var(--primary) 85%, var(--foreground));
+}
+.cloud-start-note {
+  align-self: end;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+.cloud-start-note h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.cloud-start-note a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--foreground);
+  margin-top: 16px;
+  font-weight: 500;
+}
+.cloud-workflows {
+  margin-top: 40px;
+}
+.cloud-workflows > h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+.cloud-workflow-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 20px 4px;
+  border-bottom: 1px solid var(--border);
+  color: var(--foreground);
+}
+.cloud-workflow-row:hover {
+  background: var(--accent);
+}
+.cloud-workflow-row > div {
+  flex: 1;
+  min-width: 0;
+}
+.cloud-workflow-row h3 {
+  font-weight: 500;
+  margin-bottom: 3px;
+}
+.cloud-workflow-row p {
+  font-size: 13px;
+}
+.cloud-status {
+  display: inline-block;
+  flex-shrink: 0;
+  padding: 3px 8px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  border-radius: 6px;
+  font-size: 12px;
+}
+.cloud-connected-panel {
+  max-width: 900px;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+.cloud-upcoming {
+  max-width: 760px;
+}
+.cloud-upcoming h2 {
+  font-size: 22px;
+  font-weight: 500;
+  margin: 20px 0 8px;
+}
+.cloud-upcoming dl {
+  margin: 32px 0;
+}
+.cloud-upcoming dl > div {
+  padding: 20px 0;
+  border-top: 1px solid var(--border);
+}
+.cloud-upcoming dt {
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.cloud-upcoming dd {
+  color: var(--muted-foreground);
+}
+@media (max-width: 900px) {
+  .cloud-dashboard {
+    grid-template-columns: 190px minmax(0, 1fr);
+  }
+  .cloud-sidebar {
+    padding: 24px 12px;
+  }
+  .cloud-main {
+    padding: 32px 24px;
+  }
+  .cloud-topbar {
+    padding: 16px 24px;
+  }
+  .cloud-start {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    padding: 24px;
+  }
+}
+@media (max-width: 600px) {
+  .cloud-dashboard {
+    display: block;
+  }
+  .cloud-sidebar {
+    gap: 20px;
+    padding: 20px 16px 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .cloud-navigation {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .cloud-navigation a {
+    justify-content: center;
+    padding: 10px 6px;
+    gap: 6px;
+    font-size: 12px;
+  }
+  .cloud-sidebar-footer {
+    display: block;
+    margin: 0;
+  }
+  .cloud-sidebar-footer p {
+    display: none;
+  }
+  .cloud-topbar {
+    min-height: 56px;
+    padding: 16px;
+  }
+  .cloud-main {
+    padding: 28px 16px 48px;
+  }
+  .cloud-start {
+    padding: 22px;
+  }
+  .cloud-workflow-row {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .cloud-workflow-row > div {
+    flex-basis: calc(100% - 36px);
+  }
+  .cloud-workflow-row > .cloud-status {
+    margin-left: 33px;
+  }
+  .cloud-workflow-row > svg:last-child {
+    margin-left: auto;
+  }
+  .cloud-connected-panel {
+    padding: 20px 16px;
+  }
+}

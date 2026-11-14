@@ -59,6 +59,7 @@ export const api: FilterApi<
   },
   versions: {
     begin: makeFunctionReference("versions:begin"),
+    beginUpload: makeFunctionReference("versions:beginUpload"),
     beginStream: makeFunctionReference("versions:beginStream"),
     seal: makeFunctionReference("versions:seal"),
     list: makeFunctionReference("versions:list"),
@@ -71,6 +72,9 @@ export const api: FilterApi<
     playbackUrl: makeFunctionReference("storage:playbackUrl"),
     sourceUrl: makeFunctionReference("storage:sourceUrl"),
     guestUrl: makeFunctionReference("storage:guestUrl"),
+    uploadedParts: makeFunctionReference("storage:uploadedParts"),
+    abort: makeFunctionReference("storage:abort"),
+    originalUrl: makeFunctionReference("storage:originalUrl"),
   },
   teams: {
     list: makeFunctionReference("teams:list"),

@@ -5,7 +5,7 @@ import { mutation, query } from "./model";
 import type { QueryCtx } from "./model";
 import { membership } from "./access";
 
-function name(value: string) {
+export function name(value: string) {
   const result = value.trim();
   if (!result || result.length > 200) throw new ConvexError("Name must contain 1–200 characters.");
   return result;
@@ -27,6 +27,17 @@ async function folderAccess(
   if (!folderId) return;
   const folder = await ctx.db.get(folderId);
   if (!folder || folder.teamId !== teamId) throw new ConvexError("Folder unavailable.");
+}
+
+/** Membership, editor role and folder scope required to create media in a team. */
+export async function creatorAccess(
+  ctx: QueryCtx,
+  teamId: GenericId<"teams">,
+  folderId?: GenericId<"folders">,
+) {
+  const member = await membership(ctx, teamId);
+  if (member.role === "viewer") throw new ConvexError("Editing access required.");
+  await folderAccess(ctx, teamId, folderId);
 }
 
 export const createFolder = mutation({
@@ -52,9 +63,7 @@ export const folders = query({
 export const create = mutation({
   args: { teamId: v.id("teams"), name: v.string(), folderId: v.optional(v.id("folders")) },
   handler: async (ctx, args) => {
-    const member = await membership(ctx, args.teamId);
-    if (member.role === "viewer") throw new ConvexError("Editing access required.");
-    await folderAccess(ctx, args.teamId, args.folderId);
+    await creatorAccess(ctx, args.teamId, args.folderId);
     return ctx.db.insert("media", {
       ...args,
       name: name(args.name),

@@ -6,6 +6,10 @@ Statuses: `[ ]` pending, `[-]` in progress, `[x]` implemented with recorded chec
 
 ## Status summary
 
+The [product access policy](product-access.md) keeps the editor and live streaming studio free and open source; MCP integration, cloud uploads, team sharing and collaborative cloud comments are paid. LV030/LV031 acceptance must include payment-backed access enforcement without gating free manual editor/studio operations. Existing adapters and cloud handlers do not yet enforce this complete policy.
+
+The [2026-11-03 browser audit](verification/lawn-videorc-remaining-browser.md) checks the available workflows and records the remaining acceptance for every in-progress phase. Chromium/Firefox capture, Studio and browser media fixtures pass; the general WebKit journey fails opening SQLite/OPFS. A `/cloud` dashboard now groups team/library access and clearly marks unfinished hosted workflows. Native, physical-device and hosted/provider requirements remain open.
+
 Audited through LV035 against the linked acceptance reports. `[x]` means the phase has recorded acceptance within its stated scope. Physical devices, other platforms and hosted/provider acceptance remain open where named; passing core tests alone does not complete a phase.
 
 | Status                    | Count | Phases                                                               |

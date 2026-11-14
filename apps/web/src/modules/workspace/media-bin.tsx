@@ -27,6 +27,7 @@ import {
 } from "@sidecut/ui/components/empty";
 import { Input } from "@sidecut/ui/components/input";
 import { Tip } from "@sidecut/ui/components/tooltip";
+import { UploadToCloudButton } from "../cloud/upload-button-lazy";
 import { useEditorSession } from "./editor-session";
 import { placeSource, MEDIA_DRAG_TYPE } from "./placement";
 import { MediaPlacementForm } from "./media-placement-form";
@@ -390,6 +391,17 @@ export function MediaBin({
                           )}
                         </Button>
                       </Tip>
+                      {state === "available" && (
+                        <UploadToCloudButton
+                          compact
+                          getFile={async () => {
+                            const local = await session.resource(item.id);
+                            if (!local || local.state !== "available")
+                              throw new Error("Media is not available locally.");
+                            return { file: local.file, name };
+                          }}
+                        />
+                      )}
                     </span>
                   </div>
                   <div

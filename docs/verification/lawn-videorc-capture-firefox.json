@@ -1,12 +1,12 @@
 {
-  "testedAt": "2026-10-26T16:48:57.987Z",
+  "testedAt": "2026-11-02T20:43:46.979Z",
   "platform": "win32",
   "production": true,
   "syntheticDevices": true,
   "recordings": [
     {
       "source": "camera",
-      "bytes": 101550,
+      "bytes": 102751,
       "streams": [
         {
           "codec": "vp8",
@@ -16,27 +16,27 @@
         },
         {
           "codec": "opus",
-          "packets": "116"
+          "packets": "120"
         }
       ]
     },
     {
       "source": "microphone",
-      "bytes": 34947,
+      "bytes": 35607,
       "streams": [
         {
           "codec": "opus",
-          "packets": "104"
+          "packets": "106"
         }
       ]
     },
     {
       "source": "screen",
-      "bytes": 39203,
+      "bytes": 35050,
       "streams": [
         {
           "codec": "vp8",
-          "packets": "41",
+          "packets": "39",
           "width": 320,
           "height": 180
         }
@@ -48,7 +48,7 @@
     "survivesPanelSwitch": true,
     "recordImportPlaceReload": true,
     "editableRecordingExport": {
-      "bytes": 73548,
+      "bytes": 69432,
       "codecs": ["vp8", "opus"]
     },
     "completedCaptureSurvivesAcceptedReload": true,

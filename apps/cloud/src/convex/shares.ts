@@ -5,6 +5,7 @@ import type { QueryCtx } from "./model";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { mediaAccess } from "./library";
 import { identity, membership } from "./access";
+import { requireSubscription } from "./billing";
 import { reviewWorkflow } from "./schema";
 
 export async function tokenHash(token: string) {
@@ -54,6 +55,7 @@ export const create = internalMutation({
     if (!version || version.status !== "ready") throw new ConvexError("Ready version required.");
     const media = await mediaAccess(ctx, version.mediaId, true);
     if (media.archived) throw new ConvexError("Media archived.");
+    await requireSubscription(ctx, media.teamId);
     if (
       !Number.isFinite(args.expiresAt) ||
       args.expiresAt <= Date.now() ||
@@ -201,7 +203,8 @@ export const comment = mutation({
     parentId: v.optional(v.id("guestComments")),
   },
   handler: async (ctx, args) => {
-    const { grant, version, session } = await sessionAccess(ctx, args.sessionToken);
+    const { grant, version, session, media } = await sessionAccess(ctx, args.sessionToken);
+    await requireSubscription(ctx, media.teamId);
     if (!grant.comments) throw new ConvexError("Comments disabled.");
     const body = args.body.trim();
     if (

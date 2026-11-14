@@ -21,7 +21,9 @@ function StartSignIn() {
       window.location.replace("/");
       return;
     }
-    void signIn().catch(() => setError("Sign-in could not start. Reload to try again."));
+    void signIn({ state: { returnTo: "/team" } }).catch(() =>
+      setError("Sign-in could not start. Reload to try again."),
+    );
   }, [isLoading, user, signIn]);
   return error ? <p role="alert">{error}</p> : <p role="status">Redirecting to sign in…</p>;
 }

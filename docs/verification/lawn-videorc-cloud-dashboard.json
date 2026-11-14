@@ -1,0 +1,38 @@
+{
+  "testedAt": "2026-11-02T21:00:56.019Z",
+  "production": true,
+  "configured": false,
+  "checks": {
+    "editorEntry": true,
+    "unconfiguredAccountAndLibrary": true,
+    "unavailableServicesExplicit": true,
+    "history": true,
+    "invalidSectionFallsBack": true,
+    "keyboardSkip": true,
+    "accessibility": {
+      "seriousOrCritical": []
+    },
+    "widths": [
+      {
+        "viewport": 1440,
+        "document": 1440
+      },
+      {
+        "viewport": 768,
+        "document": 768
+      },
+      {
+        "viewport": 390,
+        "document": 390
+      },
+      {
+        "viewport": 320,
+        "document": 320
+      }
+    ],
+    "mobileAccount": true,
+    "editorReturnAndLegacyTeams": true
+  },
+  "errors": [],
+  "accepted": true
+}

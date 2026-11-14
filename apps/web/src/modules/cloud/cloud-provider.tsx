@@ -1,53 +1,80 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
-import { AuthKitProvider, useAuth } from "@workos-inc/authkit-react";
-import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
+import { lazy, Suspense, useCallback, useMemo, useState, type ReactNode } from "react";
+import { CloudContext, dormantCloud, type CloudState } from "./cloud-context";
+import {
+  billingEnabledAtBuild,
+  markCloudUsed,
+  readCloudUsed,
+  shouldActivateCloud,
+} from "./cloud-activation";
 import { browserCloudConfig } from "./config";
 
-const CloudContext = createContext({ configured: false });
+// Dependency-free re-exports. Importing these never loads AuthKit or Convex.
+export { useCloud, type CloudState } from "./cloud-context";
+export {
+  activeTeamStorageKey,
+  currentReturnTo,
+  readActiveTeamId,
+  safeReturnTo,
+  writeActiveTeamId,
+} from "./cloud-helpers";
 
-/** Whether this build has cloud sign-in. Convex and AuthKit hooks may only run when it does. */
-export function useCloud() {
-  return useContext(CloudContext);
+// AuthKit and Convex live in cloud-session.tsx and load only when cloud is active on this page.
+const CloudSession = lazy(() => import("./cloud-session"));
+
+type Configuration = NonNullable<ReturnType<typeof browserCloudConfig>>;
+
+type Activation =
+  | { mode: "dormant"; available: boolean }
+  | { mode: "active"; configuration: Configuration };
+
+// Decided once per page load. The result never changes, so the wrapper does not swap and the
+// route tree does not remount.
+function decideActivation(): Activation {
+  const configuration = browserCloudConfig();
+  if (!configuration) return { mode: "dormant", available: false };
+  const active = shouldActivateCloud({
+    configured: true,
+    pathname: window.location.pathname,
+    search: window.location.search,
+    rememberedSignIn: readCloudUsed(),
+    billingBuildFlag: billingEnabledAtBuild(),
+  });
+  return active ? { mode: "active", configuration } : { mode: "dormant", available: true };
 }
 
-function useWorkOSAuth() {
-  const { isLoading, user, getAccessToken } = useAuth();
-  const fetchAccessToken = useCallback(
-    async ({ forceRefreshToken }: { forceRefreshToken: boolean }) => {
-      try {
-        return await getAccessToken({ forceRefresh: forceRefreshToken });
-      } catch {
-        return null;
-      }
-    },
-    [getAccessToken],
-  );
-  return { isLoading, isAuthenticated: !!user, fetchAccessToken };
-}
-
-/**
- * One signed-in cloud connection for every page, so Studio, Team and Edit share the same session.
- * It lives for the whole app, so the client is never closed.
- */
+// One app-wide cloud connection. Mount once at the root.
+// When cloud is dormant, children render with `configured: false` and nothing cloud-related loads.
 export function CloudProvider({ children }: { children: ReactNode }) {
-  const [configuration] = useState(browserCloudConfig);
-  const [client] = useState(() =>
-    configuration
-      ? new ConvexReactClient(configuration.url, { unsavedChangesWarning: false })
-      : null,
-  );
-  if (!configuration || !client)
-    return <CloudContext value={{ configured: false }}>{children}</CloudContext>;
+  const [activation] = useState<Activation>(decideActivation);
+  if (activation.mode === "dormant") {
+    return <DormantCloud available={activation.available}>{children}</DormantCloud>;
+  }
   return (
-    <AuthKitProvider
-      clientId={configuration.clientId}
-      redirectUri={configuration.redirectUri}
-      devMode={configuration.devMode}
-      {...(configuration.apiHostname ? { apiHostname: configuration.apiHostname } : {})}
-    >
-      <ConvexProviderWithAuth client={client} useAuth={useWorkOSAuth}>
-        <CloudContext value={{ configured: true }}>{children}</CloudContext>
-      </ConvexProviderWithAuth>
-    </AuthKitProvider>
+    <Suspense fallback={<CloudLoading />}>
+      <CloudSession configuration={activation.configuration}>{children}</CloudSession>
+    </Suspense>
+  );
+}
+
+function DormantCloud({ available, children }: { available: boolean; children: ReactNode }) {
+  const activate = useCallback(() => {
+    if (!available) return;
+    markCloudUsed();
+    // replace, not assign: the page is already at its target URL, and a new history entry here
+    // would make Back return to a dormant copy of the page that reloads again.
+    window.location.replace(window.location.href);
+  }, [available]);
+  const value = useMemo<CloudState>(
+    () => ({ ...dormantCloud, available, activate }),
+    [available, activate],
+  );
+  return <CloudContext.Provider value={value}>{children}</CloudContext.Provider>;
+}
+
+function CloudLoading() {
+  return (
+    <div role="status" className="flex min-h-screen items-center justify-center">
+      Loading…
+    </div>
   );
 }

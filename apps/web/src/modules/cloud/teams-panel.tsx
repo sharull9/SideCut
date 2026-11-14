@@ -6,20 +6,25 @@ import type { FunctionReturnType } from "convex/server";
 import { Link } from "@tanstack/react-router";
 import { Button, buttonVariants } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
-import { useCloud } from "./cloud-provider";
-import { useActiveTeamId } from "./active-team";
+import { currentReturnTo, useCloud } from "./cloud-provider";
+import { CloudLibrary } from "./library-panel";
+import { cloudErrorMessage } from "./subscription-error";
 
 type Team = NonNullable<FunctionReturnType<typeof api.teams.list>[number]["team"]>;
 const roles = ["owner", "admin", "member", "viewer"] as const;
 
-export default function CloudTeams() {
+type CloudView = "team" | "library";
+
+// Team (the /team page and the dashboard's Team section) links to the library;
+// the dashboard's Library section shows it inline.
+export default function CloudTeams({ view = "team" }: { view?: CloudView }) {
   const { configured } = useCloud();
   if (!configured)
     return <p>Cloud teams are not configured for this app. You can keep editing locally.</p>;
-  return <Account />;
+  return <Account view={view} />;
 }
 
-function Account() {
+function Account({ view }: { view: CloudView }) {
   const { user, signIn, signOut } = useAuth();
   const { isAuthenticated, isLoading } = useConvexAuth();
   const [error, setError] = useState("");
@@ -31,7 +36,9 @@ function Account() {
         {error && <p role="alert">{error}</p>}
         <Button
           onClick={() => {
-            void signIn().catch(() => setError("Sign-in could not start. Try again."));
+            void signIn({ state: { returnTo: currentReturnTo() } }).catch(() =>
+              setError("Sign-in could not start. Try again."),
+            );
           }}
         >
           Sign in
@@ -56,27 +63,27 @@ function Account() {
         </Button>
       </div>
       {error && <p role="alert">{error}</p>}
-      <TeamManager />
+      <TeamManager view={view} />
     </div>
   );
 }
 
-function TeamManager() {
+function TeamManager({ view }: { view: CloudView }) {
   const teams = useQuery(api.teams.list);
   const invitations = useQuery(api.teams.pendingInvitations);
   const create = useMutation(api.teams.create);
   const accept = useMutation(api.teams.accept);
-  const [selected, setSelected] = useActiveTeamId();
+  const { activeTeamId, setActiveTeamId } = useCloud();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const current = teams?.find((entry) => entry.team?._id === selected) ?? teams?.[0];
+  const current = teams?.find((entry) => entry.team?._id === activeTeamId) ?? teams?.[0];
   async function run(action: () => Promise<unknown>) {
     setBusy(true);
     setError("");
     try {
       await action();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Team update failed.");
+      setError(cloudErrorMessage(cause, "Team update failed."));
     } finally {
       setBusy(false);
     }
@@ -98,7 +105,9 @@ function TeamManager() {
               <Button
                 disabled={busy}
                 onClick={() => {
-                  void run(async () => setSelected(await accept({ invitationId: invitation._id })));
+                  void run(async () =>
+                    setActiveTeamId(await accept({ invitationId: invitation._id })),
+                  );
                 }}
               >
                 Accept
@@ -115,7 +124,7 @@ function TeamManager() {
           const name = new FormData(form).get("name");
           if (typeof name === "string")
             void run(async () => {
-              setSelected(await create({ name }));
+              setActiveTeamId(await create({ name }));
               form.reset();
             });
         }}
@@ -139,7 +148,7 @@ function TeamManager() {
             value={current?.team?._id ?? ""}
             onChange={(event) => {
               const team = teams.find((entry) => entry.team?._id === event.target.value)?.team;
-              if (team) setSelected(team._id);
+              if (team) setActiveTeamId(team._id);
             }}
           >
             {teams.map(
@@ -155,10 +164,20 @@ function TeamManager() {
       )}
       {current?.team && (
         <>
-          <TeamDetails key={current.team._id} team={current.team} role={current.role} />
-          <Link to="/library" className={buttonVariants({ variant: "outline" })}>
-            Open {current.team.name}'s library
-          </Link>
+          {view === "team" ? (
+            <>
+              <TeamDetails key={current.team._id} team={current.team} role={current.role} />
+              <Link to="/library" className={buttonVariants({ variant: "outline" })}>
+                Open {current.team.name}'s library
+              </Link>
+            </>
+          ) : (
+            <CloudLibrary
+              key={current.team._id}
+              teamId={current.team._id}
+              readOnly={current.role === "viewer"}
+            />
+          )}
         </>
       )}
       <p className="text-xs text-muted-foreground">
@@ -185,7 +204,7 @@ function TeamDetails({ team, role }: { team: Team; role: string }) {
     try {
       await action();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Team update failed.");
+      setError(cloudErrorMessage(cause, "Team update failed."));
     } finally {
       setBusy(false);
     }

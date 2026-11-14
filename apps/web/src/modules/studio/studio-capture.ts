@@ -2,17 +2,20 @@
  * Studio capture lifecycles.
  *
  * Program recording:
- *   idle|failed -> starting -> recording -> stopping -> retained -> importing -> idle
- *   retained -> idle (discard); importing -> retained (import failed)
+ *   idle|failed|uploaded -> starting -> recording -> stopping -> saving
+ *   saving -> uploaded (cloud take stored) | retained (local take) | failed | idle (nothing kept)
+ *   retained -> importing -> idle; importing -> retained (import failed); retained -> idle (discard)
  *   recording|stopping -> closing -> closed; every other state -> closed
  *
  * Recent clips are two parallel dimensions that never touch program recording:
  *   buffer:  disarmed -> arming -> armed -> stopping -> disarmed; armed -> failed; any -> closed
  *   product: none -> saving -> retained -> importing -> none
  *
- * Controllers own the take files and object URLs. They never stop shared source
- * tracks: program output and the mixer own those.
+ * Controllers own the takes and object URLs. They never stop shared source tracks: program
+ * output and the mixer own those. Where a take's bytes go (disk, memory, cloud) is the sink's job.
  */
+import type { SinkIssue, SinkOutcome, StudioTake, TakeSink } from "./take-sink";
+
 export type Take = { file: File; url: string };
 export type Clip = Take & { marks: number };
 export type RecorderLike = Pick<
@@ -22,49 +25,73 @@ export type RecorderLike = Pick<
 
 export class CaptureCommandError extends Error {}
 
-type RunData = {
+type Detail = { failure?: string; notice?: string };
+type RunData = Detail & {
   attempt: number;
   recorder: RecorderLike;
-  chunks: Blob[];
-  bytes: number;
-  failure?: string;
-  notice?: string;
+  sink: TakeSink;
+  /** Marks made so far, for display; the sink keeps the marks themselves. */
+  marks: number;
 };
+type Run = Extract<CaptureState, { kind: "recording" | "stopping" }>;
 
 export type CaptureState =
   | { kind: "idle" }
   | { kind: "starting"; attempt: number }
   | ({ kind: "recording" } & RunData)
   | ({ kind: "stopping" } & RunData)
-  | { kind: "retained"; take: Take; failure?: string; notice?: string }
-  | { kind: "importing"; take: Take }
+  | ({ kind: "saving"; attempt: number; cloud: boolean } & Detail)
+  | { kind: "uploaded"; mediaId: string }
+  | ({ kind: "retained"; take: StudioTake } & Detail)
+  | { kind: "importing"; take: StudioTake }
   | { kind: "failed"; message: string }
-  | { kind: "closing"; recorder: RecorderLike }
+  | { kind: "closing"; recorder: RecorderLike; sink: TakeSink }
   | { kind: "closed" };
 
 export type CaptureEvent =
   | { type: "start"; attempt: number }
-  | { type: "acquired"; attempt: number; recorder: RecorderLike }
+  | { type: "acquired"; attempt: number; recorder: RecorderLike; sink: TakeSink }
   | { type: "acquireFailed"; attempt: number; message: string }
   | { type: "recorderStartFailed"; attempt: number; message: string }
-  | { type: "data"; attempt: number; blob: Blob }
-  | { type: "limit"; attempt: number; notice: string }
+  | ({ type: "issue"; attempt: number } & SinkIssue)
+  | { type: "marked"; attempt: number; marks: number }
   | { type: "stop" }
   | { type: "encoderError"; attempt: number; message: string }
-  | { type: "stopped"; attempt: number; take: Take | null }
+  | { type: "stopped"; attempt: number }
+  | { type: "finished"; attempt: number; outcome: SinkOutcome }
   | { type: "discard" }
   | { type: "importStart" }
   | { type: "importDone" }
   | { type: "importFailed"; message: string }
   | { type: "close" };
 
-/** Blocks user dialog close and arms beforeunload while output needs resolution. */
-export const captureNeedsResolution = (state: CaptureState) =>
-  state.kind !== "idle" && state.kind !== "failed" && state.kind !== "closed";
+/**
+ * Blocks leaving Studio and arms beforeunload while output needs resolution. A take kept on
+ * disk does not: it shows up under Recovered takes on the next visit.
+ */
+export const captureNeedsResolution = (state: CaptureState) => {
+  switch (state.kind) {
+    case "idle":
+    case "failed":
+    case "uploaded":
+    case "closed":
+      return false;
+    case "retained":
+      return !state.take.stored;
+    default:
+      return true;
+  }
+};
 
 const refuse = (message: string): never => {
   throw new CaptureCommandError(message);
 };
+const detail = (state: Detail): Detail => ({
+  ...(state.failure ? { failure: state.failure } : {}),
+  ...(state.notice ? { notice: state.notice } : {}),
+});
+const isRun = (state: CaptureState, attempt: number): state is Run =>
+  (state.kind === "recording" || state.kind === "stopping") && state.attempt === attempt;
 
 /**
  * Pure transition. Stale or late events return the same state object; invalid public
@@ -73,10 +100,11 @@ const refuse = (message: string): never => {
 export function captureTransition(state: CaptureState, event: CaptureEvent): CaptureState {
   switch (event.type) {
     case "start":
-      if (state.kind === "idle" || state.kind === "failed")
+      if (state.kind === "idle" || state.kind === "failed" || state.kind === "uploaded")
         return { kind: "starting", attempt: event.attempt };
       if (state.kind === "retained" || state.kind === "importing")
         return refuse("Add or discard the take before recording.");
+      if (state.kind === "saving") return refuse("Wait for the take to finish saving.");
       if (state.kind === "closing" || state.kind === "closed") return refuse("Studio is closed.");
       return refuse("Recording is already in progress.");
     case "acquired":
@@ -85,8 +113,8 @@ export function captureTransition(state: CaptureState, event: CaptureEvent): Cap
             kind: "recording",
             attempt: event.attempt,
             recorder: event.recorder,
-            chunks: [],
-            bytes: 0,
+            sink: event.sink,
+            marks: 0,
           }
         : state;
     case "acquireFailed":
@@ -94,48 +122,45 @@ export function captureTransition(state: CaptureState, event: CaptureEvent): Cap
         ? { kind: "failed", message: event.message }
         : state;
     case "recorderStartFailed":
-      return (state.kind === "recording" || state.kind === "stopping") &&
-        state.attempt === event.attempt
-        ? { kind: "failed", message: event.message }
-        : state;
-    case "data":
-      if (
-        (state.kind === "recording" || state.kind === "stopping") &&
-        state.attempt === event.attempt
-      )
-        return {
-          ...state,
-          chunks: [...state.chunks, event.blob],
-          bytes: state.bytes + event.blob.size,
-        };
-      return state;
-    case "limit":
+      return isRun(state, event.attempt) ? { kind: "failed", message: event.message } : state;
+    case "issue":
+      if (!isRun(state, event.attempt)) return state;
+      return {
+        ...state,
+        kind: event.stop ? "stopping" : state.kind,
+        ...(event.failure ? { failure: event.failure } : {}),
+        ...(event.notice ? { notice: event.notice } : {}),
+      };
+    case "marked":
       return state.kind === "recording" && state.attempt === event.attempt
-        ? { ...state, kind: "stopping", notice: event.notice }
+        ? { ...state, marks: event.marks }
         : state;
     case "stop":
       return state.kind === "recording" ? { ...state, kind: "stopping" } : state;
     case "encoderError":
-      if (
-        (state.kind === "recording" || state.kind === "stopping") &&
-        state.attempt === event.attempt
-      )
-        return { ...state, kind: "stopping", failure: event.message };
-      return state;
-    case "stopped": {
+      return isRun(state, event.attempt)
+        ? { ...state, kind: "stopping", failure: event.message }
+        : state;
+    case "stopped":
       if (state.kind === "closing") return { kind: "closed" };
-      if (
-        (state.kind !== "recording" && state.kind !== "stopping") ||
-        state.attempt !== event.attempt
-      )
-        return state;
-      const detail = {
-        ...(state.failure ? { failure: state.failure } : {}),
-        ...(state.notice ? { notice: state.notice } : {}),
-      };
-      // Usable bytes always survive an encoder error; failed means no take exists.
-      if (event.take) return { kind: "retained", take: event.take, ...detail };
-      return state.failure ? { kind: "failed", message: state.failure } : { kind: "idle" };
+      if (!isRun(state, event.attempt)) return state;
+      return { kind: "saving", attempt: event.attempt, cloud: state.sink.cloud, ...detail(state) };
+    case "finished": {
+      if (state.kind !== "saving" || state.attempt !== event.attempt) return state;
+      const { outcome } = event;
+      if (outcome.kind === "uploaded") return { kind: "uploaded", mediaId: outcome.mediaId };
+      const failure = outcome.failure ?? state.failure;
+      // Usable bytes always survive a failure; failed means no take exists.
+      if (outcome.kind === "local")
+        return {
+          kind: "retained",
+          take: outcome.take,
+          ...detail({
+            ...(failure ? { failure } : {}),
+            ...(state.notice ? { notice: state.notice } : {}),
+          }),
+        };
+      return failure ? { kind: "failed", message: failure } : { kind: "idle" };
     }
     case "discard":
       return state.kind === "retained" ? { kind: "idle" } : state;
@@ -154,7 +179,7 @@ export function captureTransition(state: CaptureState, event: CaptureEvent): Cap
         : state;
     case "close":
       if (state.kind === "recording" || state.kind === "stopping")
-        return { kind: "closing", recorder: state.recorder };
+        return { kind: "closing", recorder: state.recorder, sink: state.sink };
       return state.kind === "closing" ? state : { kind: "closed" };
   }
 }
@@ -163,19 +188,16 @@ export type CaptureDeps = {
   /** Resolves the program stream; the stream stays owned by program output and the mixer. */
   acquire(): Promise<MediaStream>;
   createRecorder(stream: MediaStream): RecorderLike;
-  limitBytes: number;
-  createURL(file: File): string;
-  revokeURL(url: string): void;
+  /** Opens where the take's bytes go (see take-sink.ts); `report` surfaces disk/upload trouble. */
+  openSink(fileName: string, report: (issue: SinkIssue) => void): Promise<TakeSink>;
   fileName(): string;
-  limitNotice: string;
+  /** Milliseconds, for mark timestamps. */
+  now(): number;
+  revokeURL(url: string): void;
+  /** Deletes a take kept on disk once it is added to the project or discarded. */
+  removeStored(fileName: string): void;
   encoderMessage: string;
 };
-
-const releaseTake = (deps: Pick<CaptureDeps, "revokeURL">, take: Take | undefined) => {
-  if (take) deps.revokeURL(take.url);
-};
-const takeOf = (state: CaptureState): Take | undefined =>
-  state.kind === "retained" || state.kind === "importing" ? state.take : undefined;
 
 class Store<S> {
   private listeners = new Set<() => void>();
@@ -194,9 +216,13 @@ class Store<S> {
   }
 }
 
-/** Program recording and its unsaved take. */
+const message = (cause: unknown, fallback: string) =>
+  cause instanceof Error && cause.message ? cause.message : fallback;
+
+/** Program recording, from the first chunk until the take is uploaded, kept or added. */
 export class StudioCapture extends Store<CaptureState> {
   private attempts = 0;
+  private startedAt = 0;
   constructor(private readonly deps: CaptureDeps) {
     super({ kind: "idle" });
   }
@@ -205,62 +231,76 @@ export class StudioCapture extends Store<CaptureState> {
     this.publish(next);
     return next;
   }
+  private release(take: StudioTake, removeStored: boolean) {
+    this.deps.revokeURL(take.url);
+    if (removeStored && take.stored) this.deps.removeStored(take.file.name);
+  }
+  /** After the recorder's last chunk: save the take, or keep the disk copy if Studio closed. */
+  private settle(attempt: number, sink: TakeSink) {
+    if (this.current.kind === "closing") {
+      void sink.abandon().finally(() => this.dispatch({ type: "stopped", attempt }));
+      return;
+    }
+    if (this.dispatch({ type: "stopped", attempt }).kind !== "saving") return;
+    void sink
+      .finish()
+      .catch((cause: unknown): SinkOutcome => ({
+        kind: "none",
+        failure: message(cause, "The take could not be saved."),
+      }))
+      .then((outcome) => {
+        const next = this.dispatch({ type: "finished", attempt, outcome });
+        // Closed while saving: nothing shows the take, so release its URL now.
+        if (outcome.kind === "local" && next.kind !== "retained") this.release(outcome.take, false);
+      });
+  }
   async start() {
     const attempt = ++this.attempts;
     this.dispatch({ type: "start", attempt });
+    let sink: TakeSink | null = null;
+    const superseded = () => this.current.kind !== "starting" || this.current.attempt !== attempt;
     try {
       const stream = await this.deps.acquire();
-      const live = this.current;
       // Closed or superseded while awaiting the mixer: nothing was created, so nothing leaks.
-      if (live.kind !== "starting" || live.attempt !== attempt) return;
+      if (superseded()) return;
+      sink = await this.deps.openSink(this.deps.fileName(), (issue) => {
+        const next = this.dispatch({ type: "issue", attempt, ...issue });
+        if (issue.stop && next.kind === "stopping" && next.attempt === attempt)
+          if (next.recorder.state === "recording") next.recorder.stop();
+      });
+      if (superseded()) {
+        await sink.abandon();
+        return;
+      }
+      const opened = sink;
       const recorder = this.deps.createRecorder(stream);
-      recorder.ondataavailable = (event) => {
-        if (!event.data.size) return;
-        this.dispatch({ type: "data", attempt, blob: event.data });
-        const current = this.current;
-        if (
-          current.kind === "recording" &&
-          current.attempt === attempt &&
-          current.bytes >= this.deps.limitBytes
-        ) {
-          this.dispatch({ type: "limit", attempt, notice: this.deps.limitNotice });
-          if (recorder.state === "recording") recorder.stop();
-        }
-      };
+      // Chunks after a close still reach disk, so the take can be recovered later.
+      recorder.ondataavailable = (event) => opened.write(event.data);
       recorder.onerror = () => {
         this.dispatch({ type: "encoderError", attempt, message: this.deps.encoderMessage });
         if (recorder.state === "recording") recorder.stop();
       };
-      recorder.onstop = () => {
-        const current = this.current;
-        let take: Take | null = null;
-        if (
-          (current.kind === "recording" || current.kind === "stopping") &&
-          current.attempt === attempt &&
-          current.chunks.length
-        ) {
-          const file = new File(current.chunks, this.deps.fileName(), { type: "video/webm" });
-          take = { file, url: this.deps.createURL(file) };
-        }
-        const next = this.dispatch({ type: "stopped", attempt, take });
-        if (take && next.kind !== "retained") releaseTake(this.deps, take);
-      };
-      this.dispatch({ type: "acquired", attempt, recorder });
+      recorder.onstop = () => this.settle(attempt, opened);
+      this.dispatch({ type: "acquired", attempt, recorder, sink: opened });
       // Subscribers can close or stop synchronously when acquisition is published.
-      const acquired = this.state;
+      const acquired = this.current;
       if (acquired.kind !== "recording" || acquired.attempt !== attempt) {
-        if (acquired.kind === "stopping" && acquired.attempt === attempt)
-          this.dispatch({ type: "stopped", attempt, take: null });
+        if (acquired.kind === "stopping" && acquired.attempt === attempt) {
+          recorder.onstop = null;
+          this.settle(attempt, opened);
+        }
         return;
       }
+      this.startedAt = this.deps.now();
       recorder.start(1000);
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : "Recording could not start.";
-      const live = this.current;
-      if (live.kind === "recording" && live.attempt === attempt) {
-        live.recorder.onstop = null;
-        this.dispatch({ type: "recorderStartFailed", attempt, message });
-      } else this.dispatch({ type: "acquireFailed", attempt, message });
+      const failure = message(cause, "Recording could not start.");
+      const current = this.current;
+      if (current.kind === "recording" && current.attempt === attempt) {
+        current.recorder.onstop = null;
+        this.dispatch({ type: "recorderStartFailed", attempt, message: failure });
+      } else this.dispatch({ type: "acquireFailed", attempt, message: failure });
+      await sink?.abandon().catch(() => {});
       throw cause;
     }
   }
@@ -271,38 +311,48 @@ export class StudioCapture extends Store<CaptureState> {
     if (before.kind === "recording" && before.recorder.state === "recording")
       before.recorder.stop();
   }
-  discard() {
-    const take = takeOf(this.current);
-    if (this.dispatch({ type: "discard" }).kind === "idle") releaseTake(this.deps, take);
+  /** Marks the current moment of the recording; marks travel with the take. */
+  mark() {
+    const current = this.current;
+    if (current.kind !== "recording") return refuse("Start recording before marking.");
+    current.sink.mark(
+      (this.deps.now() - this.startedAt) / 1000,
+      `Mark ${current.sink.marks.length + 1}`,
+    );
+    this.dispatch({ type: "marked", attempt: current.attempt, marks: current.sink.marks.length });
   }
-  async importTake(importer: (file: File) => Promise<void>) {
-    const take = takeOf(this.current);
+  discard() {
+    const before = this.current;
+    if (before.kind === "retained" && this.dispatch({ type: "discard" }).kind === "idle")
+      this.release(before.take, true);
+  }
+  async importTake(importer: (take: StudioTake) => Promise<void>) {
+    const before = this.current;
     this.dispatch({ type: "importStart" });
-    if (!take) return;
+    if (before.kind !== "retained") return;
     try {
-      await importer(take.file);
+      await importer(before.take);
     } catch (cause) {
-      this.dispatch({
-        type: "importFailed",
-        message: cause instanceof Error ? cause.message : "Import failed.",
-      });
+      this.dispatch({ type: "importFailed", message: message(cause, "Import failed.") });
       throw cause;
     }
-    if (this.dispatch({ type: "importDone" }).kind === "idle") releaseTake(this.deps, take);
+    if (this.dispatch({ type: "importDone" }).kind === "idle") this.release(before.take, true);
   }
-  /** Forced teardown. Never publishes a take after this; the URL is revoked exactly once. */
+  /**
+   * Forced teardown. Never publishes a take after this; URLs are revoked exactly once. A take on
+   * disk is kept, so it shows up under Recovered takes next time.
+   */
   close() {
     const before = this.current;
-    const take = takeOf(before);
     this.dispatch({ type: "close" });
-    releaseTake(this.deps, take);
-    if (
-      (before.kind === "recording" || before.kind === "stopping") &&
-      before.recorder.state !== "inactive"
-    )
-      before.recorder.stop();
-    else if (before.kind === "recording" || before.kind === "stopping")
-      this.dispatch({ type: "stopped", attempt: before.attempt, take: null });
+    if (before.kind === "retained" || before.kind === "importing") this.release(before.take, false);
+    if (before.kind !== "recording" && before.kind !== "stopping") return;
+    if (before.recorder.state !== "inactive") before.recorder.stop();
+    else {
+      // The recorder never started (closed during acquisition), so onstop will not fire.
+      before.recorder.onstop = null;
+      this.settle(before.attempt, before.sink);
+    }
   }
 }
 

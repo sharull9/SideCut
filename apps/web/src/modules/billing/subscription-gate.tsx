@@ -47,7 +47,7 @@ export function SubscriptionPaywall({ feature }: { feature: string }) {
       <p>Requires a Side Cut subscription on our hosted version.</p>
       <p>Self-hosting is free — the project is open source.</p>
       <div>
-        <Link to="/cloud" search={{ section: "overview" }} className={buttonVariants()}>
+        <Link to="/cloud" className={buttonVariants()}>
           Upgrade in Cloud
         </Link>
       </div>

@@ -13,6 +13,7 @@ const mime = {
   ".html": "text/html",
   ".js": "text/javascript",
   ".css": "text/css",
+  ".svg": "image/svg+xml",
   ".json": "application/json",
   ".wasm": "application/wasm",
   ".woff2": "font/woff2",
@@ -59,8 +60,10 @@ try {
   const original = await page.getByTestId("project-name").innerText();
   await page.getByRole("link", { name: "Cloud", exact: true }).click();
   await page.getByRole("heading", { name: "Overview", exact: true }).waitFor();
-  const nav = page.getByRole("navigation", { name: "Cloud navigation" });
-  assert.equal(await nav.getByRole("link").count(), 6);
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
+  const toggle = page.getByRole("button", { name: "Toggle navigation" });
+  // Create: Studio, Editor. Cloud: Overview and its five sections.
+  assert.equal(await nav.getByRole("link").count(), 8);
   assert.equal(await nav.locator('[aria-current="page"]').innerText(), "Overview");
   result.checks.editorEntry = true;
   await page.screenshot({
@@ -70,6 +73,8 @@ try {
   for (const name of ["Library", "Team"]) {
     await nav.getByRole("link", { name, exact: true }).click();
     await page.getByRole("heading", { level: 1, name, exact: true }).waitFor();
+    assert.equal(new URL(page.url()).pathname, `/cloud/${name.toLowerCase()}`);
+    assert.equal(new URL(page.url()).search, "");
     await page
       .getByText("Cloud teams are not configured for this app.", { exact: false })
       .waitFor();
@@ -79,7 +84,8 @@ try {
   for (const name of ["Reviews", "Publishing", "Usage"]) {
     await nav.getByRole("link", { name, exact: true }).click();
     await page.getByRole("heading", { name: `${name} tools are not available yet` }).waitFor();
-    assert.equal(await page.getByRole("button").count(), 0);
+    // The sidebar toggle lives in the top bar; the page content itself has no actions.
+    assert.equal(await page.locator("main").getByRole("button").count(), 0);
   }
   result.checks.unavailableServicesExplicit = true;
   await page.goBack();
@@ -90,6 +96,14 @@ try {
   await page.goto(`${url}/cloud?section=invalid`);
   await page.getByRole("heading", { level: 1, name: "Overview", exact: true }).waitFor();
   result.checks.invalidSectionFallsBack = true;
+  await page.goto(`${url}/cloud?section=team`);
+  await page.getByRole("heading", { level: 1, name: "Team", exact: true }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/cloud/team");
+  result.checks.legacySectionLinkRedirects = true;
+  await page.goto(`${url}/cloud/usage`);
+  await page.getByRole("heading", { level: 1, name: "Usage", exact: true }).waitFor();
+  assert.equal(await nav.locator('[aria-current="page"]').innerText(), "Usage");
+  result.checks.directSectionPage = true;
   // Start with fresh focus; reload can restore focus to a previously visited link.
   await page.goto("about:blank");
   await page.goto(`${url}/cloud`);
@@ -120,7 +134,14 @@ try {
       document: document.documentElement.scrollWidth,
     }));
     assert.ok(bounds.document <= width, JSON.stringify(bounds));
+    // Below 768px the shadcn sidebar is an off-canvas sheet opened from the top bar.
+    const mobile = width < 768;
+    if (mobile) await toggle.click();
     for (const link of await nav.getByRole("link").all()) assert.ok(await link.isVisible());
+    if (mobile) {
+      await page.keyboard.press("Escape");
+      await nav.waitFor({ state: "hidden" });
+    }
     result.checks.widths.push(bounds);
   }
   await page.setViewportSize({ width: 390, height: 844 });
@@ -131,12 +152,15 @@ try {
     path: join(root, "docs/verification/lawn-videorc-cloud-dashboard-mobile.png"),
     fullPage: true,
   });
+  await toggle.click();
   await nav.getByRole("link", { name: "Team", exact: true }).click();
   await page.getByText("Cloud teams are not configured for this app.", { exact: false }).waitFor();
+  await nav.waitFor({ state: "hidden" });
   const mobileWidth = await page.evaluate(() => document.documentElement.scrollWidth);
   assert.ok(mobileWidth <= 390);
   result.checks.mobileAccount = true;
-  await page.getByRole("link", { name: "Back to editor", exact: true }).click();
+  await toggle.click();
+  await nav.getByRole("link", { name: "Editor", exact: true }).click();
   await page.getByTestId("project-name").waitFor();
   assert.equal(await page.getByTestId("project-name").innerText(), original);
   await page.getByRole("button", { name: "Teams", exact: true }).click();

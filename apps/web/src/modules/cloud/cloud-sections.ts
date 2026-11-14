@@ -7,15 +7,15 @@ import {
   RiSendPlaneLine,
 } from "@remixicon/react";
 
-// Kept apart from cloud-dashboard.tsx so the /cloud route can validate its search
-// without loading the dashboard.
+// Kept apart from cloud-dashboard.tsx so the /cloud routes can redirect legacy links
+// without loading the dashboard. Each section is its own page under /cloud.
 export const cloudSections = [
-  { id: "overview", label: "Overview", icon: RiDashboardLine },
-  { id: "library", label: "Library", icon: RiFolderVideoLine },
-  { id: "team", label: "Team", icon: RiGroupLine },
-  { id: "reviews", label: "Reviews", icon: RiChatCheckLine },
-  { id: "publishing", label: "Publishing", icon: RiSendPlaneLine },
-  { id: "usage", label: "Usage", icon: RiPieChartLine },
+  { id: "overview", to: "/cloud", label: "Overview", icon: RiDashboardLine },
+  { id: "library", to: "/cloud/library", label: "Library", icon: RiFolderVideoLine },
+  { id: "team", to: "/cloud/team", label: "Team", icon: RiGroupLine },
+  { id: "reviews", to: "/cloud/reviews", label: "Reviews", icon: RiChatCheckLine },
+  { id: "publishing", to: "/cloud/publishing", label: "Publishing", icon: RiSendPlaneLine },
+  { id: "usage", to: "/cloud/usage", label: "Usage", icon: RiPieChartLine },
 ] as const;
 
 export type Section = (typeof cloudSections)[number]["id"];

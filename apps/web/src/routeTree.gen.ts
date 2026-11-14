@@ -17,6 +17,12 @@ import { Route as LibraryRouteImport } from './routes/library'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as StudioRouteImport } from './routes/studio'
 import { Route as TeamRouteImport } from './routes/team'
+import { Route as CloudIndexRouteImport } from './routes/cloud/index'
+import { Route as CloudLibraryRouteImport } from './routes/cloud/library'
+import { Route as CloudPublishingRouteImport } from './routes/cloud/publishing'
+import { Route as CloudReviewsRouteImport } from './routes/cloud/reviews'
+import { Route as CloudTeamRouteImport } from './routes/cloud/team'
+import { Route as CloudUsageRouteImport } from './routes/cloud/usage'
 import { Route as EditMediaIdRouteImport } from './routes/edit/$mediaId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -59,6 +65,36 @@ const TeamRoute = TeamRouteImport.update({
   path: '/team',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CloudIndexRoute = CloudIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CloudRoute,
+} as any)
+const CloudLibraryRoute = CloudLibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
+  getParentRoute: () => CloudRoute,
+} as any)
+const CloudPublishingRoute = CloudPublishingRouteImport.update({
+  id: '/publishing',
+  path: '/publishing',
+  getParentRoute: () => CloudRoute,
+} as any)
+const CloudReviewsRoute = CloudReviewsRouteImport.update({
+  id: '/reviews',
+  path: '/reviews',
+  getParentRoute: () => CloudRoute,
+} as any)
+const CloudTeamRoute = CloudTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => CloudRoute,
+} as any)
+const CloudUsageRoute = CloudUsageRouteImport.update({
+  id: '/usage',
+  path: '/usage',
+  getParentRoute: () => CloudRoute,
+} as any)
 const EditMediaIdRoute = EditMediaIdRouteImport.update({
   id: '/edit/$mediaId',
   path: '/edit/$mediaId',
@@ -68,36 +104,53 @@ const EditMediaIdRoute = EditMediaIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/callback': typeof CallbackRoute
-  '/cloud': typeof CloudRoute
+  '/cloud': typeof CloudRouteWithChildren
   '/diagnostics': typeof DiagnosticsRoute
   '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
   '/studio': typeof StudioRoute
   '/team': typeof TeamRoute
+  '/cloud/library': typeof CloudLibraryRoute
+  '/cloud/publishing': typeof CloudPublishingRoute
+  '/cloud/reviews': typeof CloudReviewsRoute
+  '/cloud/team': typeof CloudTeamRoute
+  '/cloud/usage': typeof CloudUsageRoute
   '/edit/$mediaId': typeof EditMediaIdRoute
+  '/cloud/': typeof CloudIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/callback': typeof CallbackRoute
-  '/cloud': typeof CloudRoute
   '/diagnostics': typeof DiagnosticsRoute
   '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
   '/studio': typeof StudioRoute
   '/team': typeof TeamRoute
+  '/cloud/library': typeof CloudLibraryRoute
+  '/cloud/publishing': typeof CloudPublishingRoute
+  '/cloud/reviews': typeof CloudReviewsRoute
+  '/cloud/team': typeof CloudTeamRoute
+  '/cloud/usage': typeof CloudUsageRoute
   '/edit/$mediaId': typeof EditMediaIdRoute
+  '/cloud': typeof CloudIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/callback': typeof CallbackRoute
-  '/cloud': typeof CloudRoute
+  '/cloud': typeof CloudRouteWithChildren
   '/diagnostics': typeof DiagnosticsRoute
   '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
   '/studio': typeof StudioRoute
   '/team': typeof TeamRoute
+  '/cloud/library': typeof CloudLibraryRoute
+  '/cloud/publishing': typeof CloudPublishingRoute
+  '/cloud/reviews': typeof CloudReviewsRoute
+  '/cloud/team': typeof CloudTeamRoute
+  '/cloud/usage': typeof CloudUsageRoute
   '/edit/$mediaId': typeof EditMediaIdRoute
+  '/cloud/': typeof CloudIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -110,18 +163,29 @@ export interface FileRouteTypes {
     | '/login'
     | '/studio'
     | '/team'
+    | '/cloud/library'
+    | '/cloud/publishing'
+    | '/cloud/reviews'
+    | '/cloud/team'
+    | '/cloud/usage'
     | '/edit/$mediaId'
+    | '/cloud/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/callback'
-    | '/cloud'
     | '/diagnostics'
     | '/library'
     | '/login'
     | '/studio'
     | '/team'
+    | '/cloud/library'
+    | '/cloud/publishing'
+    | '/cloud/reviews'
+    | '/cloud/team'
+    | '/cloud/usage'
     | '/edit/$mediaId'
+    | '/cloud'
   id:
     | '__root__'
     | '/'
@@ -132,13 +196,19 @@ export interface FileRouteTypes {
     | '/login'
     | '/studio'
     | '/team'
+    | '/cloud/library'
+    | '/cloud/publishing'
+    | '/cloud/reviews'
+    | '/cloud/team'
+    | '/cloud/usage'
     | '/edit/$mediaId'
+    | '/cloud/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CallbackRoute: typeof CallbackRoute
-  CloudRoute: typeof CloudRoute
+  CloudRoute: typeof CloudRouteWithChildren
   DiagnosticsRoute: typeof DiagnosticsRoute
   LibraryRoute: typeof LibraryRoute
   LoginRoute: typeof LoginRoute
@@ -205,6 +275,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TeamRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cloud/': {
+      id: '/cloud/'
+      path: '/'
+      fullPath: '/cloud/'
+      preLoaderRoute: typeof CloudIndexRouteImport
+      parentRoute: typeof CloudRoute
+    }
+    '/cloud/library': {
+      id: '/cloud/library'
+      path: '/library'
+      fullPath: '/cloud/library'
+      preLoaderRoute: typeof CloudLibraryRouteImport
+      parentRoute: typeof CloudRoute
+    }
+    '/cloud/publishing': {
+      id: '/cloud/publishing'
+      path: '/publishing'
+      fullPath: '/cloud/publishing'
+      preLoaderRoute: typeof CloudPublishingRouteImport
+      parentRoute: typeof CloudRoute
+    }
+    '/cloud/reviews': {
+      id: '/cloud/reviews'
+      path: '/reviews'
+      fullPath: '/cloud/reviews'
+      preLoaderRoute: typeof CloudReviewsRouteImport
+      parentRoute: typeof CloudRoute
+    }
+    '/cloud/team': {
+      id: '/cloud/team'
+      path: '/team'
+      fullPath: '/cloud/team'
+      preLoaderRoute: typeof CloudTeamRouteImport
+      parentRoute: typeof CloudRoute
+    }
+    '/cloud/usage': {
+      id: '/cloud/usage'
+      path: '/usage'
+      fullPath: '/cloud/usage'
+      preLoaderRoute: typeof CloudUsageRouteImport
+      parentRoute: typeof CloudRoute
+    }
     '/edit/$mediaId': {
       id: '/edit/$mediaId'
       path: '/edit/$mediaId'
@@ -215,10 +327,30 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface CloudRouteChildren {
+  CloudLibraryRoute: typeof CloudLibraryRoute
+  CloudPublishingRoute: typeof CloudPublishingRoute
+  CloudReviewsRoute: typeof CloudReviewsRoute
+  CloudTeamRoute: typeof CloudTeamRoute
+  CloudUsageRoute: typeof CloudUsageRoute
+  CloudIndexRoute: typeof CloudIndexRoute
+}
+
+const CloudRouteChildren: CloudRouteChildren = {
+  CloudLibraryRoute: CloudLibraryRoute,
+  CloudPublishingRoute: CloudPublishingRoute,
+  CloudReviewsRoute: CloudReviewsRoute,
+  CloudTeamRoute: CloudTeamRoute,
+  CloudUsageRoute: CloudUsageRoute,
+  CloudIndexRoute: CloudIndexRoute,
+}
+
+const CloudRouteWithChildren = CloudRoute._addFileChildren(CloudRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CallbackRoute: CallbackRoute,
-  CloudRoute: CloudRoute,
+  CloudRoute: CloudRouteWithChildren,
   DiagnosticsRoute: DiagnosticsRoute,
   LibraryRoute: LibraryRoute,
   LoginRoute: LoginRoute,
@@ -229,3 +361,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

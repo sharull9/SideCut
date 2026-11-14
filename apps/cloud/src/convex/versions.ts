@@ -55,6 +55,98 @@ export const begin = mutation({
   },
 });
 
+const MAX_BYTES = 5e10;
+const MAX_PARTS = 10000;
+
+/** Start a version whose bytes arrive while it is still being recorded. */
+export const beginStream = mutation({
+  args: { mediaId: v.id("media"), requestId: v.string(), snapshot: v.string() },
+  handler: async (ctx, args) => {
+    const media = await mediaAccess(ctx, args.mediaId, true);
+    if (media.archived) throw new ConvexError("Media archived.");
+    if (
+      !args.requestId ||
+      args.requestId.length > 100 ||
+      args.snapshot.length > 65536 ||
+      !args.snapshot
+    )
+      throw new ConvexError("Invalid version metadata.");
+    const prior = await ctx.db
+      .query("mediaVersions")
+      .withIndex("by_request", (q) => q.eq("mediaId", args.mediaId).eq("requestId", args.requestId))
+      .unique();
+    if (prior) {
+      if (prior.snapshot !== args.snapshot)
+        throw new ConvexError("Request conflicts with existing version.");
+      return prior._id;
+    }
+    const versionId = await ctx.db.insert("mediaVersions", {
+      ...args,
+      // Upper bounds until sealed: part URLs may be signed for any part up to the limit.
+      expectedBytes: MAX_BYTES,
+      partCount: MAX_PARTS,
+      open: true,
+      number: media.nextVersion,
+      status: "uploading",
+      attempt: 1,
+      objectKey: `${media.teamId}/${args.mediaId}/${media.nextVersion}/source`,
+    });
+    await ctx.db.patch(media._id, { nextVersion: media.nextVersion + 1 });
+    return versionId;
+  },
+});
+
+/** Fix the final size of a recorded version once every part has been sent. */
+const markList = v.array(v.object({ seconds: v.number(), name: v.string() }));
+
+export const seal = mutation({
+  args: {
+    versionId: v.id("mediaVersions"),
+    expectedBytes: v.number(),
+    partCount: v.number(),
+    marks: v.optional(markList),
+  },
+  handler: async (ctx, args) => {
+    const version = await ctx.db.get(args.versionId);
+    if (!version) throw new ConvexError("Version unavailable.");
+    await mediaAccess(ctx, version.mediaId, true);
+    if (
+      !Number.isSafeInteger(args.expectedBytes) ||
+      args.expectedBytes < 1 ||
+      args.expectedBytes > MAX_BYTES ||
+      !Number.isInteger(args.partCount) ||
+      args.partCount < 1 ||
+      args.partCount > MAX_PARTS
+    )
+      throw new ConvexError("Invalid transfer size.");
+    const marks = args.marks ?? [];
+    if (
+      marks.length > 500 ||
+      marks.some(
+        (mark) =>
+          !Number.isFinite(mark.seconds) ||
+          mark.seconds < 0 ||
+          mark.seconds > 86400 ||
+          mark.name.length > 200,
+      )
+    )
+      throw new ConvexError("Invalid marks.");
+    if (!version.open) {
+      // A repeated seal after a lost response is accepted; a different size is not.
+      if (version.expectedBytes === args.expectedBytes && version.partCount === args.partCount)
+        return;
+      throw new ConvexError("Version is already sealed.");
+    }
+    if (version.status !== "uploading") throw new ConvexError("Upload unavailable.");
+    await ctx.db.patch(version._id, {
+      expectedBytes: args.expectedBytes,
+      partCount: args.partCount,
+      open: false,
+      ...(marks.length ? { marks } : {}),
+    });
+  },
+});
+
 export const list = query({
   args: { mediaId: v.id("media") },
   handler: async (ctx, args) => {
@@ -187,6 +279,30 @@ export const playback = internalQuery({
     )
       throw new ConvexError("Playback unavailable.");
     return { key: version.playbackKey, thumbnailKey: version.thumbnailKey, versionId: version._id };
+  },
+});
+
+// Editors download the original upload; it exists once the upload completed.
+export const source = internalQuery({
+  args: { mediaId: v.id("media") },
+  handler: async (ctx, args) => {
+    const media = await mediaAccess(ctx, args.mediaId);
+    if (media.archived) throw new ConvexError("Media archived.");
+    const versions = await ctx.db
+      .query("mediaVersions")
+      .withIndex("by_media", (q) => q.eq("mediaId", media._id))
+      .order("desc")
+      .take(100);
+    const version = versions.find(
+      (item) => item.status === "processing" || item.status === "ready",
+    );
+    if (!version) throw new ConvexError("Source unavailable.");
+    return {
+      key: version.objectKey,
+      name: media.name,
+      snapshot: version.snapshot,
+      marks: version.marks ?? [],
+    };
   },
 });
 

@@ -1,5 +1,5 @@
 {
-  "testedAt": "2026-11-01T17:58:46.893Z",
+  "testedAt": "2026-11-14T12:24:58.339Z",
   "platform": "win32",
   "production": true,
   "syntheticDevices": true,
@@ -19,13 +19,17 @@
     "closeGuard": true,
     "recording": {
       "size": [1920, 1080],
-      "bytes": 686690,
+      "bytes": 991984,
       "audio": 1,
-      "banner": [55, 189, 249, 255]
+      "banner": [55, 190, 247, 255]
     },
-    "handoff": true,
+    "handoff": {
+      "placed": true,
+      "marker": true
+    },
     "recentClips": true,
-    "reloadRecovery": true
+    "reloadRecovery": true,
+    "takeRecovery": true
   },
   "errors": [],
   "accepted": true

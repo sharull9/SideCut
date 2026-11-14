@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionArgs } from "convex/server";
 import { api } from "@sidecut/cloud/api";
@@ -20,6 +21,7 @@ export function CloudLibrary({
   const folders = useQuery(api.library.folders, { teamId });
   const create = useMutation(api.library.createFolder);
   const bulk = useMutation(api.library.bulk);
+  const navigate = useNavigate();
   return (
     <LibraryBrowser
       items={status === "LoadingFirstPage" ? undefined : results}
@@ -29,6 +31,7 @@ export function CloudLibrary({
       readOnly={readOnly}
       createFolder={(name) => create({ teamId, name })}
       bulk={(operation) => bulk({ teamId, ...operation })}
+      onEdit={(mediaId) => void navigate({ to: "/edit/$mediaId", params: { mediaId } })}
       pagination={{ status, loadMore: () => loadMore(25) }}
     />
   );

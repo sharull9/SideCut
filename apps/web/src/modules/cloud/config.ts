@@ -24,7 +24,7 @@ export function cloudConfig(
     apiHostname: env.apiHostname,
     devMode: local && env.devMode === "true",
     // The registered WorkOS Redirect URI wins; it must route to a page that mounts AuthKitProvider.
-    redirectUri: env.redirectUri || `${origin}/`,
+    redirectUri: env.redirectUri || `${origin}/team`,
   };
 }
 

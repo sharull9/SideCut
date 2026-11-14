@@ -12,8 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as DiagnosticsRouteImport } from './routes/diagnostics'
+import { Route as LibraryRouteImport } from './routes/library'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as StudioRouteImport } from './routes/studio'
+import { Route as TeamRouteImport } from './routes/team'
+import { Route as EditMediaIdRouteImport } from './routes/edit/$mediaId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -30,6 +33,11 @@ const DiagnosticsRoute = DiagnosticsRouteImport.update({
   path: '/diagnostics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LibraryRoute = LibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -40,43 +48,90 @@ const StudioRoute = StudioRouteImport.update({
   path: '/studio',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TeamRoute = TeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EditMediaIdRoute = EditMediaIdRouteImport.update({
+  id: '/edit/$mediaId',
+  path: '/edit/$mediaId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/callback': typeof CallbackRoute
   '/diagnostics': typeof DiagnosticsRoute
+  '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
   '/studio': typeof StudioRoute
+  '/team': typeof TeamRoute
+  '/edit/$mediaId': typeof EditMediaIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/callback': typeof CallbackRoute
   '/diagnostics': typeof DiagnosticsRoute
+  '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
   '/studio': typeof StudioRoute
+  '/team': typeof TeamRoute
+  '/edit/$mediaId': typeof EditMediaIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/callback': typeof CallbackRoute
   '/diagnostics': typeof DiagnosticsRoute
+  '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
   '/studio': typeof StudioRoute
+  '/team': typeof TeamRoute
+  '/edit/$mediaId': typeof EditMediaIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/callback' | '/diagnostics' | '/login' | '/studio'
+  fullPaths:
+    | '/'
+    | '/callback'
+    | '/diagnostics'
+    | '/library'
+    | '/login'
+    | '/studio'
+    | '/team'
+    | '/edit/$mediaId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/callback' | '/diagnostics' | '/login' | '/studio'
-  id: '__root__' | '/' | '/callback' | '/diagnostics' | '/login' | '/studio'
+  to:
+    | '/'
+    | '/callback'
+    | '/diagnostics'
+    | '/library'
+    | '/login'
+    | '/studio'
+    | '/team'
+    | '/edit/$mediaId'
+  id:
+    | '__root__'
+    | '/'
+    | '/callback'
+    | '/diagnostics'
+    | '/library'
+    | '/login'
+    | '/studio'
+    | '/team'
+    | '/edit/$mediaId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CallbackRoute: typeof CallbackRoute
   DiagnosticsRoute: typeof DiagnosticsRoute
+  LibraryRoute: typeof LibraryRoute
   LoginRoute: typeof LoginRoute
   StudioRoute: typeof StudioRoute
+  TeamRoute: typeof TeamRoute
+  EditMediaIdRoute: typeof EditMediaIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -102,6 +157,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DiagnosticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/library': {
+      id: '/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof LibraryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -116,6 +178,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/team': {
+      id: '/team'
+      path: '/team'
+      fullPath: '/team'
+      preLoaderRoute: typeof TeamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/edit/$mediaId': {
+      id: '/edit/$mediaId'
+      path: '/edit/$mediaId'
+      fullPath: '/edit/$mediaId'
+      preLoaderRoute: typeof EditMediaIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -123,8 +199,11 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CallbackRoute: CallbackRoute,
   DiagnosticsRoute: DiagnosticsRoute,
+  LibraryRoute: LibraryRoute,
   LoginRoute: LoginRoute,
   StudioRoute: StudioRoute,
+  TeamRoute: TeamRoute,
+  EditMediaIdRoute: EditMediaIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

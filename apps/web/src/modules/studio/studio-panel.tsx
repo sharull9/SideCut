@@ -10,7 +10,23 @@ import { RecentClips } from "@sidecut/platform-browser/recent-clips";
 import { recordingLimits } from "@sidecut/platform-browser/recording";
 import { Button, buttonVariants } from "@sidecut/ui/components/button";
 import { Input } from "@sidecut/ui/components/input";
+import { useNavigate } from "@tanstack/react-router";
 import { useEditorSession } from "@/modules/workspace/editor-session";
+import { nativeBridge } from "@/modules/workspace/host-coordinator";
+import { NativeRecordingControls } from "@/modules/workspace/native-recording-controls";
+import { megabytes, type UploadProgress } from "./cloud-upload";
+import { addTakeToProject, placedMessage } from "./place-take";
+import {
+  TakeWriter,
+  listTakes,
+  pruneTakes,
+  removeTake,
+  takeFile,
+  updateTake,
+  type TakeInfo,
+  type TakeMark,
+} from "./take-store";
+import type { CloudRecording, StudioCloud } from "@/modules/cloud/studio-cloud";
 import { loadStudio, saveStudio } from "./studio-store";
 import "./studio.css";
 
@@ -22,6 +38,19 @@ type VideoSource = {
 };
 type AudioInput = { id: string; label: string; stream: MediaStream; channel: LiveAudioChannel };
 type Take = { file: File; url: string };
+/** A finished studio take; `stored` takes live on disk and survive leaving Studio. */
+type StudioTake = Take & { marks: TakeMark[]; stored: boolean };
+type Recovered = TakeInfo & { bytes: number };
+type Mode = "record" | "live" | "both";
+type SaveTo = "device" | "cloud";
+const SAVE_TO_KEY = "sidecut.studio.saveTo";
+const readSaveTo = (): SaveTo => {
+  try {
+    return localStorage.getItem(SAVE_TO_KEY) === "device" ? "device" : "cloud";
+  } catch {
+    return "cloud";
+  }
+};
 const message = (cause: unknown, fallback: string) =>
   cause instanceof Error ? cause.message : fallback;
 const OVERLAY_BOUNDS: Record<
@@ -65,8 +94,17 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-export default function StudioPanel({ onBusy }: { onBusy: (busy: boolean) => void }) {
+export default function StudioPanel({
+  onBusy,
+  cloud,
+}: {
+  onBusy: (busy: boolean) => void;
+  cloud: StudioCloud;
+}) {
   const { session, snapshot } = useEditorSession();
+  const navigate = useNavigate();
+  // Live goes through the desktop app's native recorder; browsers cannot reach RTMP.
+  const canStream = Boolean(nativeBridge()?.nativeRecordingStart);
   const projectID = useRef(snapshot.project.id).current;
   const canvas = useRef<HTMLCanvasElement>(null);
   const studio = useRef<LiveStudio | null>(null);
@@ -92,21 +130,52 @@ export default function StudioPanel({ onBusy }: { onBusy: (busy: boolean) => voi
   const [settings, setSettings] = useState<Record<string, LiveAudioSettings>>({});
   const [meters, setMeters] = useState<Record<string, number>>({});
   const [recording, setRecording] = useState(false);
-  const [take, setTake] = useState<Take | null>(null);
+  const [mode, setMode] = useState<Mode>("record");
+  const [saveTo, setSaveToState] = useState<SaveTo>(readSaveTo);
+  const [progress, setProgress] = useState<UploadProgress | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const toCloud = saveTo === "cloud" && cloud.state === "ready";
+  const setSaveTo = (next: SaveTo) => {
+    setSaveToState(next);
+    try {
+      localStorage.setItem(SAVE_TO_KEY, next);
+    } catch {
+      // Private browsing: the choice lasts for this page only.
+    }
+  };
+  const [take, setTake] = useState<StudioTake | null>(null);
+  const [recovered, setRecovered] = useState<Recovered[]>([]);
+  const [markCount, setMarkCount] = useState(0);
+  const markTake = useRef<(() => void) | null>(null);
   const [armed, setArmed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [clip, setClip] = useState<(Take & { marks: number }) | null>(null);
   const blocked = snapshot.readOnly || snapshot.busy || snapshot.project.id !== projectID;
-  const hasTake = Boolean(take || clip);
+  // Takes on disk can be recovered later, so only takes held in memory keep Studio open.
+  const hasTake = Boolean((take && !take.stored) || clip);
 
+  const busy = recording || hasTake || uploading;
   useEffect(() => {
-    onBusy(recording || hasTake);
-    if (!recording && !hasTake) return;
+    onBusy(busy);
+    if (!busy) return;
     const leave = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener("beforeunload", leave);
     return () => window.removeEventListener("beforeunload", leave);
-  }, [hasTake, onBusy, recording]);
+  }, [busy, onBusy]);
   useEffect(() => () => onBusy(false), [onBusy]);
+  useEffect(() => {
+    let alive = true;
+    // Anything on disk at startup was left by an earlier visit: stopped but not added, or cut off.
+    void pruneTakes()
+      .then(listTakes)
+      .then((takes) => {
+        if (alive) setRecovered(takes.filter((item) => !item.mediaId));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const attempt = useCallback(async (action: () => unknown, fallback: string) => {
     setError("");
@@ -394,27 +463,111 @@ export default function StudioPanel({ onBusy }: { onBusy: (busy: boolean) => voi
         videoBitsPerSecond: profile.videoBitsPerSecond,
         audioBitsPerSecond: profile.audioBitsPerSecond,
       });
-      const chunks: Blob[] = [];
+      const fileName = `studio-${Date.now()}.webm`;
+      // Takes stream to disk. Browsers that cannot do that keep a capped copy in memory instead.
+      const writer = await TakeWriter.create(fileName).catch(() => null);
+      const marks: TakeMark[] = writer?.info.marks ?? [];
+      let memory: Blob[] | null = writer ? null : [];
+      let target: CloudRecording | null = null;
+      if (toCloud) {
+        target = cloud.begin(
+          fileName,
+          "video/webm",
+          () => marks,
+          (update) => {
+            setProgress(update);
+            if (target?.upload.failed && next.state === "recording") next.stop();
+          },
+        );
+        target.mediaId.catch((cause: unknown) =>
+          setError(`The cloud upload could not start. ${message(cause, "")}`.trim()),
+        );
+        setProgress({ sentBytes: 0, recordedBytes: 0, parts: 0 });
+      }
       let bytes = 0;
+      let warned = false;
       next.ondataavailable = (event) => {
         if (!event.data.size) return;
-        chunks.push(event.data);
         bytes += event.data.size;
-        if (bytes >= recordingLimits.bytes && next.state === "recording") {
-          setStatus("Recording reached the 128 MiB limit and stopped.");
-          next.stop();
+        target?.upload.push(event.data);
+        writer?.write(event.data);
+        if (writer?.failed && !warned) {
+          warned = true;
+          setError("This device ran out of room for the take.");
+          if (!target && next.state === "recording") next.stop();
+        }
+        if (memory) {
+          if (bytes <= recordingLimits.bytes) memory.push(event.data);
+          else if (target) memory = null;
+          else if (next.state === "recording") {
+            setStatus("Recording reached the 128 MiB limit for this browser and stopped.");
+            next.stop();
+          }
         }
       };
       next.onerror = () => setError("The recording encoder failed. Add or discard this take.");
+      const keepLocally = async (): Promise<StudioTake | null> => {
+        if (writer) {
+          try {
+            const file = await writer.close();
+            return { file, url: URL.createObjectURL(file), marks, stored: true };
+          } catch {
+            await writer.abort();
+          }
+        }
+        if (!memory?.length) return null;
+        const file = new File(memory, fileName, { type: "video/webm" });
+        return { file, url: URL.createObjectURL(file), marks, stored: false };
+      };
       next.onstop = () => {
         recorder.current = null;
+        markTake.current = null;
         setRecording(false);
-        if (!chunks.length) return;
-        const file = new File(chunks, `studio-${Date.now()}.webm`, { type: "video/webm" });
-        setTake({ file, url: URL.createObjectURL(file) });
+        const cloudTake = target;
+        if (!cloudTake) {
+          void keepLocally().then(setTake);
+          return;
+        }
+        setUploading(true);
+        void (async () => {
+          try {
+            await cloudTake.upload.finish();
+            const mediaId = await cloudTake.mediaId;
+            // The disk copy lets the editor open the take without downloading it again.
+            if (writer) {
+              await writer.close().catch(() => writer.abort());
+              await updateTake({ ...writer.info, mediaId }).catch(() => {});
+            }
+            setUploading(false);
+            setProgress(null);
+            onBusy(false);
+            setStatus("Saved to the cloud. Opening it in the editor…");
+            void navigate({ to: "/edit/$mediaId", params: { mediaId } });
+          } catch (cause) {
+            setUploading(false);
+            setProgress(null);
+            const reason = message(cause, "unknown error");
+            const local = await keepLocally();
+            setTake(local);
+            setError(
+              local
+                ? `The cloud upload failed: ${reason}. The take is kept on this device.`
+                : `The cloud upload failed: ${reason}. The take was too long to keep in this browser.`,
+            );
+          }
+        })();
+      };
+      const started = performance.now();
+      markTake.current = () => {
+        const seconds = (performance.now() - started) / 1000;
+        const label = `Mark ${marks.length + 1}`;
+        if (writer) writer.mark(seconds, label);
+        else marks.push({ seconds, name: label });
+        setMarkCount(marks.length);
       };
       recorder.current = next;
       next.start(1000);
+      setMarkCount(0);
       setStatus("");
       setRecording(true);
     }, "Recording could not start.");
@@ -425,9 +578,31 @@ export default function StudioPanel({ onBusy }: { onBusy: (busy: boolean) => voi
       setStatus(`${file.name} was added to Project media.`);
     }, "Import failed. Download the file or retry.");
   const clearTake = () => {
-    if (take) URL.revokeObjectURL(take.url);
+    if (take) {
+      URL.revokeObjectURL(take.url);
+      if (take.stored) void removeTake(take.file.name);
+    }
     setTake(null);
   };
+  const addTake = (file: File, marks: readonly TakeMark[], done: () => void) =>
+    attempt(async () => {
+      const where = await addTakeToProject(session, file, marks);
+      done();
+      setStatus(placedMessage(file.name, where));
+    }, "Import failed. Download the file or retry.");
+  const dropRecovered = (fileName: string) => {
+    void removeTake(fileName);
+    setRecovered((items) => items.filter((item) => item.fileName !== fileName));
+  };
+  const downloadRecovered = (fileName: string) =>
+    attempt(async () => {
+      const url = URL.createObjectURL(await takeFile(fileName));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    }, "The take could not be read from this device.");
   const clearClip = () => {
     if (clip) URL.revokeObjectURL(clip.url);
     setClip(null);
@@ -470,46 +645,166 @@ export default function StudioPanel({ onBusy }: { onBusy: (busy: boolean) => voi
         <p role="status" aria-live="polite" className="empty:hidden">
           {loading ? "Opening saved scenes…" : status}
         </p>
-        <Section title="Record program">
-          <div className="flex flex-wrap items-center gap-2">
-            {recording ? (
-              <Button size="sm" onClick={() => recorder.current?.stop()}>
-                Stop recording
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                disabled={!frame || Boolean(take)}
-                onClick={() => void startRecording()}
-              >
-                Start recording
-              </Button>
-            )}
-            {recording && <span role="status">Recording program output…</span>}
+        <Section title="Go">
+          <div role="radiogroup" aria-label="Output" className="studio-modes">
+            {(
+              [
+                ["record", "Record"],
+                ["live", "Live"],
+                ["both", "Both"],
+              ] as const
+            ).map(([value, label]) => (
+              <label key={value} data-checked={mode === value || undefined}>
+                <input
+                  type="radio"
+                  name="studio-mode"
+                  className="sr-only"
+                  value={value}
+                  checked={mode === value}
+                  disabled={busy}
+                  onChange={() => setMode(value)}
+                />
+                {label}
+                {value !== "record" && !canStream && <small>Desktop app</small>}
+              </label>
+            ))}
           </div>
-          {take && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="truncate">{take.file.name}</span>
-              <Button
-                size="sm"
-                disabled={blocked}
-                onClick={() => void addFile(take.file, clearTake)}
-              >
-                Add take to project
-              </Button>
-              <a
-                className={buttonVariants({ size: "sm", variant: "outline" })}
-                href={take.url}
-                download={take.file.name}
-              >
-                Download take
-              </a>
-              <Button size="sm" variant="outline" onClick={clearTake}>
-                Discard take
-              </Button>
-            </div>
+          {mode !== "record" &&
+            (canStream ? (
+              <>
+                <p className="text-muted-foreground">
+                  The desktop app streams to RTMP and keeps a recording on this computer. Studio
+                  scenes are not streamed yet: it captures the screen or camera you pick below.
+                </p>
+                <NativeRecordingControls />
+              </>
+            ) : (
+              <p className="text-muted-foreground">
+                Going live needs the raE.E desktop app. In the browser you can record the program.
+              </p>
+            ))}
+          {mode === "record" && (
+            <>
+              <label className="grid gap-1">
+                Save to
+                <select
+                  value={toCloud ? "cloud" : "device"}
+                  disabled={busy}
+                  onChange={(event) =>
+                    setSaveTo(event.target.value === "cloud" ? "cloud" : "device")
+                  }
+                >
+                  <option value="device">This device</option>
+                  <option value="cloud" disabled={cloud.state !== "ready"}>
+                    {cloud.state === "ready" ? `Cloud · ${cloud.teamName}` : "Cloud"}
+                  </option>
+                </select>
+              </label>
+              <p className="text-muted-foreground">
+                {cloud.state !== "ready"
+                  ? cloud.reason
+                  : toCloud
+                    ? "Uploads while you record. When you stop, the take opens in the editor."
+                    : "Takes stay in this browser until you add them to the project or download them."}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                {recording ? (
+                  <Button size="sm" onClick={() => recorder.current?.stop()}>
+                    Stop recording
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    disabled={!frame || Boolean(take) || uploading}
+                    onClick={() => void startRecording()}
+                  >
+                    Start recording
+                  </Button>
+                )}
+                {recording && (
+                  <>
+                    <Button size="sm" variant="outline" onClick={() => markTake.current?.()}>
+                      Mark moment
+                    </Button>
+                    <span role="status">
+                      Recording program output…
+                      {markCount ? ` ${markCount} ${markCount === 1 ? "mark" : "marks"}` : ""}
+                    </span>
+                  </>
+                )}
+              </div>
+              {progress && (
+                <p role="status">
+                  {uploading ? "Finishing upload:" : "Uploaded"} {megabytes(progress.sentBytes)} of{" "}
+                  {megabytes(progress.recordedBytes)} recorded
+                </p>
+              )}
+              {take && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="truncate">{take.file.name}</span>
+                  <Button
+                    size="sm"
+                    disabled={blocked}
+                    onClick={() => void addTake(take.file, take.marks, clearTake)}
+                  >
+                    Add take to project
+                  </Button>
+                  <a
+                    className={buttonVariants({ size: "sm", variant: "outline" })}
+                    href={take.url}
+                    download={take.file.name}
+                  >
+                    Download take
+                  </a>
+                  <Button size="sm" variant="outline" onClick={clearTake}>
+                    Discard take
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </Section>
+        {recovered.length > 0 && (
+          <Section title="Recovered takes">
+            <p className="text-muted-foreground">
+              Takes left on this device by an earlier visit. Interrupted takes may end abruptly.
+            </p>
+            <ul className="grid gap-2">
+              {recovered.map((item) => (
+                <li key={item.fileName} className="flex flex-wrap items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate">
+                    {new Date(item.startedAt).toLocaleString()} · {megabytes(item.bytes)}
+                    {item.state === "recording" ? " · interrupted" : ""}
+                  </span>
+                  <Button
+                    size="sm"
+                    disabled={blocked}
+                    onClick={() =>
+                      void attempt(async () => {
+                        const file = await takeFile(item.fileName);
+                        const where = await addTakeToProject(session, file, item.marks);
+                        dropRecovered(item.fileName);
+                        setStatus(placedMessage(file.name, where));
+                      }, "The take could not be added. Download it or retry.")
+                    }
+                  >
+                    Add to project
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void downloadRecovered(item.fileName)}
+                  >
+                    Download
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => dropRecovered(item.fileName)}>
+                    Discard
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </Section>
+        )}
         <Section title="Recent clips">
           <div className="flex flex-wrap items-center gap-2">
             <Button

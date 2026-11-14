@@ -1,22 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { AuthKitProvider, useAuth } from "@workos-inc/authkit-react";
-import { browserCloudConfig } from "./config";
+import { useAuth } from "@workos-inc/authkit-react";
+import { useCloud } from "./cloud-provider";
 
 // WorkOS Initiate login URI: starts AuthKit sign-in without a click (invitations, password resets).
 export default function LoginRedirect() {
-  const [configuration] = useState(browserCloudConfig);
-  if (!configuration)
+  const { configured } = useCloud();
+  if (!configured)
     return <p>Cloud sign-in is not configured for this app. You can keep editing locally.</p>;
-  return (
-    <AuthKitProvider
-      clientId={configuration.clientId}
-      redirectUri={configuration.redirectUri}
-      devMode={configuration.devMode}
-      {...(configuration.apiHostname ? { apiHostname: configuration.apiHostname } : {})}
-    >
-      <StartSignIn />
-    </AuthKitProvider>
-  );
+  return <StartSignIn />;
 }
 
 function StartSignIn() {

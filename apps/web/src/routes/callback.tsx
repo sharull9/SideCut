@@ -1,5 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { WorkspaceHome } from "@/modules/workspace/workspace-home";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-// WorkOS Redirect URI: the Teams dialog opens on `code`/`state` and its AuthKitProvider completes sign-in.
-export const Route = createFileRoute("/callback")({ component: WorkspaceHome });
+// WorkOS Redirect URI: Team mounts AuthKitProvider, which completes sign-in from `code`/`state`.
+export const Route = createFileRoute("/callback")({
+  beforeLoad: ({ location }) => {
+    throw redirect({
+      to: "/team",
+      search: location.search as Record<string, unknown>,
+      replace: true,
+    });
+  },
+});

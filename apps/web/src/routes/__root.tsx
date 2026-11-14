@@ -1,5 +1,6 @@
 import { ClientOnly, HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
 import appCss from "@sidecut/ui/globals.css?url";
+import { CloudProvider } from "@/modules/cloud/cloud-provider";
 import { EditorSessionProvider } from "@/modules/workspace/editor-session";
 
 export const Route = createRootRoute({
@@ -38,13 +39,16 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    // The whole app is dark, so portalled dialogs, menus and tooltips match the pages.
+    <html lang="en" className="dark" style={{ colorScheme: "dark" }}>
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="bg-background text-foreground">
         <ClientOnly>
-          <EditorSessionProvider>{children}</EditorSessionProvider>
+          <CloudProvider>
+            <EditorSessionProvider>{children}</EditorSessionProvider>
+          </CloudProvider>
         </ClientOnly>
         <Scripts />
       </body>

@@ -363,7 +363,7 @@ installation passes within the [recorded limits](docs/verification/linux-contain
 native macOS and real Linux desktop sessions remain unverified. See the
 [delivery, browser matrix and pinned parity audit](docs/verification/phases-136-140.md).
 
-Desktop downloads can be built manually from **Actions**, **Desktop builds**, **Run workflow**, or by pushing a version tag such as `v0.1.0`, after the workflow is pushed to GitHub. Linux builds produce AppImage and `.deb`; Apple Silicon builds produce `.dmg` and `.zip`. The workflow verifies the packaged app before uploading downloads, which expire after one day. macOS builds use ad-hoc signing and are not notarized. See [desktop builds](docs/desktop-builds.md) for commands, resource layout, free-tier limits and verification status.
+Pushes to `main` publish a nightly prerelease on the GitHub Releases page (at most every 4 hours), and pushing a version tag such as `v0.1.0` publishes a stable release. Windows builds produce an `.exe` installer; Linux builds produce AppImage and `.deb`; Apple Silicon builds produce `.dmg` and `.zip`. The workflow verifies every packaged app before publishing. macOS builds use ad-hoc signing and are not notarized. See [desktop builds](docs/desktop-builds.md) for commands, resource layout, free-tier limits and verification status.
 
 ## Static hosting
 

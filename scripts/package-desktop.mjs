@@ -12,10 +12,12 @@ const { build, Platform, Arch } = require("electron-builder");
 const manifest = JSON.parse(await readFile(join(desktop, "package.json"), "utf8"));
 const stage = join(desktop, ".package");
 assert.equal(dirname(stage), desktop);
+// The release workflow passes RELEASE_VERSION (nightlies from main); a tag push names the version itself.
 const version =
-  process.env.GITHUB_REF_TYPE === "tag"
+  process.env.RELEASE_VERSION ||
+  (process.env.GITHUB_REF_TYPE === "tag"
     ? process.env.GITHUB_REF_NAME?.replace(/^v/, "")
-    : manifest.version;
+    : manifest.version);
 assert.match(
   version ?? "",
   /^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/,

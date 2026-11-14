@@ -24,8 +24,6 @@ import { Button } from "@sidecut/ui/components/button";
 import { Alert, AlertTitle, AlertDescription } from "@sidecut/ui/components/alert";
 import { Tip, TooltipProvider } from "@sidecut/ui/components/tooltip";
 import { ExportDialog } from "./export-dialog";
-import { TeamsDialog } from "@/modules/cloud/teams-dialog";
-import { StudioDialog } from "@/modules/studio/studio-dialog";
 import { Timeline } from "./timeline";
 import { Viewer } from "./viewer";
 import { ClipInspector } from "./clip-inspector";
@@ -240,10 +238,6 @@ export function WorkspaceHome() {
         aria-label="raE.E video editor"
       >
         <header className="editor-topbar">
-          <div className="editor-brand">
-            <img src="/brand/mark-white.svg" alt="" width={24} height={24} />
-            <span>raE.E</span>
-          </div>
           <div className="editor-project-name">
             <span data-testid="project-name">{project.name}</span>
             <span className="editor-session-label" role="status" data-state={snapshot.saveState}>
@@ -261,8 +255,6 @@ export function WorkspaceHome() {
             </span>
           </div>
           <div className="editor-topbar-actions">
-            <StudioDialog />
-            <TeamsDialog />
             <div className="editor-toolbar-group">
               <Tip
                 label={snapshot.undoLabel ? `Undo ${snapshot.undoLabel}` : "Nothing to undo"}

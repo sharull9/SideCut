@@ -63,9 +63,10 @@ try {
   page.setDefaultTimeout(30_000);
   page.on("pageerror", (error) => result.errors.push(error.message));
   await page.goto(url);
-  const dialog = page.getByRole("dialog");
+  const dialog = page.getByRole("main", { name: "Studio" });
+  const nav = page.getByRole("navigation", { name: "App" });
   const openStudio = async () => {
-    await page.getByRole("button", { name: "Studio", exact: true }).click();
+    await nav.getByRole("link", { name: "Studio", exact: true }).click();
     await dialog.getByRole("button", { name: "Save from editor" }).waitFor();
     await dialog.getByText("Opening saved scenes…").waitFor({ state: "detached" });
   };
@@ -149,9 +150,10 @@ try {
   await button("Stop recording").waitFor();
   await page.waitForTimeout(4000);
 
-  // Output in memory must not be lost by closing.
-  await page.keyboard.press("Escape");
+  // Output in memory must not be lost by leaving the route.
+  await nav.getByRole("link", { name: "Edit", exact: true }).click();
   await dialog.getByText("Stop the recording and add or discard").waitFor();
+  await button("Stay in Studio").click();
   result.checks.closeGuard = true;
   await button("Stop recording").click();
   await dialog.getByRole("link", { name: "Download take" }).waitFor();
@@ -203,8 +205,8 @@ try {
   await button("Stop buffer").click();
   result.checks.recentClips = true;
 
-  // Closing releases devices; reopening recovers scenes without a crash.
-  await page.keyboard.press("Escape");
+  // Leaving releases devices; returning recovers scenes without a crash.
+  await nav.getByRole("link", { name: "Edit", exact: true }).click();
   await dialog.waitFor({ state: "detached" });
   await page.reload();
   await openStudio();

@@ -17,7 +17,7 @@ it("requires a production auth domain and disables local token storage in produc
   expect(cloudConfig(env, "https://sidecut.example")).toBeNull();
   expect(
     cloudConfig({ ...env, apiHostname: "auth.sidecut.example" }, "https://sidecut.example"),
-  ).toMatchObject({ devMode: false, redirectUri: "https://sidecut.example/" });
+  ).toMatchObject({ devMode: false, redirectUri: "https://sidecut.example/team" });
 });
 
 it("passes Convex a backend URL without a trailing slash", () => {
@@ -32,7 +32,7 @@ it("passes Convex a backend URL without a trailing slash", () => {
 it("uses the registered redirect URI when provided", () => {
   const env = { url: "https://example.convex.cloud", clientId: "client_test" };
   expect(cloudConfig(env, "http://localhost:3000")).toMatchObject({
-    redirectUri: "http://localhost:3000/",
+    redirectUri: "http://localhost:3000/team",
   });
   expect(
     cloudConfig({ ...env, redirectUri: "http://localhost:3000/callback" }, "http://localhost:3000"),

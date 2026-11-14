@@ -38,11 +38,12 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    // The whole app is dark, so portalled dialogs, menus and tooltips match the pages.
+    <html lang="en" className="dark" style={{ colorScheme: "dark" }}>
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="bg-background text-foreground">
         <ClientOnly>
           <EditorSessionProvider>{children}</EditorSessionProvider>
         </ClientOnly>

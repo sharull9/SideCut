@@ -120,19 +120,6 @@
 .editor-notice[data-tone="review"] > svg {
   color: var(--accent-live);
 }
-.editor-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--font-heading);
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-.editor-brand img {
-  width: 24px;
-  height: 24px;
-}
 .editor-project-name {
   display: flex;
   align-items: center;
@@ -988,9 +975,6 @@ button.editor-track-name:focus-visible {
 @media (max-width: 760px) {
   .editor-topbar-actions {
     flex-basis: 100%;
-  }
-  .editor-brand {
-    font-size: 15px;
   }
   .editor-edit-toolbar {
     flex-wrap: wrap;

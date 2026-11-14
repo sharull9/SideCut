@@ -1,0 +1,146 @@
+.app-frame {
+  display: flex;
+  height: 100svh;
+  min-height: 520px;
+  overflow: hidden;
+  background: var(--background);
+  color: var(--foreground);
+  color-scheme: dark;
+}
+.app-rail {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 64px;
+  padding: 10px 0;
+  border-right: 1px solid var(--border);
+  background: var(--card);
+}
+.app-rail-brand {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 8px;
+  border-radius: 10px;
+}
+.app-rail-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 52px;
+  padding: 7px 0 6px;
+  border-radius: 10px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-weight: 500;
+  text-decoration: none;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+.app-rail-link svg {
+  width: 20px;
+  height: 20px;
+}
+.app-rail-link:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+.app-rail-link[aria-current="page"] {
+  background: color-mix(in oklch, var(--primary) 28%, transparent);
+  color: var(--foreground);
+}
+.app-rail-link:focus-visible,
+.app-rail-brand:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+/* Pages own their own height; the editor fills it and the other pages scroll inside it. */
+.app-content {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.app-content > .editor-shell {
+  height: 100%;
+}
+.app-page {
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px clamp(16px, 4vw, 40px) 40px;
+}
+.app-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 1400px;
+  margin: 0 auto 20px;
+}
+.app-page-header h1 {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.app-page-header p {
+  margin-top: 4px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+.app-page > :not(.app-page-header) {
+  max-width: 1400px;
+  margin-inline: auto;
+}
+.app-page-narrow > :not(.app-page-header),
+.app-page-narrow > .app-page-header {
+  max-width: 720px;
+}
+/* Phones: the rail becomes a bottom bar so pages keep their full width. */
+@media (max-width: 640px) {
+  .app-frame {
+    flex-direction: column-reverse;
+  }
+  .app-rail {
+    flex-direction: row;
+    justify-content: space-around;
+    width: 100%;
+    height: 56px;
+    padding: 0 8px;
+    border-right: 0;
+    border-top: 1px solid var(--border);
+  }
+  .app-rail-brand {
+    display: none;
+  }
+  .app-content {
+    height: auto;
+    flex: 1;
+    min-height: 0;
+  }
+}
+/* Native selects match the editor's inputs on every page. */
+.app-page select {
+  height: 32px;
+  min-width: 0;
+  padding: 0 8px;
+  border: 1px solid var(--input);
+  border-radius: min(var(--radius-md), 10px);
+  background: color-mix(in oklch, var(--input) 30%, transparent);
+  color: var(--foreground);
+  font: inherit;
+}
+.app-page select:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+.app-page select option {
+  background: var(--card);
+  color: var(--foreground);
+}

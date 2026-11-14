@@ -115,6 +115,32 @@ try {
   assert.notDeepEqual(withCamera, beforeCamera, "camera must reach the program output");
   result.checks.camera = { beforeCamera, withCamera };
 
+  // Sources can be dragged and resized on the program preview.
+  const cameraBox = dialog.getByRole("group", { name: /^Camera 1 position/ });
+  const stage = await dialog.locator("canvas").boundingBox();
+  const box = await cameraBox.boundingBox();
+  const beforeDrag = await pixel(0.36, 0.72);
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 - stage.width * 0.5, box.y + box.height / 2, {
+    steps: 8,
+  });
+  await page.mouse.up();
+  await page.waitForTimeout(600);
+  const afterDrag = await pixel(0.36, 0.72);
+  assert.notDeepEqual(afterDrag, beforeDrag, "dragged camera must move in the program output");
+  const moved = await cameraBox.boundingBox();
+  const handle = cameraBox.locator('[data-corner="se"]');
+  const corner = await handle.boundingBox();
+  await page.mouse.move(corner.x + corner.width / 2, corner.y + corner.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(corner.x - moved.width / 2, corner.y - moved.height / 2, { steps: 8 });
+  await page.mouse.up();
+  const resized = await cameraBox.boundingBox();
+  assert.ok(resized.width < moved.width * 0.7, `resize left ${resized.width} of ${moved.width}`);
+  assert.ok(Math.abs(resized.x - moved.x) < 2, "resizing from a corner keeps the opposite corner");
+  result.checks.sourceLayout = { beforeDrag, afterDrag, width: [moved.width, resized.width] };
+
   // Screen source through the real picker path.
   await button("Add screen").click();
   await page.waitForTimeout(1500);

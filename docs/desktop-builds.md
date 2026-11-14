@@ -11,19 +11,23 @@ the app bundle's Resources directory on macOS).
 The workflow publishes a GitHub release once all three platforms build and pass
 verification:
 
-- **Every push to `main`** (except docs-only changes) publishes a nightly
-  prerelease, `v<version>-nightly.<YYYYMMDD>.<run>`, where `<version>` comes from
-  `apps/desktop/package.json`. Nightlies are never marked latest.
+- **Pushes to `main`** publish a nightly prerelease,
+  `v<version>-nightly.<YYYYMMDD>.<run>`, where `<version>` comes from
+  `apps/desktop/package.json`, at most once every 4 hours. A push is skipped when
+  the last nightly is newer than that, or when nothing but docs changed since it;
+  an hourly scheduled run then releases the skipped commits once the 4 hours
+  pass. Nightlies are never marked latest.
 - **Pushing a version tag** such as `v0.1.0` publishes a stable release with that
   version and marks it latest. A tag with a suffix (`v0.1.0-beta.1`) is a prerelease.
-- **Run workflow** (Actions → **Release**) on `main` publishes a nightly on demand.
+- **Run workflow** (Actions → **Release**) on `main` publishes a nightly at once,
+  ignoring the 4-hour gap.
 
 Each release has the installers, a `SHA256SUMS` file and notes GitHub generates
 from merged pull requests. It is created as a draft and published only after every
-file is attached, so a cancelled run leaves no partial release. A newer push to
-`main` cancels an unfinished nightly run; tag runs always finish. The verification
-results (`smoke-*.json`) stay in the run's **Artifacts** section, which expires
-after one day.
+file is attached, so a cancelled run leaves no partial release. Release runs for
+the same ref wait for each other and are never cancelled; a waiting run rechecks
+the gap when it starts. The verification results (`smoke-*.json`) stay in the
+run's **Artifacts** section, which expires after one day.
 
 To cut a stable release, bump `version` in `apps/desktop/package.json` (so later
 nightlies count from it), merge, then tag that commit and push the tag:

@@ -41,12 +41,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span>{label}</span>
           </Link>
         ))}
-        <Link
-          to="/cloud"
-          search={{ section: "overview" }}
-          className="app-rail-link"
-          activeProps={{ "aria-current": "page" }}
-        >
+        <Link to="/cloud" className="app-rail-link" activeProps={{ "aria-current": "page" }}>
           <RiCloudLine aria-hidden="true" />
           <span>
             Cloud

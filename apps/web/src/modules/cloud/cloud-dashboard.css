@@ -1,21 +1,22 @@
+/* Frame layout (flex, fixed sidebar, off-canvas on mobile) comes from the shadcn Sidebar. */
 .cloud-dashboard {
-  display: grid;
-  grid-template-columns: 224px minmax(0, 1fr);
-  min-height: 100dvh;
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-heading);
   font-size: 14px;
   line-height: 1.5;
 }
-.cloud-dashboard a {
+.cloud-dashboard a,
+.cloud-sidebar a {
   text-decoration: none;
 }
-.cloud-dashboard a:focus-visible {
+.cloud-dashboard a:focus-visible,
+.cloud-sidebar a:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 4px;
 }
-.cloud-dashboard p {
+.cloud-dashboard p,
+.cloud-sidebar p {
   color: var(--muted-foreground);
 }
 .cloud-dashboard svg {
@@ -26,7 +27,7 @@
   top: 8px;
   left: 16px;
   transform: translateY(-160%);
-  z-index: 10;
+  z-index: 20;
   background: var(--background);
   padding: 12px;
 }
@@ -34,12 +35,11 @@
   transform: none;
 }
 .cloud-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 48px;
-  padding: 28px 20px;
-  background: var(--sidebar);
-  border-right: 1px solid var(--border);
+  font-family: var(--font-heading);
+  border-color: var(--border);
+}
+.cloud-sidebar-header {
+  padding: 24px 20px 16px;
 }
 .cloud-brand {
   display: flex;
@@ -49,37 +49,46 @@
   font-size: 20px;
   color: var(--foreground);
 }
-.cloud-brand-label {
-  color: var(--muted-foreground);
-  font-size: 14px;
-  font-weight: 400;
-  margin-left: 4px;
+.cloud-sidebar-footer {
+  padding: 12px;
+  border-top: 1px solid var(--border);
 }
-.cloud-navigation {
-  display: grid;
-  gap: 6px;
-}
-.cloud-navigation a {
+.cloud-team-link {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 11px 14px;
+  gap: 10px;
+  padding: 8px;
   border-radius: 8px;
-  color: var(--muted-foreground);
-}
-.cloud-navigation a:hover,
-.cloud-navigation a[aria-current="page"] {
   color: var(--foreground);
+}
+.cloud-team-link:hover {
   background: var(--sidebar-accent);
 }
-.cloud-navigation a[aria-current="page"] {
-  font-weight: 600;
-}
-.cloud-sidebar-footer {
-  margin-top: auto;
+.cloud-team-avatar {
   display: grid;
-  gap: 24px;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.cloud-team-text {
+  display: grid;
+  min-width: 0;
+  line-height: 1.3;
+}
+.cloud-team-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cloud-team-detail {
   font-size: 12px;
+  color: var(--muted-foreground);
 }
 .cloud-editor-link {
   display: inline-flex;
@@ -90,6 +99,27 @@
 }
 .cloud-body {
   min-width: 0;
+}
+.cloud-topbar-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cloud-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  color: var(--muted-foreground);
+}
+.cloud-breadcrumb a {
+  color: var(--muted-foreground);
+}
+.cloud-breadcrumb a:hover,
+.cloud-breadcrumb [aria-current="page"] {
+  color: var(--foreground);
 }
 .cloud-topbar {
   display: flex;
@@ -242,12 +272,6 @@
   color: var(--muted-foreground);
 }
 @media (max-width: 900px) {
-  .cloud-dashboard {
-    grid-template-columns: 190px minmax(0, 1fr);
-  }
-  .cloud-sidebar {
-    padding: 24px 12px;
-  }
   .cloud-main {
     padding: 32px 24px;
   }
@@ -261,32 +285,6 @@
   }
 }
 @media (max-width: 600px) {
-  .cloud-dashboard {
-    display: block;
-  }
-  .cloud-sidebar {
-    gap: 20px;
-    padding: 20px 16px 12px;
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .cloud-navigation {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 4px;
-  }
-  .cloud-navigation a {
-    justify-content: center;
-    padding: 10px 6px;
-    gap: 6px;
-    font-size: 12px;
-  }
-  .cloud-sidebar-footer {
-    display: block;
-    margin: 0;
-  }
-  .cloud-sidebar-footer p {
-    display: none;
-  }
   .cloud-topbar {
     min-height: 56px;
     padding: 16px;

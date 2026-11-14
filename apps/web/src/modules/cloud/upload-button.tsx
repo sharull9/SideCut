@@ -59,7 +59,7 @@ function UploadGate({
 
 function SignInLink({ compact }: { compact: boolean }) {
   return (
-    <Link to="/cloud" search={{ section: "team" }} className={linkClass(compact)}>
+    <Link to="/cloud/team" className={linkClass(compact)}>
       Sign in to upload
     </Link>
   );
@@ -67,7 +67,7 @@ function SignInLink({ compact }: { compact: boolean }) {
 
 function ChooseTeamLink({ compact }: { compact: boolean }) {
   return (
-    <Link to="/cloud" search={{ section: "team" }} className={linkClass(compact)}>
+    <Link to="/cloud/team" className={linkClass(compact)}>
       Choose a cloud team
     </Link>
   );
@@ -206,8 +206,7 @@ function UploadControl({
           Uploaded to cloud.
         </span>
         <Link
-          to="/cloud"
-          search={{ section: "library" }}
+          to="/cloud/library"
           className={buttonVariants({ variant: "outline", size: compact ? "xs" : "sm" })}
         >
           View in cloud library

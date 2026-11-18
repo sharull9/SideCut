@@ -1,0 +1,10 @@
+{
+  "extends": "@sidecut/config/typescript/desktop.json",
+  "include": ["agent/**/*.ts", "test/**/*.ts"],
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowJs": true,
+    "resolveJsonModule": true
+  }
+}

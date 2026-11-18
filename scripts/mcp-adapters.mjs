@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { AjvJsonSchemaValidator } from "@modelcontextprotocol/sdk/validation/ajv";
 import { queryText } from "./cli-query-commands.mjs";
 import { applyText } from "./cli-apply-command.mjs";
@@ -7,10 +6,10 @@ import { resourceText } from "./cli-resource-commands.mjs";
 import { analysisText } from "./cli-analysis-commands.mjs";
 import { libraryText } from "./cli-library-commands.mjs";
 import { segmentText } from "./cli-foundation.mjs";
+import tools from "./mcp-tools.json" with { type: "json" };
 
-export const reference = JSON.parse(
-  readFileSync(new URL("./mcp-tools.json", import.meta.url), "utf8"),
-);
+// A static import keeps the tool list available when this module is bundled (the in-app agent).
+export const reference = tools;
 export const definitions = reference.tools.map((tool) => {
   const definition = structuredClone(tool);
   // These host guards remain explicit extensions to the pinned native contract.

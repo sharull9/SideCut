@@ -54,7 +54,11 @@ export default defineConfig({
   test: {
     // CLI integration tests spawn Node processes; bound concurrency on desktop and CI.
     maxWorkers: 4,
-    include: ["apps/*/src/**/*.test.{ts,tsx}", "packages/*/src/**/*.test.{ts,tsx}"],
+    include: [
+      "apps/*/src/**/*.test.{ts,tsx}",
+      "apps/agent/test/**/*.test.ts",
+      "packages/*/src/**/*.test.{ts,tsx}",
+    ],
     environment: "node",
   },
 });

@@ -4,6 +4,7 @@ import { basename } from "node:path";
 import { homedir } from "node:os";
 import { z } from "zod";
 import { clock, parseCommandTime } from "./cli-query-commands.mjs";
+import effectsCatalog from "./effects-catalog.json" with { type: "json" };
 
 export function prepareResourceCommand(parsed) {
   const offset = parsed.words[0] === "project" ? 1 : 0,
@@ -66,9 +67,7 @@ export function prepareResourceCommand(parsed) {
               if (input.type != null) throw new Error("Duplicate effect type.");
               input.type = String(flags.get("type"));
             }
-            const result = JSON.parse(
-              await readFile(new URL("./effects-catalog.json", import.meta.url), "utf8"),
-            );
+            const result = structuredClone(effectsCatalog);
             if (input.type != null)
               result.effects = result.effects.filter(
                 (e) => e.type.toLowerCase() === input.type.toLowerCase(),

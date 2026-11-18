@@ -1,7 +1,16 @@
 import { safeStorage } from "electron";
 import { readFile, mkdir, writeFile, rename, unlink } from "node:fs/promises";
 import { join } from "node:path";
-export const keyedProviders = ["pixabay", "pexels", "freesound", "elevenlabs"] as const;
+export const keyedProviders = [
+  "pixabay",
+  "pexels",
+  "freesound",
+  "elevenlabs",
+  // Model keys for the built-in assistant.
+  "anthropic",
+  "openai",
+  "openrouter",
+] as const;
 export class ProviderCredentials {
   constructor(private readonly folder: string) {}
   private file(provider: string) {

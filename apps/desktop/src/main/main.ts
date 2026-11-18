@@ -30,6 +30,7 @@ import { registerNativeRecordingLibrary } from "./native-recording-library-ipc.t
 import { NativeMedia } from "./native-media.ts";
 import { mediaBinaries } from "./media-binaries.ts";
 import { rendererService } from "./renderer-service.ts";
+import { AssistantAgent, assistantProviders } from "./assistant-agent.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const smoke = app.commandLine.hasSwitch("smoke-test");
@@ -211,6 +212,7 @@ void app
         throw new Error("Untrusted provider sender.");
       requests.get(`${event.sender.id}:${id}`)?.abort();
     });
+    let assistant: AssistantAgent | undefined;
     ipcMain.handle(
       bridgeChannels.providerCredential,
       async (event, provider: unknown, action: unknown, secret: unknown) => {
@@ -219,6 +221,9 @@ void app
         if (action === "set") await providers.credentials.set(provider, secret);
         else if (action === "clear") await providers.credentials.clear(provider);
         else throw new Error("Invalid credential action.");
+        // The assistant reads its model keys at start, so restart it to pick up the change.
+        if ((assistantProviders as readonly string[]).includes(provider))
+          await assistant?.restart();
       },
     );
     registerCapturePermissions(isTrusted);
@@ -325,7 +330,38 @@ void app
           throw error;
         }
         const closeNative = registerNativeIPC(project, isTrusted, api);
+        if (!headlessProject && !smoke) {
+          assistant = new AssistantAgent({
+            outputDir: app.isPackaged
+              ? join(process.resourcesPath, "agent")
+              : join(app.getAppPath(), "..", "agent", ".output"),
+            dataDir: join(app.getPath("userData"), "assistant"),
+            apiFile: discovery,
+            settingsFile: join(app.getPath("userData"), "assistant-settings.json"),
+            credentials: providers.credentials,
+            log: (line) => {
+              if (!app.isPackaged) process.stdout.write(`[assistant] ${line}`);
+            },
+          });
+          const trustedMainFrame = (event: Electron.IpcMainInvokeEvent) =>
+            event.senderFrame &&
+            event.senderFrame === event.sender.mainFrame &&
+            isTrusted(event.senderFrame.url);
+          ipcMain.handle(bridgeChannels.assistantConnect, (event) => {
+            if (!trustedMainFrame(event)) throw new Error("Untrusted assistant sender.");
+            return assistant!.connect();
+          });
+          ipcMain.handle(bridgeChannels.assistantSettings, (event) => {
+            if (!trustedMainFrame(event)) throw new Error("Untrusted assistant sender.");
+            return assistant!.settings();
+          });
+          ipcMain.handle(bridgeChannels.assistantConfigure, (event, settings: unknown) => {
+            if (!trustedMainFrame(event)) throw new Error("Untrusted assistant sender.");
+            return assistant!.configure(settings);
+          });
+        }
         const close = async () => {
+          await assistant?.close();
           await closeDelivery();
           await closeRecorder();
           await http.close();

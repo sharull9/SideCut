@@ -35,6 +35,13 @@ catalog:
   "electron": "45.0.0"
   "zustand": "5.0.15"
 
+minimumReleaseAgeExclude:
+  - "@ai-sdk/gateway@4.0.149"
+  - "@ai-sdk/provider-utils@5.0.82"
+  - "@ai-sdk/provider@4.0.39"
+  - ai@7.0.176
+  - eve@1.0.2
+
 overrides:
   vite@*: "catalog:"
 

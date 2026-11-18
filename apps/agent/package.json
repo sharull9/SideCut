@@ -1,0 +1,26 @@
+{
+  "name": "@sidecut/agent",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "eve dev",
+    "build": "eve build",
+    "start": "eve start --host 127.0.0.1 --no-schedules",
+    "typecheck": "vp exec tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@openrouter/ai-sdk-provider": "3.1.0",
+    "ai": "7.0.176",
+    "commander": "^15.0.0",
+    "eve": "1.0.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@sidecut/config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

@@ -313,6 +313,117 @@
   font-size: 11px;
 }
 
+/* Assistant: conversation log, tool activity, approvals and the composer. */
+.editor-assistant-status,
+.editor-assistant-keys {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  font-size: 12px;
+}
+.editor-assistant-status {
+  color: var(--muted-foreground);
+}
+.editor-assistant-model {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.editor-assistant-log {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+}
+.editor-assistant-message {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 100%;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.editor-assistant-message[data-role="user"] {
+  align-self: flex-end;
+  max-width: 85%;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: color-mix(in oklch, var(--primary) 16%, var(--card));
+}
+.editor-assistant-message[data-failed] {
+  opacity: 0.6;
+}
+.editor-assistant-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.editor-assistant-tool {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  padding: 4px 8px;
+  border-left: 2px solid var(--border);
+  font-size: 11px;
+}
+.editor-assistant-tool[data-state="approval"] {
+  border-left-color: var(--accent-live);
+}
+.editor-assistant-tool[data-state="failed"],
+.editor-assistant-tool[data-state="rejected"] {
+  border-left-color: var(--destructive);
+}
+.editor-assistant-approval {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin: 4px 0 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+}
+.editor-assistant-approval legend {
+  padding: 0 4px;
+  font-weight: 600;
+}
+.editor-assistant-approval pre {
+  max-height: 160px;
+  margin: 4px 0 0;
+  overflow: auto;
+  font-size: 10.5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.editor-assistant-error {
+  color: var(--destructive);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.editor-assistant-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px 12px 12px;
+  border-top: 1px solid var(--border);
+}
+.editor-assistant-compose textarea {
+  resize: none;
+  font-size: 12px;
+}
+.editor-assistant-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 /* Topbar: icon+label controls drop their labels (visually only) when space runs out. */
 @media (max-width: 1360px) {
   .editor-topbar-actions .editor-topbar-collapse {

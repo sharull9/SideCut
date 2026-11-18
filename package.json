@@ -17,12 +17,12 @@
     "mcp": "vp exec node scripts/sidecut-mcp.mjs",
     "cli": "vp exec node scripts/sidecut-cli.mjs",
     "dev": "vp run --filter @sidecut/web dev",
-    "dev:desktop": "vp run --filter @sidecut/web build && vp run --filter @sidecut/desktop start",
+    "dev:desktop": "vp run --filter @sidecut/web build && vp run --filter @sidecut/agent build && vp run --filter @sidecut/desktop start",
     "build": "vp run --filter @sidecut/web build",
     "build:web": "vp run --filter @sidecut/web build",
     "dev:landing": "vp run --filter @sidecut/landing dev",
     "build:landing": "vp run --filter @sidecut/landing build",
-    "build:desktop": "vp run --filter @sidecut/web build && vp run --filter @sidecut/desktop build",
+    "build:desktop": "vp run --filter @sidecut/web build && vp run --filter @sidecut/agent build && vp run --filter @sidecut/desktop build",
     "preview": "vp run --filter @sidecut/web preview",
     "typecheck": "vp exec tsc --noEmit && vp run -r typecheck",
     "lint": "vp lint --deny-warnings",
@@ -50,7 +50,10 @@
     "verify:delivery-recovery": "vp exec node scripts/verify-delivery-recovery.mjs",
     "verify:long-delivery": "vp exec node scripts/verify-long-delivery.mjs",
     "verify:live-engagement": "vp exec node scripts/verify-live-engagement.mjs",
-    "verify:obs-import": "vp exec node scripts/verify-obs-import.mjs"
+    "verify:obs-import": "vp exec node scripts/verify-obs-import.mjs",
+    "build:agent": "vp run --filter @sidecut/agent build",
+    "dev:agent": "vp run --filter @sidecut/agent dev",
+    "verify:assistant": "vp run --filter @sidecut/agent build && vp exec node scripts/verify-assistant.mjs"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",

@@ -45,12 +45,15 @@ for (const [name, binary] of Object.entries(binaries)) {
 }
 await access(join(desktop, "dist/main.mjs"));
 await access(join(root, "apps/web/.output/public/_shell.html"));
+// The built-in assistant: a self-contained eve server the desktop app starts on demand.
+await access(join(root, "apps/agent/.output/server/index.mjs"));
 await rm(stage, { recursive: true, force: true });
 await mkdir(join(stage, "resources/media"), { recursive: true });
 await cp(join(desktop, "dist"), join(stage, "dist"), { recursive: true });
 await cp(join(root, "apps/web/.output/public"), join(stage, "resources/renderer"), {
   recursive: true,
 });
+await cp(join(root, "apps/agent/.output"), join(stage, "resources/agent"), { recursive: true });
 await writeFile(
   join(stage, "package.json"),
   JSON.stringify(
@@ -108,6 +111,10 @@ else {
 await mkdir(notices, { recursive: true });
 await cp(join(commanderRoot, "LICENSE"), join(notices, "commander-LICENSE"));
 await cp(join(zodRoot, "LICENSE"), join(notices, "zod-LICENSE"));
+const agentRequire = createRequire(join(root, "apps/agent/package.json"));
+const eveRoot = dirname(agentRequire.resolve("eve/package.json"));
+await cp(join(eveRoot, "LICENSE"), join(notices, "eve-LICENSE"));
+await cp(join(eveRoot, "NOTICE"), join(notices, "eve-NOTICE"));
 for (const [name, binary] of Object.entries(binaries)) {
   const destination = join(
     stage,
